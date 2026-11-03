@@ -71,7 +71,7 @@ async function verificar(browser, url, nome) {
   ok(j.queixas.length === 2 && qi && qi.ativa, `${nome}: segunda queixa adicionada`);
   ok(await tem('.qgrid .qc', 'Insônia') && await tem('.qgrid .qc', 'medida no próximo atendimento'), `${nome}: queixa nova aparece aguardando a primeira medida`);
   for (const [q1, q2, nota] of [[6, 7, 'Primeiro atendimento'], [3, 4, 'Segundo atendimento']]) {
-    await p.click('.perfil-a [data-t="nova"]'); await espera();
+    await p.click('.tabs [data-t="nova"]'); await espera();
     await faixa('#ns-eva', q1); await faixa(`#ns-q-${qi.id}`, q2); await p.fill('#ns-nota', nota);
     await p.click('#f-session button.pri'); await espera();
   }
@@ -97,7 +97,7 @@ async function verificar(browser, url, nome) {
   // Resolver e reativar queixa
   await p.click(`[data-act="queixa-ativa"][data-q="${qi.id}"]`); await espera();
   ok((await paciente()).queixas.find(q => q.id === qi.id).ativa === false && await tem('details.mais summary', '1 queixa resolvida'), `${nome}: queixa marcada como resolvida`);
-  await p.click('.perfil-a [data-t="nova"]'); await espera();
+  await p.click('.tabs [data-t="nova"]'); await espera();
   ok(await p.locator(`#ns-q-${qi.id}`).count() === 0, `${nome}: queixa resolvida não é medida no próximo atendimento`);
   await p.click('[data-t="resumo"]'); await espera();
   await p.click('details.mais summary >> text=queixa resolvida'); await p.click(`[data-act="queixa-ativa"][data-q="${qi.id}"]`); await espera();

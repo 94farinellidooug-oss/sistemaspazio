@@ -10,10 +10,10 @@ import { esc, initials } from '../util.js';
 // [rota, rótulo, ícone]
 export const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
   ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
-export const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
+export const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', atendimento:'Atendimento', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
   crm:'CRM', equipe:'Equipe e permissões', configuracoes:'Configurações'};
 // Item do menu que fica marcado em cada tela.
-const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
+const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
 export const PROF = {nome:'Mauren Turcatti', papel:'Profissional responsável'};
 

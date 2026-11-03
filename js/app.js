@@ -5,6 +5,8 @@ import { ui } from './estado.js';
 import { pointWarnings } from './raciocinio/seguranca.js';
 import { vAgenda } from './telas/agenda.js';
 import { vAvaliacao } from './telas/avaliacao.js';
+import { atendimentoAberto, textoSalvo, vAtendimento } from './telas/atendimento.js';
+import { avaliacaoEditavel, descartarRascunho, finalizarAtendimento, iniciarAtendimento, rascunhoDe, registrarAlteracao } from './dados/atendimento.js';
 import { cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { listaBusca, renderNav } from './telas/menu.js';
@@ -17,7 +19,7 @@ import { pointCards, vPontos } from './telas/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
 import { TODAY, esc, uid } from './util.js';
 
-export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao};
+export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -47,6 +49,7 @@ addEventListener('keydown',ev=>{
   if(ev.key==='Escape'){ if(ui.ov){ ui.ov=null; render(true); } else if(ui.menuAberto){ ui.menuAberto=false; render(true); } return; }
   if(ui.ov==='busca'&&['ArrowDown','ArrowUp','Enter'].includes(ev.key)){ ev.preventDefault(); const L=document.querySelectorAll('.pal-i');
     if(ev.key==='Enter'){ L[ui.bi]?.click(); return; } ui.bi=(ui.bi+(ev.key==='ArrowDown'?1:-1)+L.length)%Math.max(1,L.length); document.getElementById('pal-l').innerHTML=listaBusca(); return; }
+  if(ev.altKey&&route()==='atendimento'&&(ev.key==='ArrowLeft'||ev.key==='ArrowRight')){ ev.preventDefault(); irEtapa((ui.etapa|0)+(ev.key==='ArrowRight'?1:-1)); return; }
   if(emCampo||ev.ctrlKey||ev.metaKey||ev.altKey) return;
   if(ev.key==='/'){ ev.preventDefault(); abrir('busca'); }
   else if(ev.key==='['){ ui.menuMini=!ui.menuMini; render(true); }
@@ -64,6 +67,12 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
   if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
+  else if(a==='novo-atendimento'){ const p=patient(t.dataset.pid||ui.pid); let x=rascunhoDe(p);
+    if(!x){ x=iniciarAtendimento(p,{id:uid(),data:TODAY},new Date().toISOString()); save(); }
+    ui.pid=p.id; ui.atId=x.id; ui.etapa=0; ui.el=null; ui.atCmp=false; irPara('atendimento'); scrollTo(0,0); }
+  else if(a==='abrir-atendimento'){ ui.pid=t.dataset.pid; ui.atId=t.dataset.id; ui.etapa=0; ui.el=null; ui.atCmp=false; irPara('atendimento'); scrollTo(0,0); }
+  else if(a==='etapa'){ ev.preventDefault(); irEtapa(Number(t.dataset.i)); }
+  else if(a.startsWith('at-')){ acaoAtendimento(a,t); }
   else if(a==='novo-paciente'){ ui.editPid=null; irPara('cadastro'); }
   else if(a==='editar-paciente'){ ui.editPid=t.dataset.pid; irPara('cadastro'); }
   else if(a==='queixa-ativa'){ const q=alternarQueixa(patient(ui.pid),t.dataset.q,new Date().toISOString()); if(q){ save(); render(true); toast(q.ativa?'Queixa reativada':'Queixa marcada como resolvida'); } }
@@ -105,11 +114,42 @@ document.addEventListener('input',ev=>{
   else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
   else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
+  // Ambiente de atendimento: salva a cada alteração, sem redesenhar a tela enquanto se digita.
+  const x=(t.dataset.atq||t.dataset.atan||t.dataset.atf||t.dataset.vnota)&&atendimentoAberto(); if(!x) return;
+  if(t.dataset.atq){ x.a.evolucao.intensidades[t.dataset.atq]=Number(t.value); document.getElementById('qv-'+t.dataset.atq).textContent=t.value; mudou('intensidade das queixas',false); }
+  else if(t.dataset.atan){ x.p.anam[t.dataset.atan]=t.value; mudou('anamnese',false); }
+  else if(t.dataset.vnota){ const v=(x.a.vasos||={})[t.dataset.vnota]||={considerar:false,nota:''}; v.nota=t.value; mudou('avaliação energética: vasos extraordinários',false); }
+  else { const f=t.dataset.atf;
+    if(f==='sintese') x.a.sintese=t.value; else if(f==='nota') x.a.evolucao.nota=t.value; else if(f==='mapa') (x.a.mapa||={nota:''}).nota=t.value;
+    else if(f==='avnota'){ const av=avaliacaoEditavel(x.p,x.a); if(av) av.nota=t.value; }
+    mudou({sintese:'síntese clínica',nota:'evolução',mapa:'mapa corporal',avnota:'avaliação energética: observações'}[f],false); }
 });
 export function sessionWarn(){
   const p=patient(ui.pid), codes=document.getElementById('ns-pts').value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
   const tec=[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value);
   document.getElementById('ns-warn').innerHTML=pointWarnings(codes,p,tec).map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:6px"><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div>`).join('');
+}
+// Ambiente de atendimento: troca de etapa, alterações com salvamento automático e histórico.
+function irEtapa(i){ const x=atendimentoAberto(); if(!x) return; ui.etapa=Math.max(0,Math.min(7,i));
+  if(x.a.status==='rascunho'&&!x.a.etapas.includes(ui.etapa)){ x.a.etapas.push(ui.etapa); save(); }
+  render(); scrollTo(0,0); }
+function mudou(acao, redesenhar=true){ const x=atendimentoAberto(); if(!x) return; const em=new Date().toISOString();
+  registrarAlteracao(x.a,acao,em);
+  if(x.a.status==='finalizado'&&/avalia/.test(acao)){ const av=avaliacaoEditavel(x.p,x.a); if(av) registrarAlteracao(av,'avaliação alterada após finalizar o atendimento',em); }
+  save(); if(redesenhar) render(true); else { const e=document.getElementById('autosave'); if(e) e.innerHTML=textoSalvo(x.a); } }
+function acaoAtendimento(a,t){
+  const x=atendimentoAberto(); if(!x) return; const {p}=x, A=x.a, av=avaliacaoEditavel(p,A);
+  const alterna=(L,v)=>{ const i=L.indexOf(v); i<0?L.push(v):L.splice(i,1); };
+  if(a==='at-sinal'&&av){ alterna(av.signs,t.dataset.s); mudou('avaliação energética: sinais'); }
+  else if(a==='at-hip'&&av){ const id=t.dataset.p; av.status[id]=av.status[id]===t.dataset.st?'':t.dataset.st; mudou('avaliação energética: hipóteses'); }
+  else if(a==='at-pt'){ alterna(A.plano.pontos,t.dataset.c); mudou('plano terapêutico: pontos'); }
+  else if(a==='at-tec'){ alterna(A.plano.tec,t.dataset.t); mudou('plano terapêutico: técnicas'); }
+  else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
+  else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
+  else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; irPara('agenda'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
+  else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
+  else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
+    descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
 }
 // Baixa um texto como arquivo (cópia de segurança).
 function baixar(texto, nome){ const u=URL.createObjectURL(new Blob([texto],{type:'application/json'})), l=document.createElement('a'); l.href=u; l.download=nome; document.body.append(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
@@ -118,6 +158,7 @@ document.addEventListener('change',ev=>{
   if(t.id==='imp-arq' && t.files[0]){ const f=t.files[0]; t.value='';
     if(!confirm(`Importar “${f.name}”? Os dados atuais deste navegador serão substituídos. Exporte antes se quiser guardá-los.`)) return;
     f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
+  if(t.dataset.vaso){ const x=atendimentoAberto(); if(x){ const v=(x.a.vasos||={})[t.dataset.vaso]||={considerar:false,nota:''}; v.considerar=t.checked; mudou('avaliação energética: vasos extraordinários'); } return; }
   if(t.id==='pr-patient'){ ui.pid=t.value; render(true); }
   else if(t.id==='as-patient'){ ui.pid=t.value; ui.assess={pid:t.value,signs:[],status:{},nota:''}; render(true); }
   else if(t.id==='pt-patient'){ ui.pid=t.value; render(true); }
@@ -143,6 +184,10 @@ document.addEventListener('submit',ev=>{
     const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),consentimento:TODAY,em}));
     Object.assign(p.alerts,alerts); p.cadastro=cadastro;
     db.patients.push(p); save(); ui.pid=p.id; ui.tab='anamnese'; toast('Paciente cadastrado'); location.hash='prontuario';
+  } else if(f.id==='f-at-queixa'||f.id==='f-at-pt'){
+    const x=atendimentoAberto(); if(!x) return;
+    if(f.id==='f-at-queixa'){ const d=v('atq-desc').trim(); if(!d) return; const q=adicionarQueixa(x.p,{id:uid(),descricao:d},new Date().toISOString()); x.a.evolucao.intensidades[q.id]=5; mudou('queixa adicionada'); toast('Queixa adicionada'); }
+    else { const L=v('at-pt-c').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean).filter(c=>!x.a.plano.pontos.includes(c)); if(!L.length) return; x.a.plano.pontos.push(...L); mudou('plano terapêutico: pontos'); }
   } else if(f.id==='f-queixa'){
     const d=v('nq-desc').trim(); if(!d) return;
     adicionarQueixa(patient(ui.pid),{id:uid(),descricao:d},new Date().toISOString()); save(); render(true); toast('Queixa adicionada');

@@ -53,8 +53,8 @@ async function verificar(browser, url, nome) {
   ok(await p.evaluate(() => location.hash) === '#prontuario', `${nome}: migalha volta ao prontuário do paciente`);
   await p.click('[data-act="ir"][data-to="avaliacao"]'); await p.waitForTimeout(80);
   ok(await p.$eval('#as-patient', s => s.selectedOptions[0].textContent) === 'Rafael Monteiro', `${nome}: atalho Avaliação no prontuário abre o paciente certo`);
-  await ir('prontuario'); await p.click('.perfil-a [data-t="nova"]'); await p.waitForTimeout(80);
-  ok(await p.locator('#f-session').count() === 1, `${nome}: "Novo atendimento" abre o registro de sessão`);
+  await ir('prontuario'); await p.click('.tabs [data-t="nova"]'); await p.waitForTimeout(80);
+  ok(await p.locator('#f-session').count() === 1, `${nome}: aba Registro rápido abre o registro de sessão`);
 
   // Busca global
   await p.keyboard.press('Control+k'); await p.waitForTimeout(120);
