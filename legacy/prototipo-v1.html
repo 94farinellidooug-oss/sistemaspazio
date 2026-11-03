@@ -1,0 +1,659 @@
+<title>Sistema Spazio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: barra lateral fixa de módulos + área de trabalho em colunas; no celular a barra vira faixa rolável no topo. */
+:root{
+  --bg:#f3f5f3; --surface:#ffffff; --surface-2:#f8faf9; --ink:#1b2320; --muted:#5c6964; --line:#dce3df;
+  --accent:#2b6b5a; --accent-ink:#ffffff; --accent-soft:#e2eee9;
+  --ok:#2f7a4a; --warn:#a8601a; --crit:#b23a3a; --warn-soft:#fbf0e4; --crit-soft:#f9e6e6;
+  --wood:#3f8a4e; --fire:#c4473b; --earth:#b88a1f; --metal:#7f8a91; --water:#2d4d73;
+  --f-display:"Spectral",Georgia,"Times New Roman",serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#18201d; --surface-2:#1d2622; --ink:#e4ebe7; --muted:#97a59f; --line:#2b3632;
+  --accent:#6fc2a6; --accent-ink:#0f1a16; --accent-soft:#1d3530;
+  --ok:#6cc48a; --warn:#e2a35c; --crit:#ec7d7d; --warn-soft:#33281b; --crit-soft:#3a2222;
+  --wood:#6dbb7b; --fire:#ea7a6c; --earth:#ddb752; --metal:#b5bfc5; --water:#78a0d0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#18201d; --surface-2:#1d2622; --ink:#e4ebe7; --muted:#97a59f; --line:#2b3632;
+  --accent:#6fc2a6; --accent-ink:#0f1a16; --accent-soft:#1d3530;
+  --ok:#6cc48a; --warn:#e2a35c; --crit:#ec7d7d; --warn-soft:#33281b; --crit-soft:#3a2222;
+  --wood:#6dbb7b; --fire:#ea7a6c; --earth:#ddb752; --metal:#b5bfc5; --water:#78a0d0; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.75rem} h2{font-size:1.2rem} h3{font-size:1rem}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100%}
+.nav{background:var(--surface);border-right:1px solid var(--line);padding:20px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px 18px}
+.brand b{font-family:var(--f-display);font-size:1.25rem;font-weight:600}
+.brand small{display:block;color:var(--muted);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;color:var(--ink);text-decoration:none;white-space:nowrap}
+.nav a:hover{background:var(--surface-2)}
+.nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav .grp{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:14px 10px 4px}
+.nav .foot{margin-top:auto;font-size:.75rem;color:var(--muted);padding:8px 10px}
+.nav svg{width:16px;height:16px;flex:none}
+main{min-width:0;padding-block:24px 48px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:20px}
+.head p{color:var(--muted)}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.g-side{grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.card>h2,.card>h3{margin-bottom:12px}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi span{display:block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.kpi b{font-family:var(--f-display);font-size:1.7rem;font-weight:600;font-variant-numeric:tabular-nums}
+.kpi small{color:var(--muted)}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono);font-size:.85em}
+.lbl{font-size:.7rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:6px;cursor:pointer;text-decoration:none;color:var(--ink);white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.sm{padding:4px 9px;font-size:.82rem}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--accent)}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:.74rem;padding:2px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);white-space:nowrap}
+.pill.ok{color:var(--ok);border-color:currentColor;background:transparent}
+.pill.warn{color:var(--warn);border-color:currentColor;background:transparent}
+.pill.crit{color:var(--crit);border-color:currentColor;background:transparent}
+.pill.acc{color:var(--accent);border-color:currentColor;background:transparent}
+.pill.ex{font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.list{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-top:1px solid var(--line);min-width:0}
+.row:first-child{border-top:0}
+.row.click{cursor:pointer;border-radius:6px}
+.row.click:hover{background:var(--surface-2)}
+.row .grow{flex:1;min-width:0}
+.row .t{font-family:var(--f-mono);font-variant-numeric:tabular-nums;width:48px;color:var(--muted)}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:.8rem;flex:none}
+.trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:7px 9px;width:100%}
+.field textarea{min-height:64px;resize:vertical}
+.form{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.form .full{grid-column:1/-1}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);padding:5px 10px;border-radius:999px;cursor:pointer;font-size:.84rem}
+.chip:hover{border-color:var(--accent)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.notice{display:flex;gap:10px;padding:10px 12px;border-radius:6px;background:var(--warn-soft);color:var(--ink);border:1px solid var(--line);font-size:.86rem}
+.notice b{color:var(--warn)}
+.notice.crit{background:var(--crit-soft)}
+.notice.crit b{color:var(--crit)}
+.bar{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--accent)}
+.hyp{border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;gap:8px;background:var(--surface)}
+.hyp.descartado{opacity:.5}
+.hyp.aceito{border-color:var(--accent)}
+.hyp-h{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.pts{display:grid;gap:4px}
+.pts div{font-size:.86rem}
+.pts .mono{color:var(--accent);font-weight:500}
+.axis{display:grid;grid-template-columns:90px 1fr 90px;align-items:center;gap:8px;font-size:.82rem}
+.axis .track{position:relative;height:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:4px}
+.axis .track::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--muted)}
+.axis .dot{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--accent);transform:translate(-50%,-50%);border:2px solid var(--surface)}
+.axis span:last-child{text-align:right}
+.penta{width:100%;max-width:640px;height:auto;display:block;margin:0 auto}
+.penta .node{cursor:pointer}
+.penta .node:hover circle.ring{stroke-width:5}
+.penta text{font-family:var(--f-body)}
+.penta .sheng{stroke:var(--accent);fill:none;stroke-width:2}
+.penta .ke{stroke:var(--muted);fill:none;stroke-width:1.5;stroke-dasharray:5 4}
+.penta .dim{opacity:.18}
+.penta .hi{stroke-width:3.2;opacity:1}
+.corr{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.88rem}
+.corr dt{color:var(--muted)}
+.corr dd{margin:0}
+.el-tag{display:inline-flex;align-items:center;gap:6px;font-size:.78rem}
+.el-tag i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.timeline{display:flex;flex-direction:column;gap:0}
+.sess{display:grid;grid-template-columns:86px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.sess:first-child{border-top:0}
+.eva{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:6px;align-content:start}
+.pcard .code{font-family:var(--f-mono);font-weight:500;font-size:1.05rem;color:var(--accent)}
+.week{display:grid;grid-template-columns:repeat(7,minmax(130px,1fr));gap:8px;min-width:940px}
+.wscroll{overflow-x:auto;padding-bottom:6px}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;min-height:200px;display:flex;flex-direction:column;gap:6px}
+.day.today{border-color:var(--accent)}
+.day h3{font-family:var(--f-body);font-size:.8rem;font-weight:600;text-transform:capitalize}
+.appt{border-left:3px solid var(--accent);background:var(--surface-2);padding:6px 8px;border-radius:4px;font-size:.8rem;cursor:pointer}
+.appt.done{border-left-color:var(--ok);opacity:.7}
+.appt b{font-family:var(--f-mono);font-weight:500}
+.spark{display:block}
+.spark path.l{fill:none;stroke:var(--accent);stroke-width:2}
+.spark path.a{fill:var(--accent-soft)}
+.spark circle{fill:var(--accent)}
+.toast{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:6px;font-size:.86rem;z-index:20}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto}
+.tabs button{border:0;background:none;padding:8px 12px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);white-space:nowrap}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.sigs{display:grid;gap:14px}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  .nav{position:sticky;top:env(safe-area-inset-top,0px);height:auto;flex-direction:row;overflow-x:auto;padding:8px max(12px,env(safe-area-inset-left,0px));border-right:0;border-bottom:1px solid var(--line);z-index:5;gap:2px}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+  .brand{padding:0 8px 0 0}.brand small,.nav .grp,.nav .foot{display:none}
+  .g-side{grid-template-columns:1fr}
+  main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .sess{grid-template-columns:1fr;gap:4px}
+}
+@media (prefers-reduced-motion:no-preference){.chip,.btn,.hyp{transition:background .15s,border-color .15s,opacity .15s}}
+</style>
+
+<div class="app">
+  <nav class="nav" id="nav" aria-label="Módulos"></nav>
+  <main id="view"></main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ===================== Conhecimento de MTC ===================== */
+const EL = {
+  madeira:{nome:'Madeira',han:'木',cor:'var(--wood)',ang:198,zang:'Fígado',fu:'Vesícula Biliar',emocao:'Raiva',estacao:'Primavera',clima:'Vento',sentido:'Olhos',tecido:'Tendões',sabor:'Ácido',som:'Grito',espirito:'Hun',funcoes:['Armazena o Xue','Garante o livre fluxo do Qi','Nutre tendões e olhos']},
+  fogo:{nome:'Fogo',han:'火',cor:'var(--fire)',ang:-90,zang:'Coração · Pericárdio',fu:'Intestino Delgado · Triplo Aquecedor',emocao:'Alegria (em excesso, agitação)',estacao:'Verão',clima:'Calor',sentido:'Língua',tecido:'Vasos',sabor:'Amargo',som:'Riso',espirito:'Shen',funcoes:['Governa o Xue e os vasos','Abriga o Shen','Manifesta-se na face']},
+  terra:{nome:'Terra',han:'土',cor:'var(--earth)',ang:-18,zang:'Baço',fu:'Estômago',emocao:'Preocupação',estacao:'Fim do verão',clima:'Umidade',sentido:'Boca',tecido:'Músculos',sabor:'Doce',som:'Canto',espirito:'Yi',funcoes:['Transforma e transporta','Produz Qi e Xue a partir dos alimentos','Mantém o Xue nos vasos']},
+  metal:{nome:'Metal',han:'金',cor:'var(--metal)',ang:54,zang:'Pulmão',fu:'Intestino Grosso',emocao:'Tristeza',estacao:'Outono',clima:'Secura',sentido:'Nariz',tecido:'Pele e pelos',sabor:'Picante',som:'Choro',espirito:'Po',funcoes:['Governa o Qi e a respiração','Difunde o Wei Qi','Regula as vias das águas']},
+  agua:{nome:'Água',han:'水',cor:'var(--water)',ang:126,zang:'Rim',fu:'Bexiga',emocao:'Medo',estacao:'Inverno',clima:'Frio',sentido:'Ouvidos',tecido:'Ossos',sabor:'Salgado',som:'Gemido',espirito:'Zhi',funcoes:['Armazena o Jing','Governa a água','Raiz do Yin e do Yang do corpo']}
+};
+const ORDER = ['fogo','terra','metal','agua','madeira'];
+const SHENG = {madeira:'fogo',fogo:'terra',terra:'metal',metal:'agua',agua:'madeira'};
+const KE = {madeira:'terra',terra:'agua',agua:'fogo',fogo:'metal',metal:'madeira'};
+const mae = e => Object.keys(SHENG).find(k=>SHENG[k]===e);
+const controlador = e => Object.keys(KE).find(k=>KE[k]===e);
+
+const SIGNS = {
+  'Língua':[['lingua_palida','Pálida'],['lingua_vermelha','Vermelha'],['ponta_vermelha','Ponta vermelha'],['bordas_vermelhas','Bordas vermelhas'],['lingua_purpura','Arroxeada'],['lingua_inchada','Inchada'],['marcas_dentes','Marcas de dentes'],['sem_saburra','Sem saburra'],['saburra_amarela','Saburra amarela pegajosa'],['saburra_branca','Saburra branca espessa']],
+  'Pulso':[['pulso_fraco','Fraco / vazio'],['pulso_corda','Em corda'],['pulso_fino','Fino'],['pulso_rapido','Rápido'],['pulso_lento','Lento'],['pulso_profundo','Profundo'],['pulso_escorregadio','Escorregadio']],
+  'Sinais e sintomas':[['cansaco','Cansaço'],['fezes_amolecidas','Fezes amolecidas'],['distensao_pos','Distensão após comer'],['preocupacao','Pensamento excessivo'],['irritabilidade','Irritabilidade'],['distensao_hipo','Distensão no hipocôndrio'],['tpm','Tensão pré-menstrual'],['suspiros','Suspiros frequentes'],['cefaleia_temporal','Cefaleia temporal'],['sudorese_noturna','Sudorese noturna'],['calor_tarde','Calor ao fim da tarde'],['boca_seca','Boca seca'],['zumbido','Zumbido'],['lombalgia','Lombalgia'],['frio_extremidades','Frio nas extremidades'],['mic_frequente','Micção frequente e clara'],['palpitacoes','Palpitações'],['insonia','Insônia'],['ansiedade','Ansiedade'],['memoria','Memória fraca'],['aftas','Aftas'],['falta_ar','Falta de ar ao esforço'],['voz_fraca','Voz fraca'],['resfriados','Resfriados frequentes'],['tristeza','Tristeza persistente'],['peso_corpo','Sensação de peso'],['dor_fixa','Dor fixa e em pontada']]
+};
+const SIGN = {}; Object.values(SIGNS).flat().forEach(([k,v])=>SIGN[k]=v);
+
+const PATTERNS = [
+  {id:'bp_qi',nome:'Deficiência de Qi do Baço',el:'terra',tipo:'def',sinais:['lingua_palida','marcas_dentes','pulso_fraco','cansaco','fezes_amolecidas','distensao_pos','preocupacao'],
+   pontos:[['E36','Tonifica o Qi do Baço e do Estômago'],['BP3','Ponto fonte (Yuan) do Baço'],['VC12','Ponto Mu do Estômago, fortalece o Aquecedor Médio'],['BP6','Apoia a função de transformação']]},
+  {id:'f_estag',nome:'Estagnação do Qi do Fígado',el:'madeira',tipo:'exc',sinais:['pulso_corda','irritabilidade','distensao_hipo','tpm','suspiros'],
+   pontos:[['F3','Ponto fonte, promove o livre fluxo do Qi'],['IG4','Com F3 forma os Quatro Portões, move o Qi'],['VB34','Regula o Qi do Fígado e da Vesícula'],['CS6','Abre o tórax e harmoniza o Qi']]},
+  {id:'f_yang',nome:'Ascensão do Yang do Fígado',el:'madeira',tipo:'exc',sinais:['bordas_vermelhas','pulso_corda','cefaleia_temporal','irritabilidade','zumbido'],
+   pontos:[['F3','Acalma o Yang do Fígado'],['VB20','Indicado para cefaleia e vertigem'],['VG20','Acalma o Shen e a cabeça'],['R3','Nutre o Yin do Rim para ancorar o Yang']]},
+  {id:'r_yin',nome:'Deficiência de Yin do Rim',el:'agua',tipo:'def',sinais:['lingua_vermelha','sem_saburra','pulso_fino','pulso_rapido','sudorese_noturna','calor_tarde','boca_seca','zumbido','lombalgia'],
+   pontos:[['R3','Ponto fonte, tonifica o Rim'],['R6','Nutre o Yin e favorece o sono'],['BP6','Nutre Yin e Xue'],['VC4','Fortalece o Rim e o Yuan Qi']]},
+  {id:'r_yang',nome:'Deficiência de Yang do Rim',el:'agua',tipo:'def',sinais:['lingua_palida','lingua_inchada','pulso_profundo','pulso_lento','frio_extremidades','lombalgia','mic_frequente'],
+   pontos:[['B23','Ponto Shu do Rim'],['VG4','Mingmen, aquece o Yang do Rim (moxa)'],['VC4','Tonifica o Yuan Qi (moxa)'],['R7','Tonifica o Yang do Rim']]},
+  {id:'c_xue',nome:'Deficiência de Xue do Coração',el:'fogo',tipo:'def',sinais:['lingua_palida','pulso_fino','palpitacoes','insonia','ansiedade','memoria'],
+   pontos:[['C7','Ponto fonte, acalma o Shen'],['CS6','Acalma o Shen e regula o Coração'],['BP6','Nutre o Xue'],['B15','Ponto Shu do Coração']]},
+  {id:'c_fogo',nome:'Fogo no Coração',el:'fogo',tipo:'exc',sinais:['ponta_vermelha','saburra_amarela','pulso_rapido','insonia','aftas','ansiedade'],
+   pontos:[['C8','Ponto fogo, elimina calor do Coração'],['CS7','Acalma o Shen e elimina calor'],['C7','Acalma o Shen'],['R6','Nutre Yin para conter o Fogo']]},
+  {id:'p_qi',nome:'Deficiência de Qi do Pulmão',el:'metal',tipo:'def',sinais:['pulso_fraco','falta_ar','voz_fraca','resfriados','tristeza','cansaco'],
+   pontos:[['P9','Ponto fonte, tonifica o Qi do Pulmão'],['E36','Fortalece a Terra, mãe do Metal'],['B13','Ponto Shu do Pulmão'],['VC17','Ponto de reunião do Qi']]},
+  {id:'umid_calor',nome:'Umidade-Calor no Aquecedor Médio',el:'terra',tipo:'exc',sinais:['saburra_amarela','pulso_escorregadio','pulso_rapido','peso_corpo','fezes_amolecidas','boca_seca'],
+   pontos:[['BP9','Resolve umidade'],['IG11','Elimina calor'],['E40','Transforma fleuma e umidade'],['VC12','Harmoniza o Aquecedor Médio']]},
+  {id:'estase_xue',nome:'Estase de Xue',el:'madeira',tipo:'exc',sinais:['lingua_purpura','dor_fixa','tpm','pulso_corda'],
+   pontos:[['BP10','Move o Xue'],['B17','Ponto de reunião do Xue'],['F3','Move o Qi para mover o Xue'],['BP6','Regula o Xue no baixo ventre']]}
+];
+const BAGANG = {
+  calor:['lingua_vermelha','ponta_vermelha','bordas_vermelhas','saburra_amarela','pulso_rapido','aftas','calor_tarde','boca_seca','sudorese_noturna'],
+  frio:['lingua_palida','pulso_lento','frio_extremidades','mic_frequente','saburra_branca'],
+  def:['pulso_fraco','pulso_fino','cansaco','voz_fraca','falta_ar','memoria','sem_saburra','marcas_dentes','resfriados'],
+  exc:['pulso_corda','pulso_escorregadio','saburra_amarela','dor_fixa','distensao_hipo','irritabilidade','cefaleia_temporal','peso_corpo']
+};
+
+const MER = {P:['Pulmão','metal'],IG:['Intestino Grosso','metal'],E:['Estômago','terra'],BP:['Baço-Pâncreas','terra'],C:['Coração','fogo'],ID:['Intestino Delgado','fogo'],B:['Bexiga','agua'],R:['Rim','agua'],CS:['Circulação-Sexo','fogo'],TA:['Triplo Aquecedor','fogo'],VB:['Vesícula Biliar','madeira'],F:['Fígado','madeira'],VC:['Vaso Concepção',null],VG:['Vaso Governador',null]};
+const POINTS = [
+  ['E36','Zusanli','3 cun abaixo do E35, um dedo lateral à crista anterior da tíbia','Tonifica Qi e Xue, fortalece Baço e Estômago',''],
+  ['E40','Fenglong','8 cun acima do maléolo lateral, dois dedos laterais à tíbia','Transforma fleuma e umidade',''],
+  ['BP3','Taibai','Borda medial do pé, proximal à 1ª articulação metatarsofalângica','Ponto fonte, tonifica o Baço e resolve umidade',''],
+  ['BP6','Sanyinjiao','3 cun acima do maléolo medial, borda posterior da tíbia','Cruzamento dos três Yin do pé, nutre Yin e Xue','gestacao'],
+  ['BP9','Yinlingquan','Depressão abaixo do côndilo medial da tíbia','Resolve umidade, favorece a micção',''],
+  ['BP10','Xuehai','2 cun acima da borda superomedial da patela','Move e esfria o Xue','gestacao'],
+  ['VC4','Guanyuan','Linha média, 3 cun abaixo do umbigo','Tonifica o Rim, o Jing e o Yuan Qi','gestacao'],
+  ['VC12','Zhongwan','Linha média, 4 cun acima do umbigo','Ponto Mu do Estômago, harmoniza o Aquecedor Médio',''],
+  ['VC17','Danzhong','Linha média, na altura do 4º espaço intercostal','Ponto de reunião do Qi, regula o tórax',''],
+  ['F3','Taichong','Dorso do pé, entre o 1º e o 2º metatarsos','Ponto fonte, promove o livre fluxo do Qi, acalma o Yang',''],
+  ['IG4','Hegu','Dorso da mão, entre o 1º e o 2º metacarpos','Move o Qi, alivia dor, atua na face','gestacao'],
+  ['IG11','Quchi','Extremidade lateral da prega do cotovelo','Elimina calor e umidade',''],
+  ['VB20','Fengchi','Abaixo do occipital, entre o esternocleidomastoideo e o trapézio','Elimina vento, alivia cefaleia','profundidade'],
+  ['VB34','Yanglingquan','Depressão anterior e inferior à cabeça da fíbula','Ponto de reunião dos tendões, regula o Fígado',''],
+  ['VG4','Mingmen','Abaixo do processo espinhoso de L2','Aquece o Yang do Rim',''],
+  ['VG20','Baihui','Vértice da cabeça, na linha média','Eleva o Yang, acalma o Shen',''],
+  ['R3','Taixi','Entre o maléolo medial e o tendão calcâneo','Ponto fonte, tonifica Yin e Yang do Rim',''],
+  ['R6','Zhaohai','1 cun abaixo do maléolo medial','Nutre o Yin, beneficia garganta e sono',''],
+  ['R7','Fuliu','2 cun acima do R3','Tonifica o Yang do Rim, regula a sudorese',''],
+  ['B13','Feishu','1,5 cun lateral à borda inferior de T3','Ponto Shu do Pulmão','torax'],
+  ['B15','Xinshu','1,5 cun lateral à borda inferior de T5','Ponto Shu do Coração','torax'],
+  ['B17','Geshu','1,5 cun lateral à borda inferior de T7','Ponto de reunião do Xue','torax'],
+  ['B23','Shenshu','1,5 cun lateral à borda inferior de L2','Ponto Shu do Rim',''],
+  ['C7','Shenmen','Prega do punho, lado radial do tendão do flexor ulnar do carpo','Ponto fonte, acalma o Shen',''],
+  ['C8','Shaofu','Palma, entre o 4º e o 5º metacarpos','Ponto fogo, elimina calor do Coração',''],
+  ['CS6','Neiguan','2 cun acima da prega do punho, entre os tendões','Abre o tórax, acalma o Shen, alivia náusea',''],
+  ['CS7','Daling','Centro da prega do punho','Ponto fonte, acalma o Shen e elimina calor',''],
+  ['P9','Taiyuan','Prega do punho, lado radial da artéria radial','Ponto fonte, tonifica o Qi do Pulmão','']
+].map(([c,n,l,a,cau])=>({code:c,pinyin:n,loc:l,acoes:a,cautela:cau,mer:c.replace(/\d+/,'')}));
+const PT = {}; POINTS.forEach(p=>PT[p.code]=p);
+const CAUT = {gestacao:'Evitar na gestação',torax:'Agulhamento oblíquo; risco de pneumotórax',profundidade:'Atenção à direção e profundidade'};
+
+/* ===================== Dados ===================== */
+const pad = n => String(n).padStart(2,'0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const addDays = (n, base) => { const d = base ? new Date(base+'T12:00:00') : new Date(); d.setDate(d.getDate()+n); return iso(d); };
+const TODAY = addDays(0);
+const fmt = s => s.split('-').reverse().join('/');
+const uid = () => Math.random().toString(36).slice(2,9);
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const age = b => { const d=new Date(b), n=new Date(); let a=n.getFullYear()-d.getFullYear(); if(n<new Date(n.getFullYear(),d.getMonth(),d.getDate())) a--; return a; };
+const initials = n => n.split(' ').map(x=>x[0]).slice(0,2).join('');
+
+function seed(){
+  const P = (id,name,birth,phone,queixa,anam,alerts,sessions,assess)=>({id,name,birth,phone,exemplo:true,queixa,anam,alerts,sessions,assess});
+  const S = (d,eva,pontos,tec,nota)=>({id:uid(),date:addDays(d),eva,pontos,tec,nota});
+  return {
+    patients:[
+      P('p1','Helena Prado','1980-04-12','(11) 98712-3344','Cefaleia temporal e irritabilidade no período pré-menstrual',
+        {historia:'Cefaleias há 3 anos, pioram com estresse no trabalho.',sono:'Demora a adormecer, acorda às 2h.',alimentacao:'Pula refeições, muito café.',evacuacao:'Regular.',emocoes:'Irritação fácil, sensação de "nó na garganta".',medicamentos:'Analgésico eventual.'},
+        {gestante:false,anticoagulante:false,marcapasso:false},
+        [S(-42,7,['F3','IG4','VB20'],['Acupuntura'],'Primeira sessão. Tensão cervical importante.'),S(-28,6,['F3','VB34','VG20'],['Acupuntura','Ventosa'],'Relata duas crises na semana, menos intensas.'),S(-14,4,['F3','R3','VB20'],['Acupuntura'],'Melhora do sono. Crise leve no ciclo.')],
+        [{id:uid(),date:addDays(-42),signs:['bordas_vermelhas','pulso_corda','cefaleia_temporal','irritabilidade','tpm','distensao_hipo','suspiros'],status:{f_estag:'aceito',f_yang:'aceito'},nota:''}]),
+      P('p2','Rafael Monteiro','1987-09-03','(11) 99820-1177','Lombalgia crônica e cansaço',
+        {historia:'Dor lombar há 5 anos, piora no frio.',sono:'Bom, mas acorda cansado.',alimentacao:'Regular.',evacuacao:'Fezes amolecidas pela manhã.',emocoes:'Desânimo.',medicamentos:'Nenhum.'},
+        {gestante:false,anticoagulante:true,marcapasso:false},
+        [S(-50,8,['B23','R3','VG4'],['Acupuntura','Moxabustão'],'Muito frio nas pernas.'),S(-36,7,['B23','R7','VC4'],['Acupuntura','Moxabustão'],''),S(-22,6,['B23','R3','E36'],['Acupuntura','Moxabustão'],'Mais disposição.'),S(-8,5,['B23','VG4','E36'],['Acupuntura','Moxabustão'],'Caminhou 30 min sem dor.')],
+        [{id:uid(),date:addDays(-50),signs:['lingua_palida','lingua_inchada','pulso_profundo','pulso_lento','frio_extremidades','lombalgia','mic_frequente','cansaco','fezes_amolecidas'],status:{r_yang:'aceito'},nota:'Avaliar Baço na próxima sessão.'}]),
+      P('p3','Lúcia Andrade','1964-01-28','(21) 97733-0290','Insônia e palpitações',
+        {historia:'Menopausa aos 51. Insônia piorou no último ano.',sono:'Acorda várias vezes, calor à noite.',alimentacao:'Leve, pouca água.',evacuacao:'Ressecada.',emocoes:'Ansiedade.',medicamentos:'Fitoterápico para sono.'},
+        {gestante:false,anticoagulante:false,marcapasso:false},
+        [S(-60,7,['C7','R6','BP6'],['Acupuntura','Auriculoterapia'],''),S(-45,6,['C7','R3','CS6'],['Auriculoterapia'],'Dormiu melhor 3 noites.')],
+        [{id:uid(),date:addDays(-60),signs:['lingua_vermelha','sem_saburra','pulso_fino','pulso_rapido','insonia','palpitacoes','sudorese_noturna','calor_tarde','ansiedade'],status:{r_yin:'aceito'},nota:''}]),
+      P('p4','Tiago Sato','1997-06-19','(11) 96655-4021','Ansiedade e digestão lenta',
+        {historia:'Distensão abdominal após refeições há 1 ano.',sono:'Sono leve.',alimentacao:'Come rápido, muitos doces.',evacuacao:'Amolecida.',emocoes:'Preocupação constante com trabalho.',medicamentos:'Nenhum.'},
+        {gestante:false,anticoagulante:false,marcapasso:false},
+        [S(-7,5,['E36','BP3','CS6'],['Acupuntura'],'Avaliação inicial.')],
+        [{id:uid(),date:addDays(-7),signs:['marcas_dentes','pulso_fraco','distensao_pos','ansiedade','cansaco','fezes_amolecidas','preocupacao'],status:{bp_qi:'aceito'},nota:''}])
+    ],
+    appts:[
+      {id:uid(),pid:'p1',date:TODAY,time:'09:00',tipo:'Acupuntura',valor:180,done:false},
+      {id:uid(),pid:'p2',date:TODAY,time:'10:30',tipo:'Acupuntura e moxabustão',valor:200,done:false},
+      {id:uid(),pid:'p4',date:TODAY,time:'16:00',tipo:'Acupuntura',valor:180,done:false},
+      {id:uid(),pid:'p1',date:addDays(2),time:'09:00',tipo:'Acupuntura',valor:180,done:false},
+      {id:uid(),pid:'p4',date:addDays(3),time:'18:00',tipo:'Ventosaterapia',valor:150,done:false},
+      {id:uid(),pid:'p2',date:addDays(-2),time:'11:00',tipo:'Acupuntura e moxabustão',valor:200,done:true}
+    ]
+  };
+}
+const KEY='spazio-v1';
+let db; try{ db = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+if(!db || !db.patients) db = seed();
+const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){} };
+const patient = id => db.patients.find(p=>p.id===id);
+
+const ui = { pid:'p1', tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', week:0, pq:'' };
+
+/* ===================== Raciocínio clínico (apoio) ===================== */
+function evaluate(signs){
+  const s = new Set(signs);
+  return PATTERNS.map(p=>{
+    const m = p.sinais.filter(x=>s.has(x));
+    return {p, m, falta:p.sinais.filter(x=>!s.has(x)), score:m.length/p.sinais.length};
+  }).filter(h=>h.m.length>=2).sort((a,b)=>b.score-a.score);
+}
+function elemState(signs, status){
+  const st = {}; ORDER.forEach(e=>st[e]={def:0,exc:0});
+  evaluate(signs).forEach(h=>{ if((status||{})[h.p.id]==='descartado') return; st[h.p.el][h.p.tipo] += h.score * ((status||{})[h.p.id]==='aceito'?1:.6); });
+  return st;
+}
+function bagang(signs){
+  const s=new Set(signs), c=k=>BAGANG[k].filter(x=>s.has(x)).length;
+  const t=(a,b)=>{const A=c(a),B=c(b);return A+B?(B-A)/(A+B):0};
+  return {fc:t('frio','calor'), de:t('def','exc'), n:signs.length};
+}
+
+/* ===================== Componentes ===================== */
+function pentagram(state, sel, o={}){
+  const C=250,R=160,r=46, rad=a=>a*Math.PI/180;
+  const pos=e=>[C+R*Math.cos(rad(EL[e].ang)), C+R*Math.sin(rad(EL[e].ang))];
+  const rel = (a,b)=>!sel || a===sel || b===sel;
+  let s=`<svg viewBox="-80 0 660 480" class="penta" role="img" aria-label="Pentagrama dos cinco elementos com ciclos de geração e controle">
+  <defs>
+    <marker id="ms" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" style="fill:var(--accent)"/></marker>
+    <marker id="mk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" style="fill:var(--muted)"/></marker>
+  </defs>`;
+  if(o.sheng!==false) ORDER.forEach(e=>{
+    const d=(r+10)/R, a1=rad(EL[e].ang)+d, a2=rad(EL[e].ang+72)-d;
+    const p1=[C+R*Math.cos(a1),C+R*Math.sin(a1)], p2=[C+R*Math.cos(a2),C+R*Math.sin(a2)];
+    const cls = sel ? (rel(e,SHENG[e])?'hi':'dim') : '';
+    s+=`<path class="sheng ${cls}" d="M${p1[0].toFixed(1)},${p1[1].toFixed(1)} A${R},${R} 0 0 1 ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" marker-end="url(#ms)"/>`;
+  });
+  if(o.ke!==false) ORDER.forEach(e=>{
+    const [x1,y1]=pos(e),[x2,y2]=pos(KE[e]), L=Math.hypot(x2-x1,y2-y1), ux=(x2-x1)/L, uy=(y2-y1)/L, k=r+8;
+    const cls = sel ? (rel(e,KE[e])?'hi':'dim') : '';
+    s+=`<path class="ke ${cls}" d="M${(x1+ux*k).toFixed(1)},${(y1+uy*k).toFixed(1)} L${(x2-ux*k).toFixed(1)},${(y2-uy*k).toFixed(1)}" marker-end="url(#mk)"/>`;
+  });
+  ORDER.forEach(e=>{
+    const [x,y]=pos(e), E=EL[e], st=state?state[e]:{def:0,exc:0};
+    const kind = st.exc>st.def && st.exc>0 ? 'exc' : st.def>0 ? 'def' : '';
+    const dim = sel && sel!==e && SHENG[sel]!==e && mae(sel)!==e && KE[sel]!==e && controlador(sel)!==e;
+    s+=`<g class="node" data-act="el" data-e="${e}" tabindex="0" role="button" aria-label="${E.nome}" style="opacity:${dim?.35:1}">
+      <circle cx="${x}" cy="${y}" r="${r}" style="fill:${E.cor};fill-opacity:${kind==='def'?.08:.18}"/>
+      <circle class="ring" cx="${x}" cy="${y}" r="${r}" style="fill:none;stroke:${E.cor};stroke-width:${kind==='exc'?6:sel===e?5:3}" ${kind==='def'?'stroke-dasharray="6 5"':''}/>
+      <text x="${x}" y="${y-2}" text-anchor="middle" style="fill:${E.cor};font-size:28px;font-weight:600">${E.han}</text>
+      <text x="${x}" y="${y+20}" text-anchor="middle" style="fill:var(--ink);font-size:13px;font-weight:600">${E.nome}</text>
+      ${(()=>{ const c=Math.cos(rad(E.ang)); let lx=x, ly=y+r+17, an='middle';
+        if(e==='fogo') ly=y-r-26; else if(c<-.5){lx=x-r-10;ly=y+4;an='end'} else if(c>.5&&e==='terra'){lx=x+r+10;ly=y+4;an='start'}
+        return `<text x="${lx}" y="${ly}" text-anchor="${an}" style="fill:var(--muted);font-size:11.5px">${E.zang.split(' · ')[0]} · ${E.emocao.split(' ')[0]}</text>`+
+        (kind?`<text x="${lx}" y="${ly+15}" text-anchor="${an}" style="fill:${kind==='exc'?'var(--crit)':'var(--warn)'};font-size:11px;font-weight:600">${kind==='exc'?'▲ excesso':'▼ deficiência'}</text>`:''); })()}
+    </g>`;
+  });
+  return s+'</svg>';
+}
+function spark(vals,w=120,h=32){
+  if(vals.length<2) return `<span class="muted mono">${vals[0]??'–'}</span>`;
+  const x=i=>4+i*(w-8)/(vals.length-1), y=v=>4+(1-v/10)*(h-8);
+  const d=vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-label="Evolução EVA ${vals.join(', ')}"><path class="a" d="${d}L${x(vals.length-1)},${h}L${x(0)},${h}z"/><path class="l" d="${d}"/><circle cx="${x(vals.length-1)}" cy="${y(vals.at(-1))}" r="3"/></svg>`;
+}
+const elTag = e => e ? `<span class="el-tag"><i style="background:${EL[e].cor}"></i>${EL[e].nome}</span>` : '';
+const patientSelect = (id,cur) => `<select id="${id}">${db.patients.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`;
+function pointWarnings(codes, p, tec){
+  const w=[];
+  codes.forEach(c=>{
+    const pt=PT[c];
+    if(!pt){ w.push(['warn',`${c}: ponto não encontrado na biblioteca`]); return; }
+    if(pt.cautela==='gestacao' && p.alerts.gestante) w.push(['crit',`${c} (${pt.pinyin}): ${CAUT.gestacao}. Paciente gestante.`]);
+    else if(pt.cautela && pt.cautela!=='gestacao') w.push(['warn',`${c} (${pt.pinyin}): ${CAUT[pt.cautela]}`]);
+  });
+  if(p.alerts.anticoagulante && tec.some(t=>/Ventosa|Sangria/.test(t))) w.push(['crit','Paciente em uso de anticoagulante: avaliar ventosa e sangria.']);
+  if(p.alerts.marcapasso && tec.includes('Eletroacupuntura')) w.push(['crit','Portador de marcapasso: eletroacupuntura contraindicada.']);
+  return w;
+}
+
+/* ===================== Telas ===================== */
+const ICON = {
+  painel:'<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>',
+  agenda:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  pacientes:'<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 1 0 0-6M22 21c0-3-2-5-4-5.5"/>',
+  prontuario:'<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/>',
+  avaliacao:'<circle cx="12" cy="12" r="9"/><path d="M12 3a4.5 4.5 0 0 1 0 9a4.5 4.5 0 0 0 0 9"/><circle cx="12" cy="7.5" r="1"/><circle cx="12" cy="16.5" r="1"/>',
+  pentagrama:'<path d="M12 3l2.6 6.3H21l-5.2 4.1 2 6.6L12 16l-5.8 4 2-6.6L3 9.3h6.4z"/>',
+  pontos:'<circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/>'
+};
+const NAV = [['Clínica',[['painel','Painel'],['agenda','Agenda'],['pacientes','Pacientes']]],['Clínico',[['prontuario','Prontuário'],['avaliacao','Avaliação energética'],['pentagrama','Pentagrama'],['pontos','Pontos e meridianos']]]];
+function renderNav(route){
+  document.getElementById('nav').innerHTML = `<div class="brand"><svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" style="fill:none;stroke:var(--accent);stroke-width:1.6"/><path d="M12 2a5 5 0 0 1 0 10a5 5 0 0 0 0 10a10 10 0 0 1 0-20" style="fill:var(--accent)"/></svg><div><b>Spazio</b><small>Gestão clínica integrativa</small></div></div>`+
+  NAV.map(([g,items])=>`<div class="grp">${g}</div>`+items.map(([k,l])=>`<a href="#${k}" class="${route===k?'on':''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${ICON[k]}</svg>${l}</a>`).join('')).join('')+
+  `<div class="foot">Protótipo com dados de exemplo.<br><button class="btn ghost sm" data-act="reset" style="padding-left:0">Restaurar exemplos</button></div>`;
+}
+
+function vPainel(){
+  const hoje = db.appts.filter(a=>a.date===TODAY).sort((a,b)=>a.time.localeCompare(b.time));
+  const s30 = db.patients.reduce((n,p)=>n+p.sessions.filter(s=>s.date>=addDays(-30)).length,0);
+  const ws = weekStart(0), we = addDays(6,ws);
+  const rec = db.appts.filter(a=>a.date>=ws && a.date<=we).reduce((n,a)=>n+a.valor,0);
+  const pend = db.patients.filter(p=>{const l=p.sessions.at(-1); return l && l.date<addDays(-21) && !db.appts.some(a=>a.pid===p.id && a.date>=TODAY);});
+  const h=new Date().getHours(), saud = h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+  return `<div class="head"><div><h1>${saud}</h1><p>${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</p></div><a class="btn pri" href="#agenda">Novo agendamento</a></div>
+  <div class="kpis">
+    <div class="kpi"><span>Atendimentos hoje</span><b>${hoje.length}</b> <small>${hoje.filter(a=>a.done).length} concluídos</small></div>
+    <div class="kpi"><span>Pacientes ativos</span><b>${db.patients.length}</b></div>
+    <div class="kpi"><span>Sessões em 30 dias</span><b>${s30}</b></div>
+    <div class="kpi"><span>Receita prevista na semana</span><b>${brl(rec)}</b></div>
+  </div>
+  <div class="grid g-side">
+    <div class="card"><div class="card-h"><h2>Agenda de hoje</h2><a class="btn ghost sm" href="#agenda">Ver semana</a></div>
+      <div class="list">${hoje.length?hoje.map(a=>{const p=patient(a.pid);return `<div class="row click" data-act="open" data-pid="${p.id}"><span class="t">${a.time}</span><span class="avatar">${initials(p.name)}</span><div class="grow"><div class="trunc"><b>${esc(p.name)}</b></div><div class="muted trunc">${esc(a.tipo)} · ${esc(p.queixa)}</div></div>${a.done?'<span class="pill ok">Concluído</span>':'<span class="pill acc">Agendado</span>'}</div>`}).join(''):'<p class="muted">Nenhum atendimento hoje.</p>'}</div>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h2>Evolução dos pacientes</h2><p class="muted" style="margin:-6px 0 8px;font-size:.82rem">Intensidade da queixa principal, escala EVA de 0 a 10</p>
+        <div class="list">${db.patients.map(p=>{const v=p.sessions.map(s=>s.eva);const d=v.length>1?v.at(-1)-v[0]:0;return `<div class="row click" data-act="open" data-pid="${p.id}"><div class="grow trunc">${esc(p.name)}</div>${spark(v)}<span class="eva" style="width:46px;text-align:right;color:${d<0?'var(--ok)':d>0?'var(--crit)':'var(--muted)'}">${d<0?'▼':d>0?'▲':'·'} ${Math.abs(d)}</span></div>`}).join('')}</div>
+      </div>
+      <div class="card"><h2>Retornos a agendar</h2>${pend.length?`<div class="list">${pend.map(p=>`<div class="row"><div class="grow"><b>${esc(p.name)}</b><div class="muted">Última sessão em ${fmt(p.sessions.at(-1).date)}</div></div><a class="btn sm" href="#agenda" data-act="book" data-pid="${p.id}">Agendar</a></div>`).join('')}</div>`:'<p class="muted">Todos os pacientes estão com retorno marcado.</p>'}</div>
+    </div>
+  </div>`;
+}
+
+function vPacientes(){
+  return `<div class="head"><div><h1>Pacientes</h1><p>${db.patients.length} cadastrados</p></div></div>
+  <div class="grid g-side">
+    <div class="card"><div class="field" style="margin-bottom:8px"><label class="lbl" for="pq">Buscar</label><input id="pq" placeholder="Nome ou queixa" value="${esc(ui.pq)}"></div><div class="list" id="plist">${patientRows()}</div></div>
+    <div class="card"><h2>Novo paciente</h2>
+      <form id="f-patient" class="form">
+        <div class="field full"><label class="lbl" for="np-name">Nome completo</label><input id="np-name" required></div>
+        <div class="field"><label class="lbl" for="np-birth">Nascimento</label><input id="np-birth" type="date" required></div>
+        <div class="field"><label class="lbl" for="np-phone">WhatsApp</label><input id="np-phone" placeholder="(11) 90000-0000"></div>
+        <div class="field full"><label class="lbl" for="np-q">Queixa principal</label><input id="np-q" required></div>
+        <label class="full" style="display:flex;gap:8px;align-items:flex-start;font-size:.84rem"><input type="checkbox" id="np-lgpd" required style="margin-top:3px"> O paciente autorizou o tratamento dos dados de saúde para fins de atendimento (consentimento LGPD).</label>
+        <div class="full"><button class="btn pri">Cadastrar e abrir prontuário</button></div>
+      </form>
+    </div>
+  </div>`;
+}
+function patientRows(){
+  const q=ui.pq.toLowerCase();
+  const list=db.patients.filter(p=>!q || (p.name+p.queixa).toLowerCase().includes(q));
+  return list.length?list.map(p=>`<div class="row click" data-act="open" data-pid="${p.id}"><span class="avatar">${initials(p.name)}</span><div class="grow"><div class="trunc"><b>${esc(p.name)}</b> <span class="muted">${age(p.birth)} anos</span></div><div class="muted trunc">${esc(p.queixa)}</div></div>${p.exemplo?'<span class="pill ex">exemplo</span>':''}<span class="muted mono">${p.sessions.length} sess.</span></div>`).join(''):'<p class="muted" style="padding:8px 4px">Nenhum paciente encontrado.</p>';
+}
+
+function vProntuario(){
+  const p=patient(ui.pid)||db.patients[0]; ui.pid=p.id;
+  const a=p.assess.at(-1), st=a?elemState(a.signs,a.status):null;
+  const alerts=[p.alerts.gestante&&'Gestante',p.alerts.anticoagulante&&'Anticoagulante',p.alerts.marcapasso&&'Marcapasso'].filter(Boolean);
+  const tabs=[['resumo','Resumo'],['anamnese','Anamnese'],['sessoes','Sessões'],['nova','Registrar sessão']];
+  let body='';
+  if(ui.tab==='resumo'){
+    const ac = a?evaluate(a.signs).filter(h=>a.status[h.p.id]==='aceito'):[];
+    body=`<div class="grid g-side">
+      <div class="grid" style="align-content:start">
+        <div class="card"><h3>Queixa principal</h3><p>${esc(p.queixa)}</p></div>
+        <div class="card"><div class="card-h"><h3>Evolução (EVA)</h3><span class="muted">${p.sessions.length} sessões</span></div>${spark(p.sessions.map(s=>s.eva),320,70)}
+          <div class="muted" style="font-size:.8rem;margin-top:6px">De ${p.sessions[0]?.eva??'–'} para ${p.sessions.at(-1)?.eva??'–'} desde ${p.sessions[0]?fmt(p.sessions[0].date):'–'}</div></div>
+        <div class="card"><div class="card-h"><h3>Padrões validados pelo profissional</h3><a class="btn sm" href="#avaliacao">Nova avaliação</a></div>
+          ${ac.length?ac.map(h=>`<div class="row"><div class="grow"><b>${h.p.nome}</b></div>${elTag(h.p.el)}<span class="pill ${h.p.tipo==='exc'?'crit':'warn'}">${h.p.tipo==='exc'?'excesso':'deficiência'}</span></div>`).join(''):'<p class="muted">Nenhum padrão validado ainda.</p>'}
+          ${a?.nota?`<p class="muted" style="margin-top:8px">Nota: ${esc(a.nota)}</p>`:''}
+        </div>
+      </div>
+      <div class="card"><div class="card-h"><h3>Mapa dos cinco elementos</h3><a class="btn ghost sm" href="#pentagrama">Abrir</a></div>${st?pentagram(st,null):'<p class="muted">Faça uma avaliação energética para gerar o mapa.</p>'}<p class="muted" style="font-size:.8rem">Avaliação de ${a?fmt(a.date):'–'}. Anel tracejado indica deficiência; anel espesso indica excesso.</p></div>
+    </div>`;
+  } else if(ui.tab==='anamnese'){
+    const F=[['historia','História da queixa'],['sono','Sono'],['alimentacao','Alimentação e sede'],['evacuacao','Evacuação e micção'],['emocoes','Emoções'],['medicamentos','Medicamentos em uso']];
+    body=`<div class="grid g-side"><div class="card"><h3>Anamnese integrativa</h3><div class="form">${F.map(([k,l])=>`<div class="field full"><label class="lbl" for="an-${k}">${l}</label><textarea id="an-${k}" data-anam="${k}">${esc(p.anam[k])}</textarea></div>`).join('')}</div><p class="muted" style="font-size:.8rem;margin-top:8px">Salvo automaticamente ao sair do campo.</p></div>
+      <div class="card" style="align-self:start"><h3>Alertas de segurança</h3><p class="muted" style="margin-bottom:10px;font-size:.86rem">Usados para avisar sobre pontos e técnicas contraindicados ao registrar a sessão.</p>
+      ${[['gestante','Gestante'],['anticoagulante','Uso de anticoagulante'],['marcapasso','Portador de marcapasso']].map(([k,l])=>`<label style="display:flex;gap:8px;padding:6px 0"><input type="checkbox" id="al-${k}" data-alert="${k}" ${p.alerts[k]?'checked':''}> ${l}</label>`).join('')}</div></div>`;
+  } else if(ui.tab==='sessoes'){
+    body=`<div class="card"><div class="timeline">${[...p.sessions].reverse().map(s=>`<div class="sess"><div><b class="mono">${fmt(s.date)}</b><div class="eva muted">EVA ${s.eva}/10</div></div><div><div class="chips" style="margin-bottom:6px">${s.tec.map(t=>`<span class="pill">${esc(t)}</span>`).join('')}${s.pontos.map(c=>`<span class="pill acc mono" title="${esc(PT[c]?.pinyin||'')}">${esc(c)}</span>`).join('')}</div>${s.nota?`<p>${esc(s.nota)}</p>`:'<p class="muted">Sem anotações.</p>'}</div></div>`).join('')||'<p class="muted">Nenhuma sessão registrada.</p>'}</div></div>`;
+  } else {
+    const TEC=['Acupuntura','Auriculoterapia','Moxabustão','Ventosa','Eletroacupuntura','Massagem Tuiná','Sangria'];
+    body=`<div class="grid g-side"><div class="card"><h3>Registrar sessão</h3>
+      <form id="f-session" class="form">
+        <div class="field"><label class="lbl" for="ns-date">Data</label><input id="ns-date" type="date" value="${TODAY}" required></div>
+        <div class="field"><label class="lbl" for="ns-eva">Intensidade da queixa (EVA): <b id="ns-eva-v">5</b></label><input id="ns-eva" type="range" min="0" max="10" value="5"></div>
+        <div class="field full"><span class="lbl">Técnicas</span><div class="chips">${TEC.map(t=>`<label class="chip"><input type="checkbox" name="tec" value="${t}" style="margin-right:4px">${t}</label>`).join('')}</div></div>
+        <div class="field full"><label class="lbl" for="ns-pts">Pontos utilizados (separe por vírgula)</label><input id="ns-pts" class="mono" placeholder="E36, BP6, F3"></div>
+        <div class="full" id="ns-warn"></div>
+        <div class="field full"><label class="lbl" for="ns-nota">Evolução e observações</label><textarea id="ns-nota"></textarea></div>
+        <div class="full"><button class="btn pri">Salvar no prontuário</button></div>
+      </form></div>
+      <div class="card" style="align-self:start"><h3>Sugestões da última avaliação</h3><p class="muted" style="font-size:.82rem;margin-bottom:8px">Pontos ligados aos padrões validados. Clique para adicionar.</p>
+      ${a?evaluate(a.signs).filter(h=>a.status[h.p.id]==='aceito').map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${h.p.pontos.map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
+  }
+  return `<div class="head"><div style="display:flex;gap:12px;align-items:center"><span class="avatar" style="width:46px;height:46px;font-size:1rem">${initials(p.name)}</span><div><h1>${esc(p.name)}</h1><p>${age(p.birth)} anos · ${esc(p.phone)} ${p.exemplo?'<span class="pill ex">exemplo</span>':''}</p></div></div>
+    <div class="field" style="min-width:200px"><label class="lbl" for="pr-patient">Paciente</label>${patientSelect('pr-patient',p.id)}</div></div>
+    ${alerts.length?`<div class="notice crit" style="margin-bottom:14px"><b>Alertas:</b> ${alerts.join(' · ')}</div>`:''}
+    <div class="tabs" role="tablist">${tabs.map(([k,l])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}">${l}</button>`).join('')}</div>${body}`;
+}
+
+function vAvaliacao(){
+  if(!ui.assess || !patient(ui.assess.pid)) ui.assess={pid:ui.pid,signs:[],status:{},nota:''};
+  const A=ui.assess, p=patient(A.pid), hyps=evaluate(A.signs), st=elemState(A.signs,A.status), bg=bagang(A.signs);
+  const axis=(l,r,v)=>`<div class="axis"><span>${l}</span><div class="track"><span class="dot" style="left:${50+v*50}%"></span></div><span>${r}</span></div>`;
+  return `<div class="head"><div><h1>Avaliação energética</h1><p>Língua, pulso e manifestações organizados segundo a MTC</p></div>
+    <div class="field" style="min-width:200px"><label class="lbl" for="as-patient">Paciente</label>${patientSelect('as-patient',A.pid)}</div></div>
+  <div class="notice" style="margin-bottom:16px"><b>Apoio ao raciocínio clínico.</b> As hipóteses abaixo são geradas a partir dos sinais marcados e não constituem diagnóstico. Cabe ao profissional aceitar, descartar e decidir a conduta.</div>
+  <div class="grid g-side">
+    <div class="grid" style="align-content:start">
+      <div class="card sigs">${Object.entries(SIGNS).map(([g,list])=>`<div><div class="lbl" style="margin-bottom:6px">${g}</div><div class="chips">${list.map(([k,l])=>`<button class="chip ${A.signs.includes(k)?'on':''}" data-act="sign" data-s="${k}" aria-pressed="${A.signs.includes(k)}">${l}</button>`).join('')}</div></div>`).join('')}</div>
+      <div class="card"><div class="card-h"><h2>Hipóteses de padrão</h2><span class="muted">${hyps.length} encontradas</span></div>
+        <div class="grid">${hyps.length?hyps.map(h=>{const s=A.status[h.p.id]||'';return `<div class="hyp ${s}">
+          <div class="hyp-h"><div><b>${h.p.nome}</b> <span style="margin-left:6px">${elTag(h.p.el)}</span></div>
+            <div style="display:flex;gap:6px"><button class="btn sm ${s==='aceito'?'pri':''}" data-act="hyp" data-p="${h.p.id}" data-st="aceito">${s==='aceito'?'Aceito':'Aceitar'}</button><button class="btn sm" data-act="hyp" data-p="${h.p.id}" data-st="descartado">${s==='descartado'?'Descartado':'Descartar'}</button></div></div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div class="bar"><i style="width:${Math.round(h.score*100)}%"></i></div><span class="mono muted">${h.m.length}/${h.p.sinais.length} sinais</span></div>
+          <div style="font-size:.86rem"><span class="lbl">Por que aparece</span><br>${h.m.map(x=>SIGN[x]).join(', ')}</div>
+          ${h.falta.length?`<div style="font-size:.86rem" class="muted"><span class="lbl">Sinais esperados não observados</span><br>${h.falta.map(x=>SIGN[x]).join(', ')}</div>`:''}
+          <div class="pts"><span class="lbl">Pontos frequentemente considerados</span>${h.p.pontos.map(([c,j])=>`<div><span class="mono">${c}</span> ${esc(PT[c]?.pinyin||'')} · <span class="muted">${esc(j)}</span>${PT[c]?.cautela?` <span class="pill warn">${CAUT[PT[c].cautela]}</span>`:''}</div>`).join('')}</div>
+        </div>`}).join(''):'<p class="muted">Marque ao menos dois sinais para ver hipóteses.</p>'}</div>
+      </div>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h3>Oito princípios (Ba Gang)</h3><div class="grid" style="gap:10px">${axis('Frio','Calor',bg.fc)}${axis('Deficiência','Excesso',bg.de)}</div>
+        <p class="muted" style="font-size:.8rem;margin-top:10px">${bg.n?`Calculado a partir de ${bg.n} sinais marcados.`:'Marque sinais para posicionar os eixos.'}</p></div>
+      <div class="card"><h3>Cinco elementos</h3>${pentagram(st,null)}<p class="muted" style="font-size:.8rem">Atualiza conforme você marca sinais e valida hipóteses.</p></div>
+      <div class="card"><div class="field"><label class="lbl" for="as-nota">Observações do profissional</label><textarea id="as-nota">${esc(A.nota)}</textarea></div>
+        <button class="btn pri" style="margin-top:10px" data-act="save-assess" ${A.signs.length?'':'disabled'}>Salvar avaliação no prontuário de ${esc(p.name.split(' ')[0])}</button></div>
+    </div>
+  </div>`;
+}
+
+function vPentagrama(){
+  const p=patient(ui.pid), a=p?.assess.at(-1), st=a?elemState(a.signs,a.status):null, e=ui.el;
+  let det='<p class="muted">Clique em um elemento para ver correspondências, funções e relações.</p>';
+  if(e){
+    const E=EL[e], s=st?st[e]:{def:0,exc:0}, kind=s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';
+    det=`<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px"><span style="font-size:2rem;color:${E.cor};font-family:var(--f-display)">${E.han}</span><h2>${E.nome}</h2>${kind?`<span class="pill ${kind==='exc'?'crit':'warn'}">${kind==='exc'?'excesso':'deficiência'} em ${esc(p.name.split(' ')[0])}</span>`:''}</div>
+    <dl class="corr"><dt>Zang (Yin)</dt><dd>${E.zang}</dd><dt>Fu (Yang)</dt><dd>${E.fu}</dd><dt>Emoção</dt><dd>${E.emocao}</dd><dt>Aspecto mental</dt><dd>${E.espirito}</dd><dt>Estação</dt><dd>${E.estacao}</dd><dt>Clima</dt><dd>${E.clima}</dd><dt>Órgão dos sentidos</dt><dd>${E.sentido}</dd><dt>Tecido</dt><dd>${E.tecido}</dd><dt>Sabor</dt><dd>${E.sabor}</dd><dt>Som</dt><dd>${E.som}</dd></dl>
+    <div class="lbl" style="margin:14px 0 4px">Funções tradicionais</div><ul style="margin:0;padding-left:18px">${E.funcoes.map(f=>`<li>${f}</li>`).join('')}</ul>
+    <div class="lbl" style="margin:14px 0 4px">Relações</div>
+    <dl class="corr"><dt>Gera (mãe de)</dt><dd>${elTag(SHENG[e])}</dd><dt>É gerado por</dt><dd>${elTag(mae(e))}</dd><dt>Controla</dt><dd>${elTag(KE[e])}</dd><dt>É controlado por</dt><dd>${elTag(controlador(e))}</dd></dl>
+    ${kind?`<div class="notice" style="margin-top:14px"><div><b>Considerações para o raciocínio:</b> ${kind==='def'
+      ?`na deficiência, a regra mãe-filho sugere avaliar a tonificação da mãe (${EL[mae(e)].nome}). Verifique também se ${EL[controlador(e)].nome} está em sobredominância.`
+      :`no excesso, a regra mãe-filho sugere avaliar a sedação do filho (${EL[SHENG[e]].nome}). Observe se ${E.nome} está sobredominando ${EL[KE[e]].nome} ou insultando ${EL[controlador(e)].nome}.`} Decisão do profissional.</div></div>`:''}`;
+  }
+  return `<div class="head"><div><h1>Pentagrama dos cinco elementos</h1><p>Wu Xing com ciclo de geração (Sheng) e de controle (Ke)</p></div>
+    <div class="field" style="min-width:200px"><label class="lbl" for="pt-patient">Sobrepor avaliação de</label>${patientSelect('pt-patient',ui.pid)}</div></div>
+  <div class="grid g-side">
+    <div class="card"><div class="chips" style="margin-bottom:8px">
+      <label class="chip ${ui.sheng?'on':''}"><input type="checkbox" id="cb-sheng" ${ui.sheng?'checked':''} hidden>Geração (Sheng)</label>
+      <label class="chip ${ui.ke?'on':''}"><input type="checkbox" id="cb-ke" ${ui.ke?'checked':''} hidden>Controle (Ke)</label>
+      ${e?`<button class="chip" data-act="el" data-e="">Limpar seleção</button>`:''}</div>
+      ${pentagram(st,e,{sheng:ui.sheng,ke:ui.ke})}
+      <div class="chips muted" style="font-size:.8rem;justify-content:center;gap:16px;margin-top:6px"><span><span style="color:var(--accent)">⟶</span> gera</span><span>- - ➝ controla</span><span>◌ deficiência</span><span>◯ excesso (anel espesso)</span></div>
+      <p class="muted" style="font-size:.8rem;text-align:center;margin-top:4px">${a?`Avaliação de ${esc(p.name)} em ${fmt(a.date)}`:'Sem avaliação para este paciente.'}</p>
+    </div>
+    <div class="card" style="align-self:start">${det}</div>
+  </div>`;
+}
+
+function vPontos(){
+  return `<div class="head"><div><h1>Pontos e meridianos</h1><p>${POINTS.length} pontos de uso frequente, com localização e cautelas</p></div></div>
+  <div class="card" style="margin-bottom:16px;display:grid;gap:10px">
+    <div class="field"><label class="lbl" for="pt-q">Buscar por código, nome ou ação</label><input id="pt-q" value="${esc(ui.ptQ)}" placeholder="Ex.: Shen, umidade, BP6"></div>
+    <div class="chips"><button class="chip ${!ui.ptMer?'on':''}" data-act="mer" data-m="">Todos</button>${Object.entries(MER).filter(([k])=>POINTS.some(p=>p.mer===k)).map(([k,[n,e]])=>`<button class="chip ${ui.ptMer===k?'on':''}" data-act="mer" data-m="${k}">${k} · ${n}</button>`).join('')}</div>
+  </div>
+  <div class="pcards" id="ptlist">${pointCards()}</div>`;
+}
+function pointCards(){
+  const q=ui.ptQ.toLowerCase();
+  const l=POINTS.filter(p=>(!ui.ptMer||p.mer===ui.ptMer)&&(!q||(p.code+p.pinyin+p.acoes+p.loc).toLowerCase().includes(q)));
+  return l.map(p=>`<div class="pcard"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span class="code">${p.code}</span><span class="muted">${p.pinyin}</span></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="muted" style="font-size:.8rem">${MER[p.mer][0]}</span>${elTag(MER[p.mer][1])}</div>
+    <div><span class="lbl">Localização</span><br>${p.loc}</div><div><span class="lbl">Ações</span><br>${p.acoes}</div>${p.cautela?`<span class="pill warn" style="justify-self:start">${CAUT[p.cautela]}</span>`:''}</div>`).join('')||'<p class="muted">Nenhum ponto encontrado.</p>';
+}
+
+function weekStart(off){ const d=new Date(); const wd=(d.getDay()+6)%7; return addDays(-wd+off*7); }
+function vAgenda(){
+  const ws=weekStart(ui.week), days=[...Array(7)].map((_,i)=>addDays(i,ws));
+  const tot=db.appts.filter(a=>a.date>=days[0]&&a.date<=days[6]);
+  return `<div class="head"><div><h1>Agenda</h1><p>Semana de ${fmt(days[0])} a ${fmt(days[6])} · ${tot.length} atendimentos · ${brl(tot.reduce((n,a)=>n+a.valor,0))}</p></div>
+    <div style="display:flex;gap:6px"><button class="btn" data-act="week" data-d="-1">‹ Anterior</button><button class="btn" data-act="week" data-d="0">Hoje</button><button class="btn" data-act="week" data-d="1">Próxima ›</button></div></div>
+  <div class="wscroll"><div class="week">${days.map(d=>{const l=db.appts.filter(a=>a.date===d).sort((a,b)=>a.time.localeCompare(b.time));const dt=new Date(d+'T12:00:00');
+    return `<div class="day ${d===TODAY?'today':''}"><h3>${dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}</h3>${l.map(a=>{const p=patient(a.pid);return `<div class="appt ${a.done?'done':''}" data-act="appt" data-id="${a.id}" title="Clique para marcar como ${a.done?'pendente':'concluído'}"><b>${a.time}</b> ${esc(p?.name.split(' ')[0]||'')}<div class="muted">${esc(a.tipo)}</div></div>`}).join('')||'<span class="muted" style="font-size:.8rem">Livre</span>'}</div>`}).join('')}</div></div>
+  <div class="card" style="margin-top:16px;max-width:760px"><h2>Novo agendamento</h2>
+    <form id="f-appt" class="form">
+      <div class="field"><label class="lbl" for="na-p">Paciente</label>${patientSelect('na-p',ui.bookPid||ui.pid)}</div>
+      <div class="field"><label class="lbl" for="na-d">Data</label><input id="na-d" type="date" value="${TODAY}" required></div>
+      <div class="field"><label class="lbl" for="na-t">Horário</label><input id="na-t" type="time" value="09:00" required></div>
+      <div class="field"><label class="lbl" for="na-tipo">Atendimento</label><select id="na-tipo"><option>Acupuntura</option><option>Auriculoterapia</option><option>Ventosaterapia</option><option>Massoterapia</option><option>Avaliação inicial</option></select></div>
+      <div class="field"><label class="lbl" for="na-v">Valor (R$)</label><input id="na-v" type="number" min="0" step="10" value="180"></div>
+      <div class="full"><button class="btn pri">Agendar</button></div>
+    </form></div>`;
+}
+
+/* ===================== Roteamento e eventos ===================== */
+const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos};
+function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
+function render(keepScroll){
+  const r=route(), y=scrollY; renderNav(r);
+  document.getElementById('view').innerHTML=VIEWS[r]();
+  if(keepScroll) scrollTo(0,y);
+}
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.hidden=false; clearTimeout(toast.h); toast.h=setTimeout(()=>t.hidden=true,2600); }
+addEventListener('hashchange',()=>{ render(); scrollTo(0,0); });
+
+document.addEventListener('click',ev=>{
+  const t=ev.target.closest('[data-act]'); if(!t) return;
+  const a=t.dataset.act;
+  if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; location.hash='prontuario'; }
+  else if(a==='book'){ ui.bookPid=t.dataset.pid; }
+  else if(a==='tab'){ ui.tab=t.dataset.t; render(true); }
+  else if(a==='sign'){ const s=t.dataset.s, L=ui.assess.signs; const i=L.indexOf(s); i<0?L.push(s):L.splice(i,1); render(true); }
+  else if(a==='hyp'){ const id=t.dataset.p; ui.assess.status[id] = ui.assess.status[id]===t.dataset.st ? '' : t.dataset.st; render(true); }
+  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); p.assess.push({id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota}); save(); ui.pid=p.id; ui.tab='resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
+  else if(a==='el'){ ui.el = t.dataset.e && ui.el!==t.dataset.e ? t.dataset.e : null; render(true); }
+  else if(a==='mer'){ ui.ptMer=t.dataset.m; render(true); }
+  else if(a==='week'){ ui.week = t.dataset.d==='0'?0:ui.week+Number(t.dataset.d); render(true); }
+  else if(a==='appt'){ const x=db.appts.find(z=>z.id===t.dataset.id); x.done=!x.done; save(); render(true); toast(x.done?'Atendimento concluído':'Atendimento reaberto'); }
+  else if(a==='addpt'){ const i=document.getElementById('ns-pts'); const L=i.value.split(',').map(s=>s.trim()).filter(Boolean); if(!L.includes(t.dataset.c)) L.push(t.dataset.c); i.value=L.join(', '); i.dispatchEvent(new Event('input',{bubbles:true})); }
+  else if(a==='reset'){ db=seed(); save(); ui.assess=null; ui.pid='p1'; toast('Dados de exemplo restaurados'); render(); }
+});
+document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
+document.addEventListener('input',ev=>{
+  const t=ev.target;
+  if(t.id==='pq'){ ui.pq=t.value; document.getElementById('plist').innerHTML=patientRows(); }
+  else if(t.id==='pt-q'){ ui.ptQ=t.value; document.getElementById('ptlist').innerHTML=pointCards(); }
+  else if(t.id==='as-nota'){ ui.assess.nota=t.value; }
+  else if(t.id==='ns-eva'){ document.getElementById('ns-eva-v').textContent=t.value; }
+  if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
+});
+function sessionWarn(){
+  const p=patient(ui.pid), codes=document.getElementById('ns-pts').value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
+  const tec=[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value);
+  document.getElementById('ns-warn').innerHTML=pointWarnings(codes,p,tec).map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:6px"><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div>`).join('');
+}
+document.addEventListener('change',ev=>{
+  const t=ev.target;
+  if(t.id==='pr-patient'){ ui.pid=t.value; render(true); }
+  else if(t.id==='as-patient'){ ui.pid=t.value; ui.assess={pid:t.value,signs:[],status:{},nota:''}; render(true); }
+  else if(t.id==='pt-patient'){ ui.pid=t.value; render(true); }
+  else if(t.id==='cb-sheng'){ ui.sheng=t.checked; render(true); }
+  else if(t.id==='cb-ke'){ ui.ke=t.checked; render(true); }
+  else if(t.dataset.anam){ patient(ui.pid).anam[t.dataset.anam]=t.value; save(); toast('Anamnese salva'); }
+  else if(t.dataset.alert){ patient(ui.pid).alerts[t.dataset.alert]=t.checked; save(); render(true); }
+  else if(t.name==='tec'){ t.closest('.chip').classList.toggle('on',t.checked); }
+});
+document.addEventListener('submit',ev=>{
+  ev.preventDefault(); const f=ev.target, v=id=>document.getElementById(id).value;
+  if(f.id==='f-patient'){
+    const p={id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),exemplo:false,consentimento:TODAY,anam:{historia:'',sono:'',alimentacao:'',evacuacao:'',emocoes:'',medicamentos:''},alerts:{gestante:false,anticoagulante:false,marcapasso:false},sessions:[],assess:[]};
+    db.patients.push(p); save(); ui.pid=p.id; ui.tab='anamnese'; toast('Paciente cadastrado'); location.hash='prontuario';
+  } else if(f.id==='f-session'){
+    const p=patient(ui.pid);
+    p.sessions.push({id:uid(),date:v('ns-date'),eva:Number(v('ns-eva')),pontos:v('ns-pts').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),tec:[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value),nota:v('ns-nota')});
+    p.sessions.sort((a,b)=>a.date.localeCompare(b.date)); save(); ui.tab='sessoes'; toast('Sessão registrada'); render();
+  } else if(f.id==='f-appt'){
+    db.appts.push({id:uid(),pid:v('na-p'),date:v('na-d'),time:v('na-t'),tipo:v('na-tipo'),valor:Number(v('na-v'))||0,done:false}); save(); ui.bookPid=null; toast('Agendamento criado'); render(true);
+  }
+});
+render();
+</script>
