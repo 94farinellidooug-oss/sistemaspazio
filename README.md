@@ -68,3 +68,13 @@ Os dados ficam no `localStorage` do navegador, na chave `spazio-v1`, no mesmo fo
 - Arquivos abertos direto do disco (`file://`) compartilham os dados entre si no Chrome.
 - Um endereço diferente (outro site, `localhost` ou o disco) começa sem dados, como acontecia com o próprio v1.
 
+
+## Ambiente de demonstração (preview)
+
+O sistema é publicado na Vercel apenas para demonstração, com dados fictícios. Não é ambiente de produção e não deve receber dados reais de pacientes.
+
+- A Vercel publica automaticamente **cada branch e cada pull request** num link próprio, sem precisar de merge na `main`.
+- O link da branch `main` mostra a versão aprovada.
+- `vercel.json` define a publicação: `tools/preview.mjs` monta a pasta `site/` só com os arquivos da aplicação. O arquivo único fica em `/arquivo-unico.html`.
+- O ambiente não aparece em buscadores (`robots.txt` e cabeçalho `X-Robots-Tag`).
+- Os dados digitados ficam só no navegador de quem está testando (`localStorage`). Nada é enviado à Vercel.
