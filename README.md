@@ -68,3 +68,13 @@ Os dados ficam no `localStorage` do navegador, na chave `spazio-v1`, no mesmo fo
 - Arquivos abertos direto do disco (`file://`) compartilham os dados entre si no Chrome.
 - Um endereço diferente (outro site, `localhost` ou o disco) começa sem dados, como acontecia com o próprio v1.
 
+
+## Ambiente de demonstração (preview)
+
+O sistema é publicado na Vercel apenas para demonstração, com dados fictícios. Não é ambiente de produção e não deve receber dados reais de pacientes.
+
+- A Vercel publica automaticamente **cada branch e cada pull request** num link de preview próprio, sem precisar de merge na `main`.
+- A branch `main` não é publicada (`git.deploymentEnabled.main: false` no `vercel.json`), então nada é promovido para Production.
+- A publicação roda `npm run build` e usa a pasta `dist` como Output Directory. O endereço principal do preview (`/`) abre `dist/spazio.html`.
+- O ambiente não aparece em buscadores (cabeçalho `X-Robots-Tag: noindex`) e não usa cache.
+- Os dados digitados ficam só no navegador de quem está testando (`localStorage`). Nada é enviado à Vercel.
