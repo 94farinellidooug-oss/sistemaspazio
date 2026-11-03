@@ -12,7 +12,7 @@ const { chromium } = require('playwright');
 let falhas = 0;
 const ok = (cond, msg) => { console.log(`${cond ? 'ok   ' : 'FALHA'} ${msg}`); if (!cond) falhas++; };
 const MENU = ['Painel', 'Agenda', 'Pacientes', 'Biblioteca clínica', 'Financeiro', 'Documentos', 'Relatórios', 'Administração'];
-const ROTAS = ['painel', 'agenda', 'pacientes', 'prontuario', 'avaliacao', 'pentagrama', 'pontos', 'biblioteca', 'financeiro', 'documentos', 'relatorios', 'administracao', 'crm', 'equipe', 'configuracoes'];
+const ROTAS = ['painel', 'agenda', 'pacientes', 'cadastro', 'prontuario', 'avaliacao', 'pentagrama', 'pontos', 'biblioteca', 'financeiro', 'documentos', 'relatorios', 'administracao', 'crm', 'equipe', 'configuracoes'];
 const EM_BREVE = ['financeiro', 'documentos', 'relatorios', 'crm', 'equipe', 'configuracoes'];
 
 async function verificar(browser, url, nome) {
@@ -91,7 +91,7 @@ async function verificar(browser, url, nome) {
   ok(await p.locator('.dd-p').count() === 0, `${nome}: clique fora fecha o menu do perfil`);
 
   // Novo paciente sem avaliação aparece no acompanhamento e "Avaliar" leva à avaliação
-  await ir('pacientes');
+  await ir('cadastro');
   await p.fill('#np-name', 'Paciente Interface'); await p.fill('#np-birth', '1992-01-01'); await p.fill('#np-q', 'Cefaleia');
   await p.check('#np-lgpd'); await p.click('#f-patient button'); await p.waitForTimeout(80);
   await ir('painel');

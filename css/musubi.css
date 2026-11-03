@@ -525,3 +525,24 @@ label.chip{display:inline-flex;align-items:center;gap:6px}
 label.chip input[type=checkbox]{width:auto;display:inline-block;margin:0;padding:0;accent-color:var(--brand)}
 input[type=range]{accent-color:var(--brand)}
 input[type=checkbox]{accent-color:var(--brand)}
+
+/* Sistema (etapa 2C): cadastro, queixas e prontuário em linha do tempo */
+.so-leitor{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.nq{display:flex;gap:8px;margin-top:14px}
+.nq input{flex:1;min-width:0;border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:7px 11px}
+.nq input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--accent-soft)}
+.qc.res{opacity:.72}
+.qc-h{display:flex;align-items:center;gap:6px;min-width:0}
+.qc-h b.grow{min-width:0;overflow-wrap:anywhere}
+.qc-h .btn{flex:none}
+.lt{display:grid;gap:0}
+.lt-i{display:flex;gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+.lt-i:first-child{border-top:0;padding-top:4px}
+.lt-i>.grow{display:grid;gap:8px;min-width:0}
+.lt-i.av .hi-n{background:var(--surface-2);color:var(--muted)}
+.lt-i.av .hi-n .ic{width:16px;height:16px}
+.lt-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sess{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;font-size:.9rem}
+.sess p{overflow-wrap:anywhere}
+.corr-g b{overflow-wrap:anywhere}
+@media (max-width:820px){ .sess{grid-template-columns:1fr;gap:6px} .lt-i{gap:10px} .nq{flex-wrap:wrap} }

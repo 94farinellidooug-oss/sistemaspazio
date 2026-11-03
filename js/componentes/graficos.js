@@ -3,18 +3,20 @@
 import { EL } from '../conhecimento/elementos.js';
 import { esc } from '../util.js';
 
-// Linhas de 0 a 10 (intensidade da queixa). series: [{vals, cor, nome}]; o.mini desenha sem eixos.
+// Linhas de 0 a 10 (intensidade da queixa). series: [{vals, cor, nome}], vals pode ter null; o.mini desenha sem eixos.
 export function linhas(series, labels, o={}){
   const W=o.w||640, H=o.h||220, [L,R,T,B]=o.mini?[6,8,6,6]:[28,14,12,26], n=Math.max(2,...series.map(s=>s.vals.length));
   const x=i=>L+i*(W-L-R)/(n-1), y=v=>T+(1-v/10)*(H-T-B);
   let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||'Gráfico de evolução')}">`;
   if(!o.mini) [0,5,10].forEach(v=>s+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L-8}" y="${y(v)+4}" text-anchor="end">${v}</text>`);
   labels.forEach((l,i)=>s+=`<text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${esc(l)}</text>`);
-  series.forEach((se,k)=>{ if(!se.vals.length) return;
-    const d=se.vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  series.forEach((se,k)=>{ if(!se.vals.some(v=>v!=null)) return;
+    // Valores ausentes (null) ficam sem ponto e interrompem a linha (queixa não medida naquele atendimento).
+    const ult=se.vals.reduce((u,v,i)=>v!=null?i:u,-1);
+    const d=se.vals.map((v,i)=>v==null?'':`${i&&se.vals[i-1]!=null?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
     s+=`<g class="se" data-s="${k}"><path d="${d}" fill="none" stroke="${se.cor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
-    s+=se.vals.map((v,i)=>{ const tip=o.mini?'':(o.tips?.[i]||`${se.nome?se.nome+' · ':''}${labels[i]||''}: ${String(v).replace('.',',')}`);
-      return `<circle class="${tip?'pt-i':''}" cx="${x(i)}" cy="${y(v)}" r="${i===se.vals.length-1?5:3.5}" fill="${i===se.vals.length-1?se.cor:'var(--surface)'}" stroke="${se.cor}" stroke-width="2" ${tip?`data-tip="${esc(tip)}"`:''}/>`; }).join('')+'</g>';
+    s+=se.vals.map((v,i)=>{ if(v==null) return ''; const tip=o.mini?'':(o.tips?.[i]||`${se.nome?se.nome+' · ':''}${labels[i]||''}: ${String(v).replace('.',',')}`);
+      return `<circle class="${tip?'pt-i':''}" cx="${x(i)}" cy="${y(v)}" r="${i===ult?5:3.5}" fill="${i===ult?se.cor:'var(--surface)'}" stroke="${se.cor}" stroke-width="2" ${tip?`data-tip="${esc(tip)}"`:''}/>`; }).join('')+'</g>';
   });
   return s+'</svg>';
 }

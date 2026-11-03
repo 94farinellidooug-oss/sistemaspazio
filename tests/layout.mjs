@@ -6,7 +6,7 @@ import { iniciar } from '../tools/servidor.mjs';
 const { chromium } = createRequire(import.meta.url)('playwright');
 
 const ALVO = process.argv[2] || 'sistema';
-const ROTAS_SISTEMA = ['painel','agenda','pacientes','prontuario','prontuario:anamnese','prontuario:sessoes','prontuario:nova','prontuario:resumo','avaliacao','pentagrama','biblioteca','financeiro','documentos','relatorios','administracao','crm','equipe','configuracoes'];
+const ROTAS_SISTEMA = ['painel','agenda','pacientes','cadastro','prontuario','prontuario:anamnese','prontuario:sessoes','prontuario:nova','prontuario:resumo','avaliacao','pentagrama','biblioteca','financeiro','documentos','relatorios','administracao','crm','equipe','configuracoes'];
 const ROTAS_PROPOSTA = ['painel','agenda','pacientes','pacientes/novo','paciente/p1','paciente/p1/historico','paciente/p5',
   ...[0,1,2,3,4,5,6,7].map(i=>'atendimento/p1/'+i),'atendimento/p5/1','biblioteca','financeiro','relatorios','documentos','administracao','guia'];
 const ROTAS = ALVO === 'proposta' ? ROTAS_PROPOSTA : ROTAS_SISTEMA;
