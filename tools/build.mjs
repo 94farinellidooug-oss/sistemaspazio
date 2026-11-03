@@ -29,7 +29,5 @@ const cabeca = index.slice(index.indexOf('<title>'), index.indexOf('<link rel="s
 const corpo = index.slice(index.indexOf('<link rel="stylesheet" href="css/componentes.css">') + '<link rel="stylesheet" href="css/componentes.css">\n'.length, index.indexOf('<script type="module"'));
 
 mkdirSync(join(RAIZ, 'dist'), { recursive: true });
-// charset e viewport garantem acentos corretos e layout de celular quando o arquivo é aberto direto do disco.
-const metas = '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n';
-writeFileSync(join(RAIZ, 'dist/spazio.html'), `${metas}${cabeca}<style>\n${css}</style>\n${corpo}<script>\n${js}</script>\n`);
+writeFileSync(join(RAIZ, 'dist/spazio.html'), `${cabeca}<style>\n${css}</style>\n${corpo}<script>\n${js}</script>\n`);
 console.log(`dist/spazio.html gerado com ${ordem.length} módulos.`);

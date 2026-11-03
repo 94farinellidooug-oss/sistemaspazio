@@ -24,7 +24,7 @@ js/
   conhecimento/       elementos, sinais, padrões, pontos e meridianos
   raciocinio/         hipóteses de padrão, Ba Gang, estado dos elementos, alertas de segurança
   componentes/        pentagrama, gráfico de EVA, campos
-  telas/              uma tela por arquivo (menu.js: menu recolhível; em-breve.js: módulos planejados)
+  telas/              uma tela por arquivo
 tests/                testes de equivalência com o protótipo original
 tools/                build do arquivo único e servidor local
 legacy/               protótipo v1 original, preservado sem alterações (branch backup/v1.0-prototipo)
@@ -50,7 +50,6 @@ No Windows e no macOS, `--with-deps` pode ser omitido.
 | --- | --- |
 | `npm test` | 51 casos de hipóteses, Ba Gang, cinco elementos, alertas, pentagrama e EVA. O resultado precisa ser idêntico ao gravado a partir do protótipo original. |
 | `npm run test:navegador` | Roda `tests/navegador.mjs`, que executa o mesmo roteiro de uso (cadastro, sessão, avaliação, pentagrama, pontos, agenda) no original, na versão modular e no arquivo único e compara telas e dados salvos. Roda também `tests/compatibilidade.mjs`, que confirma que `dist/spazio.html` abre direto do disco e que os dados da chave `spazio-v1` gravados pelo original continuam acessíveis, nos dois sentidos. |
-| (incluído em `test:navegador`) `tests/interface.mjs` | Verifica a interface da etapa 1B: menu em 4 grupos, modo recolhido com nomes acessíveis, gaveta no celular, telas "em breve", Painel misto, atalhos do prontuário, tema escuro e ausência de rolagem horizontal. |
 | `npm run test:tudo` | Tudo acima, na ordem: cálculos, build e navegador. |
 | `npm run referencia` | Regrava a referência a partir de `legacy/`. Só deve ser usado se o próprio original mudar, o que não deve acontecer. |
 
