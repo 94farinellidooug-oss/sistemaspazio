@@ -1,0 +1,2113 @@
+{
+ "padrão completo: bp_qi": {
+  "hipoteses": [
+   {
+    "padrao": "bp_qi",
+    "sinais": [
+     "lingua_palida",
+     "marcas_dentes",
+     "pulso_fraco",
+     "cansaco",
+     "fezes_amolecidas",
+     "distensao_pos",
+     "preocupacao"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "p_qi",
+    "sinais": [
+     "pulso_fraco",
+     "cansaco"
+    ],
+    "faltando": [
+     "falta_ar",
+     "voz_fraca",
+     "resfriados",
+     "tristeza"
+    ],
+    "score": 0.3333333333333333
+   }
+  ],
+  "bagang": {
+   "fc": -1,
+   "de": -1,
+   "n": 7
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0.6,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0.19999999999999998,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão completo: f_estag": {
+  "hipoteses": [
+   {
+    "padrao": "f_estag",
+    "sinais": [
+     "pulso_corda",
+     "irritabilidade",
+     "distensao_hipo",
+     "tpm",
+     "suspiros"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "estase_xue",
+    "sinais": [
+     "tpm",
+     "pulso_corda"
+    ],
+    "faltando": [
+     "lingua_purpura",
+     "dor_fixa"
+    ],
+    "score": 0.5
+   },
+   {
+    "padrao": "f_yang",
+    "sinais": [
+     "pulso_corda",
+     "irritabilidade"
+    ],
+    "faltando": [
+     "bordas_vermelhas",
+     "cefaleia_temporal",
+     "zumbido"
+    ],
+    "score": 0.4
+   }
+  ],
+  "bagang": {
+   "fc": 0,
+   "de": 1,
+   "n": 5
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 1.14
+   }
+  }
+ },
+ "padrão completo: f_yang": {
+  "hipoteses": [
+   {
+    "padrao": "f_yang",
+    "sinais": [
+     "bordas_vermelhas",
+     "pulso_corda",
+     "cefaleia_temporal",
+     "irritabilidade",
+     "zumbido"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "f_estag",
+    "sinais": [
+     "pulso_corda",
+     "irritabilidade"
+    ],
+    "faltando": [
+     "distensao_hipo",
+     "tpm",
+     "suspiros"
+    ],
+    "score": 0.4
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": 1,
+   "n": 5
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0.84
+   }
+  }
+ },
+ "padrão completo: r_yin": {
+  "hipoteses": [
+   {
+    "padrao": "r_yin",
+    "sinais": [
+     "lingua_vermelha",
+     "sem_saburra",
+     "pulso_fino",
+     "pulso_rapido",
+     "sudorese_noturna",
+     "calor_tarde",
+     "boca_seca",
+     "zumbido",
+     "lombalgia"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "umid_calor",
+    "sinais": [
+     "pulso_rapido",
+     "boca_seca"
+    ],
+    "faltando": [
+     "saburra_amarela",
+     "pulso_escorregadio",
+     "peso_corpo",
+     "fezes_amolecidas"
+    ],
+    "score": 0.3333333333333333
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": -1,
+   "n": 9
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0.19999999999999998
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0.6,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão completo: r_yang": {
+  "hipoteses": [
+   {
+    "padrao": "r_yang",
+    "sinais": [
+     "lingua_palida",
+     "lingua_inchada",
+     "pulso_profundo",
+     "pulso_lento",
+     "frio_extremidades",
+     "lombalgia",
+     "mic_frequente"
+    ],
+    "faltando": [],
+    "score": 1
+   }
+  ],
+  "bagang": {
+   "fc": -1,
+   "de": 0,
+   "n": 7
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0.6,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão completo: c_xue": {
+  "hipoteses": [
+   {
+    "padrao": "c_xue",
+    "sinais": [
+     "lingua_palida",
+     "pulso_fino",
+     "palpitacoes",
+     "insonia",
+     "ansiedade",
+     "memoria"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "c_fogo",
+    "sinais": [
+     "insonia",
+     "ansiedade"
+    ],
+    "faltando": [
+     "ponta_vermelha",
+     "saburra_amarela",
+     "pulso_rapido",
+     "aftas"
+    ],
+    "score": 0.3333333333333333
+   }
+  ],
+  "bagang": {
+   "fc": -1,
+   "de": -1,
+   "n": 6
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0.6,
+    "exc": 0.19999999999999998
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão completo: c_fogo": {
+  "hipoteses": [
+   {
+    "padrao": "c_fogo",
+    "sinais": [
+     "ponta_vermelha",
+     "saburra_amarela",
+     "pulso_rapido",
+     "insonia",
+     "aftas",
+     "ansiedade"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "c_xue",
+    "sinais": [
+     "insonia",
+     "ansiedade"
+    ],
+    "faltando": [
+     "lingua_palida",
+     "pulso_fino",
+     "palpitacoes",
+     "memoria"
+    ],
+    "score": 0.3333333333333333
+   },
+   {
+    "padrao": "umid_calor",
+    "sinais": [
+     "saburra_amarela",
+     "pulso_rapido"
+    ],
+    "faltando": [
+     "pulso_escorregadio",
+     "peso_corpo",
+     "fezes_amolecidas",
+     "boca_seca"
+    ],
+    "score": 0.3333333333333333
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": 1,
+   "n": 6
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0.19999999999999998,
+    "exc": 0.6
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0.19999999999999998
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão completo: p_qi": {
+  "hipoteses": [
+   {
+    "padrao": "p_qi",
+    "sinais": [
+     "pulso_fraco",
+     "falta_ar",
+     "voz_fraca",
+     "resfriados",
+     "tristeza",
+     "cansaco"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "bp_qi",
+    "sinais": [
+     "pulso_fraco",
+     "cansaco"
+    ],
+    "faltando": [
+     "lingua_palida",
+     "marcas_dentes",
+     "fezes_amolecidas",
+     "distensao_pos",
+     "preocupacao"
+    ],
+    "score": 0.2857142857142857
+   }
+  ],
+  "bagang": {
+   "fc": 0,
+   "de": -1,
+   "n": 6
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0.1714285714285714,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0.6,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão completo: umid_calor": {
+  "hipoteses": [
+   {
+    "padrao": "umid_calor",
+    "sinais": [
+     "saburra_amarela",
+     "pulso_escorregadio",
+     "pulso_rapido",
+     "peso_corpo",
+     "fezes_amolecidas",
+     "boca_seca"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "c_fogo",
+    "sinais": [
+     "saburra_amarela",
+     "pulso_rapido"
+    ],
+    "faltando": [
+     "ponta_vermelha",
+     "insonia",
+     "aftas",
+     "ansiedade"
+    ],
+    "score": 0.3333333333333333
+   },
+   {
+    "padrao": "r_yin",
+    "sinais": [
+     "pulso_rapido",
+     "boca_seca"
+    ],
+    "faltando": [
+     "lingua_vermelha",
+     "sem_saburra",
+     "pulso_fino",
+     "sudorese_noturna",
+     "calor_tarde",
+     "zumbido",
+     "lombalgia"
+    ],
+    "score": 0.2222222222222222
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": 1,
+   "n": 6
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0.19999999999999998
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0.6
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0.13333333333333333,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão completo: estase_xue": {
+  "hipoteses": [
+   {
+    "padrao": "estase_xue",
+    "sinais": [
+     "lingua_purpura",
+     "dor_fixa",
+     "tpm",
+     "pulso_corda"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "f_estag",
+    "sinais": [
+     "pulso_corda",
+     "tpm"
+    ],
+    "faltando": [
+     "irritabilidade",
+     "distensao_hipo",
+     "suspiros"
+    ],
+    "score": 0.4
+   }
+  ],
+  "bagang": {
+   "fc": 0,
+   "de": 1,
+   "n": 4
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0.84
+   }
+  }
+ },
+ "padrão mínimo: bp_qi": {
+  "hipoteses": [
+   {
+    "padrao": "bp_qi",
+    "sinais": [
+     "lingua_palida",
+     "marcas_dentes"
+    ],
+    "faltando": [
+     "pulso_fraco",
+     "cansaco",
+     "fezes_amolecidas",
+     "distensao_pos",
+     "preocupacao"
+    ],
+    "score": 0.2857142857142857
+   }
+  ],
+  "bagang": {
+   "fc": -1,
+   "de": -1,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0.1714285714285714,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão mínimo: f_estag": {
+  "hipoteses": [
+   {
+    "padrao": "f_estag",
+    "sinais": [
+     "pulso_corda",
+     "irritabilidade"
+    ],
+    "faltando": [
+     "distensao_hipo",
+     "tpm",
+     "suspiros"
+    ],
+    "score": 0.4
+   },
+   {
+    "padrao": "f_yang",
+    "sinais": [
+     "pulso_corda",
+     "irritabilidade"
+    ],
+    "faltando": [
+     "bordas_vermelhas",
+     "cefaleia_temporal",
+     "zumbido"
+    ],
+    "score": 0.4
+   }
+  ],
+  "bagang": {
+   "fc": 0,
+   "de": 1,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0.48
+   }
+  }
+ },
+ "padrão mínimo: f_yang": {
+  "hipoteses": [
+   {
+    "padrao": "f_yang",
+    "sinais": [
+     "bordas_vermelhas",
+     "pulso_corda"
+    ],
+    "faltando": [
+     "cefaleia_temporal",
+     "irritabilidade",
+     "zumbido"
+    ],
+    "score": 0.4
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": 1,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0.24
+   }
+  }
+ },
+ "padrão mínimo: r_yin": {
+  "hipoteses": [
+   {
+    "padrao": "r_yin",
+    "sinais": [
+     "lingua_vermelha",
+     "sem_saburra"
+    ],
+    "faltando": [
+     "pulso_fino",
+     "pulso_rapido",
+     "sudorese_noturna",
+     "calor_tarde",
+     "boca_seca",
+     "zumbido",
+     "lombalgia"
+    ],
+    "score": 0.2222222222222222
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": -1,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0.13333333333333333,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão mínimo: r_yang": {
+  "hipoteses": [
+   {
+    "padrao": "r_yang",
+    "sinais": [
+     "lingua_palida",
+     "lingua_inchada"
+    ],
+    "faltando": [
+     "pulso_profundo",
+     "pulso_lento",
+     "frio_extremidades",
+     "lombalgia",
+     "mic_frequente"
+    ],
+    "score": 0.2857142857142857
+   }
+  ],
+  "bagang": {
+   "fc": -1,
+   "de": 0,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0.1714285714285714,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão mínimo: c_xue": {
+  "hipoteses": [
+   {
+    "padrao": "c_xue",
+    "sinais": [
+     "lingua_palida",
+     "pulso_fino"
+    ],
+    "faltando": [
+     "palpitacoes",
+     "insonia",
+     "ansiedade",
+     "memoria"
+    ],
+    "score": 0.3333333333333333
+   }
+  ],
+  "bagang": {
+   "fc": -1,
+   "de": -1,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0.19999999999999998,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão mínimo: c_fogo": {
+  "hipoteses": [
+   {
+    "padrao": "c_fogo",
+    "sinais": [
+     "ponta_vermelha",
+     "saburra_amarela"
+    ],
+    "faltando": [
+     "pulso_rapido",
+     "insonia",
+     "aftas",
+     "ansiedade"
+    ],
+    "score": 0.3333333333333333
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": 1,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0.19999999999999998
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão mínimo: p_qi": {
+  "hipoteses": [
+   {
+    "padrao": "p_qi",
+    "sinais": [
+     "pulso_fraco",
+     "falta_ar"
+    ],
+    "faltando": [
+     "voz_fraca",
+     "resfriados",
+     "tristeza",
+     "cansaco"
+    ],
+    "score": 0.3333333333333333
+   }
+  ],
+  "bagang": {
+   "fc": 0,
+   "de": -1,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0.19999999999999998,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão mínimo: umid_calor": {
+  "hipoteses": [
+   {
+    "padrao": "umid_calor",
+    "sinais": [
+     "saburra_amarela",
+     "pulso_escorregadio"
+    ],
+    "faltando": [
+     "pulso_rapido",
+     "peso_corpo",
+     "fezes_amolecidas",
+     "boca_seca"
+    ],
+    "score": 0.3333333333333333
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": 1,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0.19999999999999998
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "padrão mínimo: estase_xue": {
+  "hipoteses": [
+   {
+    "padrao": "estase_xue",
+    "sinais": [
+     "lingua_purpura",
+     "dor_fixa"
+    ],
+    "faltando": [
+     "tpm",
+     "pulso_corda"
+    ],
+    "score": 0.5
+   }
+  ],
+  "bagang": {
+   "fc": 0,
+   "de": 1,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0.3
+   }
+  }
+ },
+ "exemplo Helena": {
+  "hipoteses": [
+   {
+    "padrao": "f_estag",
+    "sinais": [
+     "pulso_corda",
+     "irritabilidade",
+     "distensao_hipo",
+     "tpm",
+     "suspiros"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "f_yang",
+    "sinais": [
+     "bordas_vermelhas",
+     "pulso_corda",
+     "cefaleia_temporal",
+     "irritabilidade"
+    ],
+    "faltando": [
+     "zumbido"
+    ],
+    "score": 0.8
+   },
+   {
+    "padrao": "estase_xue",
+    "sinais": [
+     "tpm",
+     "pulso_corda"
+    ],
+    "faltando": [
+     "lingua_purpura",
+     "dor_fixa"
+    ],
+    "score": 0.5
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": 1,
+   "n": 7
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 2.1
+   }
+  }
+ },
+ "exemplo Rafael": {
+  "hipoteses": [
+   {
+    "padrao": "r_yang",
+    "sinais": [
+     "lingua_palida",
+     "lingua_inchada",
+     "pulso_profundo",
+     "pulso_lento",
+     "frio_extremidades",
+     "lombalgia",
+     "mic_frequente"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "bp_qi",
+    "sinais": [
+     "lingua_palida",
+     "cansaco",
+     "fezes_amolecidas"
+    ],
+    "faltando": [
+     "marcas_dentes",
+     "pulso_fraco",
+     "distensao_pos",
+     "preocupacao"
+    ],
+    "score": 0.42857142857142855
+   }
+  ],
+  "bagang": {
+   "fc": -1,
+   "de": -1,
+   "n": 9
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0.2571428571428571,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 1,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "exemplo Lúcia": {
+  "hipoteses": [
+   {
+    "padrao": "r_yin",
+    "sinais": [
+     "lingua_vermelha",
+     "sem_saburra",
+     "pulso_fino",
+     "pulso_rapido",
+     "sudorese_noturna",
+     "calor_tarde"
+    ],
+    "faltando": [
+     "boca_seca",
+     "zumbido",
+     "lombalgia"
+    ],
+    "score": 0.6666666666666666
+   },
+   {
+    "padrao": "c_xue",
+    "sinais": [
+     "pulso_fino",
+     "palpitacoes",
+     "insonia",
+     "ansiedade"
+    ],
+    "faltando": [
+     "lingua_palida",
+     "memoria"
+    ],
+    "score": 0.6666666666666666
+   },
+   {
+    "padrao": "c_fogo",
+    "sinais": [
+     "pulso_rapido",
+     "insonia",
+     "ansiedade"
+    ],
+    "faltando": [
+     "ponta_vermelha",
+     "saburra_amarela",
+     "aftas"
+    ],
+    "score": 0.5
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": -1,
+   "n": 9
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0.39999999999999997,
+    "exc": 0.3
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0.6666666666666666,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "exemplo Tiago": {
+  "hipoteses": [
+   {
+    "padrao": "bp_qi",
+    "sinais": [
+     "marcas_dentes",
+     "pulso_fraco",
+     "cansaco",
+     "fezes_amolecidas",
+     "distensao_pos",
+     "preocupacao"
+    ],
+    "faltando": [
+     "lingua_palida"
+    ],
+    "score": 0.8571428571428571
+   },
+   {
+    "padrao": "p_qi",
+    "sinais": [
+     "pulso_fraco",
+     "cansaco"
+    ],
+    "faltando": [
+     "falta_ar",
+     "voz_fraca",
+     "resfriados",
+     "tristeza"
+    ],
+    "score": 0.3333333333333333
+   }
+  ],
+  "bagang": {
+   "fc": 0,
+   "de": -1,
+   "n": 7
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0.8571428571428571,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0.19999999999999998,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "nenhum sinal": {
+  "hipoteses": [],
+  "bagang": {
+   "fc": 0,
+   "de": 0,
+   "n": 0
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "um sinal só": {
+  "hipoteses": [],
+  "bagang": {
+   "fc": 0,
+   "de": 1,
+   "n": 1
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "todos os sinais": {
+  "hipoteses": [
+   {
+    "padrao": "bp_qi",
+    "sinais": [
+     "lingua_palida",
+     "marcas_dentes",
+     "pulso_fraco",
+     "cansaco",
+     "fezes_amolecidas",
+     "distensao_pos",
+     "preocupacao"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "f_estag",
+    "sinais": [
+     "pulso_corda",
+     "irritabilidade",
+     "distensao_hipo",
+     "tpm",
+     "suspiros"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "f_yang",
+    "sinais": [
+     "bordas_vermelhas",
+     "pulso_corda",
+     "cefaleia_temporal",
+     "irritabilidade",
+     "zumbido"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "r_yin",
+    "sinais": [
+     "lingua_vermelha",
+     "sem_saburra",
+     "pulso_fino",
+     "pulso_rapido",
+     "sudorese_noturna",
+     "calor_tarde",
+     "boca_seca",
+     "zumbido",
+     "lombalgia"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "r_yang",
+    "sinais": [
+     "lingua_palida",
+     "lingua_inchada",
+     "pulso_profundo",
+     "pulso_lento",
+     "frio_extremidades",
+     "lombalgia",
+     "mic_frequente"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "c_xue",
+    "sinais": [
+     "lingua_palida",
+     "pulso_fino",
+     "palpitacoes",
+     "insonia",
+     "ansiedade",
+     "memoria"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "c_fogo",
+    "sinais": [
+     "ponta_vermelha",
+     "saburra_amarela",
+     "pulso_rapido",
+     "insonia",
+     "aftas",
+     "ansiedade"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "p_qi",
+    "sinais": [
+     "pulso_fraco",
+     "falta_ar",
+     "voz_fraca",
+     "resfriados",
+     "tristeza",
+     "cansaco"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "umid_calor",
+    "sinais": [
+     "saburra_amarela",
+     "pulso_escorregadio",
+     "pulso_rapido",
+     "peso_corpo",
+     "fezes_amolecidas",
+     "boca_seca"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "estase_xue",
+    "sinais": [
+     "lingua_purpura",
+     "dor_fixa",
+     "tpm",
+     "pulso_corda"
+    ],
+    "faltando": [],
+    "score": 1
+   }
+  ],
+  "bagang": {
+   "fc": 0.2857142857142857,
+   "de": -0.058823529411764705,
+   "n": 44
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0.6,
+    "exc": 0.6
+   },
+   "terra": {
+    "def": 0.6,
+    "exc": 0.6
+   },
+   "metal": {
+    "def": 0.6,
+    "exc": 0
+   },
+   "agua": {
+    "def": 1.2,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 1.7999999999999998
+   }
+  }
+ },
+ "sinais contraditórios": {
+  "hipoteses": [
+   {
+    "padrao": "r_yang",
+    "sinais": [
+     "lingua_palida",
+     "pulso_lento",
+     "frio_extremidades"
+    ],
+    "faltando": [
+     "lingua_inchada",
+     "pulso_profundo",
+     "lombalgia",
+     "mic_frequente"
+    ],
+    "score": 0.42857142857142855
+   },
+   {
+    "padrao": "r_yin",
+    "sinais": [
+     "lingua_vermelha",
+     "pulso_rapido",
+     "calor_tarde"
+    ],
+    "faltando": [
+     "sem_saburra",
+     "pulso_fino",
+     "sudorese_noturna",
+     "boca_seca",
+     "zumbido",
+     "lombalgia"
+    ],
+    "score": 0.3333333333333333
+   }
+  ],
+  "bagang": {
+   "fc": 0,
+   "de": 0,
+   "n": 6
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0.4571428571428571,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "Helena tudo descartado": {
+  "hipoteses": [
+   {
+    "padrao": "f_estag",
+    "sinais": [
+     "pulso_corda",
+     "irritabilidade",
+     "distensao_hipo",
+     "tpm",
+     "suspiros"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "f_yang",
+    "sinais": [
+     "bordas_vermelhas",
+     "pulso_corda",
+     "cefaleia_temporal",
+     "irritabilidade"
+    ],
+    "faltando": [
+     "zumbido"
+    ],
+    "score": 0.8
+   },
+   {
+    "padrao": "estase_xue",
+    "sinais": [
+     "tpm",
+     "pulso_corda"
+    ],
+    "faltando": [
+     "lingua_purpura",
+     "dor_fixa"
+    ],
+    "score": 0.5
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": 1,
+   "n": 7
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "Helena misto": {
+  "hipoteses": [
+   {
+    "padrao": "f_estag",
+    "sinais": [
+     "pulso_corda",
+     "irritabilidade",
+     "distensao_hipo",
+     "tpm",
+     "suspiros"
+    ],
+    "faltando": [],
+    "score": 1
+   },
+   {
+    "padrao": "f_yang",
+    "sinais": [
+     "bordas_vermelhas",
+     "pulso_corda",
+     "cefaleia_temporal",
+     "irritabilidade"
+    ],
+    "faltando": [
+     "zumbido"
+    ],
+    "score": 0.8
+   },
+   {
+    "padrao": "estase_xue",
+    "sinais": [
+     "tpm",
+     "pulso_corda"
+    ],
+    "faltando": [
+     "lingua_purpura",
+     "dor_fixa"
+    ],
+    "score": 0.5
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": 1,
+   "n": 7
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 1.3
+   }
+  }
+ },
+ "Lúcia sem status": {
+  "hipoteses": [
+   {
+    "padrao": "r_yin",
+    "sinais": [
+     "lingua_vermelha",
+     "sem_saburra",
+     "pulso_fino",
+     "pulso_rapido",
+     "sudorese_noturna",
+     "calor_tarde"
+    ],
+    "faltando": [
+     "boca_seca",
+     "zumbido",
+     "lombalgia"
+    ],
+    "score": 0.6666666666666666
+   },
+   {
+    "padrao": "c_xue",
+    "sinais": [
+     "pulso_fino",
+     "palpitacoes",
+     "insonia",
+     "ansiedade"
+    ],
+    "faltando": [
+     "lingua_palida",
+     "memoria"
+    ],
+    "score": 0.6666666666666666
+   },
+   {
+    "padrao": "c_fogo",
+    "sinais": [
+     "pulso_rapido",
+     "insonia",
+     "ansiedade"
+    ],
+    "faltando": [
+     "ponta_vermelha",
+     "saburra_amarela",
+     "aftas"
+    ],
+    "score": 0.5
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": -1,
+   "n": 9
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0.39999999999999997,
+    "exc": 0.3
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0.39999999999999997,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "só calor": {
+  "hipoteses": [
+   {
+    "padrao": "r_yin",
+    "sinais": [
+     "lingua_vermelha",
+     "boca_seca"
+    ],
+    "faltando": [
+     "sem_saburra",
+     "pulso_fino",
+     "pulso_rapido",
+     "sudorese_noturna",
+     "calor_tarde",
+     "zumbido",
+     "lombalgia"
+    ],
+    "score": 0.2222222222222222
+   }
+  ],
+  "bagang": {
+   "fc": 1,
+   "de": 0,
+   "n": 3
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0.13333333333333333,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "só frio": {
+  "hipoteses": [
+   {
+    "padrao": "r_yang",
+    "sinais": [
+     "pulso_lento",
+     "frio_extremidades"
+    ],
+    "faltando": [
+     "lingua_palida",
+     "lingua_inchada",
+     "pulso_profundo",
+     "lombalgia",
+     "mic_frequente"
+    ],
+    "score": 0.2857142857142857
+   }
+  ],
+  "bagang": {
+   "fc": -1,
+   "de": 0,
+   "n": 2
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0.1714285714285714,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "só deficiência": {
+  "hipoteses": [
+   {
+    "padrao": "p_qi",
+    "sinais": [
+     "pulso_fraco",
+     "voz_fraca",
+     "cansaco"
+    ],
+    "faltando": [
+     "falta_ar",
+     "resfriados",
+     "tristeza"
+    ],
+    "score": 0.5
+   },
+   {
+    "padrao": "bp_qi",
+    "sinais": [
+     "pulso_fraco",
+     "cansaco"
+    ],
+    "faltando": [
+     "lingua_palida",
+     "marcas_dentes",
+     "fezes_amolecidas",
+     "distensao_pos",
+     "preocupacao"
+    ],
+    "score": 0.2857142857142857
+   }
+  ],
+  "bagang": {
+   "fc": 0,
+   "de": -1,
+   "n": 3
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0.1714285714285714,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0.3,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0
+   }
+  }
+ },
+ "só excesso": {
+  "hipoteses": [
+   {
+    "padrao": "estase_xue",
+    "sinais": [
+     "dor_fixa",
+     "pulso_corda"
+    ],
+    "faltando": [
+     "lingua_purpura",
+     "tpm"
+    ],
+    "score": 0.5
+   }
+  ],
+  "bagang": {
+   "fc": 0,
+   "de": 1,
+   "n": 3
+  },
+  "elementos": {
+   "fogo": {
+    "def": 0,
+    "exc": 0
+   },
+   "terra": {
+    "def": 0,
+    "exc": 0
+   },
+   "metal": {
+    "def": 0,
+    "exc": 0
+   },
+   "agua": {
+    "def": 0,
+    "exc": 0
+   },
+   "madeira": {
+    "def": 0,
+    "exc": 0.3
+   }
+  }
+ },
+ "gestante com IG4 e BP6": {
+  "avisos": [
+   [
+    "crit",
+    "IG4 (Hegu): Evitar na gestação. Paciente gestante."
+   ],
+   [
+    "crit",
+    "BP6 (Sanyinjiao): Evitar na gestação. Paciente gestante."
+   ]
+  ]
+ },
+ "não gestante com IG4": {
+  "avisos": []
+ },
+ "anticoagulante e ventosa": {
+  "avisos": [
+   [
+    "crit",
+    "Paciente em uso de anticoagulante: avaliar ventosa e sangria."
+   ]
+  ]
+ },
+ "marcapasso e eletroacupuntura": {
+  "avisos": [
+   [
+    "crit",
+    "Portador de marcapasso: eletroacupuntura contraindicada."
+   ]
+  ]
+ },
+ "ponto inexistente": {
+  "avisos": [
+   [
+    "warn",
+    "XX99: ponto não encontrado na biblioteca"
+   ]
+  ]
+ },
+ "ponto torácico e profundidade": {
+  "avisos": [
+   [
+    "warn",
+    "B13 (Feishu): Agulhamento oblíquo; risco de pneumotórax"
+   ],
+   [
+    "warn",
+    "VB20 (Fengchi): Atenção à direção e profundidade"
+   ]
+  ]
+ },
+ "sem pontos nem técnicas": {
+  "avisos": []
+ },
+ "pentagrama sem avaliação": {
+  "svg": "<svg viewBox=\"-80 0 660 480\" class=\"penta\" role=\"img\" aria-label=\"Pentagrama dos cinco elementos com ciclos de geração e controle\">\n  <defs>\n    <marker id=\"ms\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--accent)\"/></marker>\n    <marker id=\"mk\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--muted)\"/></marker>\n  </defs><path class=\"sheng \" d=\"M304.9,99.7 A160,160 0 0 1 376.0,151.4\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M409.9,255.7 A160,160 0 0 1 382.7,339.3\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M294.0,403.8 A160,160 0 0 1 206.0,403.8\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M117.3,339.3 A160,160 0 0 1 90.1,255.7\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M124.0,151.4 A160,160 0 0 1 195.1,99.7\" marker-end=\"url(#ms)\"/><path class=\"ke \" d=\"M266.7,141.4 L327.4,328.1\" marker-end=\"url(#mk)\"/><path class=\"ke \" d=\"M358.5,232.3 L199.6,347.7\" marker-end=\"url(#mk)\"/><path class=\"ke \" d=\"M300.4,347.7 L141.5,232.3\" marker-end=\"url(#mk)\"/><path class=\"ke \" d=\"M172.6,328.1 L233.3,141.4\" marker-end=\"url(#mk)\"/><path class=\"ke \" d=\"M151.8,200.6 L348.2,200.6\" marker-end=\"url(#mk)\"/><g class=\"node\" data-act=\"el\" data-e=\"fogo\" tabindex=\"0\" role=\"button\" aria-label=\"Fogo\" style=\"opacity:1\">\n      <circle cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:var(--fire);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:none;stroke:var(--fire);stroke-width:3\" />\n      <text x=\"250\" y=\"88\" text-anchor=\"middle\" style=\"fill:var(--fire);font-size:28px;font-weight:600\">火</text>\n      <text x=\"250\" y=\"110\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Fogo</text>\n      <text x=\"250\" y=\"18\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Coração · Alegria</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"terra\" tabindex=\"0\" role=\"button\" aria-label=\"Terra\" style=\"opacity:1\">\n      <circle cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:var(--earth);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:none;stroke:var(--earth);stroke-width:3\" />\n      <text x=\"402.1690426072246\" y=\"198.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--earth);font-size:28px;font-weight:600\">土</text>\n      <text x=\"402.1690426072246\" y=\"220.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Terra</text>\n      <text x=\"458.1690426072246\" y=\"204.5572809000084\" text-anchor=\"start\" style=\"fill:var(--muted);font-size:11.5px\">Baço · Preocupação</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"metal\" tabindex=\"0\" role=\"button\" aria-label=\"Metal\" style=\"opacity:1\">\n      <circle cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--metal);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--metal);stroke-width:3\" />\n      <text x=\"344.04564036679574\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--metal);font-size:28px;font-weight:600\">金</text>\n      <text x=\"344.04564036679574\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Metal</text>\n      <text x=\"344.04564036679574\" y=\"442.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Pulmão · Tristeza</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"agua\" tabindex=\"0\" role=\"button\" aria-label=\"Água\" style=\"opacity:1\">\n      <circle cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--water);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--water);stroke-width:3\" />\n      <text x=\"155.95435963320432\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--water);font-size:28px;font-weight:600\">水</text>\n      <text x=\"155.95435963320432\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Água</text>\n      <text x=\"99.95435963320432\" y=\"383.44271909999156\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Rim · Medo</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"madeira\" tabindex=\"0\" role=\"button\" aria-label=\"Madeira\" style=\"opacity:1\">\n      <circle cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:var(--wood);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:none;stroke:var(--wood);stroke-width:3\" />\n      <text x=\"97.83095739277545\" y=\"198.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--wood);font-size:28px;font-weight:600\">木</text>\n      <text x=\"97.83095739277545\" y=\"220.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Madeira</text>\n      <text x=\"41.830957392775446\" y=\"204.55728090000838\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Fígado · Raiva</text>\n    </g></svg>"
+ },
+ "pentagrama Helena": {
+  "svg": "<svg viewBox=\"-80 0 660 480\" class=\"penta\" role=\"img\" aria-label=\"Pentagrama dos cinco elementos com ciclos de geração e controle\">\n  <defs>\n    <marker id=\"ms\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--accent)\"/></marker>\n    <marker id=\"mk\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--muted)\"/></marker>\n  </defs><path class=\"sheng \" d=\"M304.9,99.7 A160,160 0 0 1 376.0,151.4\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M409.9,255.7 A160,160 0 0 1 382.7,339.3\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M294.0,403.8 A160,160 0 0 1 206.0,403.8\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M117.3,339.3 A160,160 0 0 1 90.1,255.7\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M124.0,151.4 A160,160 0 0 1 195.1,99.7\" marker-end=\"url(#ms)\"/><path class=\"ke \" d=\"M266.7,141.4 L327.4,328.1\" marker-end=\"url(#mk)\"/><path class=\"ke \" d=\"M358.5,232.3 L199.6,347.7\" marker-end=\"url(#mk)\"/><path class=\"ke \" d=\"M300.4,347.7 L141.5,232.3\" marker-end=\"url(#mk)\"/><path class=\"ke \" d=\"M172.6,328.1 L233.3,141.4\" marker-end=\"url(#mk)\"/><path class=\"ke \" d=\"M151.8,200.6 L348.2,200.6\" marker-end=\"url(#mk)\"/><g class=\"node\" data-act=\"el\" data-e=\"fogo\" tabindex=\"0\" role=\"button\" aria-label=\"Fogo\" style=\"opacity:1\">\n      <circle cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:var(--fire);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:none;stroke:var(--fire);stroke-width:3\" />\n      <text x=\"250\" y=\"88\" text-anchor=\"middle\" style=\"fill:var(--fire);font-size:28px;font-weight:600\">火</text>\n      <text x=\"250\" y=\"110\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Fogo</text>\n      <text x=\"250\" y=\"18\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Coração · Alegria</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"terra\" tabindex=\"0\" role=\"button\" aria-label=\"Terra\" style=\"opacity:1\">\n      <circle cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:var(--earth);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:none;stroke:var(--earth);stroke-width:3\" />\n      <text x=\"402.1690426072246\" y=\"198.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--earth);font-size:28px;font-weight:600\">土</text>\n      <text x=\"402.1690426072246\" y=\"220.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Terra</text>\n      <text x=\"458.1690426072246\" y=\"204.5572809000084\" text-anchor=\"start\" style=\"fill:var(--muted);font-size:11.5px\">Baço · Preocupação</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"metal\" tabindex=\"0\" role=\"button\" aria-label=\"Metal\" style=\"opacity:1\">\n      <circle cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--metal);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--metal);stroke-width:3\" />\n      <text x=\"344.04564036679574\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--metal);font-size:28px;font-weight:600\">金</text>\n      <text x=\"344.04564036679574\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Metal</text>\n      <text x=\"344.04564036679574\" y=\"442.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Pulmão · Tristeza</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"agua\" tabindex=\"0\" role=\"button\" aria-label=\"Água\" style=\"opacity:1\">\n      <circle cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--water);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--water);stroke-width:3\" />\n      <text x=\"155.95435963320432\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--water);font-size:28px;font-weight:600\">水</text>\n      <text x=\"155.95435963320432\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Água</text>\n      <text x=\"99.95435963320432\" y=\"383.44271909999156\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Rim · Medo</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"madeira\" tabindex=\"0\" role=\"button\" aria-label=\"Madeira\" style=\"opacity:1\">\n      <circle cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:var(--wood);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:none;stroke:var(--wood);stroke-width:6\" />\n      <text x=\"97.83095739277545\" y=\"198.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--wood);font-size:28px;font-weight:600\">木</text>\n      <text x=\"97.83095739277545\" y=\"220.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Madeira</text>\n      <text x=\"41.830957392775446\" y=\"204.55728090000838\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Fígado · Raiva</text><text x=\"41.830957392775446\" y=\"219.55728090000838\" text-anchor=\"end\" style=\"fill:var(--crit);font-size:11px;font-weight:600\">▲ excesso</text>\n    </g></svg>"
+ },
+ "pentagrama com Madeira selecionada": {
+  "svg": "<svg viewBox=\"-80 0 660 480\" class=\"penta\" role=\"img\" aria-label=\"Pentagrama dos cinco elementos com ciclos de geração e controle\">\n  <defs>\n    <marker id=\"ms\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--accent)\"/></marker>\n    <marker id=\"mk\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--muted)\"/></marker>\n  </defs><path class=\"sheng dim\" d=\"M304.9,99.7 A160,160 0 0 1 376.0,151.4\" marker-end=\"url(#ms)\"/><path class=\"sheng dim\" d=\"M409.9,255.7 A160,160 0 0 1 382.7,339.3\" marker-end=\"url(#ms)\"/><path class=\"sheng dim\" d=\"M294.0,403.8 A160,160 0 0 1 206.0,403.8\" marker-end=\"url(#ms)\"/><path class=\"sheng hi\" d=\"M117.3,339.3 A160,160 0 0 1 90.1,255.7\" marker-end=\"url(#ms)\"/><path class=\"sheng hi\" d=\"M124.0,151.4 A160,160 0 0 1 195.1,99.7\" marker-end=\"url(#ms)\"/><path class=\"ke dim\" d=\"M266.7,141.4 L327.4,328.1\" marker-end=\"url(#mk)\"/><path class=\"ke dim\" d=\"M358.5,232.3 L199.6,347.7\" marker-end=\"url(#mk)\"/><path class=\"ke hi\" d=\"M300.4,347.7 L141.5,232.3\" marker-end=\"url(#mk)\"/><path class=\"ke dim\" d=\"M172.6,328.1 L233.3,141.4\" marker-end=\"url(#mk)\"/><path class=\"ke hi\" d=\"M151.8,200.6 L348.2,200.6\" marker-end=\"url(#mk)\"/><g class=\"node\" data-act=\"el\" data-e=\"fogo\" tabindex=\"0\" role=\"button\" aria-label=\"Fogo\" style=\"opacity:1\">\n      <circle cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:var(--fire);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:none;stroke:var(--fire);stroke-width:3\" />\n      <text x=\"250\" y=\"88\" text-anchor=\"middle\" style=\"fill:var(--fire);font-size:28px;font-weight:600\">火</text>\n      <text x=\"250\" y=\"110\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Fogo</text>\n      <text x=\"250\" y=\"18\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Coração · Alegria</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"terra\" tabindex=\"0\" role=\"button\" aria-label=\"Terra\" style=\"opacity:1\">\n      <circle cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:var(--earth);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:none;stroke:var(--earth);stroke-width:3\" />\n      <text x=\"402.1690426072246\" y=\"198.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--earth);font-size:28px;font-weight:600\">土</text>\n      <text x=\"402.1690426072246\" y=\"220.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Terra</text>\n      <text x=\"458.1690426072246\" y=\"204.5572809000084\" text-anchor=\"start\" style=\"fill:var(--muted);font-size:11.5px\">Baço · Preocupação</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"metal\" tabindex=\"0\" role=\"button\" aria-label=\"Metal\" style=\"opacity:1\">\n      <circle cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--metal);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--metal);stroke-width:3\" />\n      <text x=\"344.04564036679574\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--metal);font-size:28px;font-weight:600\">金</text>\n      <text x=\"344.04564036679574\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Metal</text>\n      <text x=\"344.04564036679574\" y=\"442.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Pulmão · Tristeza</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"agua\" tabindex=\"0\" role=\"button\" aria-label=\"Água\" style=\"opacity:1\">\n      <circle cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--water);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--water);stroke-width:3\" />\n      <text x=\"155.95435963320432\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--water);font-size:28px;font-weight:600\">水</text>\n      <text x=\"155.95435963320432\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Água</text>\n      <text x=\"99.95435963320432\" y=\"383.44271909999156\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Rim · Medo</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"madeira\" tabindex=\"0\" role=\"button\" aria-label=\"Madeira\" style=\"opacity:1\">\n      <circle cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:var(--wood);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:none;stroke:var(--wood);stroke-width:6\" />\n      <text x=\"97.83095739277545\" y=\"198.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--wood);font-size:28px;font-weight:600\">木</text>\n      <text x=\"97.83095739277545\" y=\"220.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Madeira</text>\n      <text x=\"41.830957392775446\" y=\"204.55728090000838\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Fígado · Raiva</text><text x=\"41.830957392775446\" y=\"219.55728090000838\" text-anchor=\"end\" style=\"fill:var(--crit);font-size:11px;font-weight:600\">▲ excesso</text>\n    </g></svg>"
+ },
+ "pentagrama sem ciclo Sheng": {
+  "svg": "<svg viewBox=\"-80 0 660 480\" class=\"penta\" role=\"img\" aria-label=\"Pentagrama dos cinco elementos com ciclos de geração e controle\">\n  <defs>\n    <marker id=\"ms\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--accent)\"/></marker>\n    <marker id=\"mk\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--muted)\"/></marker>\n  </defs><path class=\"ke dim\" d=\"M266.7,141.4 L327.4,328.1\" marker-end=\"url(#mk)\"/><path class=\"ke hi\" d=\"M358.5,232.3 L199.6,347.7\" marker-end=\"url(#mk)\"/><path class=\"ke dim\" d=\"M300.4,347.7 L141.5,232.3\" marker-end=\"url(#mk)\"/><path class=\"ke hi\" d=\"M172.6,328.1 L233.3,141.4\" marker-end=\"url(#mk)\"/><path class=\"ke dim\" d=\"M151.8,200.6 L348.2,200.6\" marker-end=\"url(#mk)\"/><g class=\"node\" data-act=\"el\" data-e=\"fogo\" tabindex=\"0\" role=\"button\" aria-label=\"Fogo\" style=\"opacity:1\">\n      <circle cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:var(--fire);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:none;stroke:var(--fire);stroke-width:3\" />\n      <text x=\"250\" y=\"88\" text-anchor=\"middle\" style=\"fill:var(--fire);font-size:28px;font-weight:600\">火</text>\n      <text x=\"250\" y=\"110\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Fogo</text>\n      <text x=\"250\" y=\"18\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Coração · Alegria</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"terra\" tabindex=\"0\" role=\"button\" aria-label=\"Terra\" style=\"opacity:1\">\n      <circle cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:var(--earth);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:none;stroke:var(--earth);stroke-width:3\" />\n      <text x=\"402.1690426072246\" y=\"198.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--earth);font-size:28px;font-weight:600\">土</text>\n      <text x=\"402.1690426072246\" y=\"220.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Terra</text>\n      <text x=\"458.1690426072246\" y=\"204.5572809000084\" text-anchor=\"start\" style=\"fill:var(--muted);font-size:11.5px\">Baço · Preocupação</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"metal\" tabindex=\"0\" role=\"button\" aria-label=\"Metal\" style=\"opacity:1\">\n      <circle cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--metal);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--metal);stroke-width:3\" />\n      <text x=\"344.04564036679574\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--metal);font-size:28px;font-weight:600\">金</text>\n      <text x=\"344.04564036679574\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Metal</text>\n      <text x=\"344.04564036679574\" y=\"442.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Pulmão · Tristeza</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"agua\" tabindex=\"0\" role=\"button\" aria-label=\"Água\" style=\"opacity:1\">\n      <circle cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--water);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--water);stroke-width:5\" />\n      <text x=\"155.95435963320432\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--water);font-size:28px;font-weight:600\">水</text>\n      <text x=\"155.95435963320432\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Água</text>\n      <text x=\"99.95435963320432\" y=\"383.44271909999156\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Rim · Medo</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"madeira\" tabindex=\"0\" role=\"button\" aria-label=\"Madeira\" style=\"opacity:1\">\n      <circle cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:var(--wood);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:none;stroke:var(--wood);stroke-width:6\" />\n      <text x=\"97.83095739277545\" y=\"198.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--wood);font-size:28px;font-weight:600\">木</text>\n      <text x=\"97.83095739277545\" y=\"220.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Madeira</text>\n      <text x=\"41.830957392775446\" y=\"204.55728090000838\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Fígado · Raiva</text><text x=\"41.830957392775446\" y=\"219.55728090000838\" text-anchor=\"end\" style=\"fill:var(--crit);font-size:11px;font-weight:600\">▲ excesso</text>\n    </g></svg>"
+ },
+ "pentagrama sem ciclo Ke": {
+  "svg": "<svg viewBox=\"-80 0 660 480\" class=\"penta\" role=\"img\" aria-label=\"Pentagrama dos cinco elementos com ciclos de geração e controle\">\n  <defs>\n    <marker id=\"ms\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--accent)\"/></marker>\n    <marker id=\"mk\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--muted)\"/></marker>\n  </defs><path class=\"sheng \" d=\"M304.9,99.7 A160,160 0 0 1 376.0,151.4\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M409.9,255.7 A160,160 0 0 1 382.7,339.3\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M294.0,403.8 A160,160 0 0 1 206.0,403.8\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M117.3,339.3 A160,160 0 0 1 90.1,255.7\" marker-end=\"url(#ms)\"/><path class=\"sheng \" d=\"M124.0,151.4 A160,160 0 0 1 195.1,99.7\" marker-end=\"url(#ms)\"/><g class=\"node\" data-act=\"el\" data-e=\"fogo\" tabindex=\"0\" role=\"button\" aria-label=\"Fogo\" style=\"opacity:1\">\n      <circle cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:var(--fire);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:none;stroke:var(--fire);stroke-width:3\" />\n      <text x=\"250\" y=\"88\" text-anchor=\"middle\" style=\"fill:var(--fire);font-size:28px;font-weight:600\">火</text>\n      <text x=\"250\" y=\"110\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Fogo</text>\n      <text x=\"250\" y=\"18\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Coração · Alegria</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"terra\" tabindex=\"0\" role=\"button\" aria-label=\"Terra\" style=\"opacity:1\">\n      <circle cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:var(--earth);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:none;stroke:var(--earth);stroke-width:3\" />\n      <text x=\"402.1690426072246\" y=\"198.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--earth);font-size:28px;font-weight:600\">土</text>\n      <text x=\"402.1690426072246\" y=\"220.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Terra</text>\n      <text x=\"458.1690426072246\" y=\"204.5572809000084\" text-anchor=\"start\" style=\"fill:var(--muted);font-size:11.5px\">Baço · Preocupação</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"metal\" tabindex=\"0\" role=\"button\" aria-label=\"Metal\" style=\"opacity:1\">\n      <circle cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--metal);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--metal);stroke-width:3\" />\n      <text x=\"344.04564036679574\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--metal);font-size:28px;font-weight:600\">金</text>\n      <text x=\"344.04564036679574\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Metal</text>\n      <text x=\"344.04564036679574\" y=\"442.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Pulmão · Tristeza</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"agua\" tabindex=\"0\" role=\"button\" aria-label=\"Água\" style=\"opacity:1\">\n      <circle cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--water);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--water);stroke-width:3\" />\n      <text x=\"155.95435963320432\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--water);font-size:28px;font-weight:600\">水</text>\n      <text x=\"155.95435963320432\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Água</text>\n      <text x=\"99.95435963320432\" y=\"383.44271909999156\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Rim · Medo</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"madeira\" tabindex=\"0\" role=\"button\" aria-label=\"Madeira\" style=\"opacity:1\">\n      <circle cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:var(--wood);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:none;stroke:var(--wood);stroke-width:6\" />\n      <text x=\"97.83095739277545\" y=\"198.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--wood);font-size:28px;font-weight:600\">木</text>\n      <text x=\"97.83095739277545\" y=\"220.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Madeira</text>\n      <text x=\"41.830957392775446\" y=\"204.55728090000838\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Fígado · Raiva</text><text x=\"41.830957392775446\" y=\"219.55728090000838\" text-anchor=\"end\" style=\"fill:var(--crit);font-size:11px;font-weight:600\">▲ excesso</text>\n    </g></svg>"
+ },
+ "pentagrama Rafael": {
+  "svg": "<svg viewBox=\"-80 0 660 480\" class=\"penta\" role=\"img\" aria-label=\"Pentagrama dos cinco elementos com ciclos de geração e controle\">\n  <defs>\n    <marker id=\"ms\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--accent)\"/></marker>\n    <marker id=\"mk\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0L10,5L0,10z\" style=\"fill:var(--muted)\"/></marker>\n  </defs><path class=\"sheng dim\" d=\"M304.9,99.7 A160,160 0 0 1 376.0,151.4\" marker-end=\"url(#ms)\"/><path class=\"sheng dim\" d=\"M409.9,255.7 A160,160 0 0 1 382.7,339.3\" marker-end=\"url(#ms)\"/><path class=\"sheng hi\" d=\"M294.0,403.8 A160,160 0 0 1 206.0,403.8\" marker-end=\"url(#ms)\"/><path class=\"sheng hi\" d=\"M117.3,339.3 A160,160 0 0 1 90.1,255.7\" marker-end=\"url(#ms)\"/><path class=\"sheng dim\" d=\"M124.0,151.4 A160,160 0 0 1 195.1,99.7\" marker-end=\"url(#ms)\"/><path class=\"ke dim\" d=\"M266.7,141.4 L327.4,328.1\" marker-end=\"url(#mk)\"/><path class=\"ke hi\" d=\"M358.5,232.3 L199.6,347.7\" marker-end=\"url(#mk)\"/><path class=\"ke dim\" d=\"M300.4,347.7 L141.5,232.3\" marker-end=\"url(#mk)\"/><path class=\"ke hi\" d=\"M172.6,328.1 L233.3,141.4\" marker-end=\"url(#mk)\"/><path class=\"ke dim\" d=\"M151.8,200.6 L348.2,200.6\" marker-end=\"url(#mk)\"/><g class=\"node\" data-act=\"el\" data-e=\"fogo\" tabindex=\"0\" role=\"button\" aria-label=\"Fogo\" style=\"opacity:1\">\n      <circle cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:var(--fire);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"250\" cy=\"90\" r=\"46\" style=\"fill:none;stroke:var(--fire);stroke-width:3\" />\n      <text x=\"250\" y=\"88\" text-anchor=\"middle\" style=\"fill:var(--fire);font-size:28px;font-weight:600\">火</text>\n      <text x=\"250\" y=\"110\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Fogo</text>\n      <text x=\"250\" y=\"18\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Coração · Alegria</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"terra\" tabindex=\"0\" role=\"button\" aria-label=\"Terra\" style=\"opacity:1\">\n      <circle cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:var(--earth);fill-opacity:0.08\"/>\n      <circle class=\"ring\" cx=\"402.1690426072246\" cy=\"200.5572809000084\" r=\"46\" style=\"fill:none;stroke:var(--earth);stroke-width:3\" stroke-dasharray=\"6 5\"/>\n      <text x=\"402.1690426072246\" y=\"198.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--earth);font-size:28px;font-weight:600\">土</text>\n      <text x=\"402.1690426072246\" y=\"220.5572809000084\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Terra</text>\n      <text x=\"458.1690426072246\" y=\"204.5572809000084\" text-anchor=\"start\" style=\"fill:var(--muted);font-size:11.5px\">Baço · Preocupação</text><text x=\"458.1690426072246\" y=\"219.5572809000084\" text-anchor=\"start\" style=\"fill:var(--warn);font-size:11px;font-weight:600\">▼ deficiência</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"metal\" tabindex=\"0\" role=\"button\" aria-label=\"Metal\" style=\"opacity:1\">\n      <circle cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--metal);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"344.04564036679574\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--metal);stroke-width:3\" />\n      <text x=\"344.04564036679574\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--metal);font-size:28px;font-weight:600\">金</text>\n      <text x=\"344.04564036679574\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Metal</text>\n      <text x=\"344.04564036679574\" y=\"442.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--muted);font-size:11.5px\">Pulmão · Tristeza</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"agua\" tabindex=\"0\" role=\"button\" aria-label=\"Água\" style=\"opacity:1\">\n      <circle cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:var(--water);fill-opacity:0.08\"/>\n      <circle class=\"ring\" cx=\"155.95435963320432\" cy=\"379.44271909999156\" r=\"46\" style=\"fill:none;stroke:var(--water);stroke-width:5\" stroke-dasharray=\"6 5\"/>\n      <text x=\"155.95435963320432\" y=\"377.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--water);font-size:28px;font-weight:600\">水</text>\n      <text x=\"155.95435963320432\" y=\"399.44271909999156\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Água</text>\n      <text x=\"99.95435963320432\" y=\"383.44271909999156\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Rim · Medo</text><text x=\"99.95435963320432\" y=\"398.44271909999156\" text-anchor=\"end\" style=\"fill:var(--warn);font-size:11px;font-weight:600\">▼ deficiência</text>\n    </g><g class=\"node\" data-act=\"el\" data-e=\"madeira\" tabindex=\"0\" role=\"button\" aria-label=\"Madeira\" style=\"opacity:1\">\n      <circle cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:var(--wood);fill-opacity:0.18\"/>\n      <circle class=\"ring\" cx=\"97.83095739277545\" cy=\"200.55728090000838\" r=\"46\" style=\"fill:none;stroke:var(--wood);stroke-width:3\" />\n      <text x=\"97.83095739277545\" y=\"198.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--wood);font-size:28px;font-weight:600\">木</text>\n      <text x=\"97.83095739277545\" y=\"220.55728090000838\" text-anchor=\"middle\" style=\"fill:var(--ink);font-size:13px;font-weight:600\">Madeira</text>\n      <text x=\"41.830957392775446\" y=\"204.55728090000838\" text-anchor=\"end\" style=\"fill:var(--muted);font-size:11.5px\">Fígado · Raiva</text>\n    </g></svg>"
+ },
+ "gráfico EVA 7-6-4": {
+  "svg": "<svg class=\"spark\" width=\"120\" height=\"32\" viewBox=\"0 0 120 32\" aria-label=\"Evolução EVA 7, 6, 4\"><path class=\"a\" d=\"M4.0,11.2L60.0,13.6L116.0,18.4L116,32L4,32z\"/><path class=\"l\" d=\"M4.0,11.2L60.0,13.6L116.0,18.4\"/><circle cx=\"116\" cy=\"18.4\" r=\"3\"/></svg>"
+ },
+ "gráfico EVA um valor": {
+  "svg": "<span class=\"muted mono\">5</span>"
+ },
+ "gráfico EVA vazio": {
+  "svg": "<span class=\"muted mono\">–</span>"
+ }
+}
