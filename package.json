@@ -1,0 +1,11 @@
+{
+  "name": "sistema-spazio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/comparar.mjs",
+    "referencia": "node tests/gerar-referencia.mjs",
+    "build": "node tools/build.mjs",
+    "dev": "node tools/servidor.mjs"
+  }
+}
