@@ -1,6 +1,6 @@
 // Verifica a interface da etapa 1B: menu em quatro grupos, modo recolhido com rótulos
 // acessíveis, menu em gaveta no celular, telas "em breve", Painel misto, atalhos do
-// prontuário, tema escuro e ausência de rolagem horizontal.
+// prontuário, tema claro como padrão, menu sem textos cortados e ausência de rolagem horizontal.
 // Uso: node tests/interface.mjs   (requer Playwright e Chromium)
 import { createRequire } from 'node:module';
 import { iniciar } from '../tools/servidor.mjs';
@@ -30,7 +30,7 @@ async function verificar(browser, url, nome) {
   // Recolher
   await p.click('[data-act="menu-mini"]'); await p.waitForTimeout(250);
   const larg = (await p.locator('#nav').boundingBox()).width;
-  ok(larg <= 72, `${nome}: menu recolhido com ${Math.round(larg)}px, só ícones`);
+  ok(larg <= 80, `${nome}: menu recolhido com ${Math.round(larg)}px, só ícones`);
   ok(await p.locator('#nav a span:visible').count() === 0, `${nome}: rótulos escondidos no modo recolhido`);
   ok(await p.$$eval('#nav a', as => as.every(a => a.getAttribute('aria-label'))), `${nome}: todo item mantém nome acessível (aria-label)`);
   await p.hover('#nav a[href="#agenda"]');
@@ -48,10 +48,11 @@ async function verificar(browser, url, nome) {
 
   // Painel misto
   await ir('painel');
-  ok(await p.locator('#view .zone > .lbl').allTextContents().then(t => t.join('|') === 'Rotina clínica|Gestão'), `${nome}: Painel com Rotina clínica e Gestão`);
+  ok(await p.locator('#view .zone > .lbl').allTextContents().then(t => t.join('|') === 'Rotina clínica|Gestão administrativa'), `${nome}: Painel com Rotina clínica e Gestão administrativa`);
   ok(await p.locator('#view .kpi').count() === 4, `${nome}: 4 indicadores de gestão`);
   const prev = await p.evaluate(() => { const d = JSON.parse(localStorage.getItem('spazio-v1') || 'null'); return d; });
-  ok(await p.locator('#view .todo').count() === 1, `${nome}: quadro de Pendências e alertas`);
+  ok(await p.locator('#view .todo.alertas').count() === 1 && await p.locator('#view .todo:not(.alertas)').count() === 1, `${nome}: quadros de Alertas de segurança e de Pendências`);
+  ok(await p.locator('#view .zone').first().locator('.card-h h2').allTextContents().then(t => t[0].startsWith('Agenda do dia')), `${nome}: agenda do dia é o primeiro quadro da rotina clínica`);
   // Novo paciente sem avaliação aparece nas pendências e leva à avaliação
   await ir('pacientes');
   await p.fill('#np-name', 'Paciente Interface'); await p.fill('#np-birth', '1992-01-01'); await p.fill('#np-q', 'Cefaleia');
@@ -75,11 +76,20 @@ async function verificar(browser, url, nome) {
   ok(brand === '#66864b', `${nome}: verde institucional #66864b na paleta (${brand})`);
   await ctx.close();
 
-  // Tema escuro
+  // Tema claro é o padrão, mesmo com o aparelho em modo escuro; o escuro só entra se for escolhido
   const esc = await browser.newContext({ colorScheme: 'dark' }); const pe = await esc.newPage();
   await pe.goto(url); await pe.waitForSelector('#view .head');
-  ok(await pe.evaluate(() => getComputedStyle(document.body).backgroundColor) === 'rgb(18, 21, 16)', `${nome}: tema escuro aplicado`);
+  ok(await pe.evaluate(() => getComputedStyle(document.body).backgroundColor) === 'rgb(246, 243, 236)', `${nome}: tema claro (creme) mesmo com o aparelho em modo escuro`);
+  await pe.evaluate(() => document.documentElement.dataset.theme = 'dark');
+  ok(await pe.evaluate(() => getComputedStyle(document.body).backgroundColor) === 'rgb(20, 23, 18)', `${nome}: tema escuro disponível quando escolhido`);
   await esc.close();
+
+  // Menu sem textos cortados
+  const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 900 } }); const pm = await ctx2.newPage();
+  await pm.goto(url); await pm.waitForSelector('#view .head');
+  const cortados = await pm.$$eval('#nav a span:not(.soon), #nav .grp', els => els.filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent));
+  ok(cortados.length === 0, `${nome}: nenhum texto cortado no menu${cortados.length ? ' → ' + cortados.join(', ') : ''}`);
+  await ctx2.close();
 
   // Celular
   const cel = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });

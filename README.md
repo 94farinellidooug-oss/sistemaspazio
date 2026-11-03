@@ -69,12 +69,18 @@ Os dados ficam no `localStorage` do navegador, na chave `spazio-v1`, no mesmo fo
 - Um endereço diferente (outro site, `localhost` ou o disco) começa sem dados, como acontecia com o próprio v1.
 
 
-## Ambiente de demonstração (preview)
+## Versão oficial e ambiente de demonstração (Vercel)
 
-O sistema é publicado na Vercel apenas para demonstração, com dados fictícios. Não é ambiente de produção e não deve receber dados reais de pacientes.
+A `main` é a única versão oficial do MUSUBI. Ela contém:
 
-- A Vercel publica automaticamente **cada branch e cada pull request** num link de preview próprio, sem precisar de merge na `main`.
-- A branch `main` não é publicada (`git.deploymentEnabled.main: false` no `vercel.json`), então nada é promovido para Production.
-- A publicação roda `npm run build` e usa a pasta `dist` como Output Directory. O endereço principal do preview (`/`) abre `dist/spazio.html`.
+- o sistema (`index.html`, `css/`, `js/`, gerado em `dist/spazio.html`), com o tema claro aprovado;
+- a proposta visual aprovada do MUSUBI em `proposta/`, que é a referência de design para as próximas etapas. Ela usa os módulos clínicos sem alterá-los e só dados fictícios em memória;
+- o protótipo original intacto em `legacy/` (também preservado na branch `backup/v1.0-prototipo`).
+
+Publicação na Vercel (projeto `spazio3/sistemaspazio`), só para demonstração com dados fictícios. Não é ambiente de produção clínica e não deve receber dados reais de pacientes.
+
+- Cada envio para a `main` atualiza o domínio principal do projeto. Outras branches e pull requests geram links de preview próprios.
+- O build roda `npm run build` e monta a pasta `site/`: `/` abre a proposta aprovada (`/proposta/`) e `/spazio.html` abre o sistema.
 - O ambiente não aparece em buscadores (cabeçalho `X-Robots-Tag: noindex`) e não usa cache.
 - Os dados digitados ficam só no navegador de quem está testando (`localStorage`). Nada é enviado à Vercel.
+- Para voltar a uma versão anterior: na Vercel, use "Instant Rollback" num deploy antigo; no Git, reverta o merge correspondente na `main`.

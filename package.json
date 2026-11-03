@@ -8,7 +8,8 @@
     "test:tudo": "npm test && npm run build && npm run test:navegador",
     "referencia": "node tests/gerar-referencia.mjs",
     "build": "node tools/build.mjs",
-    "dev": "node tools/servidor.mjs"
+    "dev": "node tools/servidor.mjs",
+    "test:proposta": "node tests/proposta-layout.mjs"
   },
   "engines": {
     "node": ">=18"
