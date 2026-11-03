@@ -19,7 +19,7 @@ for (const hora of HORAS) for (const [w,h] of TELAS) {
   p.on('pageerror', e => erros.push(e.message)); p.on('console', m => { if (m.type()==='error') erros.push(m.text()); });
   const hoje = new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});
   await p.clock.setFixedTime(new Date(`${hoje}T${hora}:00-03:00`));
-  await p.goto(base); await p.waitForSelector('#view .head, #view .migalha');
+  await p.goto(base); await p.waitForSelector('#view .head, #view .at-top', { timeout: 5000 });
   for (const r of ROTAS) {
     await p.evaluate(x => { location.hash = '/' + x; }, r); await p.waitForTimeout(40);
     const prob = await p.evaluate(() => {
