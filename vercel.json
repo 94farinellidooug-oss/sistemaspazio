@@ -2,22 +2,32 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "echo 'O preview não precisa de dependências'",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "npm run build && rm -rf site && mkdir site && cp -r css js proposta site/ && cp dist/spazio.html site/",
+  "outputDirectory": "site",
   "git": {
     "deploymentEnabled": {
       "main": false
     }
   },
-  "rewrites": [
-    { "source": "/", "destination": "/spazio.html" }
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/proposta/",
+      "permanent": false
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
-        { "key": "Cache-Control", "value": "no-store" }
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
       ]
     }
   ]
