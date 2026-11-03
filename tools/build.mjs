@@ -23,10 +23,11 @@ const js = ordem.map(arq => ler(arq)
   .replace(/^\/\/ .*\n/, '')       // comentário de cabeçalho do módulo
   .replace(/^\n+/, '')).join('');
 
-const css = ['css/tokens.css', 'css/componentes.css'].map(p => ler(p).replace(/^\/\*[^*]*\*\/\n/, '')).join('');
+const css = ['css/tokens.css', 'css/componentes.css', 'css/musubi.css'].map(p => ler(p).replace(/^\/\*[^*]*\*\/\n/, '')).join('');
 const index = ler('index.html');
 const cabeca = index.slice(index.indexOf('<title>'), index.indexOf('<link rel="stylesheet" href="css/tokens.css">'));
-const corpo = index.slice(index.indexOf('<link rel="stylesheet" href="css/componentes.css">') + '<link rel="stylesheet" href="css/componentes.css">\n'.length, index.indexOf('<script type="module"'));
+const ultimoCss = '<link rel="stylesheet" href="css/musubi.css">\n';
+const corpo = index.slice(index.indexOf(ultimoCss) + ultimoCss.length, index.indexOf('<script type="module"'));
 
 mkdirSync(join(RAIZ, 'dist'), { recursive: true });
 // charset e viewport garantem acentos corretos e layout de celular quando o arquivo é aberto direto do disco.

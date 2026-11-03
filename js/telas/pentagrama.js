@@ -8,7 +8,9 @@ import { elemState } from '../raciocinio/avaliacao.js';
 import { esc, fmt } from '../util.js';
 
 export function vPentagrama(){
-  const p=patient(ui.pid), a=p?.assess.at(-1), st=a?elemState(a.signs,a.status):null, e=ui.el;
+  const p=patient(ui.pid);
+  ui.crumbs=p?[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Pentagrama']]:[];
+  const a=p?.assess.at(-1), st=a?elemState(a.signs,a.status):null, e=ui.el;
   let det='<p class="muted">Clique em um elemento para ver correspondências, funções e relações.</p>';
   if(e){
     const E=EL[e], s=st?st[e]:{def:0,exc:0}, kind=s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';

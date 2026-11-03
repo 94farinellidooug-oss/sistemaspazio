@@ -2,12 +2,13 @@
 import { elTag } from '../componentes/campos.js';
 import { CAUT, MER, POINTS } from '../conhecimento/pontos.js';
 import { ui } from '../estado.js';
+import { ic } from '../componentes/icones.js';
 import { esc } from '../util.js';
 
 export function vPontos(){
-  return `<div class="head"><div><h1>Pontos e meridianos</h1><p>${POINTS.length} pontos de uso frequente, com localização e cautelas</p></div></div>
+  return `<div class="head"><div><h1>Biblioteca clínica</h1><p>Pontos e meridianos · ${POINTS.length} pontos de uso frequente, com localização e cautelas</p></div></div>
   <div class="card" style="margin-bottom:16px;display:grid;gap:10px">
-    <div class="field"><label class="lbl" for="pt-q">Buscar por código, nome ou ação</label><input id="pt-q" value="${esc(ui.ptQ)}" placeholder="Ex.: Shen, umidade, BP6"></div>
+    <div class="field"><label class="lbl" for="pt-q">Buscar por código, nome ou ação</label><label class="busca">${ic('busca')}<input id="pt-q" value="${esc(ui.ptQ)}" placeholder="Ex.: Shen, umidade, BP6"></label></div>
     <div class="chips"><button class="chip ${!ui.ptMer?'on':''}" data-act="mer" data-m="">Todos</button>${Object.entries(MER).filter(([k])=>POINTS.some(p=>p.mer===k)).map(([k,[n,e]])=>`<button class="chip ${ui.ptMer===k?'on':''}" data-act="mer" data-m="${k}">${k} · ${n}</button>`).join('')}</div>
   </div>
   <div class="pcards" id="ptlist">${pointCards()}</div>`;
