@@ -7,7 +7,7 @@
   "redirects": [
     {
       "source": "/",
-      "destination": "/proposta/",
+      "destination": "/spazio.html",
       "permanent": false
     }
   ],

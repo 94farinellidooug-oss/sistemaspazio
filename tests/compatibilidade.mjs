@@ -20,7 +20,7 @@ async function abrir(ctx, url) {
   const p = await ctx.newPage(); const erros = [];
   p.on('pageerror', e => erros.push(e.message));
   p.on('console', m => { if (m.type() === 'error') erros.push(m.text()); });
-  await p.goto(url); await p.waitForSelector('#view .head');
+  await p.goto(url); await p.waitForSelector('#view h1');
   return { p, erros };
 }
 const ir = async (p, h) => { await p.evaluate(h => { location.hash = h; }, h); await p.waitForTimeout(50); };
@@ -41,7 +41,7 @@ async function gravarNoOriginal(p) {
 async function conferir(p, nome) {
   await ir(p, 'pacientes');
   ok(await p.locator('#plist', { hasText: 'Paciente Compatibilidade' }).count() === 1, `${nome}: paciente gravado pelo v1 aparece na lista`);
-  await p.click('#plist .row:has-text("Paciente Compatibilidade")'); await p.waitForTimeout(60);
+  await p.click('#plist [data-pid]:has-text("Paciente Compatibilidade")'); await p.waitForTimeout(60);
   await p.click('[data-t="sessoes"]');
   ok(await p.locator('#view', { hasText: 'Sessão gravada pelo v1' }).count() === 1, `${nome}: sessão gravada pelo v1 aparece no prontuário`);
   await p.click('[data-t="resumo"]');
@@ -54,9 +54,9 @@ const browser = await chromium.launch();
 {
   const ctx = await browser.newContext();
   const { p, erros } = await abrir(ctx, arquivo('dist/spazio.html'));
-  for (const r of ['painel', 'agenda', 'pacientes', 'prontuario', 'avaliacao', 'pentagrama', 'pontos']) {
+  for (const r of ['painel', 'agenda', 'pacientes', 'prontuario', 'avaliacao', 'pentagrama', 'pontos', 'biblioteca', 'administracao']) {
     await ir(p, r);
-    ok(await p.locator('#view .head h1').count() === 1, `file:// dist: tela ${r} abre`);
+    ok(await p.locator('#view h1').count() === 1, `file:// dist: tela ${r} abre`);
   }
   ok(erros.length === 0, `file:// dist: sem erros no console${erros.length ? ' → ' + erros.join(' | ') : ''}`);
   await ctx.close();

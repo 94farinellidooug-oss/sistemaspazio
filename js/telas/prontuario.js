@@ -1,9 +1,12 @@
-// Tela Prontuário.
-import { elTag, patientSelect } from '../componentes/campos.js';
-import { spark } from '../componentes/grafico-eva.js';
+// Tela Prontuário (perfil do paciente): resumo com evolução e avaliação, anamnese e alertas,
+// sessões e registro de nova sessão. As abas e os dados gravados são os mesmos de antes.
+import { elTag } from '../componentes/campos.js';
+import { anel, barrasEl, delta, linhas } from '../componentes/graficos.js';
+import { ic, vazio } from '../componentes/icones.js';
 import { pentagram } from '../componentes/pentagrama.js';
 import { PT } from '../conhecimento/pontos.js';
 import { db, patient } from '../dados/repositorio.js';
+import { alertasDe, melhoraPct } from '../dados/indicadores.js';
 import { ui } from '../estado.js';
 import { elemState, evaluate } from '../raciocinio/avaliacao.js';
 import { TODAY, age, esc, fmt, initials } from '../util.js';
@@ -11,22 +14,40 @@ import { TODAY, age, esc, fmt, initials } from '../util.js';
 export function vProntuario(){
   const p=patient(ui.pid)||db.patients[0]; ui.pid=p.id;
   const a=p.assess.at(-1), st=a?elemState(a.signs,a.status):null;
-  const alerts=[p.alerts.gestante&&'Gestante',p.alerts.anticoagulante&&'Anticoagulante',p.alerts.marcapasso&&'Marcapasso'].filter(Boolean);
-  const tabs=[['resumo','Resumo'],['anamnese','Anamnese'],['sessoes','Sessões'],['nova','Registrar sessão']];
+  const alerts=alertasDe(p);
+  const tabs=[['resumo','Resumo','painel'],['anamnese','Anamnese e alertas','folha'],['sessoes','Sessões','lista'],['nova','Registrar sessão','mais']];
+  ui.crumbs=[['#pacientes','Pacientes'],[null,p.name]];
   let body='';
   if(ui.tab==='resumo'){
     const ac = a?evaluate(a.signs).filter(h=>a.status[h.p.id]==='aceito'):[];
-    body=`<div class="grid g-side">
+    const s=p.sessions.map(x=>x.eva), m=melhoraPct(s), a0=p.assess[0];
+    const prox=db.appts.filter(x=>x.pid===p.id&&x.date>=TODAY&&!x.done).sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time))[0];
+    body=`<div class="tiles">
+      <div class="tile"><span class="tico acc">${ic('lista')}</span><div><b class="num">${p.sessions.length}</b><small>sess${p.sessions.length===1?'ão':'ões'}${p.sessions[0]?` desde ${fmt(p.sessions[0].date)}`:''}</small></div></div>
+      <div class="tile">${m!==null?anel(Math.max(0,m)/100,m+'%','var(--ok)'):`<span class="tico">${ic('evolucao')}</span>`}<div><b>${m!==null?(m>0?'Melhora':'Sem melhora'):'Sem evolução'}</b><small>${m!==null?'EVA da queixa principal desde a 1ª sessão':'registre ao menos duas sessões'}</small></div></div>
+      <div class="tile"><span class="tico acc">${ic('yin')}</span><div><b>${p.assess.length?p.assess.length+(p.assess.length===1?' avaliação':' avaliações'):'Sem avaliação'}</b><small>${a?`última em ${fmt(a.date)}`:'avaliação energética pendente'}</small></div></div>
+      <div class="tile"><span class="tico">${ic('agenda')}</span><div><b>${prox?`${fmt(prox.date)} · ${prox.time}`:'—'}</b><small>${prox?esc(prox.tipo):'sem próximo agendamento'}</small></div></div>
+    </div>
+    <div class="grid g-side">
       <div class="grid" style="align-content:start">
-        <div class="card"><h3>Queixa principal</h3><p>${esc(p.queixa)}</p></div>
-        <div class="card"><div class="card-h"><h3>Evolução (EVA)</h3><span class="muted">${p.sessions.length} sessões</span></div>${spark(p.sessions.map(s=>s.eva),320,70)}
-          <div class="muted" style="font-size:.8rem;margin-top:6px">De ${p.sessions[0]?.eva??'–'} para ${p.sessions.at(-1)?.eva??'–'} desde ${p.sessions[0]?fmt(p.sessions[0].date):'–'}</div></div>
-        <div class="card"><div class="card-h"><h3>Padrões validados pelo profissional</h3><a class="btn sm" href="#avaliacao">Nova avaliação</a></div>
-          ${ac.length?ac.map(h=>`<div class="row"><div class="grow"><b>${h.p.nome}</b></div>${elTag(h.p.el)}<span class="pill ${h.p.tipo==='exc'?'crit':'warn'}">${h.p.tipo==='exc'?'excesso':'deficiência'}</span></div>`).join(''):'<p class="muted">Nenhum padrão validado ainda.</p>'}
+        <div class="card"><div class="card-h"><h2>Queixa principal</h2><span class="muted sm">EVA de 0 a 10</span></div>
+          <div class="qc"><div class="qc-h"><b>${esc(p.queixa)}</b></div>
+          ${s.length?`<div class="qc-v"><span class="big">${s.at(-1)}</span><span class="muted">/10</span>${delta(s[0],s.at(-1))}<span class="muted sm">desde a 1ª sessão (${s[0]})</span></div>
+            ${s.length>1?linhas([{cor:'var(--brand)',vals:s,nome:'EVA'}],p.sessions.map(x=>fmt(x.date).slice(0,5)),{w:520,h:170,label:'Evolução da EVA por sessão'}):''}`:'<p class="muted sm">A intensidade aparece com a primeira sessão registrada.</p>'}</div></div>
+        <div class="card"><div class="card-h"><h2>Sessões recentes</h2>${p.sessions.length?`<button class="btn ghost sm" data-act="tab" data-t="sessoes">Ver todas ${ic('dir')}</button>`:''}</div>
+          ${p.sessions.length?`<div class="hist">${[...p.sessions].reverse().slice(0,3).map(x=>`<div class="hi on"><div class="hi-h"><span class="hi-n">${p.sessions.indexOf(x)+1}</span><span class="grow"><b>${fmt(x.date)}</b><small>${esc(x.tec.join(', '))||'sessão'}</small></span><span class="pill">EVA ${x.eva}</span></div>${x.nota?`<div class="hi-b"><p>${esc(x.nota)}</p></div>`:''}</div>`).join('')}</div>`
+            :vazio('lista','Nenhuma sessão','Use “Novo atendimento” para registrar a primeira sessão.')}</div>
+      </div>
+      <div class="grid" style="align-content:start">
+        <div class="card"><div class="card-h"><h2>Mapa dos cinco elementos</h2>${a?`<span class="pill">${fmt(a.date)}</span>`:''}</div>
+          ${st?`${barrasEl(st, p.assess.length>1?elemState(a0.signs,a0.status):null)}${p.assess.length>1?`<p class="muted sm" style="margin-top:6px">Marca vertical: posição na primeira avaliação (${fmt(a0.date)}).</p>`:''}
+            <details class="mais"><summary>Ver pentagrama ${ic('baixo')}</summary>${pentagram(st,null)}</details>`
+          :vazio('yin','Sem avaliação energética','Faça a avaliação para ver o mapa dos cinco elementos.',`<button class="btn sm pri" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliar</button>`)}</div>
+        <div class="card"><div class="card-h"><h2>Padrões validados</h2><a class="btn sm" href="#avaliacao">Nova avaliação</a></div>
+          ${ac.length?ac.map(h=>`<div class="row"><div class="grow"><b>${h.p.nome}</b></div>${elTag(h.p.el)}<span class="pill ${h.p.tipo==='exc'?'crit':'warn'}">${h.p.tipo==='exc'?'excesso':'deficiência'}</span></div>`).join(''):'<p class="muted sm">Nenhum padrão validado.</p>'}
           ${a?.nota?`<p class="muted" style="margin-top:8px">Nota: ${esc(a.nota)}</p>`:''}
         </div>
       </div>
-      <div class="card"><div class="card-h"><h3>Mapa dos cinco elementos</h3><a class="btn ghost sm" href="#pentagrama">Abrir</a></div>${st?pentagram(st,null):'<p class="muted">Faça uma avaliação energética para gerar o mapa.</p>'}<p class="muted" style="font-size:.8rem">Avaliação de ${a?fmt(a.date):'–'}. Anel tracejado indica deficiência; anel espesso indica excesso.</p></div>
     </div>`;
   } else if(ui.tab==='anamnese'){
     const F=[['historia','História da queixa'],['sono','Sono'],['alimentacao','Alimentação e sede'],['evacuacao','Evacuação e micção'],['emocoes','Emoções'],['medicamentos','Medicamentos em uso']];
@@ -50,8 +71,9 @@ export function vProntuario(){
       <div class="card" style="align-self:start"><h3>Sugestões da última avaliação</h3><p class="muted" style="font-size:.82rem;margin-bottom:8px">Pontos ligados aos padrões validados. Clique para adicionar.</p>
       ${a?evaluate(a.signs).filter(h=>a.status[h.p.id]==='aceito').map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${h.p.pontos.map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
   }
-  return `<div class="head"><div style="display:flex;gap:12px;align-items:center"><span class="avatar" style="width:46px;height:46px;font-size:1rem">${initials(p.name)}</span><div><h1>${esc(p.name)}</h1><p>${age(p.birth)} anos · ${esc(p.phone)} ${p.exemplo?'<span class="pill ex">exemplo</span>':''}</p></div></div>
-    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div class="quick" data-novo-1b><button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">Pentagrama</button></div><div class="field" style="min-width:200px"><label class="lbl" for="pr-patient">Paciente</label>${patientSelect('pr-patient',p.id)}</div></div></div>
-    ${alerts.length?`<div class="notice crit" style="margin-bottom:14px"><b>Alertas:</b> ${alerts.join(' · ')}</div>`:''}
-    <div class="tabs" role="tablist">${tabs.map(([k,l])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}">${l}</button>`).join('')}</div>${body}`;
+  return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
+    <div class="meta"><span>${age(p.birth)} anos</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
+    ${alerts.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}</div>`:''}</div>
+    <div class="perfil-a"><button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button><button class="btn pri" data-act="tab" data-t="nova">${ic('play')}Novo atendimento</button></div></div>
+    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${body}`;
 }

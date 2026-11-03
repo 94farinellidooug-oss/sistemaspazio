@@ -1,20 +1,45 @@
 // Teste no navegador: executa o mesmo roteiro de uso no protótipo original (legacy),
-// na versão modular e no arquivo único gerado (dist), e compara o conteúdo de cada tela
-// e os dados salvos.
-// Desde a etapa 1B, o menu e o Painel foram redesenhados de propósito: o menu fica fora
-// da comparação, o Painel é verificado em tests/interface.mjs, e os cabeçalhos das telas
-// são comparados pelo texto, sem os atalhos novos (marcados com data-novo-1b).
+// na versão modular e no arquivo único gerado (dist) e compara, em cada passo, o resultado
+// funcional da tela e, no fim, os dados salvos.
+// Desde a etapa 2A o visual é o do MUSUBI, então o HTML das telas mudou de propósito. Por isso a
+// comparação é do conteúdo funcional: pacientes listados, sinais marcados, hipóteses e status,
+// avisos de segurança, pentagrama (mesmo componente), pontos filtrados, agendamentos, campos da
+// anamnese e alertas, sessões registradas e paciente selecionado. Os dados gravados no navegador
+// (spazio-v1) precisam ser idênticos byte a byte aos do original.
 // Uso: node tests/navegador.mjs   (requer Playwright com Chromium instalado)
 import { createRequire } from 'node:module';
 import { iniciar } from '../tools/servidor.mjs';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
-// Telas redesenhadas na etapa 1B, verificadas em tests/interface.mjs.
+// Telas redesenhadas por completo (Painel), verificadas em tests/interface.mjs.
 const REDESENHADAS = new Set(['abertura', 'tela painel']);
 const ALVOS = { 'original (legacy)': 'legacy/prototipo-v1.html', 'modular': 'index.html', 'arquivo único (dist)': 'dist/spazio.html' };
 // Math.random previsível, para que os ids gerados sejam iguais nas três versões.
 const SEMENTE = () => { let s = 42; Math.random = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648; };
+
+// Resultado funcional da tela, igual para qualquer layout.
+const CONTEUDO = () => {
+  const q = s => [...document.querySelectorAll('#view ' + s)], txt = e => e.textContent.replace(/\s+/g, ' ').trim();
+  const sel = id => document.getElementById(id)?.value ?? null;
+  return JSON.stringify({
+    pacientes: q('#plist [data-pid]').map(e => e.dataset.pid),
+    sinais: q('[data-act="sign"]').filter(b => b.classList.contains('on')).map(b => b.dataset.s),
+    hipoteses: q('[data-act="hyp"]').map(b => `${b.dataset.p}:${b.dataset.st}:${b.textContent.trim()}`),
+    avisos: q('#ns-warn > *').map(txt),
+    pentagrama: q('svg.penta').map(e => e.outerHTML),
+    elemento: q('.corr').map(txt),
+    pontos: q('#ptlist .code').map(txt),
+    meridiano: q('[data-act="mer"].on').map(e => e.dataset.m),
+    agenda: q('.appt').map(e => e.dataset.id + (e.classList.contains('done') ? ':concluido' : '')),
+    semana: q('.week .day h3').map(txt),
+    anamnese: q('[data-anam]').map(e => e.dataset.anam + '=' + e.value),
+    alertas: q('[data-alert]').map(e => e.dataset.alert + '=' + e.checked),
+    sessoes: q('.sess').map(txt),
+    selecionado: [sel('as-patient'), sel('pt-patient'), sel('na-p')],
+    nota: sel('as-nota')
+  });
+};
 
 async function roteiro(browser, url) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -24,15 +49,10 @@ async function roteiro(browser, url) {
   p.on('pageerror', e => erros.push(e.message));
   p.on('console', m => { if (m.type() === 'error') erros.push(m.text()); });
   const fotos = [];
-  const foto = async nome => fotos.push([nome, await p.evaluate(() => {
-    const v = document.getElementById('view').cloneNode(true);
-    v.querySelectorAll('[data-novo-1b]').forEach(e => e.remove());
-    v.querySelectorAll('.head').forEach(h => { h.replaceWith(h.textContent.replace(/\s+/g, ' ').trim()); });
-    return v.innerHTML;
-  })]);
+  const foto = async nome => fotos.push([nome, await p.evaluate(CONTEUDO)]);
   const ir = async h => { await p.evaluate(h => { location.hash = h; }, h); await p.waitForTimeout(60); };
 
-  await p.goto(url); await p.waitForSelector('#view .head');
+  await p.goto(url); await p.waitForSelector('#view h1');
   await foto('abertura');
   for (const r of ['painel', 'agenda', 'pacientes', 'prontuario', 'avaliacao', 'pentagrama', 'pontos']) { await ir(r); await foto('tela ' + r); }
 
@@ -87,12 +107,12 @@ for (const [nome, r] of Object.entries(res)) {
     if (REDESENHADAS.has(etapa)) return;
     const ok = html === ref.fotos[i][1];
     if (!ok) falhas++;
-    if (!ok) console.log(`FALHA ${nome} · ${etapa}`);
+    if (!ok) { const A = JSON.parse(html), B = JSON.parse(ref.fotos[i][1]); console.log(`FALHA ${nome} · ${etapa}: difere em ${Object.keys(A).filter(k => JSON.stringify(A[k]) !== JSON.stringify(B[k])).join(', ')}`); }
   });
   const okDados = r.dados === ref.dados;
   if (!okDados) { falhas++; console.log(`FALHA ${nome} · dados salvos diferentes`); }
   const comparadas = r.fotos.filter(([e]) => !REDESENHADAS.has(e));
-  console.log(`${nome}: ${comparadas.filter(([e, h]) => h === ref.fotos.find(([e2]) => e2 === e)[1]).length} de ${comparadas.length} telas com conteúdo idêntico ao original (Painel redesenhado fica fora); dados salvos ${okDados ? 'idênticos' : 'diferentes'}.`);
+  console.log(`${nome}: ${comparadas.filter(([e, h]) => h === ref.fotos.find(([e2]) => e2 === e)[1]).length} de ${comparadas.length} telas com conteúdo idêntico ao original (conteúdo funcional; Painel redesenhado fica fora); dados salvos ${okDados ? 'idênticos' : 'diferentes'}.`);
 }
 console.log(falhas ? `\n${falhas} diferença(s) encontrada(s).` : '\nRoteiro completo sem erros e com resultado idêntico ao original.');
 process.exit(falhas ? 1 : 0);

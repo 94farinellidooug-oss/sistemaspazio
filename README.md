@@ -1,4 +1,4 @@
-# Sistema Spazio
+# MUSUBI (antes Sistema Spazio)
 
 Plataforma de gestão clínica para acupuntura, Medicina Tradicional Chinesa e terapias integrativas.
 
@@ -49,8 +49,9 @@ No Windows e no macOS, `--with-deps` pode ser omitido.
 | Comando | O que verifica |
 | --- | --- |
 | `npm test` | 51 casos de hipóteses, Ba Gang, cinco elementos, alertas, pentagrama e EVA. O resultado precisa ser idêntico ao gravado a partir do protótipo original. |
-| `npm run test:navegador` | Roda `tests/navegador.mjs`, que executa o mesmo roteiro de uso (cadastro, sessão, avaliação, pentagrama, pontos, agenda) no original, na versão modular e no arquivo único e compara telas e dados salvos. Roda também `tests/compatibilidade.mjs`, que confirma que `dist/spazio.html` abre direto do disco e que os dados da chave `spazio-v1` gravados pelo original continuam acessíveis, nos dois sentidos. |
-| (incluído em `test:navegador`) `tests/interface.mjs` | Verifica a interface da etapa 1B: menu em 4 grupos, modo recolhido com nomes acessíveis, gaveta no celular, telas "em breve", Painel misto, atalhos do prontuário, tema escuro e ausência de rolagem horizontal. |
+| `npm run test:navegador` | Roda `tests/navegador.mjs`, que executa o mesmo roteiro de uso (cadastro, sessão, avaliação, pentagrama, pontos, agenda) no original, na versão modular e no arquivo único e compara, a cada passo, o resultado funcional da tela (pacientes, sinais, hipóteses, avisos, pentagrama, pontos, agenda, anamnese, sessões) e, no fim, os dados salvos, que precisam ser idênticos byte a byte. Roda também `tests/compatibilidade.mjs`, que confirma que `dist/spazio.html` abre direto do disco e que os dados da chave `spazio-v1` gravados pelo original continuam acessíveis, nos dois sentidos. |
+| (incluído em `test:navegador`) `tests/interface.mjs` | Verifica a interface do MUSUBI: menu com 8 módulos, modo recolhido, migalhas, busca global (Ctrl K), notificações, perfil, atalhos de teclado, Painel, acompanhamento que leva à avaliação, atalhos do prontuário, telas "em breve", tema claro e gaveta no celular. |
+| (incluído em `test:navegador`) `tests/layout.mjs sistema` | Abre cada tela em 6 larguras e 5 horários e confirma que nada sai do cartão, nada fixo cobre o conteúdo, não há rolagem horizontal nem erros. `npm run test:layout` roda também no arquivo único e `npm run test:proposta` na proposta aprovada. |
 | `npm run test:tudo` | Tudo acima, na ordem: cálculos, build e navegador. |
 | `npm run referencia` | Regrava a referência a partir de `legacy/`. Só deve ser usado se o próprio original mudar, o que não deve acontecer. |
 
@@ -80,7 +81,7 @@ A `main` é a única versão oficial do MUSUBI. Ela contém:
 Publicação na Vercel (projeto `spazio3/sistemaspazio`), só para demonstração com dados fictícios. Não é ambiente de produção clínica e não deve receber dados reais de pacientes.
 
 - Cada envio para a `main` atualiza o domínio principal do projeto. Outras branches e pull requests geram links de preview próprios.
-- O build roda `npm run build` e monta a pasta `site/`: `/` abre a proposta aprovada (`/proposta/`) e `/spazio.html` abre o sistema.
+- O build roda `npm run build` e monta a pasta `site/`: `/` abre o sistema (`/spazio.html`) e `/proposta/` abre a proposta aprovada, como referência.
 - O ambiente não aparece em buscadores (cabeçalho `X-Robots-Tag: noindex`) e não usa cache.
 - Os dados digitados ficam só no navegador de quem está testando (`localStorage`). Nada é enviado à Vercel.
 - Para voltar a uma versão anterior: na Vercel, use "Instant Rollback" num deploy antigo; no Git, reverta o merge correspondente na `main`.
