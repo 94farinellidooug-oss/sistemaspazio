@@ -133,7 +133,7 @@ function vPainel(){
 
   <div class="grid g-side">
     <div class="card"><div class="card-h"><h2>Agenda do dia</h2><a class="btn ghost sm" href="#/agenda">Semana ${ic('dir')}</a></div>
-      <div class="tl">${hoje.map(a=>{const p=P(a.pid),q=queixas(p)[0];return `<div class="tl-i ${a.done?'feito':''} ${a===prox?'agora':''}"><span class="tl-h">${a.time}</span><span class="tl-dot"></span>
+      <div class="tl">${hoje.map(a=>{const p=P(a.pid),q=queixas(p)[0];return `<div class="tl-i ${a.done?'feito':''} ${a===prox?'proximo':''}"><span class="tl-h">${a.time}</span><span class="tl-dot"></span>
         <a class="tl-c" href="#/paciente/${p.id}"><span class="avatar">${initials(p.name)}</span><span class="grow"><b class="trunc">${esc(p.name)}</b><small class="trunc">${esc(a.tipo)}</small></span>
         ${alertas(p).length?`<span class="pill crit" title="${alertas(p).join(', ')}">${ic('escudo')}</span>`:''}${q.serie.length>1?`<span class="mini-ch" title="Evolução da queixa principal">${linhas([{cor:'var(--brand)',vals:q.serie}],[],{w:90,h:34,mini:1})}</span>`:p.sessions.length?'':'<span class="pill acc">1ª consulta</span>'}</a>
         <a class="btn sm ${a===prox?'pri':''}" href="#/atendimento/${p.id}/0" aria-label="Iniciar atendimento de ${esc(p.name)}">${ic('play')}</a></div>`}).join('')||'<p class="muted">Nenhum atendimento hoje.</p>'}</div></div>
@@ -360,7 +360,7 @@ const MESES=['jun','jul','ago','set','out','nov'];
 /* ---------- Agenda ---------- */
 function vAgenda(){
   const ws=addDays(-((new Date().getDay()+6)%7)), dias=[...Array(6)].map((_,i)=>addDays(i,ws)), H0=8, H1=19, alt=52;
-  const hoje=db.appts.filter(a=>a.date===TODAY);
+  const hoje=db.appts.filter(a=>a.date===TODAY), agoraH=new Date().getHours()+new Date().getMinutes()/60;
   const cor=a=>a.done?'ok':!P(a.pid).sessions.length?'nova':'ag';
   return `<div class="head"><div><h1>Agenda</h1><p>Semana de ${fmt(dias[0])} a ${fmt(dias[5])}</p></div>
     <div class="quick"><div class="seg-c"><button>Dia</button><button class="on">Semana</button><button>Mês</button></div><button class="btn">${ic('esq')}</button><button class="btn">Hoje</button><button class="btn">${ic('dir')}</button><button class="btn pri" data-a="toast" data-m="Novo agendamento: paciente, serviço, horário e valor, como hoje.">${ic('mais')}Agendar</button></div></div>
@@ -370,7 +370,7 @@ function vAgenda(){
       <div class="cal-hs">${[...Array(H1-H0)].map((_,i)=>`<span>${String(H0+i).padStart(2,'0')}:00</span>`).join('')}</div>
       ${dias.map(d=>`<div class="cal-col ${d===TODAY?'hoje':''}">${db.appts.filter(a=>a.date===d).map(a=>{const [h,m]=a.time.split(':').map(Number), top=(h-H0+m/60)*alt, p=P(a.pid);
         return `<a class="ev ${cor(a)}" style="top:${top}px;height:${alt-6}px" href="#/paciente/${p.id}"><b>${a.time} ${esc(p.name.split(' ')[0])}</b><small>${esc(a.tipo)}</small></a>`;}).join('')}
-        ${d===TODAY?`<i class="agora" style="top:${(Math.min(Math.max(new Date().getHours()+new Date().getMinutes()/60,H0),H1)-H0)*alt}px"></i>`:''}</div>`).join('')}
+        ${d===TODAY&&agoraH>=H0&&agoraH<H1?`<i class="cal-agora" style="top:${(agoraH-H0)*alt}px" aria-hidden="true"></i>`:''}</div>`).join('')}
     </div></div>
     <div class="grid" style="align-content:start">
       <div class="card"><h3>Hoje</h3><div class="ag-res">${rosca([['concluídos',hoje.filter(a=>a.done).length,'var(--ok)'],['agendados',hoje.filter(a=>!a.done).length,'var(--brand)']],[hoje.length,'atendimentos'])}
