@@ -794,6 +794,20 @@ input[type=checkbox]{accent-color:var(--brand)}
 .sess p{overflow-wrap:anywhere}
 .corr-g b{overflow-wrap:anywhere}
 @media (max-width:820px){ .sess{grid-template-columns:1fr;gap:6px} .lt-i{gap:10px} .nq{flex-wrap:wrap} }
+
+/* Sistema (etapa 2D): ambiente de atendimento */
+.rasc{display:flex;align-items:center;gap:14px;border-color:var(--accent-line);background:var(--accent-soft)}
+.rasc .grow{display:grid;min-width:0}
+.lt-a{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.lt-a .mais{flex:1;min-width:0}
+.hist-alt{display:grid;gap:6px;font-size:.84rem;margin-top:8px}
+.hist-alt>div{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px}
+.vasos{display:grid;gap:8px}
+.vaso{display:grid;grid-template-columns:170px minmax(0,1fr);gap:10px;align-items:center}
+.vaso .chip{justify-content:flex-start}
+.vaso-n{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:7px 11px;min-width:0;width:100%}
+.docc.off{opacity:.6;cursor:default}
+@media (max-width:820px){ .vaso{grid-template-columns:1fr;gap:6px} .hist-alt>div{grid-template-columns:1fr;gap:0} }
 </style>
 
 
@@ -1032,7 +1046,7 @@ function importar(texto){
 }
 // ov: camada aberta (busca, notif, perfil, atalhos); q/bi: texto e item escolhido na busca global;
 // lidas: notificações já vistas nesta sessão; dia: dia escolhido no calendário do Painel; crumbs: migalhas.
-const ui = { pid:'p1', editPid:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', week:0, pq:'', menuMini:false, menuAberto:false,
+const ui = { pid:'p1', editPid:null, atId:null, etapa:0, atCmp:false, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', week:0, pq:'', menuMini:false, menuAberto:false,
   ov:null, q:'', bi:0, lidas:new Set(), dia:null, crumbs:[] };
 const MER = {P:['Pulmão','metal'],IG:['Intestino Grosso','metal'],E:['Estômago','terra'],BP:['Baço-Pâncreas','terra'],C:['Coração','fogo'],ID:['Intestino Delgado','fogo'],B:['Bexiga','agua'],R:['Rim','agua'],CS:['Circulação-Sexo','fogo'],TA:['Triplo Aquecedor','fogo'],VB:['Vesícula Biliar','madeira'],F:['Fígado','madeira'],VC:['Vaso Concepção',null],VG:['Vaso Governador',null]};
 const POINTS = [
@@ -1310,6 +1324,149 @@ function vAvaliacao(){
     </div>
   </div>`;
 }
+// Pontos e barras levam data-tip, que mostra o valor ao passar o mouse.
+
+// Linhas de 0 a 10 (intensidade da queixa). series: [{vals, cor, nome}], vals pode ter null; o.mini desenha sem eixos.
+function linhas(series, labels, o={}){
+  const W=o.w||640, H=o.h||220, [L,R,T,B]=o.mini?[6,8,6,6]:[28,14,12,26], n=Math.max(2,...series.map(s=>s.vals.length));
+  const x=i=>L+i*(W-L-R)/(n-1), y=v=>T+(1-v/10)*(H-T-B);
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||'Gráfico de evolução')}">`;
+  if(!o.mini) [0,5,10].forEach(v=>s+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L-8}" y="${y(v)+4}" text-anchor="end">${v}</text>`);
+  labels.forEach((l,i)=>s+=`<text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${esc(l)}</text>`);
+  series.forEach((se,k)=>{ if(!se.vals.some(v=>v!=null)) return;
+    // Valores ausentes (null) ficam sem ponto e interrompem a linha (queixa não medida naquele atendimento).
+    const ult=se.vals.reduce((u,v,i)=>v!=null?i:u,-1);
+    const d=se.vals.map((v,i)=>v==null?'':`${i&&se.vals[i-1]!=null?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+    s+=`<g class="se" data-s="${k}"><path d="${d}" fill="none" stroke="${se.cor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    s+=se.vals.map((v,i)=>{ if(v==null) return ''; const tip=o.mini?'':(o.tips?.[i]||`${se.nome?se.nome+' · ':''}${labels[i]||''}: ${String(v).replace('.',',')}`);
+      return `<circle class="${tip?'pt-i':''}" cx="${x(i)}" cy="${y(v)}" r="${i===ult?5:3.5}" fill="${i===ult?se.cor:'var(--surface)'}" stroke="${se.cor}" stroke-width="2" ${tip?`data-tip="${esc(tip)}"`:''}/>`; }).join('')+'</g>';
+  });
+  return s+'</svg>';
+}
+// Barras verticais; a última fica destacada (período atual).
+function barrasV(vals, labels, o={}){
+  const W=o.w||560, H=o.h||190, B=24, T=18, max=Math.max(1,...vals), bw=W/vals.length;
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||'')}">`;
+  [0,.5,1].forEach(f=>s+=`<line class="gl" x1="0" x2="${W}" y1="${H-B-f*(H-B-T)}" y2="${H-B-f*(H-B-T)}"/>`);
+  vals.forEach((v,i)=>{ const h=v/max*(H-B-T), x=i*bw+bw*.22, w=bw*.56, ult=i===vals.length-1;
+    s+=`<rect class="br-i" x="${x}" y="${H-B-h}" width="${w}" height="${Math.max(h,2)}" rx="6" fill="${ult?'var(--brand)':'var(--sage)'}" data-tip="${esc(o.tips?o.tips[i]:`${labels[i]}: ${v}`)}"/><text class="ax" x="${x+w/2}" y="${H-B-h-6}" text-anchor="middle">${v}</text><text class="ax" x="${x+w/2}" y="${H-6}" text-anchor="middle">${esc(labels[i])}</text>`; });
+  return s+'</svg>';
+}
+// Anel de progresso (0 a 1) com texto no centro.
+function anel(pct, txt, cor='var(--brand)'){
+  const r=24, c=2*Math.PI*r;
+  return `<svg class="anel" viewBox="0 0 60 60" width="60" height="60" aria-hidden="true"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--line)" stroke-width="6"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${cor}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(Math.max(0,Math.min(1,pct))*c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 30 30)"/><text x="30" y="34.5" text-anchor="middle">${txt}</text></svg>`;
+}
+// Barras dos cinco elementos a partir do estado calculado pela avaliação (elemState), sem recalcular nada.
+// base: estado da avaliação basal, mostrado como marca vertical.
+const ORDEM_EL = ['madeira','fogo','terra','metal','agua'];
+const tipoEl = s => s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';
+function barrasEl(st, base){
+  const pct = s => Math.min(100,Math.round(Math.max(s.def,s.exc)/1.6*100));
+  return `<div class="elbars">${ORDEM_EL.map(e=>{ const s=st[e], k=tipoEl(s), E=EL[e], b=base?pct(base[e]):null;
+    return `<div class="elb"><span class="han" style="color:${E.cor}">${E.han}</span><span class="nm">${E.nome}</span>
+      <div class="trk">${b!==null?`<i class="base" style="left:${b}%" title="Basal"></i>`:''}<i class="fill ${k}" style="width:${Math.max(k?6:0,pct(s))}%;background:${E.cor}"></i></div>
+      <span class="st ${k}">${k==='exc'?'Excesso':k==='def'?'Deficiência':'Equilíbrio'}</span></div>`;}).join('')}</div>`;
+}
+// Variação entre dois valores de intensidade (queda é melhora).
+const delta = (a,b) => { if(a==null||b==null) return ''; const d=b-a; return `<span class="delta ${d<0?'bom':d>0?'ruim':''}">${d<0?'▼':d>0?'▲':'='} ${Math.abs(d)}</span>`; };
+//
+// Um rascunho fica em p.atendimentos com status 'rascunho'. Ele não aparece nas sessões (p.sessions)
+// nem na exportação para o protótipo: só entra no prontuário quando é finalizado. Campos além do
+// formato da etapa 2B:
+//   inicio, atualizadoEm, etapas (índices das etapas abertas), sintese,
+//   avaliacao:{signs, status, nota} (rascunho; vira um registro em p.avaliacoes ao finalizar),
+//   vasos:{[vaso]:{considerar, nota}}, mapa:{nota}, documentos:[] (estrutura para as etapas 3 a 6),
+//   finalizadoEm.
+// historico registra data e hora de cada alteração; alterações seguidas na mesma etapa, em menos
+// de 5 minutos, ficam num único registro com a hora da última.
+
+const VASOS = ['Chong Mai','Ren Mai','Du Mai','Dai Mai','Yin Qiao Mai','Yang Qiao Mai','Yin Wei Mai','Yang Wei Mai'];
+const ETAPAS = [['anamnese','Anamnese','folha'],['avaliacao','Avaliação energética','yin'],['pentagrama','Pentagrama','estrela'],['sintese','Síntese clínica','camadas'],
+  ['mapa','Mapa corporal','corpo'],['plano','Plano terapêutico','plano'],['evolucao','Evolução','evolucao'],['documentos','Documentos','doc']];
+const JUNTAR_MS = 5 * 60 * 1000;
+
+const rascunhoDe = p => p.atendimentos.find(a => a.status === 'rascunho') || null;
+const atendimentoDe = (p, id) => p.atendimentos.find(a => a.id === id) || null;
+const finalizados = p => p.atendimentos.filter(a => a.status === 'finalizado');
+
+// Cria o rascunho. Intensidades começam no último valor de cada queixa ativa; os sinais começam
+// nos da última avaliação (o profissional desmarca o que mudou). Sem histórico, tudo começa vazio.
+function iniciarAtendimento(p, { id, data }, em){
+  const ult = p.avaliacoes.at(-1);
+  const intensidades = Object.fromEntries(p.queixas.filter(q => q.ativa).map(q => [q.id, serieQueixa(p, q.id).at(-1)?.valor ?? 5]));
+  const a = { id, data, status: 'rascunho', origem: 'sistema', inicio: em, atualizadoEm: em, etapas: [0],
+    plano: { pontos: [], tec: [] }, evolucao: { intensidades, nota: '' }, sintese: '',
+    avaliacao: { signs: ult ? [...ult.signs] : [], status: ult ? { ...ult.status } : {}, nota: '' },
+    vasos: {}, mapa: { nota: '' }, documentos: [], avaliacaoId: null,
+    historico: [{ em, acao: 'atendimento iniciado' }] };
+  p.atendimentos.push(a);
+  return a;
+}
+
+// Registra uma alteração no histórico (rastreabilidade).
+function registrarAlteracao(a, acao, em){
+  const fim = a.status === 'finalizado' ? `${acao} (após finalizar)` : acao;
+  const u = a.historico.at(-1);
+  if (u && u.acao === fim && Date.parse(em) - Date.parse(u.em) < JUNTAR_MS) u.em = em;
+  else a.historico.push({ em, acao: fim });
+  a.atualizadoEm = em;
+}
+
+// Avaliação que o ambiente edita: a do rascunho, ou o registro ligado a um atendimento finalizado.
+function avaliacaoEditavel(p, a){
+  if (a.status === 'rascunho') return a.avaliacao;
+  return p.avaliacoes.find(x => x.id === a.avaliacaoId) || null;
+}
+
+// Finaliza: o atendimento entra no prontuário (mesma posição por data que uma sessão do v1) e a
+// avaliação energética vira um registro próprio, ligado a ele, se a etapa foi aberta e tem sinais.
+function finalizarAtendimento(p, a, em, idAvaliacao){
+  if (a.status !== 'rascunho') return a;
+  const av = a.avaliacao;
+  if (a.etapas.includes(1) && av.signs.length) {
+    p.avaliacoes.push({ id: idAvaliacao, date: a.data, signs: [...av.signs], status: { ...av.status }, nota: av.nota || '', atendimentoId: a.id,
+      historico: [{ em, acao: 'avaliação registrada no atendimento' }] });
+    a.avaliacaoId = idAvaliacao;
+  }
+  delete a.avaliacao;
+  a.status = 'finalizado'; a.finalizadoEm = em; a.atualizadoEm = em;
+  a.historico.push({ em, acao: 'atendimento finalizado' });
+  // Mesma regra do registro de sessão: ordem por data, estável (o mais novo fica depois no mesmo dia).
+  p.atendimentos.splice(p.atendimentos.indexOf(a), 1); p.atendimentos.push(a);
+  p.atendimentos.sort((x, y) => x.data.localeCompare(y.data));
+  return a;
+}
+
+function descartarRascunho(p, a){
+  if (a?.status !== 'rascunho') return false;
+  p.atendimentos.splice(p.atendimentos.indexOf(a), 1);
+  return true;
+}
+
+// Preenchimento de cada etapa (0 a 1), usado nos anéis do cabeçalho. Indica só o que foi
+// registrado; não avalia o conteúdo clínico.
+function preenchimento(p, a, i, H){
+  const av = avaliacaoEditavel(p, a) || { signs: [], status: {} };
+  const vis = a.etapas.includes(i) ? 1 : 0;
+  const anam = Object.values(p.anam).filter(Boolean).length / Math.max(1, Object.keys(p.anam).length);
+  const dec = H.filter(h => av.status[h.p.id]).length;
+  return [Math.min(1, vis * .4 + anam * .6),
+    av.signs.length ? .5 + .5 * (H.length ? dec / H.length : 1) : 0,
+    vis,
+    (Object.values(av.status).includes('aceito') ? .5 : 0) + (a.sintese ? .5 : 0),
+    a.plano.pontos.length || a.mapa.nota ? 1 : vis * .5,
+    (a.plano.pontos.length ? .6 : 0) + (a.plano.tec.length ? .4 : 0),
+    vis * .5 + (a.evolucao.nota ? .5 : 0),
+    a.status === 'finalizado' ? 1 : vis * .5][i];
+}
+
+// Estação do ano pelo mês e hemisfério (contexto sazonal, só informativo).
+function estacao(mes, hemisferio = 'Sul'){
+  const sul = ['Verão','Verão','Outono','Outono','Outono','Inverno','Inverno','Inverno','Primavera','Primavera','Primavera','Verão'][mes];
+  return hemisferio === 'Norte' ? { Verão:'Inverno', Inverno:'Verão', Outono:'Primavera', Primavera:'Outono' }[sul] : sul;
+}
+const ELEMENTO_ESTACAO = { Primavera:'madeira', Verão:'fogo', Outono:'metal', Inverno:'agua' };
 // Não cria números: se um dado não existe, o indicador não aparece.
 
 const ALERTA_NOME = {gestante:'Gestante',anticoagulante:'Anticoagulante',marcapasso:'Marcapasso'};
@@ -1335,6 +1492,324 @@ function notificacoes(){
   db.appts.filter(a=>a.date<TODAY && !a.done).forEach(a=>N.push({k:'at-'+a.id,i:'relogio',t:'warn',titulo:'Agendamento sem conclusão',txt:`${patient(a.pid)?.name||''} · ${fmt(a.date)} ${a.time}`,href:'#agenda'}));
   acompanhamento().forEach(({p,m})=>N.push({k:'ac-'+p.id,i:m[0][0],t:m[0][1],titulo:p.name,txt:m.map(x=>x[2]).join(' · '),pid:p.id}));
   return N;
+}
+// - Resumo: indicadores, queixas com a evolução de cada uma, atendimentos recentes, mapa dos cinco
+//   elementos, padrões validados e dados cadastrais;
+// - Prontuário: evolução das queixas, avaliação basal × atual e linha do tempo dos atendimentos e
+//   reavaliações;
+// - Anamnese e alertas; Registro rápido de sessão (o atendimento completo fica em telas/atendimento.js).
+// Nenhum cálculo clínico é feito aqui: os estados vêm de raciocinio/avaliacao.js, como antes.
+
+const QCOR = ['var(--brand)','#b8894a','#5f7f9c','#9a6b8f','#6f8f8a'];
+const corQ = (p,q) => QCOR[p.queixas.indexOf(q)%QCOR.length];
+const aceitos = a => a?evaluate(a.signs).filter(h=>a.status[h.p.id]==='aceito'):[];
+const ordinal = n => `${n}º`;
+
+// Bloco de uma sessão, com o mesmo conteúdo da lista de sessões do protótipo.
+const sessHtml = s => `<div class="sess"><div><b class="mono">${fmt(s.date)}</b><div class="eva muted">EVA ${s.eva}/10</div></div><div><div class="chips" style="margin-bottom:6px">${s.tec.map(t=>`<span class="pill">${esc(t)}</span>`).join('')}${s.pontos.map(c=>`<span class="pill acc mono" title="${esc(PT[c]?.pinyin||'')}">${esc(c)}</span>`).join('')}</div>${s.nota?`<p>${esc(s.nota)}</p>`:'<p class="muted">Sem anotações.</p>'}</div></div>`;
+
+// Eventos do prontuário em ordem cronológica: atendimentos finalizados e avaliações sem atendimento no dia.
+function eventos(p){
+  const fin=p.atendimentos.filter(a=>a.status==='finalizado'), ss=p.sessions;
+  const E=fin.map((a,i)=>({tipo:'at',data:a.data,n:i+1,a,s:ss[i],av:p.avaliacoes.find(x=>x.id===a.avaliacaoId)}));
+  p.avaliacoes.filter(x=>!x.atendimentoId).forEach(av=>E.push({tipo:'av',data:av.date,av}));
+  return E.sort((x,y)=>x.data.localeCompare(y.data));
+}
+const rotuloAv = (p,av) => av===p.avaliacoes[0]?'avaliação basal':'reavaliação';
+function itemTempo(p,e){
+  if(e.tipo==='av'){ const h=aceitos(e.av);
+    return `<div class="lt-i av"><span class="hi-n">${ic('yin')}</span><div class="grow"><div class="lt-h"><b>${fmt(e.data)}</b><span class="pill acc">${rotuloAv(p,e.av)}</span><span class="muted sm">avaliação energética sem atendimento no dia</span></div>
+      <p class="sm">${e.av.signs.length} sina${e.av.signs.length===1?'l':'is'} observado${e.av.signs.length===1?'':'s'}${h.length?` · padrões validados: ${h.map(x=>esc(x.p.nome)).join(', ')}`:''}</p>${e.av.nota?`<p class="muted sm">${esc(e.av.nota)}</p>`:''}</div></div>`; }
+  const outras=p.queixas.filter(q=>q.id!==QUEIXA_PRINCIPAL&&e.a.evolucao.intensidades[q.id]!=null), h=aceitos(e.av);
+  return `<div class="lt-i"><span class="hi-n">${e.n}</span><div class="grow"><div class="lt-h"><b>${ordinal(e.n)} atendimento</b>${e.av?`<span class="pill acc">${ic('yin')}${rotuloAv(p,e.av)}</span>`:''}${e.a.origem==='v1'?'<span class="pill" data-tip="Registro trazido do protótipo na conversão dos dados">protótipo</span>':''}</div>
+    ${sessHtml(e.s)}
+    ${outras.length?`<div class="chips">${outras.map(q=>`<span class="pill"><i class="dotq" style="background:${corQ(p,q)}"></i>${esc(q.descricao)}: ${e.a.evolucao.intensidades[q.id]}/10</span>`).join('')}</div>`:''}
+    ${h.length?`<p class="muted sm">Padrões validados na avaliação: ${h.map(x=>esc(x.p.nome)).join(', ')}</p>`:''}
+    ${e.a.sintese?`<p class="sm"><b>Síntese:</b> ${esc(e.a.sintese)}</p>`:''}
+    <div class="lt-a">${e.a.historico.length>1?`<details class="mais"><summary>Histórico de alterações (${e.a.historico.length}) ${ic('baixo')}</summary><div class="hist-alt">${[...e.a.historico].reverse().map(x=>`<div><span class="mono muted">${fmt(x.em.slice(0,10))} ${new Date(x.em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span><span>${esc(x.acao)}</span></div>`).join('')}</div></details>`:'<span></span>'}
+      <button class="btn ghost sm" data-act="abrir-atendimento" data-pid="${p.id}" data-id="${e.a.id}">${ic('editar')}Abrir no ambiente</button></div></div></div>`;
+}
+
+function cardQueixas(p){
+  const ativas=p.queixas.filter(q=>q.ativa), resolvidas=p.queixas.filter(q=>!q.ativa);
+  const cartao = q => { const s=serieQueixa(p,q.id).map(x=>x.valor), m=melhoraPct(s), cor=corQ(p,q);
+    return `<div class="qc ${q.ativa?'':'res'}"><div class="qc-h"><i style="background:${cor}"></i><b class="grow">${esc(q.descricao)}</b>${q.id===QUEIXA_PRINCIPAL?'<span class="pill">principal</span>':`<button class="btn ghost sm" data-act="queixa-ativa" data-q="${q.id}">${q.ativa?`${ic('check')}Resolvida`:`${ic('retorno')}Reativar`}</button>`}</div>
+      ${s.length?`<div class="qc-v"><span class="big">${s.at(-1)}</span><span class="muted">/10</span>${delta(s[0],s.at(-1))}<span class="muted sm">desde a 1ª medida (${s[0]})</span></div>
+        ${s.length>1?linhas([{cor,vals:s}],[],{w:300,h:64,mini:1}):''}${m!==null?`<span class="pill ${m>0?'ok':'warn'}" style="justify-self:start">${m>0?'▼ '+m+'% de melhora':'sem melhora'}</span>`:''}`
+      :`<p class="muted sm">${q.id===QUEIXA_PRINCIPAL?'A intensidade aparece com o primeiro atendimento registrado.':'A intensidade passa a ser medida no próximo atendimento.'}</p>`}</div>`; };
+  return `<div class="card"><div class="card-h"><h2>Queixas</h2><span class="muted sm">intensidade de 0 a 10</span></div>
+    <div class="qgrid">${ativas.map(cartao).join('')}</div>
+    <form id="f-queixa" class="nq"><label class="so-leitor" for="nq-desc">Nova queixa</label><input id="nq-desc" placeholder="Adicionar outra queixa (ex.: insônia)" required maxlength="120"><button class="btn sm">${ic('mais')}Adicionar</button></form>
+    ${resolvidas.length?`<details class="mais"><summary>${resolvidas.length} queixa${resolvidas.length===1?' resolvida':'s resolvidas'} ${ic('baixo')}</summary><div class="qgrid" style="margin-top:10px">${resolvidas.map(cartao).join('')}</div></details>`:''}</div>`;
+}
+
+function cardCadastro(p){
+  const c=p.cadastro||{}, v=x=>x?esc(x):'<span class="muted">—</span>';
+  const L=[['Telefone',p.phone],['CPF',c.cpf],['E-mail',c.email],['Cidade',c.cidade?`${c.cidade} · hemisfério ${c.hemisferio||'Sul'}`:''],['Endereço',c.endereco],['Contato de emergência',c.contatoEmergencia],['Nascimento',p.birth?fmt(p.birth):''],['Consentimento LGPD',p.consentimento?`registrado em ${fmt(p.consentimento)}`:'']];
+  return `<div class="card"><div class="card-h"><h2>Dados cadastrais</h2><button class="btn ghost sm" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Editar</button></div>
+    <div class="corr-g">${L.map(([l,x])=>`<div><small>${l}</small><b>${v(x)}</b></div>`).join('')}</div></div>`;
+}
+
+// Aviso de atendimento em andamento (rascunho salvo automaticamente).
+function rascunho(p){
+  const r=rascunhoDe(p); if(!r) return '';
+  return `<div class="card rasc"><span class="tico acc">${ic('play')}</span><div class="grow"><b>Atendimento em andamento</b><small class="muted">Iniciado em ${fmt(r.data)} · salvo automaticamente às ${new Date(r.atualizadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</small></div><button class="btn pri sm" data-act="novo-atendimento" data-pid="${p.id}">Continuar ${ic('dir')}</button></div>`;
+}
+function abaResumo(p){
+  const a=p.assess.at(-1), a0=p.assess[0], st=a?elemState(a.signs,a.status):null, ac=aceitos(a);
+  const ss=p.sessions, s=ss.map(x=>x.eva), m=melhoraPct(s);
+  const prox=db.appts.filter(x=>x.pid===p.id&&x.date>=TODAY&&!x.done).sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time))[0];
+  const E=eventos(p);
+  return `<div class="tiles">
+    <div class="tile"><span class="tico acc">${ic('lista')}</span><div><b class="num">${p.sessions.length}</b><small>atendimento${p.sessions.length===1?'':'s'}${p.sessions[0]?` desde ${fmt(p.sessions[0].date)}`:''}</small></div></div>
+    <div class="tile">${m!==null?anel(Math.max(0,m)/100,m+'%','var(--ok)'):`<span class="tico">${ic('evolucao')}</span>`}<div><b>${m!==null?(m>0?'Melhora':'Sem melhora'):'Sem evolução'}</b><small>${m!==null?'queixa principal, desde o 1º atendimento':'registre ao menos dois atendimentos'}</small></div></div>
+    <div class="tile"><span class="tico acc">${ic('yin')}</span><div><b>${p.assess.length?p.assess.length+(p.assess.length===1?' avaliação':' avaliações'):'Sem avaliação'}</b><small>${a0?`basal em ${fmt(a0.date)}`:'avaliação energética pendente'}</small></div></div>
+    <div class="tile"><span class="tico">${ic('agenda')}</span><div><b>${prox?`${fmt(prox.date)} · ${prox.time}`:'—'}</b><small>${prox?esc(prox.tipo):'sem próximo agendamento'}</small></div></div>
+  </div>
+  <div class="grid g-side">
+    <div class="grid" style="align-content:start">
+      ${rascunho(p)}${cardQueixas(p)}
+      <div class="card"><div class="card-h"><h2>Atendimentos recentes</h2>${E.length?`<button class="btn ghost sm" data-act="tab" data-t="sessoes">Ver prontuário ${ic('dir')}</button>`:''}</div>
+        ${ss.length?`<div class="hist">${ss.map((x,i)=>[x,i+1]).reverse().slice(0,3).map(([x,n])=>`<div class="hi on"><div class="hi-h"><span class="hi-n">${n}</span><span class="grow"><b>${fmt(x.date)}</b><small>${esc(x.tec.join(', '))||'atendimento'}</small></span><span class="pill">EVA ${x.eva}</span></div>${x.nota?`<div class="hi-b"><p>${esc(x.nota)}</p></div>`:''}</div>`).join('')}</div>`
+          :vazio('lista','Nenhum atendimento','Use “Novo atendimento” para registrar o primeiro.')}</div>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><div class="card-h"><h2>Mapa dos cinco elementos</h2>${a?`<span class="pill">${p.assess.length>1?'reavaliação':'basal'} · ${fmt(a.date)}</span>`:''}</div>
+        ${st?`${barrasEl(st, p.assess.length>1?elemState(a0.signs,a0.status):null)}${p.assess.length>1?`<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal (${fmt(a0.date)}).</p>`:''}
+          <details class="mais"><summary>Ver pentagrama ${ic('baixo')}</summary>${pentagram(st,null)}</details>`
+        :vazio('yin','Sem avaliação energética','Faça a avaliação para ver o mapa dos cinco elementos.',`<button class="btn sm pri" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliar</button>`)}</div>
+      <div class="card"><div class="card-h"><h2>Padrões validados</h2><a class="btn sm" href="#avaliacao">Nova avaliação</a></div>
+        ${ac.length?ac.map(h=>`<div class="row"><div class="grow"><b>${h.p.nome}</b></div>${elTag(h.p.el)}<span class="pill ${h.p.tipo==='exc'?'crit':'warn'}">${h.p.tipo==='exc'?'excesso':'deficiência'}</span></div>`).join(''):'<p class="muted sm">Nenhum padrão validado.</p>'}
+        ${a?.nota?`<p class="muted" style="margin-top:8px">Nota: ${esc(a.nota)}</p>`:''}
+      </div>
+      ${cardCadastro(p)}
+    </div>
+  </div>`;
+}
+
+function abaProntuario(p){
+  const fin=p.atendimentos.filter(a=>a.status==='finalizado'), Q=p.queixas, E=eventos(p);
+  const labels=fin.map(a=>fmt(a.data).slice(0,5)), series=Q.map(q=>({cor:corQ(p,q),nome:q.descricao,vals:fin.map(a=>a.evolucao.intensidades[q.id]??null)})).filter(x=>x.vals.some(v=>v!=null));
+  const a0=p.avaliacoes[0], a1=p.avaliacoes.at(-1);
+  const s0=a0&&new Set(a0.signs), s1=a1&&new Set(a1.signs), dois=p.avaliacoes.length>1;
+  const resolv=dois?a0.signs.filter(x=>!s1.has(x)):[], novos=dois?a1.signs.filter(x=>!s0.has(x)):[];
+  const qs=Q.filter(q=>serieQueixa(p,q.id).length);
+  return `<div class="card"><div class="card-h"><h2>Evolução das queixas</h2>${series.length>1?`<div class="leg">${series.map((s,i)=>`<button class="leg-b" data-act="serie" data-s="${i}" aria-pressed="true" data-tip="Mostrar ou ocultar"><i style="background:${s.cor}"></i>${esc(s.nome)}</button>`).join('')}</div>`:'<span class="muted sm">intensidade de 0 a 10 por atendimento</span>'}</div>
+    ${fin.length?`${linhas(series,labels,{label:'Intensidade das queixas por atendimento',w:1000,h:240})}
+      <div class="qsum">${qs.map(q=>{ const v=serieQueixa(p,q.id).map(x=>x.valor); return `<div><i style="background:${corQ(p,q)}"></i><span>${esc(q.descricao)}${q.ativa?'':' (resolvida)'}</span><b>${v[0]} → ${v.at(-1)}</b>${delta(v[0],v.at(-1))}</div>`; }).join('')}</div>`
+      :vazio('evolucao','Ainda sem atendimentos','A evolução aparece a partir do primeiro atendimento registrado.')}</div>
+  ${a0?`<div class="card" style="margin-top:20px"><div class="card-h"><h2>Avaliação basal × atual</h2><span class="muted sm">${fmt(a0.date)}${dois?` → ${fmt(a1.date)}`:''}</span></div>
+    ${dois?`<div class="cmp"><div><div class="lbl">Basal · ${fmt(a0.date)}</div>${pentagram(elemState(a0.signs,a0.status),null)}</div><div><div class="lbl">Atual · ${fmt(a1.date)}</div>${pentagram(elemState(a1.signs,a1.status),null)}</div></div>
+      <div class="grid g2" style="margin-top:8px"><div>${barrasEl(elemState(a1.signs,a1.status),elemState(a0.signs,a0.status))}<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal.</p></div>
+        <div class="sinais-cmp"><div><span class="pill ok">${ic('check')}${resolv.length} sina${resolv.length===1?'l':'is'} que não aparece${resolv.length===1?'':'m'} mais</span><p class="muted sm">${resolv.map(x=>esc(SIGN[x]||x)).join(', ')||'—'}</p></div>
+        <div><span class="pill warn">${ic('mais')}${novos.length} sina${novos.length===1?'l':'is'} novo${novos.length===1?'':'s'}</span><p class="muted sm">${novos.map(x=>esc(SIGN[x]||x)).join(', ')||'—'}</p></div></div></div>`
+    :`<div class="grid g2"><div>${pentagram(elemState(a0.signs,a0.status),null)}</div><div>${barrasEl(elemState(a0.signs,a0.status))}<p class="muted sm" style="margin-top:10px">Só existe a avaliação basal. A comparação aparece depois da primeira reavaliação.</p></div></div>`}</div>`:''}
+  <div class="card" style="margin-top:20px"><div class="card-h"><h2>Linha do tempo</h2><span class="muted sm">${fin.length} atendimento${fin.length===1?'':'s'} · ${p.avaliacoes.length} avalia${p.avaliacoes.length===1?'ção':'ções'}</span></div>
+    ${E.length?`<div class="lt">${[...E].reverse().map(e=>itemTempo(p,e)).join('')}</div>`:'<p class="muted">Nenhuma sessão registrada.</p>'}</div>`;
+}
+
+function abaAnamnese(p){
+  const F=[['historia','História da queixa'],['sono','Sono'],['alimentacao','Alimentação e sede'],['evacuacao','Evacuação e micção'],['emocoes','Emoções'],['medicamentos','Medicamentos em uso']];
+  return `<div class="grid g-side"><div class="card"><h3>Anamnese integrativa</h3><div class="form">${F.map(([k,l])=>`<div class="field full"><label class="lbl" for="an-${k}">${l}</label><textarea id="an-${k}" data-anam="${k}">${esc(p.anam[k])}</textarea></div>`).join('')}</div><p class="muted" style="font-size:.8rem;margin-top:8px">Salvo automaticamente ao sair do campo.</p></div>
+    <div class="card" style="align-self:start"><h3>Alertas de segurança</h3><p class="muted" style="margin-bottom:10px;font-size:.86rem">Usados para avisar sobre pontos e técnicas contraindicados ao registrar a sessão.</p>
+    ${[['gestante','Gestante'],['anticoagulante','Uso de anticoagulante'],['marcapasso','Portador de marcapasso']].map(([k,l])=>`<label style="display:flex;gap:8px;padding:6px 0"><input type="checkbox" id="al-${k}" data-alert="${k}" ${p.alerts[k]?'checked':''}> ${l}</label>`).join('')}</div></div>`;
+}
+
+function abaNova(p){
+  const a=p.assess.at(-1), outras=p.queixas.filter(q=>q.ativa&&q.id!==QUEIXA_PRINCIPAL);
+  const TEC=['Acupuntura','Auriculoterapia','Moxabustão','Ventosa','Eletroacupuntura','Massagem Tuiná','Sangria'];
+  return `<div class="grid g-side"><div class="card"><h3>Registro rápido de sessão</h3><p class="muted sm" style="margin-bottom:10px">Para registrar uma sessão já realizada. O atendimento completo, com as 8 etapas, fica em “Novo atendimento”.</p>
+    <form id="f-session" class="form">
+      <div class="field"><label class="lbl" for="ns-date">Data</label><input id="ns-date" type="date" value="${TODAY}" required></div>
+      <div class="field"><label class="lbl" for="ns-eva">${outras.length?`${esc(p.queixa)} (EVA)`:'Intensidade da queixa (EVA)'}: <b id="ns-eva-v">5</b></label><input id="ns-eva" type="range" min="0" max="10" value="5"></div>
+      ${outras.map(q=>{ const ult=serieQueixa(p,q.id).at(-1)?.valor??5; return `<div class="field"><label class="lbl" for="ns-q-${q.id}">${esc(q.descricao)}: <b id="ns-q-${q.id}-v">${ult}</b></label><input id="ns-q-${q.id}" data-q="${q.id}" type="range" min="0" max="10" value="${ult}"></div>`; }).join('')}
+      <div class="field full"><span class="lbl">Técnicas</span><div class="chips">${TEC.map(t=>`<label class="chip"><input type="checkbox" name="tec" value="${t}" style="margin-right:4px">${t}</label>`).join('')}</div></div>
+      <div class="field full"><label class="lbl" for="ns-pts">Pontos utilizados (separe por vírgula)</label><input id="ns-pts" class="mono" placeholder="E36, BP6, F3"></div>
+      <div class="full" id="ns-warn"></div>
+      <div class="field full"><label class="lbl" for="ns-nota">Evolução e observações</label><textarea id="ns-nota"></textarea></div>
+      <div class="full"><button class="btn pri">Salvar no prontuário</button></div>
+    </form></div>
+    <div class="card" style="align-self:start"><h3>Sugestões da última avaliação</h3><p class="muted" style="font-size:.82rem;margin-bottom:8px">Pontos ligados aos padrões validados. Clique para adicionar.</p>
+    ${a?aceitos(a).map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${h.p.pontos.map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
+}
+
+const ABAS = { resumo:abaResumo, sessoes:abaProntuario, anamnese:abaAnamnese, nova:abaNova };
+function vProntuario(){
+  const p=patient(ui.pid)||db.patients[0];
+  if(!p) return `<div class="head"><div><h1>Prontuário</h1></div></div>${vazio('pacientes','Nenhum paciente cadastrado','Cadastre um paciente para abrir o prontuário.',`<button class="btn pri sm" data-act="novo-paciente">${ic('novo')}Cadastrar paciente</button>`)}`;
+  ui.pid=p.id; if(!ABAS[ui.tab]) ui.tab='resumo';
+  const alerts=alertasDe(p);
+  const tabs=[['resumo','Resumo','painel'],['sessoes','Prontuário','historico'],['anamnese','Anamnese e alertas','folha'],['nova','Registro rápido','mais']];
+  ui.crumbs=[['#pacientes','Pacientes'],[null,p.name]];
+  return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
+    <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
+    ${alerts.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}</div>`:''}</div>
+    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
+    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}`;
+}
+// alertas, preenchimento por etapa e salvamento automático. Usa, sem alterar, o raciocínio clínico
+// (evaluate, bagang, elemState), o pentagrama e a verificação de segurança dos pontos.
+
+const TECNICAS = ['Acupuntura','Auriculoterapia','Moxabustão','Ventosa','Eletroacupuntura','Massagem Tuiná','Sangria'];
+const hhmm = t => new Date(t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+const textoSalvo = a => `${ic('check')}${a.atualizadoEm===a.inicio?'Rascunho iniciado':'Salvo'} às ${hhmm(a.atualizadoEm)}`;
+const eixoBg = (l,r,v) => `<div class="axis"><span>${l}</span><div class="track"><span class="dot" style="left:${50+v*50}%"></span></div><span>${r}</span></div>`;
+const corDe = (p,q) => QCOR[p.queixas.indexOf(q)%QCOR.length];
+const ordemNo = (p,a) => a.status==='finalizado' ? finalizados(p).indexOf(a)+1 : finalizados(p).filter(x=>x.data<=a.data).length+1;
+
+// Atendimento aberto no ambiente (ui.atId), ou null se não existir mais.
+function atendimentoAberto(){
+  const p=patient(ui.pid), a=p&&atendimentoDe(p,ui.atId);
+  return a?{p,a}:null;
+}
+
+function eAnamnese(p,a){
+  const Q=p.queixas.filter(q=>q.ativa||a.evolucao.intensidades[q.id]!=null), basal=!finalizados(p).filter(x=>x!==a).length;
+  const F=[['historia','História da queixa','folha'],['sono','Sono','relogio'],['alimentacao','Alimentação e sede','folha'],['evacuacao','Evacuação e micção','info'],['emocoes','Emoções','yin'],['medicamentos','Medicamentos em uso','plano']];
+  return `<div class="grid g-side"><div class="card"><div class="card-h"><h3>Queixas e intensidade hoje</h3>${basal?'<span class="pill acc">valores basais</span>':'<span class="pill">compare com o último atendimento</span>'}</div>
+    ${Q.map(q=>{ const s=serieQueixa(p,q.id).filter(x=>x.data!==a.data||a.status!=='finalizado').map(x=>x.valor), v=a.evolucao.intensidades[q.id]??5;
+      return `<div class="qs"><div class="qs-h"><i style="background:${corDe(p,q)}"></i><b>${esc(q.descricao)}</b>${s.length&&a.status==='rascunho'?`<span class="muted sm">último: ${s.at(-1)} · 1ª medida: ${s[0]}</span>`:''}</div>
+      <div class="qs-r"><input type="range" min="0" max="10" value="${v}" data-atq="${q.id}" aria-label="Intensidade de ${esc(q.descricao)}"><span class="qs-v" id="qv-${q.id}">${v}</span></div></div>`; }).join('')}
+    <form id="f-at-queixa" class="nq"><label class="so-leitor" for="atq-desc">Nova queixa</label><input id="atq-desc" placeholder="Adicionar outra queixa" required maxlength="120"><button class="btn sm">${ic('mais')}Adicionar</button></form></div>
+    <div class="card"><h3>Anamnese</h3><p class="muted sm" style="margin-bottom:10px">${basal?'Preencha na primeira consulta.':'Trazida do cadastro do paciente. Abra só o que mudou.'} As alterações valem para o paciente.</p>
+      <div class="anam">${F.map(([k,l,i])=>`<details ${basal&&k==='historia'?'open':''}><summary>${ic(i)}<span class="grow">${l}</span>${p.anam[k]?`<span class="pill ok">${ic('check')}</span>`:'<span class="pill">vazio</span>'}${ic('baixo')}</summary><textarea data-atan="${k}" aria-label="${l}">${esc(p.anam[k])}</textarea></details>`).join('')}</div></div></div>`;
+}
+
+function cmpBasal(p,a,av){
+  const a0=p.avaliacoes.find(x=>x.atendimentoId!==a.id); if(!a0||!av) return '';
+  const s0=new Set(a0.signs), s1=new Set(av.signs), res=a0.signs.filter(x=>!s1.has(x)), nov=av.signs.filter(x=>!s0.has(x)), man=av.signs.filter(x=>s0.has(x));
+  return `<div class="card"><div class="card-h"><h3>Comparado à avaliação basal</h3><span class="muted sm">${fmt(a0.date)}</span></div>
+    <div class="cmp3"><div class="ok"><b>${res.length}</b><small>não aparecem mais</small></div><div><b>${man.length}</b><small>mantidos</small></div><div class="warn"><b>${nov.length}</b><small>novos</small></div></div>
+    <details class="mais"><summary>Ver sinais ${ic('baixo')}</summary>${[['Não aparecem mais',res,'ok'],['Novos',nov,'warn'],['Mantidos',man,'']].filter(x=>x[1].length).map(([t,L,k])=>`<div class="lbl" style="margin:10px 0 6px">${t}</div><div class="chips">${L.map(x=>`<span class="pill ${k}">${esc(SIGN[x]||x)}</span>`).join('')}</div>`).join('')}</details></div>`;
+}
+function eAvaliacao(p,a){
+  const av=avaliacaoEditavel(p,a);
+  if(!av) return vazio('yin','Atendimento finalizado sem avaliação energética','A avaliação deste dia pode ser feita como reavaliação avulsa no perfil do paciente.');
+  const H=evaluate(av.signs), bg=bagang(av.signs), c=p.cadastro||{}, hem=c.hemisferio||'Sul', est=estacao(Number(a.data.slice(5,7))-1,hem);
+  return `<div class="notice" style="margin-bottom:16px">${ic('info')}<div><b>Apoio ao raciocínio clínico.</b> As hipóteses vêm dos sinais marcados e não são diagnóstico. Cabe ao profissional aceitar, descartar e decidir.</div></div>
+  <div class="grid g-side"><div class="grid" style="align-content:start">
+    <div class="card"><div class="card-h"><h3>Sinais observados</h3><span class="pill acc">${av.signs.length} marcados</span></div>
+      ${a.status==='rascunho'&&p.avaliacoes.length?'<p class="muted sm" style="margin-bottom:10px">Sinais trazidos da última avaliação. Desmarque o que não está mais presente.</p>':''}
+      <div class="sigs">${Object.entries(SIGNS).map(([g,L])=>`<div><div class="lbl" style="margin-bottom:8px">${g}</div><div class="chips">${L.map(([k,l])=>`<button class="chip ${av.signs.includes(k)?'on':''}" data-act="at-sinal" data-s="${k}" aria-pressed="${av.signs.includes(k)}">${l}</button>`).join('')}</div></div>`).join('')}</div></div>
+    <details class="card mais-card" ${Object.values(a.vasos||{}).some(v=>v.considerar||v.nota)?'open':''}><summary><h3>Oito vasos extraordinários</h3><span class="pill">conteúdo completo na etapa 3</span>${ic('baixo')}</summary>
+      <p class="muted sm" style="margin:10px 0">Marque os vasos que o profissional considerou e anote o raciocínio. Critérios e pontos de abertura entram na etapa 3; aqui nada é sugerido automaticamente.</p>
+      <div class="vasos">${VASOS.map(v=>{ const x=a.vasos?.[v]||{}; return `<div class="vaso"><label class="chip ${x.considerar?'on':''}"><input type="checkbox" data-vaso="${v}" ${x.considerar?'checked':''}>${v}</label><input class="vaso-n" data-vnota="${v}" placeholder="Anotação" value="${esc(x.nota||'')}" aria-label="Anotação sobre ${v}"></div>`; }).join('')}</div></details>
+  </div>
+  <div class="grid" style="align-content:start">
+    <div class="card"><div class="card-h"><h3>Hipóteses de padrão</h3><span class="muted sm">${H.length} encontradas</span></div>
+      ${H.length?H.map(h=>{const s=av.status[h.p.id]||'';return `<div class="hp ${s}"><div class="hp-h">${anel(h.score,Math.round(h.score*100)+'%',EL[h.p.el].cor)}<div class="grow"><b>${h.p.nome}</b><div>${elTag(h.p.el)} <span class="muted sm">· ${h.m.length}/${h.p.sinais.length} sinais</span></div></div></div>
+        <div class="hp-a"><button class="btn sm ${s==='aceito'?'pri':''}" data-act="at-hip" data-p="${h.p.id}" data-st="aceito">${ic('check')}${s==='aceito'?'Aceito':'Aceitar'}</button><button class="btn sm" data-act="at-hip" data-p="${h.p.id}" data-st="descartado">${s==='descartado'?'Descartado':'Descartar'}</button></div>
+        <details class="mais"><summary>Por que aparece ${ic('baixo')}</summary><p class="sm"><b>Presentes:</b> ${h.m.map(x=>SIGN[x]).join(', ')}</p>${h.falta.length?`<p class="sm muted"><b>Esperados, não observados:</b> ${h.falta.map(x=>SIGN[x]).join(', ')}</p>`:''}</details></div>`;}).join(''):vazio('yin','Sem hipóteses ainda','Marque ao menos dois sinais de língua, pulso ou sintomas.')}</div>
+    ${cmpBasal(p,a,av)}
+    <div class="card"><h3>Oito princípios (Ba Gang)</h3><div class="grid" style="gap:12px;margin-top:10px">${eixoBg('Frio','Calor',bg.fc)}${eixoBg('Deficiência','Excesso',bg.de)}</div></div>
+    <div class="card sazonal"><div class="card-h"><h3>${ic('sol')} Contexto sazonal</h3><span class="pill">complementar</span></div>
+      <p class="sm">${c.cidade?esc(c.cidade)+' · ':''}hemisfério ${hem} · <b>${est}</b>, estação ligada a ${elTag(ELEMENTO_ESTACAO[est])}.</p>
+      <p class="muted sm" style="margin-top:6px">Informação de contexto pela data do atendimento${c.cidade?'':' (cidade não cadastrada; hemisfério Sul por padrão)'}. Não indica pontos nem conduta.</p></div>
+    <div class="card"><div class="field"><label class="lbl" for="at-avnota">Observações da avaliação</label><textarea id="at-avnota" data-atf="avnota">${esc(av.nota||'')}</textarea></div></div>
+  </div></div>`;
+}
+
+const tipoElAt = s => s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';
+function detalheEl(e, st, nome){
+  if(!e) return `<div class="vazio">${ic('info')}Toque em um elemento para ver correspondências e relações.</div>`;
+  const E=EL[e], k=st?tipoElAt(st[e]):'';
+  return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:2rem;color:${E.cor}">${E.han}</span><h3>${E.nome}</h3>${k?`<span class="pill ${k==='exc'?'crit':'warn'}">${k==='exc'?'excesso':'deficiência'}</span>`:''}</div>
+  <div class="corr-g">${[['Zang',E.zang],['Fu',E.fu],['Emoção',E.emocao],['Estação',E.estacao],['Clima',E.clima],['Tecido',E.tecido]].map(([x,y])=>`<div><small>${x}</small><b>${y}</b></div>`).join('')}</div>
+  <div class="rel"><span>Gera ${elTag(SHENG[e])}</span><span>Gerado por ${elTag(mae(e))}</span><span>Controla ${elTag(KE[e])}</span><span>Controlado por ${elTag(controlador(e))}</span></div>
+  ${k?`<div class="notice" style="margin-top:12px">${ic('info')}<div>${k==='def'?`Na deficiência, a regra mãe-filho sugere avaliar a tonificação da mãe (${EL[mae(e)].nome}).`:`No excesso, a regra mãe-filho sugere avaliar a sedação do filho (${EL[SHENG[e]].nome}).`} Decisão do profissional${nome?` para ${esc(nome)}`:''}.</div></div>`:''}`;
+}
+function ePentagrama(p,a){
+  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, st=elemState(av.signs,av.status);
+  const a0=p.avaliacoes.find(x=>x.atendimentoId!==a.id), b=a0?elemState(a0.signs,a0.status):null;
+  return `<div class="grid g-side"><div class="card"><div class="card-h"><h3>Mapa dos cinco elementos</h3>${b?`<button class="chip ${ui.atCmp?'on':''}" data-act="at-cmp" aria-pressed="${!!ui.atCmp}">Comparar com o basal</button>`:'<span class="pill acc">basal</span>'}</div>
+    ${ui.atCmp&&b?`<div class="cmp"><div><div class="lbl">Basal · ${fmt(a0.date)}</div>${pentagram(b,ui.el)}</div><div><div class="lbl">Hoje</div>${pentagram(st,ui.el)}</div></div>`:pentagram(st,ui.el)}
+    <p class="muted sm" style="text-align:center">Atualiza com os sinais e hipóteses deste atendimento. Anel tracejado: deficiência; anel espesso: excesso.</p></div>
+    <div class="grid" style="align-content:start"><div class="card">${barrasEl(st,b)}${b?'<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal.</p>':''}</div><div class="card">${detalheEl(ui.el,st,p.name.split(' ')[0])}</div></div></div>`;
+}
+function eSintese(p,a){
+  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, ac=evaluate(av.signs).filter(h=>av.status[h.p.id]==='aceito'), bg=bagang(av.signs), st=elemState(av.signs,av.status);
+  const vs=Object.entries(a.vasos||{}).filter(([,v])=>v.considerar);
+  return `<div class="grid g-side"><div class="grid" style="align-content:start">
+    <div class="card"><h3>Resumo da avaliação</h3><div class="sx">
+      <div><small>Padrões validados</small>${ac.length?ac.map(h=>`<div class="sx-p">${elTag(h.p.el)}<b>${h.p.nome}</b><span class="pill ${h.p.tipo==='exc'?'crit':'warn'}">${h.p.tipo==='exc'?'excesso':'deficiência'}</span></div>`).join(''):`<p class="muted sm">Nenhum padrão aceito. <a href="#atendimento" data-act="etapa" data-i="1">Voltar à avaliação</a></p>`}
+        ${vs.length?`<small style="margin-top:12px">Vasos extraordinários considerados</small><div class="chips">${vs.map(([v])=>`<span class="pill">${v}</span>`).join('')}</div>`:''}</div>
+      <div><small>Oito princípios</small><div class="grid" style="gap:10px;margin-top:6px">${eixoBg('Frio','Calor',bg.fc)}${eixoBg('Def.','Exc.',bg.de)}</div></div></div></div>
+    <div class="card"><div class="field"><label class="lbl" for="at-sintese">Síntese do profissional</label><textarea id="at-sintese" data-atf="sintese" placeholder="Raciocínio clínico, prioridades do tratamento...">${esc(a.sintese)}</textarea></div><p class="muted sm" style="margin-top:8px">A síntese é escrita e validada pelo profissional. O sistema não conclui diagnóstico.</p></div></div>
+    <div class="card"><h3>Elementos</h3>${barrasEl(st)}</div></div>`;
+}
+// Posições ilustrativas (frente: x até 200; costas: x de 210 a 410). O atlas completo é da etapa 4.
+const MAPA = {VG20:[310,16],VB20:[296,60],B13:[298,104],B15:[298,116],B17:[298,132],B23:[298,180],VG4:[310,182],
+  VC17:[100,118],VC12:[100,158],VC4:[100,200],IG11:[40,168],CS6:[44,214],CS7:[44,224],P9:[50,222],C7:[54,226],C8:[40,240],IG4:[30,236],
+  BP10:[88,292],BP9:[90,322],VB34:[78,320],E36:[86,334],E40:[80,352],BP6:[92,370],R7:[94,384],R3:[94,396],R6:[97,401],BP3:[90,409],F3:[82,414]};
+const silhueta = dx => `<g transform="translate(${dx},0)" class="corpo"><circle cx="100" cy="30" r="20"/><rect x="91" y="48" width="18" height="16" rx="5"/>
+  <path d="M62 66h76q10 0 12 12l3 120q0 8-8 10H55q-8-2-8-10l3-120q2-12 12-12z"/><path d="M50 74q-12 4-14 20l-10 140q0 8 7 9t8-7l11-118z"/><path d="M150 74q12 4 14 20l10 140q0 8-7 9t-8-7l-11-118z"/>
+  <path d="M58 206h40l-2 200q0 14 -12 14t-12-14z"/><path d="M102 206h40l-14 200q0 14-12 14t-12-14z"/></g>`;
+function eMapa(p,a){
+  const P=a.plano.pontos, pts=P.filter(c=>MAPA[c]), fora=P.filter(c=>!MAPA[c]);
+  return `<div class="grid g-side"><div class="card"><div class="card-h"><h3>Mapa corporal</h3><span class="pill">atlas completo na etapa 4</span></div>
+    <svg viewBox="0 0 420 458" class="mapa" role="img" aria-label="Mapa corporal com os pontos do plano">${silhueta(0)}${silhueta(210)}
+    <text x="100" y="452" text-anchor="middle" class="ax">frente</text><text x="310" y="452" text-anchor="middle" class="ax">costas</text>
+    ${pts.map(c=>`<g><circle cx="${MAPA[c][0]}" cy="${MAPA[c][1]}" r="6" class="pt"/><text x="${MAPA[c][0]+9}" y="${MAPA[c][1]+4}" class="ptl">${c}</text></g>`).join('')}</svg>
+    <p class="muted sm" style="text-align:center">Posições ilustrativas.${fora.length?` Sem posição no mapa ainda: ${fora.join(', ')}.`:''}</p></div>
+    <div class="grid" style="align-content:start"><div class="card"><h3>Pontos do plano</h3>${P.length?`<div class="chips" style="margin-top:10px">${P.map(c=>`<span class="pill acc mono">${esc(c)}${PT[c]?` · ${PT[c].pinyin}`:''}</span>`).join('')}</div>`:`<div class="vazio">${ic('info')}Os pontos escolhidos no plano terapêutico aparecem aqui.</div><button class="btn sm" data-act="etapa" data-i="5" style="margin-top:8px">Ir ao plano</button>`}</div>
+      <div class="card"><div class="field"><label class="lbl" for="at-mapa">Observações do mapa corporal</label><textarea id="at-mapa" data-atf="mapa" placeholder="Regiões de dor, cicatrizes, áreas sensíveis...">${esc(a.mapa?.nota||'')}</textarea></div></div></div></div>`;
+}
+function ePlano(p,a){
+  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, ac=evaluate(av.signs).filter(h=>av.status[h.p.id]==='aceito'), P=a.plano.pontos, w=pointWarnings(P,p,a.plano.tec);
+  return `<div class="grid g-side"><div class="grid" style="align-content:start">
+    <div class="card"><div class="card-h"><h3>Pontos do plano</h3><span class="pill acc">${P.length}</span></div>
+      ${P.length?`<div class="chips">${P.map(c=>`<button class="chip on mono" data-act="at-pt" data-c="${esc(c)}" title="Remover">${esc(c)} ✕</button>`).join('')}</div>`:'<p class="muted sm">Escolha nas sugestões ao lado ou digite abaixo.</p>'}
+      <form id="f-at-pt" class="nq"><label class="so-leitor" for="at-pt-c">Código do ponto</label><input id="at-pt-c" class="mono" placeholder="Ex.: E36, BP6" required><button class="btn sm">${ic('mais')}Incluir</button></form>
+      <div class="lbl" style="margin:16px 0 8px">Técnicas</div><div class="chips">${TECNICAS.map(t=>`<button class="chip ${a.plano.tec.includes(t)?'on':''}" data-act="at-tec" data-t="${t}" aria-pressed="${a.plano.tec.includes(t)}">${t}</button>`).join('')}</div></div>
+    <div class="card seg" id="at-seg"><div class="card-h"><h3>${ic('escudo')} Verificação de segurança</h3>${w.length?`<span class="pill crit">${w.length}</span>`:'<span class="pill ok">ok</span>'}</div>
+      ${w.length?w.map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:8px">${ic(k==='crit'?'escudo':'alerta')}<div><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div></div>`).join(''):`<div class="vazio">${ic('okc')}Nenhuma contraindicação encontrada para os pontos e técnicas escolhidos.</div>`}</div></div>
+    <div class="card"><h3>Sugestões dos padrões validados</h3><p class="muted sm" style="margin-bottom:10px">Toque para incluir. A escolha é do profissional.</p>
+      ${ac.length?ac.map(h=>`<div class="sug"><div class="sug-h">${elTag(h.p.el)}<b>${h.p.nome}</b></div><div class="chips">${h.p.pontos.map(([c,j])=>`<button class="chip mono ${P.includes(c)?'on':''}" data-act="at-pt" data-c="${c}" title="${esc(j)}${PT[c]?.cautela?' · '+esc(CAUT[PT[c].cautela]):''}">${c}${PT[c]?.cautela?' ⚠':''}</button>`).join('')}</div></div>`).join(''):`<div class="vazio">${ic('info')}Aceite hipóteses na avaliação para ver sugestões.</div>`}</div></div>`;
+}
+function eEvolucao(p,a){
+  const fin=finalizados(p).filter(x=>x!==a), Q=p.queixas.filter(q=>a.evolucao.intensidades[q.id]!=null||serieQueixa(p,q.id).length);
+  const lista=[...fin,a].sort((x,y)=>x.data.localeCompare(y.data)), labels=lista.map(x=>x===a?'hoje':fmt(x.data).slice(0,5));
+  const series=Q.map(q=>({cor:corDe(p,q),nome:q.descricao,vals:lista.map(x=>x.evolucao.intensidades[q.id]??null)})).filter(s=>s.vals.some(v=>v!=null));
+  return `<div class="grid g-side"><div class="card"><div class="card-h"><h3>Queixas ao longo do tratamento</h3>${series.length>1?`<div class="leg">${series.map((s,i)=>`<button class="leg-b" data-act="serie" data-s="${i}" aria-pressed="true" data-tip="Mostrar ou ocultar"><i style="background:${s.cor}"></i>${esc(s.nome)}</button>`).join('')}</div>`:''}</div>
+    ${linhas(series,labels,{label:'Intensidade das queixas por atendimento'})}
+    <div class="qsum">${series.map(s=>{ const v=s.vals.filter(x=>x!=null); return `<div><i style="background:${s.cor}"></i><span>${esc(s.nome)}</span><b>${v[0]} → ${v.at(-1)}</b>${v.length>1?delta(v[0],v.at(-1)):'<span class="pill acc">1ª medida</span>'}</div>`; }).join('')}</div>
+    <p class="muted sm">Os valores de hoje vêm da etapa Anamnese.</p></div>
+    <div class="card"><div class="field"><label class="lbl" for="at-nota">Evolução e observações</label><textarea id="at-nota" data-atf="nota" placeholder="Como o paciente respondeu, o que mudou desde o último atendimento...">${esc(a.evolucao.nota)}</textarea></div></div></div>`;
+}
+function eDocumentos(p,a,H){
+  const D=[['doc','Registro do atendimento',a.status==='finalizado'?'Disponível no prontuário':'Entra no prontuário ao finalizar','ok','prontuario'],['agenda','Agendar retorno','Abre a agenda com o paciente escolhido','acc','retorno'],
+    ['plano','Orientações ao paciente','Modelos na etapa 6','',''],['escudo','Termo de consentimento','Assinatura eletrônica na etapa 6','','']];
+  return `<div class="docs">${D.map(([i,t,s,k,acao])=>acao?`<button class="docc" data-act="at-doc" data-d="${acao}">${ic(i)}<b>${t}</b><small>${s}</small>${k?`<span class="pill ${k}">${k==='ok'?'automático':'disponível'}</span>`:''}</button>`
+    :`<div class="docc off">${ic(i)}<b>${t}</b><small>${s}</small><span class="pill">em breve</span></div>`).join('')}</div>
+  <div class="card" style="margin-top:20px"><h3>${a.status==='finalizado'?'Etapas registradas':'Antes de finalizar'}</h3><div class="chk">${ETAPAS.slice(0,7).map(([,n],j)=>{ const ok=preenchimento(p,a,j,H)>=1; return `<a href="#atendimento" data-act="etapa" data-i="${j}" class="${ok?'ok':''}">${ic(ok?'okc':'relogio')}${n}</a>`; }).join('')}</div>
+    <p class="muted sm" style="margin-top:10px">${a.status==='finalizado'?'O atendimento pode ser complementado depois; cada alteração fica no histórico com data e hora.':'Etapas incompletas não impedem finalizar. O atendimento pode ser complementado depois, com data e hora de cada alteração no histórico.'}</p></div>
+  <div class="card" style="margin-top:20px"><div class="card-h"><h3>Histórico de alterações</h3><span class="muted sm">${a.historico.length} registro${a.historico.length===1?'':'s'}</span></div>
+    <div class="hist-alt">${[...a.historico].reverse().map(h=>`<div><span class="mono muted">${fmt(h.em.slice(0,10))} ${hhmm(h.em)}</span><span>${esc(h.acao)}</span></div>`).join('')}</div></div>`;
+}
+
+const CORPO = [eAnamnese,eAvaliacao,ePentagrama,eSintese,eMapa,ePlano,eEvolucao,eDocumentos];
+function vAtendimento(){
+  const x=atendimentoAberto();
+  if(!x){ ui.crumbs=[['#pacientes','Pacientes'],[null,'Atendimento']];
+    return `<div class="head"><div><h1>Atendimento</h1></div></div>${vazio('play','Nenhum atendimento aberto','Abra o perfil de um paciente e use “Novo atendimento”.',`<a class="btn pri sm" href="#pacientes">${ic('pacientes')}Ver pacientes</a>`)}`; }
+  const {p,a}=x, i=Math.max(0,Math.min(7,ui.etapa|0)), av=avaliacaoEditavel(p,a), H=evaluate(av?.signs||[]);
+  const n=ordemNo(p,a), basal=n===1, al=alertasDe(p), fin=a.status==='finalizado';
+  const f=ETAPAS.map((_,j)=>preenchimento(p,a,j,H)), tot=f.reduce((s,v)=>s+v,0)/8;
+  ui.crumbs=[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,`${n}º atendimento`]];
+  const anelP=(v,j,on)=>{ const r=15, c=2*Math.PI*r; return `<svg viewBox="0 0 36 36" class="sr" aria-hidden="true"><circle cx="18" cy="18" r="${r}" class="sr-b"/><circle cx="18" cy="18" r="${r}" class="sr-f" stroke-dasharray="${(v*c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 18 18)"/></svg><span class="sn">${v>=1&&!on?ic('check'):j+1}</span>`; };
+  const [,l,ico]=ETAPAS[i];
+  return `<div class="at-top">
+    <div class="at-h"><span class="avatar lg">${initials(p.name)}</span><div class="at-id"><b>${esc(p.name)}</b><small>${p.birth?age(p.birth)+' anos · ':''}${fmt(a.data)} · ${basal?'1ª consulta · avaliação basal':`${n}º atendimento · retorno`}</small></div>
+      <div class="at-al">${al.length?al.map(t=>`<span class="pill crit" data-tip="Alerta de segurança do cadastro">${ic('escudo')}${t}</span>`).join(''):`<span class="pill ok">${ic('okc')}Sem alertas de segurança</span>`}</div>
+      <div class="at-m">${fin?`<span class="pill ok">${ic('check')}Finalizado</span>`:''}<span class="autosave ok" id="autosave" aria-live="polite">${textoSalvo(a)}</span>
+        <span class="at-pr" data-tip="${Math.round(tot*100)}% do atendimento preenchido">${anel(tot,Math.round(tot*100)+'%')}</span></div></div>
+    <nav class="steps" aria-label="Etapas do atendimento">${ETAPAS.map(([,nome],j)=>`<a href="#atendimento" data-act="etapa" data-i="${j}" class="${j===i?'on':''} ${f[j]>=1?'ok':f[j]>0?'parcial':''}" ${j===i?'aria-current="step"':''} data-tip="${nome} · ${Math.round(f[j]*100)}% preenchido">${anelP(f[j],j,j===i)}<span class="sl">${nome}</span></a>`).join('')}</nav>
+  </div>
+  ${fin?`<div class="notice" style="margin-bottom:16px">${ic('info')}<div>Atendimento finalizado em ${fmt(a.finalizadoEm.slice(0,10))} às ${hhmm(a.finalizadoEm)}. Você pode complementar o registro; cada alteração fica no histórico.</div></div>`:''}
+  <div class="et-h"><span class="tico acc">${ic(ico)}</span><div class="grow"><h2>${l}</h2><small class="muted">Etapa ${i+1} de 8 · <kbd>Alt</kbd> <kbd>←</kbd> <kbd>→</kbd> para trocar de etapa</small></div><button class="btn sm" data-act="at-prontuario" data-pid="${p.id}">${ic('doc')}Prontuário</button></div>
+  <div class="et-c">${CORPO[i](p,a,H)}</div>
+  <div class="at-f">${i?`<button class="btn" data-act="etapa" data-i="${i-1}">${ic('esq')}${ETAPAS[i-1][1]}</button>`:fin?'<span></span>':`<button class="btn ghost" data-act="at-descartar">${ic('x')}Descartar rascunho</button>`}
+    ${i<7?`<button class="btn pri" data-act="etapa" data-i="${i+1}">${ETAPAS[i+1][1]}${ic('dir')}</button>`:fin?`<button class="btn pri" data-act="at-prontuario" data-pid="${p.id}">${ic('doc')}Voltar ao prontuário</button>`:`<button class="btn pri" data-act="at-finalizar">${ic('check')}Finalizar atendimento</button>`}</div>`;
 }
 // Identificação e contato, local de atendimento (para o contexto sazonal), queixa principal,
 // alertas de segurança e consentimento LGPD. Os campos do protótipo mantêm os mesmos ids (np-*).
@@ -1390,10 +1865,10 @@ function previaCadastro(){
 // [rota, rótulo, ícone]
 const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
   ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
-const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
+const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', atendimento:'Atendimento', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
   crm:'CRM', equipe:'Equipe e permissões', configuracoes:'Configurações'};
 // Item do menu que fica marcado em cada tela.
-const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
+const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
 const PROF = {nome:'Mauren Turcatti', papel:'Profissional responsável'};
 
@@ -1485,52 +1960,6 @@ function vAdministracao(){
       <button class="btn" data-act="reset">${ic('retorno')}Restaurar exemplos</button></div>
   </div>`;
 }
-// Pontos e barras levam data-tip, que mostra o valor ao passar o mouse.
-
-// Linhas de 0 a 10 (intensidade da queixa). series: [{vals, cor, nome}], vals pode ter null; o.mini desenha sem eixos.
-function linhas(series, labels, o={}){
-  const W=o.w||640, H=o.h||220, [L,R,T,B]=o.mini?[6,8,6,6]:[28,14,12,26], n=Math.max(2,...series.map(s=>s.vals.length));
-  const x=i=>L+i*(W-L-R)/(n-1), y=v=>T+(1-v/10)*(H-T-B);
-  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||'Gráfico de evolução')}">`;
-  if(!o.mini) [0,5,10].forEach(v=>s+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L-8}" y="${y(v)+4}" text-anchor="end">${v}</text>`);
-  labels.forEach((l,i)=>s+=`<text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${esc(l)}</text>`);
-  series.forEach((se,k)=>{ if(!se.vals.some(v=>v!=null)) return;
-    // Valores ausentes (null) ficam sem ponto e interrompem a linha (queixa não medida naquele atendimento).
-    const ult=se.vals.reduce((u,v,i)=>v!=null?i:u,-1);
-    const d=se.vals.map((v,i)=>v==null?'':`${i&&se.vals[i-1]!=null?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
-    s+=`<g class="se" data-s="${k}"><path d="${d}" fill="none" stroke="${se.cor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
-    s+=se.vals.map((v,i)=>{ if(v==null) return ''; const tip=o.mini?'':(o.tips?.[i]||`${se.nome?se.nome+' · ':''}${labels[i]||''}: ${String(v).replace('.',',')}`);
-      return `<circle class="${tip?'pt-i':''}" cx="${x(i)}" cy="${y(v)}" r="${i===ult?5:3.5}" fill="${i===ult?se.cor:'var(--surface)'}" stroke="${se.cor}" stroke-width="2" ${tip?`data-tip="${esc(tip)}"`:''}/>`; }).join('')+'</g>';
-  });
-  return s+'</svg>';
-}
-// Barras verticais; a última fica destacada (período atual).
-function barrasV(vals, labels, o={}){
-  const W=o.w||560, H=o.h||190, B=24, T=18, max=Math.max(1,...vals), bw=W/vals.length;
-  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||'')}">`;
-  [0,.5,1].forEach(f=>s+=`<line class="gl" x1="0" x2="${W}" y1="${H-B-f*(H-B-T)}" y2="${H-B-f*(H-B-T)}"/>`);
-  vals.forEach((v,i)=>{ const h=v/max*(H-B-T), x=i*bw+bw*.22, w=bw*.56, ult=i===vals.length-1;
-    s+=`<rect class="br-i" x="${x}" y="${H-B-h}" width="${w}" height="${Math.max(h,2)}" rx="6" fill="${ult?'var(--brand)':'var(--sage)'}" data-tip="${esc(o.tips?o.tips[i]:`${labels[i]}: ${v}`)}"/><text class="ax" x="${x+w/2}" y="${H-B-h-6}" text-anchor="middle">${v}</text><text class="ax" x="${x+w/2}" y="${H-6}" text-anchor="middle">${esc(labels[i])}</text>`; });
-  return s+'</svg>';
-}
-// Anel de progresso (0 a 1) com texto no centro.
-function anel(pct, txt, cor='var(--brand)'){
-  const r=24, c=2*Math.PI*r;
-  return `<svg class="anel" viewBox="0 0 60 60" width="60" height="60" aria-hidden="true"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--line)" stroke-width="6"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${cor}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(Math.max(0,Math.min(1,pct))*c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 30 30)"/><text x="30" y="34.5" text-anchor="middle">${txt}</text></svg>`;
-}
-// Barras dos cinco elementos a partir do estado calculado pela avaliação (elemState), sem recalcular nada.
-// base: estado da avaliação basal, mostrado como marca vertical.
-const ORDEM_EL = ['madeira','fogo','terra','metal','agua'];
-const tipoEl = s => s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';
-function barrasEl(st, base){
-  const pct = s => Math.min(100,Math.round(Math.max(s.def,s.exc)/1.6*100));
-  return `<div class="elbars">${ORDEM_EL.map(e=>{ const s=st[e], k=tipoEl(s), E=EL[e], b=base?pct(base[e]):null;
-    return `<div class="elb"><span class="han" style="color:${E.cor}">${E.han}</span><span class="nm">${E.nome}</span>
-      <div class="trk">${b!==null?`<i class="base" style="left:${b}%" title="Basal"></i>`:''}<i class="fill ${k}" style="width:${Math.max(k?6:0,pct(s))}%;background:${E.cor}"></i></div>
-      <span class="st ${k}">${k==='exc'?'Excesso':k==='def'?'Deficiência':'Equilíbrio'}</span></div>`;}).join('')}</div>`;
-}
-// Variação entre dois valores de intensidade (queda é melhora).
-const delta = (a,b) => { if(a==null||b==null) return ''; const d=b-a; return `<span class="delta ${d<0?'bom':d>0?'ruim':''}">${d<0?'▼':d>0?'▲':'='} ${Math.abs(d)}</span>`; };
 function vPacientes(){
   const n=db.patients.length;
   return `<div class="head"><div><h1>Pacientes</h1><p>${n} cadastrado${n===1?'':'s'}</p></div>
@@ -1680,153 +2109,7 @@ function pointCards(){
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="muted" style="font-size:.8rem">${MER[p.mer][0]}</span>${elTag(MER[p.mer][1])}</div>
     <div><span class="lbl">Localização</span><br>${p.loc}</div><div><span class="lbl">Ações</span><br>${p.acoes}</div>${p.cautela?`<span class="pill warn" style="justify-self:start">${CAUT[p.cautela]}</span>`:''}</div>`).join('')||'<p class="muted">Nenhum ponto encontrado.</p>';
 }
-// - Resumo: indicadores, queixas com a evolução de cada uma, atendimentos recentes, mapa dos cinco
-//   elementos, padrões validados e dados cadastrais;
-// - Prontuário: evolução das queixas, avaliação basal × atual e linha do tempo dos atendimentos e
-//   reavaliações;
-// - Anamnese e alertas; Registrar sessão (substituído pelo ambiente de atendimento na etapa 2D).
-// Nenhum cálculo clínico é feito aqui: os estados vêm de raciocinio/avaliacao.js, como antes.
-
-const QCOR = ['var(--brand)','#b8894a','#5f7f9c','#9a6b8f','#6f8f8a'];
-const corQ = (p,q) => QCOR[p.queixas.indexOf(q)%QCOR.length];
-const aceitos = a => a?evaluate(a.signs).filter(h=>a.status[h.p.id]==='aceito'):[];
-const ordinal = n => `${n}º`;
-
-// Bloco de uma sessão, com o mesmo conteúdo da lista de sessões do protótipo.
-const sessHtml = s => `<div class="sess"><div><b class="mono">${fmt(s.date)}</b><div class="eva muted">EVA ${s.eva}/10</div></div><div><div class="chips" style="margin-bottom:6px">${s.tec.map(t=>`<span class="pill">${esc(t)}</span>`).join('')}${s.pontos.map(c=>`<span class="pill acc mono" title="${esc(PT[c]?.pinyin||'')}">${esc(c)}</span>`).join('')}</div>${s.nota?`<p>${esc(s.nota)}</p>`:'<p class="muted">Sem anotações.</p>'}</div></div>`;
-
-// Eventos do prontuário em ordem cronológica: atendimentos finalizados e avaliações sem atendimento no dia.
-function eventos(p){
-  const fin=p.atendimentos.filter(a=>a.status==='finalizado'), ss=p.sessions;
-  const E=fin.map((a,i)=>({tipo:'at',data:a.data,n:i+1,a,s:ss[i],av:p.avaliacoes.find(x=>x.id===a.avaliacaoId)}));
-  p.avaliacoes.filter(x=>!x.atendimentoId).forEach(av=>E.push({tipo:'av',data:av.date,av}));
-  return E.sort((x,y)=>x.data.localeCompare(y.data));
-}
-const rotuloAv = (p,av) => av===p.avaliacoes[0]?'avaliação basal':'reavaliação';
-function itemTempo(p,e){
-  if(e.tipo==='av'){ const h=aceitos(e.av);
-    return `<div class="lt-i av"><span class="hi-n">${ic('yin')}</span><div class="grow"><div class="lt-h"><b>${fmt(e.data)}</b><span class="pill acc">${rotuloAv(p,e.av)}</span><span class="muted sm">avaliação energética sem atendimento no dia</span></div>
-      <p class="sm">${e.av.signs.length} sina${e.av.signs.length===1?'l':'is'} observado${e.av.signs.length===1?'':'s'}${h.length?` · padrões validados: ${h.map(x=>esc(x.p.nome)).join(', ')}`:''}</p>${e.av.nota?`<p class="muted sm">${esc(e.av.nota)}</p>`:''}</div></div>`; }
-  const outras=p.queixas.filter(q=>q.id!==QUEIXA_PRINCIPAL&&e.a.evolucao.intensidades[q.id]!=null), h=aceitos(e.av);
-  return `<div class="lt-i"><span class="hi-n">${e.n}</span><div class="grow"><div class="lt-h"><b>${ordinal(e.n)} atendimento</b>${e.av?`<span class="pill acc">${ic('yin')}${rotuloAv(p,e.av)}</span>`:''}${e.a.origem==='v1'?'<span class="pill" data-tip="Registro trazido do protótipo na conversão dos dados">protótipo</span>':''}</div>
-    ${sessHtml(e.s)}
-    ${outras.length?`<div class="chips">${outras.map(q=>`<span class="pill"><i class="dotq" style="background:${corQ(p,q)}"></i>${esc(q.descricao)}: ${e.a.evolucao.intensidades[q.id]}/10</span>`).join('')}</div>`:''}
-    ${h.length?`<p class="muted sm">Padrões validados na avaliação: ${h.map(x=>esc(x.p.nome)).join(', ')}</p>`:''}</div></div>`;
-}
-
-function cardQueixas(p){
-  const ativas=p.queixas.filter(q=>q.ativa), resolvidas=p.queixas.filter(q=>!q.ativa);
-  const cartao = q => { const s=serieQueixa(p,q.id).map(x=>x.valor), m=melhoraPct(s), cor=corQ(p,q);
-    return `<div class="qc ${q.ativa?'':'res'}"><div class="qc-h"><i style="background:${cor}"></i><b class="grow">${esc(q.descricao)}</b>${q.id===QUEIXA_PRINCIPAL?'<span class="pill">principal</span>':`<button class="btn ghost sm" data-act="queixa-ativa" data-q="${q.id}">${q.ativa?`${ic('check')}Resolvida`:`${ic('retorno')}Reativar`}</button>`}</div>
-      ${s.length?`<div class="qc-v"><span class="big">${s.at(-1)}</span><span class="muted">/10</span>${delta(s[0],s.at(-1))}<span class="muted sm">desde a 1ª medida (${s[0]})</span></div>
-        ${s.length>1?linhas([{cor,vals:s}],[],{w:300,h:64,mini:1}):''}${m!==null?`<span class="pill ${m>0?'ok':'warn'}" style="justify-self:start">${m>0?'▼ '+m+'% de melhora':'sem melhora'}</span>`:''}`
-      :`<p class="muted sm">${q.id===QUEIXA_PRINCIPAL?'A intensidade aparece com o primeiro atendimento registrado.':'A intensidade passa a ser medida no próximo atendimento.'}</p>`}</div>`; };
-  return `<div class="card"><div class="card-h"><h2>Queixas</h2><span class="muted sm">intensidade de 0 a 10</span></div>
-    <div class="qgrid">${ativas.map(cartao).join('')}</div>
-    <form id="f-queixa" class="nq"><label class="so-leitor" for="nq-desc">Nova queixa</label><input id="nq-desc" placeholder="Adicionar outra queixa (ex.: insônia)" required maxlength="120"><button class="btn sm">${ic('mais')}Adicionar</button></form>
-    ${resolvidas.length?`<details class="mais"><summary>${resolvidas.length} queixa${resolvidas.length===1?' resolvida':'s resolvidas'} ${ic('baixo')}</summary><div class="qgrid" style="margin-top:10px">${resolvidas.map(cartao).join('')}</div></details>`:''}</div>`;
-}
-
-function cardCadastro(p){
-  const c=p.cadastro||{}, v=x=>x?esc(x):'<span class="muted">—</span>';
-  const L=[['Telefone',p.phone],['CPF',c.cpf],['E-mail',c.email],['Cidade',c.cidade?`${c.cidade} · hemisfério ${c.hemisferio||'Sul'}`:''],['Endereço',c.endereco],['Contato de emergência',c.contatoEmergencia],['Nascimento',p.birth?fmt(p.birth):''],['Consentimento LGPD',p.consentimento?`registrado em ${fmt(p.consentimento)}`:'']];
-  return `<div class="card"><div class="card-h"><h2>Dados cadastrais</h2><button class="btn ghost sm" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Editar</button></div>
-    <div class="corr-g">${L.map(([l,x])=>`<div><small>${l}</small><b>${v(x)}</b></div>`).join('')}</div></div>`;
-}
-
-function abaResumo(p){
-  const a=p.assess.at(-1), a0=p.assess[0], st=a?elemState(a.signs,a.status):null, ac=aceitos(a);
-  const ss=p.sessions, s=ss.map(x=>x.eva), m=melhoraPct(s);
-  const prox=db.appts.filter(x=>x.pid===p.id&&x.date>=TODAY&&!x.done).sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time))[0];
-  const E=eventos(p);
-  return `<div class="tiles">
-    <div class="tile"><span class="tico acc">${ic('lista')}</span><div><b class="num">${p.sessions.length}</b><small>atendimento${p.sessions.length===1?'':'s'}${p.sessions[0]?` desde ${fmt(p.sessions[0].date)}`:''}</small></div></div>
-    <div class="tile">${m!==null?anel(Math.max(0,m)/100,m+'%','var(--ok)'):`<span class="tico">${ic('evolucao')}</span>`}<div><b>${m!==null?(m>0?'Melhora':'Sem melhora'):'Sem evolução'}</b><small>${m!==null?'queixa principal, desde o 1º atendimento':'registre ao menos dois atendimentos'}</small></div></div>
-    <div class="tile"><span class="tico acc">${ic('yin')}</span><div><b>${p.assess.length?p.assess.length+(p.assess.length===1?' avaliação':' avaliações'):'Sem avaliação'}</b><small>${a0?`basal em ${fmt(a0.date)}`:'avaliação energética pendente'}</small></div></div>
-    <div class="tile"><span class="tico">${ic('agenda')}</span><div><b>${prox?`${fmt(prox.date)} · ${prox.time}`:'—'}</b><small>${prox?esc(prox.tipo):'sem próximo agendamento'}</small></div></div>
-  </div>
-  <div class="grid g-side">
-    <div class="grid" style="align-content:start">
-      ${cardQueixas(p)}
-      <div class="card"><div class="card-h"><h2>Atendimentos recentes</h2>${E.length?`<button class="btn ghost sm" data-act="tab" data-t="sessoes">Ver prontuário ${ic('dir')}</button>`:''}</div>
-        ${ss.length?`<div class="hist">${ss.map((x,i)=>[x,i+1]).reverse().slice(0,3).map(([x,n])=>`<div class="hi on"><div class="hi-h"><span class="hi-n">${n}</span><span class="grow"><b>${fmt(x.date)}</b><small>${esc(x.tec.join(', '))||'atendimento'}</small></span><span class="pill">EVA ${x.eva}</span></div>${x.nota?`<div class="hi-b"><p>${esc(x.nota)}</p></div>`:''}</div>`).join('')}</div>`
-          :vazio('lista','Nenhum atendimento','Use “Novo atendimento” para registrar o primeiro.')}</div>
-    </div>
-    <div class="grid" style="align-content:start">
-      <div class="card"><div class="card-h"><h2>Mapa dos cinco elementos</h2>${a?`<span class="pill">${p.assess.length>1?'reavaliação':'basal'} · ${fmt(a.date)}</span>`:''}</div>
-        ${st?`${barrasEl(st, p.assess.length>1?elemState(a0.signs,a0.status):null)}${p.assess.length>1?`<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal (${fmt(a0.date)}).</p>`:''}
-          <details class="mais"><summary>Ver pentagrama ${ic('baixo')}</summary>${pentagram(st,null)}</details>`
-        :vazio('yin','Sem avaliação energética','Faça a avaliação para ver o mapa dos cinco elementos.',`<button class="btn sm pri" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliar</button>`)}</div>
-      <div class="card"><div class="card-h"><h2>Padrões validados</h2><a class="btn sm" href="#avaliacao">Nova avaliação</a></div>
-        ${ac.length?ac.map(h=>`<div class="row"><div class="grow"><b>${h.p.nome}</b></div>${elTag(h.p.el)}<span class="pill ${h.p.tipo==='exc'?'crit':'warn'}">${h.p.tipo==='exc'?'excesso':'deficiência'}</span></div>`).join(''):'<p class="muted sm">Nenhum padrão validado.</p>'}
-        ${a?.nota?`<p class="muted" style="margin-top:8px">Nota: ${esc(a.nota)}</p>`:''}
-      </div>
-      ${cardCadastro(p)}
-    </div>
-  </div>`;
-}
-
-function abaProntuario(p){
-  const fin=p.atendimentos.filter(a=>a.status==='finalizado'), Q=p.queixas, E=eventos(p);
-  const labels=fin.map(a=>fmt(a.data).slice(0,5)), series=Q.map(q=>({cor:corQ(p,q),nome:q.descricao,vals:fin.map(a=>a.evolucao.intensidades[q.id]??null)})).filter(x=>x.vals.some(v=>v!=null));
-  const a0=p.avaliacoes[0], a1=p.avaliacoes.at(-1);
-  const s0=a0&&new Set(a0.signs), s1=a1&&new Set(a1.signs), dois=p.avaliacoes.length>1;
-  const resolv=dois?a0.signs.filter(x=>!s1.has(x)):[], novos=dois?a1.signs.filter(x=>!s0.has(x)):[];
-  const qs=Q.filter(q=>serieQueixa(p,q.id).length);
-  return `<div class="card"><div class="card-h"><h2>Evolução das queixas</h2>${series.length>1?`<div class="leg">${series.map((s,i)=>`<button class="leg-b" data-act="serie" data-s="${i}" aria-pressed="true" data-tip="Mostrar ou ocultar"><i style="background:${s.cor}"></i>${esc(s.nome)}</button>`).join('')}</div>`:'<span class="muted sm">intensidade de 0 a 10 por atendimento</span>'}</div>
-    ${fin.length?`${linhas(series,labels,{label:'Intensidade das queixas por atendimento',w:1000,h:240})}
-      <div class="qsum">${qs.map(q=>{ const v=serieQueixa(p,q.id).map(x=>x.valor); return `<div><i style="background:${corQ(p,q)}"></i><span>${esc(q.descricao)}${q.ativa?'':' (resolvida)'}</span><b>${v[0]} → ${v.at(-1)}</b>${delta(v[0],v.at(-1))}</div>`; }).join('')}</div>`
-      :vazio('evolucao','Ainda sem atendimentos','A evolução aparece a partir do primeiro atendimento registrado.')}</div>
-  ${a0?`<div class="card" style="margin-top:20px"><div class="card-h"><h2>Avaliação basal × atual</h2><span class="muted sm">${fmt(a0.date)}${dois?` → ${fmt(a1.date)}`:''}</span></div>
-    ${dois?`<div class="cmp"><div><div class="lbl">Basal · ${fmt(a0.date)}</div>${pentagram(elemState(a0.signs,a0.status),null)}</div><div><div class="lbl">Atual · ${fmt(a1.date)}</div>${pentagram(elemState(a1.signs,a1.status),null)}</div></div>
-      <div class="grid g2" style="margin-top:8px"><div>${barrasEl(elemState(a1.signs,a1.status),elemState(a0.signs,a0.status))}<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal.</p></div>
-        <div class="sinais-cmp"><div><span class="pill ok">${ic('check')}${resolv.length} sina${resolv.length===1?'l':'is'} que não aparece${resolv.length===1?'':'m'} mais</span><p class="muted sm">${resolv.map(x=>esc(SIGN[x]||x)).join(', ')||'—'}</p></div>
-        <div><span class="pill warn">${ic('mais')}${novos.length} sina${novos.length===1?'l':'is'} novo${novos.length===1?'':'s'}</span><p class="muted sm">${novos.map(x=>esc(SIGN[x]||x)).join(', ')||'—'}</p></div></div></div>`
-    :`<div class="grid g2"><div>${pentagram(elemState(a0.signs,a0.status),null)}</div><div>${barrasEl(elemState(a0.signs,a0.status))}<p class="muted sm" style="margin-top:10px">Só existe a avaliação basal. A comparação aparece depois da primeira reavaliação.</p></div></div>`}</div>`:''}
-  <div class="card" style="margin-top:20px"><div class="card-h"><h2>Linha do tempo</h2><span class="muted sm">${fin.length} atendimento${fin.length===1?'':'s'} · ${p.avaliacoes.length} avalia${p.avaliacoes.length===1?'ção':'ções'}</span></div>
-    ${E.length?`<div class="lt">${[...E].reverse().map(e=>itemTempo(p,e)).join('')}</div>`:'<p class="muted">Nenhuma sessão registrada.</p>'}</div>`;
-}
-
-function abaAnamnese(p){
-  const F=[['historia','História da queixa'],['sono','Sono'],['alimentacao','Alimentação e sede'],['evacuacao','Evacuação e micção'],['emocoes','Emoções'],['medicamentos','Medicamentos em uso']];
-  return `<div class="grid g-side"><div class="card"><h3>Anamnese integrativa</h3><div class="form">${F.map(([k,l])=>`<div class="field full"><label class="lbl" for="an-${k}">${l}</label><textarea id="an-${k}" data-anam="${k}">${esc(p.anam[k])}</textarea></div>`).join('')}</div><p class="muted" style="font-size:.8rem;margin-top:8px">Salvo automaticamente ao sair do campo.</p></div>
-    <div class="card" style="align-self:start"><h3>Alertas de segurança</h3><p class="muted" style="margin-bottom:10px;font-size:.86rem">Usados para avisar sobre pontos e técnicas contraindicados ao registrar a sessão.</p>
-    ${[['gestante','Gestante'],['anticoagulante','Uso de anticoagulante'],['marcapasso','Portador de marcapasso']].map(([k,l])=>`<label style="display:flex;gap:8px;padding:6px 0"><input type="checkbox" id="al-${k}" data-alert="${k}" ${p.alerts[k]?'checked':''}> ${l}</label>`).join('')}</div></div>`;
-}
-
-function abaNova(p){
-  const a=p.assess.at(-1), outras=p.queixas.filter(q=>q.ativa&&q.id!==QUEIXA_PRINCIPAL);
-  const TEC=['Acupuntura','Auriculoterapia','Moxabustão','Ventosa','Eletroacupuntura','Massagem Tuiná','Sangria'];
-  return `<div class="grid g-side"><div class="card"><h3>Registrar sessão</h3>
-    <form id="f-session" class="form">
-      <div class="field"><label class="lbl" for="ns-date">Data</label><input id="ns-date" type="date" value="${TODAY}" required></div>
-      <div class="field"><label class="lbl" for="ns-eva">${outras.length?`${esc(p.queixa)} (EVA)`:'Intensidade da queixa (EVA)'}: <b id="ns-eva-v">5</b></label><input id="ns-eva" type="range" min="0" max="10" value="5"></div>
-      ${outras.map(q=>{ const ult=serieQueixa(p,q.id).at(-1)?.valor??5; return `<div class="field"><label class="lbl" for="ns-q-${q.id}">${esc(q.descricao)}: <b id="ns-q-${q.id}-v">${ult}</b></label><input id="ns-q-${q.id}" data-q="${q.id}" type="range" min="0" max="10" value="${ult}"></div>`; }).join('')}
-      <div class="field full"><span class="lbl">Técnicas</span><div class="chips">${TEC.map(t=>`<label class="chip"><input type="checkbox" name="tec" value="${t}" style="margin-right:4px">${t}</label>`).join('')}</div></div>
-      <div class="field full"><label class="lbl" for="ns-pts">Pontos utilizados (separe por vírgula)</label><input id="ns-pts" class="mono" placeholder="E36, BP6, F3"></div>
-      <div class="full" id="ns-warn"></div>
-      <div class="field full"><label class="lbl" for="ns-nota">Evolução e observações</label><textarea id="ns-nota"></textarea></div>
-      <div class="full"><button class="btn pri">Salvar no prontuário</button></div>
-    </form></div>
-    <div class="card" style="align-self:start"><h3>Sugestões da última avaliação</h3><p class="muted" style="font-size:.82rem;margin-bottom:8px">Pontos ligados aos padrões validados. Clique para adicionar.</p>
-    ${a?aceitos(a).map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${h.p.pontos.map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
-}
-
-const ABAS = { resumo:abaResumo, sessoes:abaProntuario, anamnese:abaAnamnese, nova:abaNova };
-function vProntuario(){
-  const p=patient(ui.pid)||db.patients[0];
-  if(!p) return `<div class="head"><div><h1>Prontuário</h1></div></div>${vazio('pacientes','Nenhum paciente cadastrado','Cadastre um paciente para abrir o prontuário.',`<button class="btn pri sm" data-act="novo-paciente">${ic('novo')}Cadastrar paciente</button>`)}`;
-  ui.pid=p.id; if(!ABAS[ui.tab]) ui.tab='resumo';
-  const alerts=alertasDe(p);
-  const tabs=[['resumo','Resumo','painel'],['sessoes','Prontuário','historico'],['anamnese','Anamnese e alertas','folha'],['nova','Registrar sessão','mais']];
-  ui.crumbs=[['#pacientes','Pacientes'],[null,p.name]];
-  return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
-    <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
-    ${alerts.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}</div>`:''}</div>
-    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button><button class="btn pri" data-act="tab" data-t="nova">${ic('play')}Novo atendimento</button></div></div>
-    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}`;
-}
-const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao};
+const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -1856,6 +2139,7 @@ addEventListener('keydown',ev=>{
   if(ev.key==='Escape'){ if(ui.ov){ ui.ov=null; render(true); } else if(ui.menuAberto){ ui.menuAberto=false; render(true); } return; }
   if(ui.ov==='busca'&&['ArrowDown','ArrowUp','Enter'].includes(ev.key)){ ev.preventDefault(); const L=document.querySelectorAll('.pal-i');
     if(ev.key==='Enter'){ L[ui.bi]?.click(); return; } ui.bi=(ui.bi+(ev.key==='ArrowDown'?1:-1)+L.length)%Math.max(1,L.length); document.getElementById('pal-l').innerHTML=listaBusca(); return; }
+  if(ev.altKey&&route()==='atendimento'&&(ev.key==='ArrowLeft'||ev.key==='ArrowRight')){ ev.preventDefault(); irEtapa((ui.etapa|0)+(ev.key==='ArrowRight'?1:-1)); return; }
   if(emCampo||ev.ctrlKey||ev.metaKey||ev.altKey) return;
   if(ev.key==='/'){ ev.preventDefault(); abrir('busca'); }
   else if(ev.key==='['){ ui.menuMini=!ui.menuMini; render(true); }
@@ -1873,6 +2157,12 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
   if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
+  else if(a==='novo-atendimento'){ const p=patient(t.dataset.pid||ui.pid); let x=rascunhoDe(p);
+    if(!x){ x=iniciarAtendimento(p,{id:uid(),data:TODAY},new Date().toISOString()); save(); }
+    ui.pid=p.id; ui.atId=x.id; ui.etapa=0; ui.el=null; ui.atCmp=false; irPara('atendimento'); scrollTo(0,0); }
+  else if(a==='abrir-atendimento'){ ui.pid=t.dataset.pid; ui.atId=t.dataset.id; ui.etapa=0; ui.el=null; ui.atCmp=false; irPara('atendimento'); scrollTo(0,0); }
+  else if(a==='etapa'){ ev.preventDefault(); irEtapa(Number(t.dataset.i)); }
+  else if(a.startsWith('at-')){ acaoAtendimento(a,t); }
   else if(a==='novo-paciente'){ ui.editPid=null; irPara('cadastro'); }
   else if(a==='editar-paciente'){ ui.editPid=t.dataset.pid; irPara('cadastro'); }
   else if(a==='queixa-ativa'){ const q=alternarQueixa(patient(ui.pid),t.dataset.q,new Date().toISOString()); if(q){ save(); render(true); toast(q.ativa?'Queixa reativada':'Queixa marcada como resolvida'); } }
@@ -1914,11 +2204,42 @@ document.addEventListener('input',ev=>{
   else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
   else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
+  // Ambiente de atendimento: salva a cada alteração, sem redesenhar a tela enquanto se digita.
+  const x=(t.dataset.atq||t.dataset.atan||t.dataset.atf||t.dataset.vnota)&&atendimentoAberto(); if(!x) return;
+  if(t.dataset.atq){ x.a.evolucao.intensidades[t.dataset.atq]=Number(t.value); document.getElementById('qv-'+t.dataset.atq).textContent=t.value; mudou('intensidade das queixas',false); }
+  else if(t.dataset.atan){ x.p.anam[t.dataset.atan]=t.value; mudou('anamnese',false); }
+  else if(t.dataset.vnota){ const v=(x.a.vasos||={})[t.dataset.vnota]||={considerar:false,nota:''}; v.nota=t.value; mudou('avaliação energética: vasos extraordinários',false); }
+  else { const f=t.dataset.atf;
+    if(f==='sintese') x.a.sintese=t.value; else if(f==='nota') x.a.evolucao.nota=t.value; else if(f==='mapa') (x.a.mapa||={nota:''}).nota=t.value;
+    else if(f==='avnota'){ const av=avaliacaoEditavel(x.p,x.a); if(av) av.nota=t.value; }
+    mudou({sintese:'síntese clínica',nota:'evolução',mapa:'mapa corporal',avnota:'avaliação energética: observações'}[f],false); }
 });
 function sessionWarn(){
   const p=patient(ui.pid), codes=document.getElementById('ns-pts').value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
   const tec=[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value);
   document.getElementById('ns-warn').innerHTML=pointWarnings(codes,p,tec).map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:6px"><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div>`).join('');
+}
+// Ambiente de atendimento: troca de etapa, alterações com salvamento automático e histórico.
+function irEtapa(i){ const x=atendimentoAberto(); if(!x) return; ui.etapa=Math.max(0,Math.min(7,i));
+  if(x.a.status==='rascunho'&&!x.a.etapas.includes(ui.etapa)){ x.a.etapas.push(ui.etapa); save(); }
+  render(); scrollTo(0,0); }
+function mudou(acao, redesenhar=true){ const x=atendimentoAberto(); if(!x) return; const em=new Date().toISOString();
+  registrarAlteracao(x.a,acao,em);
+  if(x.a.status==='finalizado'&&/avalia/.test(acao)){ const av=avaliacaoEditavel(x.p,x.a); if(av) registrarAlteracao(av,'avaliação alterada após finalizar o atendimento',em); }
+  save(); if(redesenhar) render(true); else { const e=document.getElementById('autosave'); if(e) e.innerHTML=textoSalvo(x.a); } }
+function acaoAtendimento(a,t){
+  const x=atendimentoAberto(); if(!x) return; const {p}=x, A=x.a, av=avaliacaoEditavel(p,A);
+  const alterna=(L,v)=>{ const i=L.indexOf(v); i<0?L.push(v):L.splice(i,1); };
+  if(a==='at-sinal'&&av){ alterna(av.signs,t.dataset.s); mudou('avaliação energética: sinais'); }
+  else if(a==='at-hip'&&av){ const id=t.dataset.p; av.status[id]=av.status[id]===t.dataset.st?'':t.dataset.st; mudou('avaliação energética: hipóteses'); }
+  else if(a==='at-pt'){ alterna(A.plano.pontos,t.dataset.c); mudou('plano terapêutico: pontos'); }
+  else if(a==='at-tec'){ alterna(A.plano.tec,t.dataset.t); mudou('plano terapêutico: técnicas'); }
+  else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
+  else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
+  else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; irPara('agenda'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
+  else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
+  else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
+    descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
 }
 // Baixa um texto como arquivo (cópia de segurança).
 function baixar(texto, nome){ const u=URL.createObjectURL(new Blob([texto],{type:'application/json'})), l=document.createElement('a'); l.href=u; l.download=nome; document.body.append(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
@@ -1927,6 +2248,7 @@ document.addEventListener('change',ev=>{
   if(t.id==='imp-arq' && t.files[0]){ const f=t.files[0]; t.value='';
     if(!confirm(`Importar “${f.name}”? Os dados atuais deste navegador serão substituídos. Exporte antes se quiser guardá-los.`)) return;
     f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
+  if(t.dataset.vaso){ const x=atendimentoAberto(); if(x){ const v=(x.a.vasos||={})[t.dataset.vaso]||={considerar:false,nota:''}; v.considerar=t.checked; mudou('avaliação energética: vasos extraordinários'); } return; }
   if(t.id==='pr-patient'){ ui.pid=t.value; render(true); }
   else if(t.id==='as-patient'){ ui.pid=t.value; ui.assess={pid:t.value,signs:[],status:{},nota:''}; render(true); }
   else if(t.id==='pt-patient'){ ui.pid=t.value; render(true); }
@@ -1952,6 +2274,10 @@ document.addEventListener('submit',ev=>{
     const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),consentimento:TODAY,em}));
     Object.assign(p.alerts,alerts); p.cadastro=cadastro;
     db.patients.push(p); save(); ui.pid=p.id; ui.tab='anamnese'; toast('Paciente cadastrado'); location.hash='prontuario';
+  } else if(f.id==='f-at-queixa'||f.id==='f-at-pt'){
+    const x=atendimentoAberto(); if(!x) return;
+    if(f.id==='f-at-queixa'){ const d=v('atq-desc').trim(); if(!d) return; const q=adicionarQueixa(x.p,{id:uid(),descricao:d},new Date().toISOString()); x.a.evolucao.intensidades[q.id]=5; mudou('queixa adicionada'); toast('Queixa adicionada'); }
+    else { const L=v('at-pt-c').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean).filter(c=>!x.a.plano.pontos.includes(c)); if(!L.length) return; x.a.plano.pontos.push(...L); mudou('plano terapêutico: pontos'); }
   } else if(f.id==='f-queixa'){
     const d=v('nq-desc').trim(); if(!d) return;
     adicionarQueixa(patient(ui.pid),{id:uid(),descricao:d},new Date().toISOString()); save(); render(true); toast('Queixa adicionada');

@@ -3,7 +3,7 @@
 //   elementos, padrões validados e dados cadastrais;
 // - Prontuário: evolução das queixas, avaliação basal × atual e linha do tempo dos atendimentos e
 //   reavaliações;
-// - Anamnese e alertas; Registrar sessão (substituído pelo ambiente de atendimento na etapa 2D).
+// - Anamnese e alertas; Registro rápido de sessão (o atendimento completo fica em telas/atendimento.js).
 // Nenhum cálculo clínico é feito aqui: os estados vêm de raciocinio/avaliacao.js, como antes.
 import { elTag } from '../componentes/campos.js';
 import { anel, barrasEl, delta, linhas } from '../componentes/graficos.js';
@@ -14,6 +14,7 @@ import { SIGN } from '../conhecimento/sinais.js';
 import { db, patient } from '../dados/repositorio.js';
 import { alertasDe, melhoraPct } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
+import { rascunhoDe } from '../dados/atendimento.js';
 import { ui } from '../estado.js';
 import { elemState, evaluate } from '../raciocinio/avaliacao.js';
 import { TODAY, age, esc, fmt, initials } from '../util.js';
@@ -42,7 +43,10 @@ function itemTempo(p,e){
   return `<div class="lt-i"><span class="hi-n">${e.n}</span><div class="grow"><div class="lt-h"><b>${ordinal(e.n)} atendimento</b>${e.av?`<span class="pill acc">${ic('yin')}${rotuloAv(p,e.av)}</span>`:''}${e.a.origem==='v1'?'<span class="pill" data-tip="Registro trazido do protótipo na conversão dos dados">protótipo</span>':''}</div>
     ${sessHtml(e.s)}
     ${outras.length?`<div class="chips">${outras.map(q=>`<span class="pill"><i class="dotq" style="background:${corQ(p,q)}"></i>${esc(q.descricao)}: ${e.a.evolucao.intensidades[q.id]}/10</span>`).join('')}</div>`:''}
-    ${h.length?`<p class="muted sm">Padrões validados na avaliação: ${h.map(x=>esc(x.p.nome)).join(', ')}</p>`:''}</div></div>`;
+    ${h.length?`<p class="muted sm">Padrões validados na avaliação: ${h.map(x=>esc(x.p.nome)).join(', ')}</p>`:''}
+    ${e.a.sintese?`<p class="sm"><b>Síntese:</b> ${esc(e.a.sintese)}</p>`:''}
+    <div class="lt-a">${e.a.historico.length>1?`<details class="mais"><summary>Histórico de alterações (${e.a.historico.length}) ${ic('baixo')}</summary><div class="hist-alt">${[...e.a.historico].reverse().map(x=>`<div><span class="mono muted">${fmt(x.em.slice(0,10))} ${new Date(x.em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span><span>${esc(x.acao)}</span></div>`).join('')}</div></details>`:'<span></span>'}
+      <button class="btn ghost sm" data-act="abrir-atendimento" data-pid="${p.id}" data-id="${e.a.id}">${ic('editar')}Abrir no ambiente</button></div></div></div>`;
 }
 
 function cardQueixas(p){
@@ -65,6 +69,11 @@ function cardCadastro(p){
     <div class="corr-g">${L.map(([l,x])=>`<div><small>${l}</small><b>${v(x)}</b></div>`).join('')}</div></div>`;
 }
 
+// Aviso de atendimento em andamento (rascunho salvo automaticamente).
+function rascunho(p){
+  const r=rascunhoDe(p); if(!r) return '';
+  return `<div class="card rasc"><span class="tico acc">${ic('play')}</span><div class="grow"><b>Atendimento em andamento</b><small class="muted">Iniciado em ${fmt(r.data)} · salvo automaticamente às ${new Date(r.atualizadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</small></div><button class="btn pri sm" data-act="novo-atendimento" data-pid="${p.id}">Continuar ${ic('dir')}</button></div>`;
+}
 function abaResumo(p){
   const a=p.assess.at(-1), a0=p.assess[0], st=a?elemState(a.signs,a.status):null, ac=aceitos(a);
   const ss=p.sessions, s=ss.map(x=>x.eva), m=melhoraPct(s);
@@ -78,7 +87,7 @@ function abaResumo(p){
   </div>
   <div class="grid g-side">
     <div class="grid" style="align-content:start">
-      ${cardQueixas(p)}
+      ${rascunho(p)}${cardQueixas(p)}
       <div class="card"><div class="card-h"><h2>Atendimentos recentes</h2>${E.length?`<button class="btn ghost sm" data-act="tab" data-t="sessoes">Ver prontuário ${ic('dir')}</button>`:''}</div>
         ${ss.length?`<div class="hist">${ss.map((x,i)=>[x,i+1]).reverse().slice(0,3).map(([x,n])=>`<div class="hi on"><div class="hi-h"><span class="hi-n">${n}</span><span class="grow"><b>${fmt(x.date)}</b><small>${esc(x.tec.join(', '))||'atendimento'}</small></span><span class="pill">EVA ${x.eva}</span></div>${x.nota?`<div class="hi-b"><p>${esc(x.nota)}</p></div>`:''}</div>`).join('')}</div>`
           :vazio('lista','Nenhum atendimento','Use “Novo atendimento” para registrar o primeiro.')}</div>
@@ -128,7 +137,7 @@ function abaAnamnese(p){
 function abaNova(p){
   const a=p.assess.at(-1), outras=p.queixas.filter(q=>q.ativa&&q.id!==QUEIXA_PRINCIPAL);
   const TEC=['Acupuntura','Auriculoterapia','Moxabustão','Ventosa','Eletroacupuntura','Massagem Tuiná','Sangria'];
-  return `<div class="grid g-side"><div class="card"><h3>Registrar sessão</h3>
+  return `<div class="grid g-side"><div class="card"><h3>Registro rápido de sessão</h3><p class="muted sm" style="margin-bottom:10px">Para registrar uma sessão já realizada. O atendimento completo, com as 8 etapas, fica em “Novo atendimento”.</p>
     <form id="f-session" class="form">
       <div class="field"><label class="lbl" for="ns-date">Data</label><input id="ns-date" type="date" value="${TODAY}" required></div>
       <div class="field"><label class="lbl" for="ns-eva">${outras.length?`${esc(p.queixa)} (EVA)`:'Intensidade da queixa (EVA)'}: <b id="ns-eva-v">5</b></label><input id="ns-eva" type="range" min="0" max="10" value="5"></div>
@@ -149,11 +158,11 @@ export function vProntuario(){
   if(!p) return `<div class="head"><div><h1>Prontuário</h1></div></div>${vazio('pacientes','Nenhum paciente cadastrado','Cadastre um paciente para abrir o prontuário.',`<button class="btn pri sm" data-act="novo-paciente">${ic('novo')}Cadastrar paciente</button>`)}`;
   ui.pid=p.id; if(!ABAS[ui.tab]) ui.tab='resumo';
   const alerts=alertasDe(p);
-  const tabs=[['resumo','Resumo','painel'],['sessoes','Prontuário','historico'],['anamnese','Anamnese e alertas','folha'],['nova','Registrar sessão','mais']];
+  const tabs=[['resumo','Resumo','painel'],['sessoes','Prontuário','historico'],['anamnese','Anamnese e alertas','folha'],['nova','Registro rápido','mais']];
   ui.crumbs=[['#pacientes','Pacientes'],[null,p.name]];
   return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
     ${alerts.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}</div>`:''}</div>
-    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button><button class="btn pri" data-act="tab" data-t="nova">${ic('play')}Novo atendimento</button></div></div>
+    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
     <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}`;
 }
