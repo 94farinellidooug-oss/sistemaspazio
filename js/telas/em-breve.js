@@ -1,7 +1,9 @@
 // Telas dos módulos planejados, que ainda não foram implementados, e a tela Administração,
 // que reúne os módulos administrativos.
 import { ic } from '../componentes/icones.js';
+import { db } from '../dados/repositorio.js';
 import { LABEL } from './menu.js';
+import { fmt } from '../util.js';
 
 const MODULOS = {
   crm:{etapa:6,i:'tel',texto:'Acompanhamento do relacionamento, do primeiro contato à reativação de pacientes.',itens:['Interessados e origem dos contatos','Negociações e observações','Lembretes e tarefas','Reativação de pacientes antigos','Continuidade de tratamentos','WhatsApp: confirmações e lembretes (etapa 7)']},
@@ -23,7 +25,14 @@ export function vEmBreve(k){
 export function vAdministracao(){
   return `<div class="head"><div><h1>Administração</h1><p>Equipe, configurações da clínica e relacionamento com pacientes</p></div></div>
   <div class="adm">${['equipe','configuracoes','crm'].map(k=>{const m=MODULOS[k]; return `<a class="adm-c" href="#${k}"><span class="tico acc">${ic(m.i)}</span><span class="grow"><b>${LABEL[k]}</b><small>${m.texto}</small></span><span class="pill">etapa ${m.etapa}</span></a>`;}).join('')}</div>
-  <div class="card" style="margin-top:20px"><div class="card-h"><h2>Dados de exemplo</h2></div>
-    <p class="muted sm" style="margin-bottom:12px">Os dados ficam só neste navegador. Restaurar apaga o que foi digitado e volta aos pacientes de exemplo.</p>
-    <button class="btn" data-act="reset">${ic('retorno')}Restaurar exemplos</button></div>`;
+  <div class="grid g2" style="margin-top:20px">
+    <div class="card" id="dados"><div class="card-h"><h2>Dados e cópia de segurança</h2><span class="tico sm acc">${ic('escudo')}</span></div>
+      <div class="ac-s" style="margin-bottom:14px"><div><small>Pacientes</small><b>${db.patients.length}</b></div><div><small>Atendimentos</small><b>${db.patients.reduce((n,p)=>n+p.atendimentos.length,0)}</b></div><div><small>Agendamentos</small><b>${db.appts.length}</b></div></div>
+      <p class="muted sm" style="margin-bottom:12px">Os dados ficam só neste navegador (modelo v2).${db.origem==='spazio-v1'?` Convertidos do protótipo em ${fmt(db.migradoEm.slice(0,10))}; os dados originais do protótipo continuam guardados sem alteração.`:''} Exporte uma cópia com frequência.</p>
+      <div class="chips"><button class="btn" data-act="exportar" data-f="v2">${ic('baixar')}Exportar dados</button><button class="btn ghost" data-act="exportar" data-f="v1">${ic('baixar')}Exportar no formato do protótipo</button>
+        <label class="btn ghost">${ic('sobe')}Importar arquivo<input type="file" id="imp-arq" accept="application/json,.json" hidden></label></div></div>
+    <div class="card"><div class="card-h"><h2>Dados de exemplo</h2></div>
+      <p class="muted sm" style="margin-bottom:12px">Restaurar apaga o que foi digitado neste navegador e volta aos pacientes de exemplo. Exporte antes se quiser guardar.</p>
+      <button class="btn" data-act="reset">${ic('retorno')}Restaurar exemplos</button></div>
+  </div>`;
 }

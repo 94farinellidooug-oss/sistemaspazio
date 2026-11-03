@@ -48,7 +48,7 @@ No Windows e no macOS, `--with-deps` pode ser omitido.
 
 | Comando | O que verifica |
 | --- | --- |
-| `npm test` | 51 casos de hipóteses, Ba Gang, cinco elementos, alertas, pentagrama e EVA. O resultado precisa ser idêntico ao gravado a partir do protótipo original. |
+| `npm test` | 51 casos de hipóteses, Ba Gang, cinco elementos, alertas, pentagrama e EVA, idênticos ao gravado a partir do protótipo original, e os testes da migração v1 → v2 (`tests/migracao.mjs`). |
 | `npm run test:navegador` | Roda `tests/navegador.mjs`, que executa o mesmo roteiro de uso (cadastro, sessão, avaliação, pentagrama, pontos, agenda) no original, na versão modular e no arquivo único e compara, a cada passo, o resultado funcional da tela (pacientes, sinais, hipóteses, avisos, pentagrama, pontos, agenda, anamnese, sessões) e, no fim, os dados salvos, que precisam ser idênticos byte a byte. Roda também `tests/compatibilidade.mjs`, que confirma que `dist/spazio.html` abre direto do disco e que os dados da chave `spazio-v1` gravados pelo original continuam acessíveis, nos dois sentidos. |
 | (incluído em `test:navegador`) `tests/interface.mjs` | Verifica a interface do MUSUBI: menu com 8 módulos, modo recolhido, migalhas, busca global (Ctrl K), notificações, perfil, atalhos de teclado, Painel, acompanhamento que leva à avaliação, atalhos do prontuário, telas "em breve", tema claro e gaveta no celular. |
 | (incluído em `test:navegador`) `tests/layout.mjs sistema` | Abre cada tela em 6 larguras e 5 horários e confirma que nada sai do cartão, nada fixo cobre o conteúdo, não há rolagem horizontal nem erros. `npm run test:layout` roda também no arquivo único e `npm run test:proposta` na proposta aprovada. |
@@ -63,12 +63,14 @@ O workflow `.github/workflows/testes.yml` roda todos os testes em cada pull requ
 
 ## Dados salvos no navegador
 
-Os dados ficam no `localStorage` do navegador, na chave `spazio-v1`, no mesmo formato do protótipo v1. O navegador separa os dados por endereço de origem. Por isso:
+Os dados ficam no `localStorage` do navegador, na chave `musubi-v2` (modelo v2, descrito em `js/dados/migracao.js`). O navegador separa os dados por endereço de origem.
 
-- Quem abrir o novo `dist/spazio.html` no mesmo endereço onde usava o protótipo antigo continua vendo os mesmos dados.
-- Arquivos abertos direto do disco (`file://`) compartilham os dados entre si no Chrome.
-- Um endereço diferente (outro site, `localhost` ou o disco) começa sem dados, como acontecia com o próprio v1.
-
+- **Migração automática:** na primeira abertura, se houver dados do protótipo (chave `spazio-v1`), eles são convertidos para o v2 e gravados em `musubi-v2`. Cada sessão vira um atendimento finalizado, cada avaliação fica ligada ao atendimento do mesmo dia (ou fica como reavaliação avulsa), a queixa em texto vira a queixa principal e campos desconhecidos são guardados como estão. Cada item migrado registra a origem e a data (rastreabilidade).
+- **A chave `spazio-v1` nunca é alterada nem apagada.** Ela continua como cópia de segurança. Depois da migração, o MUSUBI passa a usar só a `musubi-v2`; o que for digitado no protótipo antigo depois disso não aparece no MUSUBI (use Importar).
+- **Dados v2 ilegíveis** não são descartados: são guardados em `musubi-v2-ilegivel` antes de qualquer outra ação.
+- **Administração → Dados e cópia de segurança:** exportar tudo (arquivo v2), exportar no formato do protótipo (para voltar a ele) e importar um arquivo exportado (v2 ou v1), com confirmação antes de substituir.
+- Arquivos abertos direto do disco (`file://`) compartilham os dados entre si no Chrome. Um endereço diferente começa sem dados.
+- `tests/migracao.mjs` confere que o v2 convertido de volta é idêntico ao v1, inclusive com dados incompletos, corrompidos ou com campos desconhecidos.
 
 ## Versão oficial e ambiente de demonstração (Vercel)
 
