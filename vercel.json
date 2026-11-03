@@ -1,14 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "echo 'O preview não precisa de dependências'",
+  "installCommand": "echo 'O site não precisa de dependências'",
   "buildCommand": "npm run build && rm -rf site && mkdir site && cp -r css js proposta site/ && cp dist/spazio.html site/",
   "outputDirectory": "site",
-  "git": {
-    "deploymentEnabled": {
-      "main": false
-    }
-  },
   "redirects": [
     {
       "source": "/",
