@@ -4,7 +4,7 @@
 // Formato v2:
 // { versao:2, origem:'spazio-v1'|'exemplos'|'importacao', migradoEm, appts:[...mesmo formato do v1],
 //   patients:[{ id, name, birth, phone, exemplo, consentimento?, anam, alerts,
-//     cadastro:{cpf, email, endereco, cidade, contatoEmergencia},
+//     cadastro:{cpf, email, endereco, cidade, hemisferio:'Sul'|'Norte', contatoEmergencia},
 //     queixas:[{id, descricao, ativa}],
 //     atendimentos:[{ id, data, status:'finalizado'|'rascunho', origem:'v1'|'sistema',
 //       plano:{pontos, tec}, evolucao:{intensidades:{[idQueixa]:0..10}, nota}, avaliacaoId,
@@ -48,7 +48,7 @@ export function migrarV1(v1, em = new Date().toISOString(), origem = 'spazio-v1'
     const n = { id: txt(p.id), name: txt(p.name), birth: txt(p.birth), phone: txt(p.phone), exemplo: !!p.exemplo };
     if ('consentimento' in p) n.consentimento = p.consentimento;
     n.anam = obj(p.anam); n.alerts = obj(p.alerts);
-    n.cadastro = { cpf: '', email: '', endereco: '', cidade: '', contatoEmergencia: '' };
+    n.cadastro = { cpf: '', email: '', endereco: '', cidade: '', hemisferio: 'Sul', contatoEmergencia: '' };
     n.queixas = [{ id: QP, descricao: txt(p.queixa), ativa: true }];
     n.atendimentos = atendimentos; n.avaliacoes = avaliacoes;
     // Guarda a ordem original dos campos do v1, para devolver os dados exatamente como eram.
@@ -96,14 +96,15 @@ export const ehV1 = d => !!d && !('versao' in d) && Array.isArray(d.patients);
 // Novo paciente já no formato v2. Os campos do v1 seguem a mesma ordem do protótipo.
 export function novoPaciente({ id, name, birth, phone, queixa, consentimento, em }){
   return { id, name, birth, phone, exemplo: false, consentimento, anam: { historia:'', sono:'', alimentacao:'', evacuacao:'', emocoes:'', medicamentos:'' },
-    alerts: { gestante:false, anticoagulante:false, marcapasso:false }, cadastro: { cpf:'', email:'', endereco:'', cidade:'', contatoEmergencia:'' },
+    alerts: { gestante:false, anticoagulante:false, marcapasso:false }, cadastro: { cpf:'', email:'', endereco:'', cidade:'', hemisferio:'Sul', contatoEmergencia:'' },
     queixas: [{ id: QP, descricao: queixa, ativa: true }], atendimentos: [], avaliacoes: [],
     v1: { campos: ['id','name','birth','phone','queixa','exemplo','consentimento','anam','alerts','sessions','assess'] }, criadoEm: em };
 }
 // Registra uma sessão como atendimento finalizado, mantendo a ordem por data (como o v1 fazia).
-export function registrarSessao(p, { id, date, eva, pontos, tec, nota }, em){
+// intensidades: valores das outras queixas ativas (a principal vem em eva, como no v1).
+export function registrarSessao(p, { id, date, eva, pontos, tec, nota, intensidades = {} }, em){
   const av = p.avaliacoes.find(a => a.date === date && !a.atendimentoId);
-  const at = { id, data: date, status: 'finalizado', origem: 'sistema', plano: { pontos, tec }, evolucao: { intensidades: { [QP]: eva }, nota },
+  const at = { id, data: date, status: 'finalizado', origem: 'sistema', plano: { pontos, tec }, evolucao: { intensidades: { [QP]: eva, ...intensidades }, nota },
     avaliacaoId: av ? av.id : null, historico: [{ em, acao: 'sessão registrada' }] };
   if (av) av.atendimentoId = id;
   p.atendimentos.push(at);
@@ -118,3 +119,22 @@ export function registrarAvaliacao(p, { id, date, signs, status, nota }, em){
   p.avaliacoes.push(av);
   return av;
 }
+
+// Queixas: a principal (q1) é a do v1; as outras são acompanhadas pelas intensidades de cada atendimento.
+export const QUEIXA_PRINCIPAL = QP;
+export function adicionarQueixa(p, { id, descricao }, em){
+  const q = { id, descricao, ativa: true, criadaEm: em };
+  p.queixas.push(q);
+  return q;
+}
+// Marca uma queixa secundária como resolvida (ativa=false) ou reativa. A principal fica sempre ativa.
+export function alternarQueixa(p, id, em){
+  const q = p.queixas.find(x => x.id === id);
+  if (!q || q.id === QP) return null;
+  q.ativa = !q.ativa;
+  (q.historico ||= []).push({ em, acao: q.ativa ? 'queixa reativada' : 'queixa marcada como resolvida' });
+  return q;
+}
+// Evolução de uma queixa: intensidade em cada atendimento finalizado em que ela foi medida.
+export const serieQueixa = (p, id) => p.atendimentos.filter(a => a.status === 'finalizado' && a.evolucao.intensidades[id] != null)
+  .map(a => ({ data: a.data, valor: a.evolucao.intensidades[id] }));

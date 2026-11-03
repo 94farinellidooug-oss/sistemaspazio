@@ -1,10 +1,11 @@
 // Ponto de entrada: rotas, renderização e eventos.
 import { db, exportarV1, exportarV2, importar, patient, restaurarExemplos, save } from './dados/repositorio.js';
-import { hidratarPaciente, novoPaciente, registrarAvaliacao, registrarSessao } from './dados/migracao.js';
+import { adicionarQueixa, alternarQueixa, hidratarPaciente, novoPaciente, registrarAvaliacao, registrarSessao } from './dados/migracao.js';
 import { ui } from './estado.js';
 import { pointWarnings } from './raciocinio/seguranca.js';
 import { vAgenda } from './telas/agenda.js';
 import { vAvaliacao } from './telas/avaliacao.js';
+import { cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { listaBusca, renderNav } from './telas/menu.js';
 import { notificacoes } from './dados/indicadores.js';
@@ -16,7 +17,7 @@ import { pointCards, vPontos } from './telas/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
 import { TODAY, esc, uid } from './util.js';
 
-export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao};
+export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -39,7 +40,7 @@ document.addEventListener('mouseover',ev=>{ const t=ev.target.closest('[data-tip
   tip.textContent=t.dataset.tip; tip.hidden=false; const b=t.getBoundingClientRect(), w=tip.offsetWidth;
   tip.style.left=Math.max(8,Math.min(innerWidth-w-8,b.left+b.width/2-w/2))+'px'; tip.style.top=(b.top-tip.offsetHeight-8<4?b.bottom+8:b.top-tip.offsetHeight-8)+'px'; });
 addEventListener('scroll',()=>{ tip.hidden=true; },{passive:true});
-addEventListener('hashchange',()=>{ ui.menuAberto=false; ui.ov=null; tip.hidden=true; render(); scrollTo(0,0); });
+addEventListener('hashchange',()=>{ if(route()!=='cadastro') ui.editPid=null; ui.menuAberto=false; ui.ov=null; tip.hidden=true; render(); scrollTo(0,0); });
 addEventListener('keydown',ev=>{
   const emCampo=ev.target.matches('input, textarea, select');
   if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k'){ ev.preventDefault(); abrir('busca'); return; }
@@ -58,10 +59,14 @@ document.addEventListener('click',ev=>{
   // Itens da busca e das notificações: marcam como lida, fecham a camada e abrem o destino.
   const item=ev.target.closest('.pal-i, .dd-p .nt');
   if(item){ if(item.dataset.lida) ui.lidas.add(item.dataset.lida); ui.ov=null;
+    if(item.getAttribute('href')==='#cadastro') ui.editPid=null;
     if(item.matches('a[href]')){ ev.preventDefault(); irPara(item.getAttribute('href').slice(1)); return; } }
   const t=ev.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
   if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
+  else if(a==='novo-paciente'){ ui.editPid=null; irPara('cadastro'); }
+  else if(a==='editar-paciente'){ ui.editPid=t.dataset.pid; irPara('cadastro'); }
+  else if(a==='queixa-ativa'){ const q=alternarQueixa(patient(ui.pid),t.dataset.q,new Date().toISOString()); if(q){ save(); render(true); toast(q.ativa?'Queixa reativada':'Queixa marcada como resolvida'); } }
   else if(a==='sessao'){ ui.pid=t.dataset.pid; ui.tab='nova'; irPara('prontuario'); }
   else if(a==='ver-ponto'){ ui.ptQ=t.dataset.c; ui.ptMer=''; irPara('biblioteca'); }
   else if(a==='busca'||a==='notif'||a==='perfil'||a==='atalhos'){ abrir(a); }
@@ -96,6 +101,9 @@ document.addEventListener('input',ev=>{
   else if(t.id==='pt-q'){ ui.ptQ=t.value; document.getElementById('ptlist').innerHTML=pointCards(); }
   else if(t.id==='as-nota'){ ui.assess.nota=t.value; }
   else if(t.id==='ns-eva'){ document.getElementById('ns-eva-v').textContent=t.value; }
+  else if(t.dataset.q&&t.type==='range'){ document.getElementById(t.id+'-v').textContent=t.value; }
+  else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
+  else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
 });
 export function sessionWarn(){
@@ -122,11 +130,25 @@ document.addEventListener('change',ev=>{
 document.addEventListener('submit',ev=>{
   ev.preventDefault(); const f=ev.target, v=id=>document.getElementById(id).value;
   if(f.id==='f-patient'){
-    const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),consentimento:TODAY,em:new Date().toISOString()}));
+    const cpf=document.getElementById('np-cpf');
+    if(!cpfValido(cpf.value)){ cpf.setCustomValidity('CPF inválido: confira os 11 números.'); cpf.reportValidity(); return; }
+    const em=new Date().toISOString(), lgpd=document.getElementById('np-lgpd');
+    const cadastro={cpf:cpf.value.trim()?cpfFormatado(cpf.value.trim()):'',email:v('np-email').trim(),endereco:v('np-end').trim(),cidade:v('np-cid').trim(),hemisferio:v('np-hem'),contatoEmergencia:v('np-emerg').trim()};
+    const alerts=Object.fromEntries(['gestante','anticoagulante','marcapasso'].map(k=>[k,document.getElementById('np-al-'+k).checked]));
+    if(ui.editPid){ const p=patient(ui.editPid);
+      p.name=v('np-name').trim(); p.birth=v('np-birth'); p.phone=v('np-phone'); p.queixas.find(q=>q.id==='q1').descricao=v('np-q').trim();
+      Object.assign(p.alerts,alerts); p.cadastro={...p.cadastro,...cadastro,atualizadoEm:em};
+      if(lgpd?.checked) p.consentimento=TODAY;
+      save(); ui.pid=p.id; ui.editPid=null; ui.tab='resumo'; toast('Cadastro atualizado'); location.hash='prontuario'; return; }
+    const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),consentimento:TODAY,em}));
+    Object.assign(p.alerts,alerts); p.cadastro=cadastro;
     db.patients.push(p); save(); ui.pid=p.id; ui.tab='anamnese'; toast('Paciente cadastrado'); location.hash='prontuario';
+  } else if(f.id==='f-queixa'){
+    const d=v('nq-desc').trim(); if(!d) return;
+    adicionarQueixa(patient(ui.pid),{id:uid(),descricao:d},new Date().toISOString()); save(); render(true); toast('Queixa adicionada');
   } else if(f.id==='f-session'){
     const p=patient(ui.pid);
-    registrarSessao(p,{id:uid(),date:v('ns-date'),eva:Number(v('ns-eva')),pontos:v('ns-pts').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),tec:[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value),nota:v('ns-nota')},new Date().toISOString());
+    registrarSessao(p,{id:uid(),date:v('ns-date'),eva:Number(v('ns-eva')),intensidades:Object.fromEntries([...f.querySelectorAll('input[data-q]')].map(x=>[x.dataset.q,Number(x.value)])),pontos:v('ns-pts').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),tec:[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value),nota:v('ns-nota')},new Date().toISOString());
     save(); ui.tab='sessoes'; toast('Sessão registrada'); render();
   } else if(f.id==='f-appt'){
     db.appts.push({id:uid(),pid:v('na-p'),date:v('na-d'),time:v('na-t'),tipo:v('na-tipo'),valor:Number(v('na-v'))||0,done:false}); save(); ui.bookPid=null; toast('Agendamento criado'); render(true);

@@ -4,7 +4,7 @@
 // as telas continuam vendo sessões, avaliações e queixa no mesmo formato e ordem do v1.
 // Uso: node tests/migracao.mjs
 import { seed } from '../js/dados/exemplos.js';
-import { ehV1, ehV2, hidratar, migrarV1, novoPaciente, paraV1, registrarAvaliacao, registrarSessao } from '../js/dados/migracao.js';
+import { adicionarQueixa, alternarQueixa, ehV1, ehV2, hidratar, migrarV1, novoPaciente, paraV1, registrarAvaliacao, registrarSessao, serieQueixa } from '../js/dados/migracao.js';
 
 let falhas = 0, total = 0;
 const ok = (cond, msg) => { total++; console.log(`${cond ? 'ok   ' : 'FALHA'} ${msg}`); if (!cond) falhas++; };
@@ -65,6 +65,16 @@ v1.patients.push({ id: np.id, name: np.name, birth: np.birth, phone: np.phone, q
   anam: { historia: '', sono: '', alimentacao: '', evacuacao: '', emocoes: '', medicamentos: '' }, alerts: { gestante: false, anticoagulante: false, marcapasso: false }, sessions: [], assess: [] });
 novo.patients.push(hidratar({ patients: [novoPaciente({ ...np, em: EM })] }).patients[0]);
 ok(J(paraV1(novo)) === J(v1), 'depois de novas gravações, o v2 convertido continua idêntico ao que o v1 gravaria');
+
+// 5. Várias queixas (etapa 2C): intensidades por queixa sem mudar o que o v1 enxerga
+const mq = ida(seed()), pq = mq.patients[0], v1Antes = J(paraV1(mq));
+adicionarQueixa(pq, { id: 'q2', descricao: 'Insônia' }, EM);
+ok(J(paraV1(mq)) === v1Antes && pq.queixa === seed().patients[0].queixa, 'queixa adicional não altera os dados no formato v1');
+registrarSessao(pq, { id: 'm1', date: '2099-01-01', eva: 4, pontos: [], tec: [], nota: '', intensidades: { q2: 7 } }, EM);
+ok(J(pq.atendimentos.at(-1).evolucao.intensidades) === J({ q1: 4, q2: 7 }) && J(Object.keys(pq.sessions.at(-1))) === J(['id','date','eva','pontos','tec','nota']) && pq.sessions.at(-1).eva === 4,
+  'atendimento grava a intensidade de cada queixa; a sessão no formato v1 continua só com a principal');
+ok(J(serieQueixa(pq, 'q2')) === J([{ data: '2099-01-01', valor: 7 }]) && serieQueixa(pq, 'q1').length === pq.sessions.length, 'evolução de cada queixa só com os atendimentos em que foi medida');
+ok(alternarQueixa(pq, 'q2', EM).ativa === false && alternarQueixa(pq, 'q1', EM) === null && pq.queixas[0].ativa, 'queixa secundária pode ser resolvida; a principal fica sempre ativa');
 
 console.log(falhas ? `\n${falhas} de ${total} verificações falharam.` : `\n${total} verificações da migração passaram.`);
 process.exit(falhas ? 1 : 0);

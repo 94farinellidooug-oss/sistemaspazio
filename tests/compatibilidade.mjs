@@ -31,6 +31,7 @@ const ir = async (p, h) => { await p.evaluate(h => { location.hash = h; }, h); a
 // Grava dados pelo protótipo original: novo paciente, sessão e avaliação.
 async function gravarNoOriginal(p) {
   await ir(p, 'pacientes');
+  if (!await p.$('#np-name')) { await p.click('[data-act="novo-paciente"]'); await p.waitForTimeout(60); }
   await p.fill('#np-name', 'Paciente Compatibilidade'); await p.fill('#np-birth', '1985-03-02');
   await p.fill('#np-q', 'Lombalgia'); await p.check('#np-lgpd'); await p.click('#f-patient button'); await p.waitForTimeout(60);
   await p.click('[data-t="nova"]'); await p.fill('#ns-pts', 'B23, R3'); await p.fill('#ns-nota', 'Sessão gravada pelo v1');

@@ -10,10 +10,10 @@ import { esc, initials } from '../util.js';
 // [rota, rótulo, ícone]
 export const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
   ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
-export const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
+export const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
   crm:'CRM', equipe:'Equipe e permissões', configuracoes:'Configurações'};
 // Item do menu que fica marcado em cada tela.
-const ATIVO = {prontuario:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
+const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
 export const PROF = {nome:'Mauren Turcatti', papel:'Profissional responsável'};
 
@@ -22,7 +22,7 @@ const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 export function buscaItens(q){
   const Q=semAcento(q.trim()), ok=s=>!Q||semAcento(s).includes(Q), R=[];
   db.patients.filter(p=>ok(p.name+' '+p.queixa)).forEach(p=>R.push(['Pacientes','pacientes',p.name,p.queixa,`data-act="open" data-pid="${p.id}"`]));
-  [['Novo paciente','novo','#pacientes'],['Abrir agenda','agenda','#agenda'],['Avaliação energética','yin','#avaliacao'],['Pentagrama','estrela','#pentagrama']].filter(([t])=>ok(t)).forEach(([t,i,h])=>R.push(['Ações',i,t,'',`href="${h}"`]));
+  [['Novo paciente','novo','#cadastro'],['Abrir agenda','agenda','#agenda'],['Avaliação energética','yin','#avaliacao'],['Pentagrama','estrela','#pentagrama']].filter(([t])=>ok(t)).forEach(([t,i,h])=>R.push(['Ações',i,t,'',`href="${h}"`]));
   if(Q) NAV.filter(([,l])=>ok(l)).forEach(([k,l,i])=>R.push(['Telas',i,l,'',`href="#${k}"`]));
   if(Q) POINTS.filter(p=>ok(p.code+' '+p.pinyin+' '+p.acoes)).slice(0,5).forEach(p=>R.push(['Pontos','biblioteca',`${p.code} · ${p.pinyin}`,p.acoes,`data-act="ver-ponto" data-c="${p.code}"`]));
   return R.slice(0,12);

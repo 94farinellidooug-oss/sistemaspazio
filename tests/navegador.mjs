@@ -60,6 +60,8 @@ async function roteiro(browser, url) {
 
   await ir('pacientes');
   await p.fill('#pq', 'lom'); await foto('busca de paciente');
+  // Desde a etapa 2C o cadastro tem tela própria (botão Novo paciente); no original fica na lista.
+  if (!await p.$('#np-name')) { await p.click('[data-act="novo-paciente"]'); await p.waitForTimeout(60); }
   await p.fill('#np-name', 'Ana Teste'); await p.fill('#np-birth', '1990-05-10'); await p.fill('#np-phone', '(11) 90000-0000');
   await p.fill('#np-q', 'Dor no ombro'); await p.check('#np-lgpd'); await p.click('#f-patient button');
   await p.waitForTimeout(80); await foto('cadastro de paciente');

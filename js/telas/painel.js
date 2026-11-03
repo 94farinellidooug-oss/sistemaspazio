@@ -45,7 +45,7 @@ export function vPainel(){
 
   <div class="acoes">
     ${pp?`<button class="acao pri" data-act="sessao" data-pid="${pp.id}"><span class="tico">${ic('play')}</span><span><b>Iniciar próximo</b><small>${prox.time} · ${esc(pp.name.split(' ')[0])}</small></span></button>`:''}
-    <a class="acao" href="#pacientes"><span class="tico acc">${ic('novo')}</span><span><b>Novo paciente</b><small>cadastro</small></span></a>
+    <a class="acao" href="#cadastro" data-act="novo-paciente"><span class="tico acc">${ic('novo')}</span><span><b>Novo paciente</b><small>cadastro</small></span></a>
     <a class="acao" href="#agenda"><span class="tico acc">${ic('agendado')}</span><span><b>Agendar</b><small>abrir a agenda</small></span></a>
     <button class="acao" data-act="busca"><span class="tico acc">${ic('busca')}</span><span><b>Buscar</b><small><kbd>Ctrl</kbd><kbd>K</kbd></small></span></button>
   </div>
