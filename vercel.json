@@ -2,8 +2,16 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "echo 'O preview não precisa de dependências'",
-  "buildCommand": "node tools/preview.mjs",
-  "outputDirectory": "site",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
+  },
+  "rewrites": [
+    { "source": "/", "destination": "/spazio.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
