@@ -835,14 +835,160 @@ function seed(){
     ]
   };
 }
-const KEY='spazio-v1';
-let db;
-try{ db = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
-if(!db || !db.patients) db = seed();
-const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){} };
+// Funções puras, sem acesso ao navegador: podem ser testadas direto no Node.
+//
+// Formato v2:
+// { versao:2, origem:'spazio-v1'|'exemplos'|'importacao', migradoEm, appts:[...mesmo formato do v1],
+//   patients:[{ id, name, birth, phone, exemplo, consentimento?, anam, alerts,
+//     cadastro:{cpf, email, endereco, cidade, contatoEmergencia},
+//     queixas:[{id, descricao, ativa}],
+//     atendimentos:[{ id, data, status:'finalizado'|'rascunho', origem:'v1'|'sistema',
+//       plano:{pontos, tec}, evolucao:{intensidades:{[idQueixa]:0..10}, nota}, avaliacaoId,
+//       historico:[{em, acao}] }],
+//     avaliacoes:[{ id, date, signs, status, nota, atendimentoId, historico:[{em, acao}] }] }] }
+//
+// As telas continuam lendo p.sessions, p.assess e p.queixa: são calculados a partir do v2
+// (propriedades não gravadas), no mesmo formato e na mesma ordem do v1. Assim o comportamento
+// não muda e paraV1() devolve exatamente os dados do v1.
+
+const VERSAO = 2;
+const QP = 'q1'; // identificador da queixa principal
+// Campos do paciente no v1. Qualquer outro campo é guardado como está e devolvido por paraV1().
+const CONHECIDOS = ['id','name','birth','phone','exemplo','queixa','consentimento','anam','alerts','sessions','assess'];
+
+const lista = x => Array.isArray(x) ? x : [];
+const obj = x => x && typeof x === 'object' && !Array.isArray(x) ? x : {};
+const txt = x => typeof x === 'string' ? x : x == null ? '' : String(x);
+const evaN = x => { const n = Number(x); return Number.isFinite(n) ? n : 0; };
+
+// Sessão do v1 → atendimento finalizado do v2 (mesmo id).
+function atendimentoDeSessao(s, em){
+  return { id: txt(s.id), data: txt(s.date), status: 'finalizado', origem: 'v1',
+    plano: { pontos: lista(s.pontos).map(txt), tec: lista(s.tec).map(txt) },
+    evolucao: { intensidades: { [QP]: evaN(s.eva) }, nota: txt(s.nota) },
+    avaliacaoId: null, historico: [{ em, acao: 'migrado da sessão do v1' }] };
+}
+
+// Converte os dados do v1 (ou os exemplos) para o v2. Não altera o objeto recebido.
+function migrarV1(v1, em = new Date().toISOString(), origem = 'spazio-v1'){
+  const d = obj(v1);
+  const patients = lista(d.patients).filter(p => p && typeof p === 'object').map(p0 => {
+    const p = JSON.parse(JSON.stringify(p0));
+    const atendimentos = lista(p.sessions).filter(s => s && typeof s === 'object').map(s => atendimentoDeSessao(s, em));
+    const avaliacoes = lista(p.assess).filter(a => a && typeof a === 'object').map(a => {
+      const at = atendimentos.find(x => x.data === a.date && !x.avaliacaoId);
+      if (at) at.avaliacaoId = txt(a.id);
+      return { id: txt(a.id), date: txt(a.date), signs: lista(a.signs).map(txt), status: obj(a.status), nota: txt(a.nota),
+        atendimentoId: at ? at.id : null, historico: [{ em, acao: 'migrada da avaliação do v1' }] };
+    });
+    const n = { id: txt(p.id), name: txt(p.name), birth: txt(p.birth), phone: txt(p.phone), exemplo: !!p.exemplo };
+    if ('consentimento' in p) n.consentimento = p.consentimento;
+    n.anam = obj(p.anam); n.alerts = obj(p.alerts);
+    n.cadastro = { cpf: '', email: '', endereco: '', cidade: '', contatoEmergencia: '' };
+    n.queixas = [{ id: QP, descricao: txt(p.queixa), ativa: true }];
+    n.atendimentos = atendimentos; n.avaliacoes = avaliacoes;
+    // Guarda a ordem original dos campos do v1, para devolver os dados exatamente como eram.
+    n.v1 = { campos: Object.keys(p) };
+    const extras = Object.keys(p).filter(k => !CONHECIDOS.includes(k));
+    if (extras.length) n.v1.extras = Object.fromEntries(extras.map(k => [k, p[k]]));
+    return n;
+  });
+  return { versao: VERSAO, origem, migradoEm: em, patients, appts: lista(d.appts).filter(a => a && typeof a === 'object') };
+}
+
+// Visões no formato v1, calculadas a partir do v2.
+const sessaoV1 = a => ({ id: a.id, date: a.data, eva: a.evolucao.intensidades[QP], pontos: a.plano.pontos, tec: a.plano.tec, nota: a.evolucao.nota });
+const avaliacaoV1 = a => ({ id: a.id, date: a.date, signs: a.signs, status: a.status, nota: a.nota });
+const sessoesDe = p => p.atendimentos.filter(a => a.status === 'finalizado').map(sessaoV1);
+const avaliacoesDe = p => p.avaliacoes.map(avaliacaoV1);
+
+// Liga as propriedades calculadas (não gravadas) que as telas usam: sessions, assess e queixa.
+function hidratar(db){
+  db.patients.forEach(hidratarPaciente);
+  return db;
+}
+function hidratarPaciente(p){
+  Object.defineProperty(p, 'sessions', { get(){ return sessoesDe(p); }, enumerable: false, configurable: true });
+  Object.defineProperty(p, 'assess', { get(){ return avaliacoesDe(p); }, enumerable: false, configurable: true });
+  Object.defineProperty(p, 'queixa', { get(){ return p.queixas.find(q => q.id === QP)?.descricao ?? ''; }, enumerable: false, configurable: true });
+  return p;
+}
+
+// Converte o v2 de volta para o v1 (para voltar ao protótipo ou conferir a migração).
+function paraV1(v2){
+  return { patients: v2.patients.map(p => {
+    const v = { id: p.id, name: p.name, birth: p.birth, phone: p.phone, exemplo: p.exemplo, queixa: p.queixas.find(q => q.id === QP)?.descricao ?? '',
+      consentimento: p.consentimento, anam: p.anam, alerts: p.alerts, sessions: sessoesDe(p), assess: avaliacoesDe(p), ...(p.v1?.extras || {}) };
+    const campos = p.v1?.campos || ['id','name','birth','phone','exemplo','queixa','anam','alerts','sessions','assess'].concat('consentimento' in p ? ['consentimento'] : []);
+    return Object.fromEntries(campos.filter(k => k in v && v[k] !== undefined).map(k => [k, v[k]]));
+  }), appts: v2.appts };
+}
+
+// Confere se um objeto tem o formato v2 mínimo.
+const ehV2 = d => !!d && d.versao === VERSAO && Array.isArray(d.patients) && Array.isArray(d.appts) &&
+  d.patients.every(p => p && Array.isArray(p.atendimentos) && Array.isArray(p.avaliacoes) && Array.isArray(p.queixas));
+const ehV1 = d => !!d && !('versao' in d) && Array.isArray(d.patients);
+
+// Novo paciente já no formato v2. Os campos do v1 seguem a mesma ordem do protótipo.
+function novoPaciente({ id, name, birth, phone, queixa, consentimento, em }){
+  return { id, name, birth, phone, exemplo: false, consentimento, anam: { historia:'', sono:'', alimentacao:'', evacuacao:'', emocoes:'', medicamentos:'' },
+    alerts: { gestante:false, anticoagulante:false, marcapasso:false }, cadastro: { cpf:'', email:'', endereco:'', cidade:'', contatoEmergencia:'' },
+    queixas: [{ id: QP, descricao: queixa, ativa: true }], atendimentos: [], avaliacoes: [],
+    v1: { campos: ['id','name','birth','phone','queixa','exemplo','consentimento','anam','alerts','sessions','assess'] }, criadoEm: em };
+}
+// Registra uma sessão como atendimento finalizado, mantendo a ordem por data (como o v1 fazia).
+function registrarSessao(p, { id, date, eva, pontos, tec, nota }, em){
+  const av = p.avaliacoes.find(a => a.date === date && !a.atendimentoId);
+  const at = { id, data: date, status: 'finalizado', origem: 'sistema', plano: { pontos, tec }, evolucao: { intensidades: { [QP]: eva }, nota },
+    avaliacaoId: av ? av.id : null, historico: [{ em, acao: 'sessão registrada' }] };
+  if (av) av.atendimentoId = id;
+  p.atendimentos.push(at);
+  p.atendimentos.sort((a, b) => a.data.localeCompare(b.data));
+  return at;
+}
+// Registra uma avaliação energética, ligada ao atendimento do mesmo dia quando houver.
+function registrarAvaliacao(p, { id, date, signs, status, nota }, em){
+  const at = p.atendimentos.find(a => a.data === date && !a.avaliacaoId);
+  if (at) { at.avaliacaoId = id; at.historico.push({ em, acao: 'avaliação energética ligada ao atendimento' }); }
+  const av = { id, date, signs, status, nota, atendimentoId: at ? at.id : null, historico: [{ em, acao: 'avaliação registrada' }] };
+  p.avaliacoes.push(av);
+  return av;
+}
+// Na primeira abertura, os dados do protótipo (chave spazio-v1) são convertidos para o v2.
+// A chave spazio-v1 nunca é alterada nem apagada: fica como cópia de segurança.
+
+const KEY='musubi-v2';
+const KEY_V1='spazio-v1';
+const ler = k => { try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const gravar = (k,v) => { try{ localStorage.setItem(k, v); return true; }catch(e){ return false; } };
+const lerJSON = k => { try{ return JSON.parse(ler(k)); }catch(e){ return undefined; } };
+
+function carregar(){
+  const bruto = ler(KEY), v2 = lerJSON(KEY);
+  if(ehV2(v2)) return hidratar(v2);
+  // Dados v2 ilegíveis não são descartados: ficam guardados à parte antes de qualquer outra coisa.
+  if(bruto !== null) gravar(KEY+'-ilegivel', bruto);
+  const v1 = lerJSON(KEY_V1);
+  if(ehV1(v1)){ const d = migrarV1(v1); gravar(KEY, JSON.stringify(d)); return hidratar(d); }
+  return hidratar(migrarV1(seed(), new Date().toISOString(), 'exemplos'));
+}
+let db = carregar();
+const save = () => { gravar(KEY, JSON.stringify(db)); };
 const patient = id => db.patients.find(p=>p.id===id);
 // Substitui todos os dados pelos exemplos (botão "Restaurar exemplos").
-function restaurarExemplos(){ db = seed(); save(); }
+function restaurarExemplos(){ db = hidratar(migrarV1(seed(), new Date().toISOString(), 'exemplos')); save(); }
+
+// Cópia de segurança em arquivo: v2 completo, ou no formato do protótipo v1 (para voltar a ele).
+const exportarV2 = () => JSON.stringify(db, null, 2);
+const exportarV1 = () => JSON.stringify(paraV1(db), null, 2);
+// Importa um arquivo exportado (v2 ou v1). Devolve uma mensagem de erro, ou '' se deu certo.
+function importar(texto){
+  let d; try{ d = JSON.parse(texto); }catch(e){ return 'O arquivo não é um JSON válido.'; }
+  if(ehV2(d)) db = hidratar(d);
+  else if(ehV1(d)) db = hidratar(migrarV1(d, new Date().toISOString(), 'importacao'));
+  else return 'O arquivo não tem o formato de dados do MUSUBI nem do protótipo v1.';
+  save(); return '';
+}
 // ov: camada aberta (busca, notif, perfil, atalhos); q/bi: texto e item escolhido na busca global;
 // lidas: notificações já vistas nesta sessão; dia: dia escolhido no calendário do Painel; crumbs: migalhas.
 const ui = { pid:'p1', tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', week:0, pq:'', menuMini:false, menuAberto:false,
@@ -1238,9 +1384,16 @@ function vEmBreve(k){
 function vAdministracao(){
   return `<div class="head"><div><h1>Administração</h1><p>Equipe, configurações da clínica e relacionamento com pacientes</p></div></div>
   <div class="adm">${['equipe','configuracoes','crm'].map(k=>{const m=MODULOS[k]; return `<a class="adm-c" href="#${k}"><span class="tico acc">${ic(m.i)}</span><span class="grow"><b>${LABEL[k]}</b><small>${m.texto}</small></span><span class="pill">etapa ${m.etapa}</span></a>`;}).join('')}</div>
-  <div class="card" style="margin-top:20px"><div class="card-h"><h2>Dados de exemplo</h2></div>
-    <p class="muted sm" style="margin-bottom:12px">Os dados ficam só neste navegador. Restaurar apaga o que foi digitado e volta aos pacientes de exemplo.</p>
-    <button class="btn" data-act="reset">${ic('retorno')}Restaurar exemplos</button></div>`;
+  <div class="grid g2" style="margin-top:20px">
+    <div class="card" id="dados"><div class="card-h"><h2>Dados e cópia de segurança</h2><span class="tico sm acc">${ic('escudo')}</span></div>
+      <div class="ac-s" style="margin-bottom:14px"><div><small>Pacientes</small><b>${db.patients.length}</b></div><div><small>Atendimentos</small><b>${db.patients.reduce((n,p)=>n+p.atendimentos.length,0)}</b></div><div><small>Agendamentos</small><b>${db.appts.length}</b></div></div>
+      <p class="muted sm" style="margin-bottom:12px">Os dados ficam só neste navegador (modelo v2).${db.origem==='spazio-v1'?` Convertidos do protótipo em ${fmt(db.migradoEm.slice(0,10))}; os dados originais do protótipo continuam guardados sem alteração.`:''} Exporte uma cópia com frequência.</p>
+      <div class="chips"><button class="btn" data-act="exportar" data-f="v2">${ic('baixar')}Exportar dados</button><button class="btn ghost" data-act="exportar" data-f="v1">${ic('baixar')}Exportar no formato do protótipo</button>
+        <label class="btn ghost">${ic('sobe')}Importar arquivo<input type="file" id="imp-arq" accept="application/json,.json" hidden></label></div></div>
+    <div class="card"><div class="card-h"><h2>Dados de exemplo</h2></div>
+      <p class="muted sm" style="margin-bottom:12px">Restaurar apaga o que foi digitado neste navegador e volta aos pacientes de exemplo. Exporte antes se quiser guardar.</p>
+      <button class="btn" data-act="reset">${ic('retorno')}Restaurar exemplos</button></div>
+  </div>`;
 }
 // Pontos e barras levam data-tip, que mostra o valor ao passar o mouse.
 
@@ -1572,7 +1725,7 @@ document.addEventListener('click',ev=>{
   else if(a==='tab'){ ui.tab=t.dataset.t; render(true); }
   else if(a==='sign'){ const s=t.dataset.s, L=ui.assess.signs; const i=L.indexOf(s); i<0?L.push(s):L.splice(i,1); render(true); }
   else if(a==='hyp'){ const id=t.dataset.p; ui.assess.status[id] = ui.assess.status[id]===t.dataset.st ? '' : t.dataset.st; render(true); }
-  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); p.assess.push({id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota}); save(); ui.pid=p.id; ui.tab='resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
+  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); registrarAvaliacao(p,{id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota},new Date().toISOString()); save(); ui.pid=p.id; ui.tab='resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
   else if(a==='el'){ ui.el = t.dataset.e && ui.el!==t.dataset.e ? t.dataset.e : null; render(true); }
   else if(a==='mer'){ ui.ptMer=t.dataset.m; render(true); }
   else if(a==='week'){ ui.week = t.dataset.d==='0'?0:ui.week+Number(t.dataset.d); render(true); }
@@ -1582,6 +1735,7 @@ document.addEventListener('click',ev=>{
   else if(a==='menu-abrir'){ ui.menuAberto=!ui.menuAberto; render(true); }
   else if(a==='menu-fechar'){ ui.menuAberto=false; render(true); }
   else if(a==='ir'){ ui.pid=t.dataset.pid; if(t.dataset.to==='avaliacao') ui.assess=null; if(t.dataset.to==='pentagrama') ui.el=null; irPara(t.dataset.to); }
+  else if(a==='exportar'){ baixar(t.dataset.f==='v1'?exportarV1():exportarV2(), `${t.dataset.f==='v1'?'spazio-v1':'musubi'}-dados-${TODAY}.json`); toast('Arquivo exportado'); }
   else if(a==='reset'){ restaurarExemplos(); ui.assess=null; ui.pid='p1'; toast('Dados de exemplo restaurados'); render(); }
 });
 document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
@@ -1599,8 +1753,13 @@ function sessionWarn(){
   const tec=[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value);
   document.getElementById('ns-warn').innerHTML=pointWarnings(codes,p,tec).map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:6px"><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div>`).join('');
 }
+// Baixa um texto como arquivo (cópia de segurança).
+function baixar(texto, nome){ const u=URL.createObjectURL(new Blob([texto],{type:'application/json'})), l=document.createElement('a'); l.href=u; l.download=nome; document.body.append(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
 document.addEventListener('change',ev=>{
   const t=ev.target;
+  if(t.id==='imp-arq' && t.files[0]){ const f=t.files[0]; t.value='';
+    if(!confirm(`Importar “${f.name}”? Os dados atuais deste navegador serão substituídos. Exporte antes se quiser guardá-los.`)) return;
+    f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
   if(t.id==='pr-patient'){ ui.pid=t.value; render(true); }
   else if(t.id==='as-patient'){ ui.pid=t.value; ui.assess={pid:t.value,signs:[],status:{},nota:''}; render(true); }
   else if(t.id==='pt-patient'){ ui.pid=t.value; render(true); }
@@ -1613,12 +1772,12 @@ document.addEventListener('change',ev=>{
 document.addEventListener('submit',ev=>{
   ev.preventDefault(); const f=ev.target, v=id=>document.getElementById(id).value;
   if(f.id==='f-patient'){
-    const p={id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),exemplo:false,consentimento:TODAY,anam:{historia:'',sono:'',alimentacao:'',evacuacao:'',emocoes:'',medicamentos:''},alerts:{gestante:false,anticoagulante:false,marcapasso:false},sessions:[],assess:[]};
+    const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),consentimento:TODAY,em:new Date().toISOString()}));
     db.patients.push(p); save(); ui.pid=p.id; ui.tab='anamnese'; toast('Paciente cadastrado'); location.hash='prontuario';
   } else if(f.id==='f-session'){
     const p=patient(ui.pid);
-    p.sessions.push({id:uid(),date:v('ns-date'),eva:Number(v('ns-eva')),pontos:v('ns-pts').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),tec:[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value),nota:v('ns-nota')});
-    p.sessions.sort((a,b)=>a.date.localeCompare(b.date)); save(); ui.tab='sessoes'; toast('Sessão registrada'); render();
+    registrarSessao(p,{id:uid(),date:v('ns-date'),eva:Number(v('ns-eva')),pontos:v('ns-pts').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),tec:[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value),nota:v('ns-nota')},new Date().toISOString());
+    save(); ui.tab='sessoes'; toast('Sessão registrada'); render();
   } else if(f.id==='f-appt'){
     db.appts.push({id:uid(),pid:v('na-p'),date:v('na-d'),time:v('na-t'),tipo:v('na-tipo'),valor:Number(v('na-v'))||0,done:false}); save(); ui.bookPid=null; toast('Agendamento criado'); render(true);
   }

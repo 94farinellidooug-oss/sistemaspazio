@@ -5,10 +5,12 @@
 // comparação é do conteúdo funcional: pacientes listados, sinais marcados, hipóteses e status,
 // avisos de segurança, pentagrama (mesmo componente), pontos filtrados, agendamentos, campos da
 // anamnese e alertas, sessões registradas e paciente selecionado. Os dados gravados no navegador
-// (spazio-v1) precisam ser idênticos byte a byte aos do original.
+// precisam ser idênticos byte a byte aos do original: o original grava na chave spazio-v1 e o MUSUBI
+// grava no modelo v2 (musubi-v2), que é convertido de volta para o formato v1 antes de comparar.
 // Uso: node tests/navegador.mjs   (requer Playwright com Chromium instalado)
 import { createRequire } from 'node:module';
 import { iniciar } from '../tools/servidor.mjs';
+import { paraV1 } from '../js/dados/migracao.js';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
@@ -85,7 +87,9 @@ async function roteiro(browser, url) {
   await p.fill('#na-t', '14:30'); await p.click('#f-appt button'); await p.waitForTimeout(60); await foto('agendamento criado');
   await p.click('[data-act="week"][data-d="0"]'); await p.click('.appt'); await foto('agendamento concluído');
 
-  const dados = await p.evaluate(() => localStorage.getItem('spazio-v1'));
+  const chaves = await p.evaluate(() => ({ v1: localStorage.getItem('spazio-v1'), v2: localStorage.getItem('musubi-v2') }));
+  const dados = chaves.v2 ? JSON.stringify(paraV1(JSON.parse(chaves.v2))) : chaves.v1;
+  if (chaves.v2 && chaves.v1 !== null) erros.push('a versão nova gravou na chave do protótipo (spazio-v1)');
   await p.click('[data-act="reset"]'); await p.waitForTimeout(60); await foto('restaurar exemplos');
   await ctx.close();
   return { fotos, erros, dados };

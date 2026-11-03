@@ -1,5 +1,6 @@
 // Ponto de entrada: rotas, renderização e eventos.
-import { db, patient, restaurarExemplos, save } from './dados/repositorio.js';
+import { db, exportarV1, exportarV2, importar, patient, restaurarExemplos, save } from './dados/repositorio.js';
+import { hidratarPaciente, novoPaciente, registrarAvaliacao, registrarSessao } from './dados/migracao.js';
 import { ui } from './estado.js';
 import { pointWarnings } from './raciocinio/seguranca.js';
 import { vAgenda } from './telas/agenda.js';
@@ -74,7 +75,7 @@ document.addEventListener('click',ev=>{
   else if(a==='tab'){ ui.tab=t.dataset.t; render(true); }
   else if(a==='sign'){ const s=t.dataset.s, L=ui.assess.signs; const i=L.indexOf(s); i<0?L.push(s):L.splice(i,1); render(true); }
   else if(a==='hyp'){ const id=t.dataset.p; ui.assess.status[id] = ui.assess.status[id]===t.dataset.st ? '' : t.dataset.st; render(true); }
-  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); p.assess.push({id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota}); save(); ui.pid=p.id; ui.tab='resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
+  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); registrarAvaliacao(p,{id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota},new Date().toISOString()); save(); ui.pid=p.id; ui.tab='resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
   else if(a==='el'){ ui.el = t.dataset.e && ui.el!==t.dataset.e ? t.dataset.e : null; render(true); }
   else if(a==='mer'){ ui.ptMer=t.dataset.m; render(true); }
   else if(a==='week'){ ui.week = t.dataset.d==='0'?0:ui.week+Number(t.dataset.d); render(true); }
@@ -84,6 +85,7 @@ document.addEventListener('click',ev=>{
   else if(a==='menu-abrir'){ ui.menuAberto=!ui.menuAberto; render(true); }
   else if(a==='menu-fechar'){ ui.menuAberto=false; render(true); }
   else if(a==='ir'){ ui.pid=t.dataset.pid; if(t.dataset.to==='avaliacao') ui.assess=null; if(t.dataset.to==='pentagrama') ui.el=null; irPara(t.dataset.to); }
+  else if(a==='exportar'){ baixar(t.dataset.f==='v1'?exportarV1():exportarV2(), `${t.dataset.f==='v1'?'spazio-v1':'musubi'}-dados-${TODAY}.json`); toast('Arquivo exportado'); }
   else if(a==='reset'){ restaurarExemplos(); ui.assess=null; ui.pid='p1'; toast('Dados de exemplo restaurados'); render(); }
 });
 document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
@@ -101,8 +103,13 @@ export function sessionWarn(){
   const tec=[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value);
   document.getElementById('ns-warn').innerHTML=pointWarnings(codes,p,tec).map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:6px"><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div>`).join('');
 }
+// Baixa um texto como arquivo (cópia de segurança).
+function baixar(texto, nome){ const u=URL.createObjectURL(new Blob([texto],{type:'application/json'})), l=document.createElement('a'); l.href=u; l.download=nome; document.body.append(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
 document.addEventListener('change',ev=>{
   const t=ev.target;
+  if(t.id==='imp-arq' && t.files[0]){ const f=t.files[0]; t.value='';
+    if(!confirm(`Importar “${f.name}”? Os dados atuais deste navegador serão substituídos. Exporte antes se quiser guardá-los.`)) return;
+    f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
   if(t.id==='pr-patient'){ ui.pid=t.value; render(true); }
   else if(t.id==='as-patient'){ ui.pid=t.value; ui.assess={pid:t.value,signs:[],status:{},nota:''}; render(true); }
   else if(t.id==='pt-patient'){ ui.pid=t.value; render(true); }
@@ -115,12 +122,12 @@ document.addEventListener('change',ev=>{
 document.addEventListener('submit',ev=>{
   ev.preventDefault(); const f=ev.target, v=id=>document.getElementById(id).value;
   if(f.id==='f-patient'){
-    const p={id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),exemplo:false,consentimento:TODAY,anam:{historia:'',sono:'',alimentacao:'',evacuacao:'',emocoes:'',medicamentos:''},alerts:{gestante:false,anticoagulante:false,marcapasso:false},sessions:[],assess:[]};
+    const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),consentimento:TODAY,em:new Date().toISOString()}));
     db.patients.push(p); save(); ui.pid=p.id; ui.tab='anamnese'; toast('Paciente cadastrado'); location.hash='prontuario';
   } else if(f.id==='f-session'){
     const p=patient(ui.pid);
-    p.sessions.push({id:uid(),date:v('ns-date'),eva:Number(v('ns-eva')),pontos:v('ns-pts').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),tec:[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value),nota:v('ns-nota')});
-    p.sessions.sort((a,b)=>a.date.localeCompare(b.date)); save(); ui.tab='sessoes'; toast('Sessão registrada'); render();
+    registrarSessao(p,{id:uid(),date:v('ns-date'),eva:Number(v('ns-eva')),pontos:v('ns-pts').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),tec:[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value),nota:v('ns-nota')},new Date().toISOString());
+    save(); ui.tab='sessoes'; toast('Sessão registrada'); render();
   } else if(f.id==='f-appt'){
     db.appts.push({id:uid(),pid:v('na-p'),date:v('na-d'),time:v('na-t'),tipo:v('na-tipo'),valor:Number(v('na-v'))||0,done:false}); save(); ui.bookPid=null; toast('Agendamento criado'); render(true);
   }
