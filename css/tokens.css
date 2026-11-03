@@ -1,26 +1,26 @@
-/* Cores, fontes e temas claro e escuro. */
-/* Layout: menu lateral recolhível (completo ou só ícones) + área de trabalho em colunas; no celular o menu vira gaveta.
-   Paleta: verde institucional #66864b na marca e destaques; #4f6b3a em texto e botões (contraste 6:1 sobre branco). */
+/* Cores, fontes e temas. */
+/* Proposta visual clara (etapa 1B): tema claro sempre como padrão, fundo creme suave, cartões brancos,
+   verde institucional #66864b como cor principal e tons complementares de verde e bege.
+   #4f6b3a fica para texto e botões por contraste (6:1 sobre branco). O tema escuro só entra se for
+   escolhido explicitamente (data-theme="dark"); ele não segue mais o modo escuro do aparelho. */
 :root{
-  --bg:#f4f5f1; --surface:#ffffff; --surface-2:#f8f9f5; --ink:#1c211a; --muted:#5b6556; --line:#dfe3d8;
-  --brand:#66864b; --accent:#4f6b3a; --accent-ink:#ffffff; --accent-soft:#e8eedf;
-  --shadow:0 1px 2px rgba(28,33,26,.05),0 4px 14px rgba(28,33,26,.05);
-  --ok:#2f7a4a; --warn:#a8601a; --crit:#b23a3a; --warn-soft:#fbf0e4; --crit-soft:#f9e6e6;
+  --bg:#f6f3ec; --surface:#ffffff; --surface-2:#faf8f3; --ink:#1f2a1b; --muted:#6b7363; --line:#e9e4d8; --line-2:#ddd6c6;
+  --brand:#66864b; --accent:#4f6b3a; --accent-ink:#ffffff; --accent-soft:#eef3e7; --accent-line:#cfdcbf;
+  --beige:#efe7d6; --beige-ink:#7a6340; --sage:#dfe8d3;
+  --shadow:0 1px 2px rgba(60,52,30,.04),0 2px 8px rgba(60,52,30,.04);
+  --shadow-up:0 4px 18px rgba(60,52,30,.08);
+  --ok:#2f7a4a; --warn:#a8601a; --crit:#b23a3a; --ok-soft:#e7f2ea; --warn-soft:#fbf1e3; --crit-soft:#fbeaea;
   --wood:#3f8a4e; --fire:#c4473b; --earth:#b88a1f; --metal:#7f8a91; --water:#2d4d73;
-  --f-display:"Spectral",Georgia,"Times New Roman",serif;
-  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-  --r:10px; --nav-w:252px;
+  --f-display:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:14px; --r-sm:9px; --nav-w:264px;
+  color-scheme:light;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#121510; --surface:#191d16; --surface-2:#1f241b; --ink:#e6eae1; --muted:#9ba493; --line:#2d3428;
-  --brand:#8faa72; --accent:#a6c48b; --accent-ink:#141a10; --accent-soft:#263020;
-  --shadow:none;
-  --ok:#6cc48a; --warn:#e2a35c; --crit:#ec7d7d; --warn-soft:#33281b; --crit-soft:#3a2222;
-  --wood:#6dbb7b; --fire:#ea7a6c; --earth:#ddb752; --metal:#b5bfc5; --water:#78a0d0; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#121510; --surface:#191d16; --surface-2:#1f241b; --ink:#e6eae1; --muted:#9ba493; --line:#2d3428;
-  --brand:#8faa72; --accent:#a6c48b; --accent-ink:#141a10; --accent-soft:#263020;
-  --shadow:none;
-  --ok:#6cc48a; --warn:#e2a35c; --crit:#ec7d7d; --warn-soft:#33281b; --crit-soft:#3a2222;
+  --bg:#141712; --surface:#1b1f18; --surface-2:#21261d; --ink:#e8ebe3; --muted:#a0a897; --line:#2e3529; --line-2:#3a4234;
+  --brand:#8faa72; --accent:#a6c48b; --accent-ink:#141a10; --accent-soft:#263020; --accent-line:#3d4b31;
+  --beige:#2d2a22; --beige-ink:#d6c29c; --sage:#27301f;
+  --shadow:none; --shadow-up:none;
+  --ok:#6cc48a; --warn:#e2a35c; --crit:#ec7d7d; --ok-soft:#1f3326; --warn-soft:#33281b; --crit-soft:#3a2222;
   --wood:#6dbb7b; --fire:#ea7a6c; --earth:#ddb752; --metal:#b5bfc5; --water:#78a0d0; color-scheme:dark}

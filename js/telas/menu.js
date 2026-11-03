@@ -25,7 +25,7 @@ export const NAV = [
 ];
 export const LABEL = Object.fromEntries(NAV.flatMap(([,it])=>it.map(([k,l])=>[k,l])));
 const LOGO = `<svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" style="fill:none;stroke:var(--brand);stroke-width:1.6"/><path d="M12 2a5 5 0 0 1 0 10a5 5 0 0 0 0 10a10 10 0 0 1 0-20" style="fill:var(--brand)"/></svg>`;
-const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${ICON[k]}</svg>`;
+const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${ICON[k]}</svg>`;
 
 export function renderNav(route){
   const app = document.querySelector('.app');
@@ -33,7 +33,7 @@ export function renderNav(route){
   app.classList.toggle('open', !!ui.menuAberto);
   document.getElementById('topbar').innerHTML = `<button class="menu-btn" data-act="menu-abrir" aria-label="Abrir menu" aria-expanded="${!!ui.menuAberto}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>${LOGO}<b>Spazio</b><span class="where">${LABEL[route]||''}</span>`;
   document.getElementById('nav').innerHTML = `<div class="brand">${LOGO}<div><b>Spazio</b><small>Gestão clínica integrativa</small></div></div>`+
-  NAV.map(([g,items])=>`<div class="grp">${g}</div>`+items.map(([k,l,o={}])=>`<a href="#${k}" aria-label="${l}" class="${route===k?'on':''} ${o.sub?'sub':''}" ${route===k?'aria-current="page"':''}>${svg(k)}<span>${l}</span>${o.breve?'<span class="soon">em breve</span>':''}</a>`).join('')).join('')+
-  `<div class="foot"><p>Protótipo com dados de exemplo.</p><button class="btn ghost sm" data-act="reset" style="justify-content:flex-start">Restaurar exemplos</button>
-    <button class="toggle" data-act="menu-mini" aria-label="${ui.menuMini?'Expandir menu':'Recolher menu'}" title="${ui.menuMini?'Expandir menu':'Recolher menu'}">${ui.menuMini?'»':'« Recolher menu'}</button></div>`;
+  NAV.map(([g,items])=>`<div class="grp">${g}</div>`+items.map(([k,l,o={}])=>`<a href="#${k}" aria-label="${l}" class="${route===k?'on':''} ${o.sub?'sub':''}" ${route===k?'aria-current="page"':''}>${svg(k)}<span>${l}</span>${o.breve?'<span class="soon" title="Em breve">em breve</span>':''}</a>`).join('')).join('')+
+  `<div class="foot"><p class="proposta">Proposta visual em avaliação. Só dados de exemplo.</p><p>Itens com ponto cinza são módulos planejados.</p><button class="btn ghost sm" data-act="reset" style="justify-content:flex-start">Restaurar exemplos</button>
+    <button class="toggle" data-act="menu-mini" aria-label="${ui.menuMini?'Expandir menu':'Recolher menu'}" title="${ui.menuMini?'Expandir menu':'Recolher menu'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ui.menuMini?'<path d="M9 6l6 6-6 6"/>':'<path d="M15 6l-6 6 6 6"/>'}</svg><span class="tx">Recolher menu</span></button></div>`;
 }
