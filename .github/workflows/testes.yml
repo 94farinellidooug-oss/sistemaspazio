@@ -37,3 +37,6 @@ jobs:
 
       - name: Telas, dados e abertura sem servidor
         run: npm run test:navegador
+
+      - name: Proposta navegável da etapa 3
+        run: node tests/proposta-etapa3.mjs
