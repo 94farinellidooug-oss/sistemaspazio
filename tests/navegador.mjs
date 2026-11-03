@@ -1,11 +1,17 @@
 // Teste no navegador: executa o mesmo roteiro de uso no protótipo original (legacy),
-// na versão modular e no arquivo único gerado (dist), e compara o HTML de cada tela.
+// na versão modular e no arquivo único gerado (dist), e compara o conteúdo de cada tela
+// e os dados salvos.
+// Desde a etapa 1B, o menu e o Painel foram redesenhados de propósito: o menu fica fora
+// da comparação, o Painel é verificado em tests/interface.mjs, e os cabeçalhos das telas
+// são comparados pelo texto, sem os atalhos novos (marcados com data-novo-1b).
 // Uso: node tests/navegador.mjs   (requer Playwright com Chromium instalado)
 import { createRequire } from 'node:module';
 import { iniciar } from '../tools/servidor.mjs';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
+// Telas redesenhadas na etapa 1B, verificadas em tests/interface.mjs.
+const REDESENHADAS = new Set(['abertura', 'tela painel']);
 const ALVOS = { 'original (legacy)': 'legacy/prototipo-v1.html', 'modular': 'index.html', 'arquivo único (dist)': 'dist/spazio.html' };
 // Math.random previsível, para que os ids gerados sejam iguais nas três versões.
 const SEMENTE = () => { let s = 42; Math.random = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648; };
@@ -18,7 +24,12 @@ async function roteiro(browser, url) {
   p.on('pageerror', e => erros.push(e.message));
   p.on('console', m => { if (m.type() === 'error') erros.push(m.text()); });
   const fotos = [];
-  const foto = async nome => fotos.push([nome, await p.evaluate(() => document.getElementById('nav').innerHTML + '\n' + document.getElementById('view').innerHTML)]);
+  const foto = async nome => fotos.push([nome, await p.evaluate(() => {
+    const v = document.getElementById('view').cloneNode(true);
+    v.querySelectorAll('[data-novo-1b]').forEach(e => e.remove());
+    v.querySelectorAll('.head').forEach(h => { h.replaceWith(h.textContent.replace(/\s+/g, ' ').trim()); });
+    return v.innerHTML;
+  })]);
   const ir = async h => { await p.evaluate(h => { location.hash = h; }, h); await p.waitForTimeout(60); };
 
   await p.goto(url); await p.waitForSelector('#view .head');
@@ -73,13 +84,15 @@ for (const [nome, r] of Object.entries(res)) {
   if (r.erros.length) { falhas++; console.log(`FALHA ${nome}: erros no console`, r.erros); }
   if (r === ref) continue;
   r.fotos.forEach(([etapa, html], i) => {
+    if (REDESENHADAS.has(etapa)) return;
     const ok = html === ref.fotos[i][1];
     if (!ok) falhas++;
     if (!ok) console.log(`FALHA ${nome} · ${etapa}`);
   });
   const okDados = r.dados === ref.dados;
   if (!okDados) { falhas++; console.log(`FALHA ${nome} · dados salvos diferentes`); }
-  console.log(`${nome}: ${r.fotos.filter(([, h], i) => h === ref.fotos[i][1]).length} de ${ref.fotos.length} telas idênticas ao original; dados salvos ${okDados ? 'idênticos' : 'diferentes'}.`);
+  const comparadas = r.fotos.filter(([e]) => !REDESENHADAS.has(e));
+  console.log(`${nome}: ${comparadas.filter(([e, h]) => h === ref.fotos.find(([e2]) => e2 === e)[1]).length} de ${comparadas.length} telas com conteúdo idêntico ao original (Painel redesenhado fica fora); dados salvos ${okDados ? 'idênticos' : 'diferentes'}.`);
 }
 console.log(falhas ? `\n${falhas} diferença(s) encontrada(s).` : '\nRoteiro completo sem erros e com resultado idêntico ao original.');
 process.exit(falhas ? 1 : 0);

@@ -51,7 +51,7 @@ export function vProntuario(){
       ${a?evaluate(a.signs).filter(h=>a.status[h.p.id]==='aceito').map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${h.p.pontos.map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
   }
   return `<div class="head"><div style="display:flex;gap:12px;align-items:center"><span class="avatar" style="width:46px;height:46px;font-size:1rem">${initials(p.name)}</span><div><h1>${esc(p.name)}</h1><p>${age(p.birth)} anos · ${esc(p.phone)} ${p.exemplo?'<span class="pill ex">exemplo</span>':''}</p></div></div>
-    <div class="field" style="min-width:200px"><label class="lbl" for="pr-patient">Paciente</label>${patientSelect('pr-patient',p.id)}</div></div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div class="quick" data-novo-1b><button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">Pentagrama</button></div><div class="field" style="min-width:200px"><label class="lbl" for="pr-patient">Paciente</label>${patientSelect('pr-patient',p.id)}</div></div></div>
     ${alerts.length?`<div class="notice crit" style="margin-bottom:14px"><b>Alertas:</b> ${alerts.join(' · ')}</div>`:''}
     <div class="tabs" role="tablist">${tabs.map(([k,l])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}">${l}</button>`).join('')}</div>${body}`;
 }
