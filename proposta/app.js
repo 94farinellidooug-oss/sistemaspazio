@@ -9,7 +9,9 @@ import { SIGN, SIGNS } from '../js/conhecimento/sinais.js';
 import { seed } from '../js/dados/exemplos.js';
 import { bagang, elemState, evaluate } from '../js/raciocinio/avaliacao.js';
 import { pointWarnings } from '../js/raciocinio/seguranca.js';
+import { MER, POINTS } from '../js/conhecimento/pontos.js';
 import { TODAY, addDays, age, brl, esc, fmt, initials } from '../js/util.js';
+import { ICONES as I } from './icones.js';
 
 /* ---------- Dados de demonstração ---------- */
 const db = seed();
@@ -49,38 +51,7 @@ function atend(pid){
 }
 
 /* ---------- Ícones (traço único, 24px) ---------- */
-const I = {
-  painel:'<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>',
-  agenda:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-  pacientes:'<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 1 0 0-6M22 21c0-3-2-5-4-5.5"/>',
-  biblioteca:'<path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 3 15.5-3.5 1z"/>',
-  financeiro:'<rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/><path d="M6 10v5M18 10v5"/>',
-  doc:'<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h5"/>',
-  relatorios:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
-  admin:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
-  alerta:'<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4.5M12 17.5v.01"/>',
-  escudo:'<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M12 9v4M12 16v.01"/>',
-  relogio:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-  retorno:'<path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/>',
-  mais:'<path d="M12 5v14M5 12h14"/>',
-  play:'<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/>',
-  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-  okc:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 10"/>',
-  dir:'<path d="M9 6l6 6-6 6"/>', esq:'<path d="M15 6l-6 6 6 6"/>', baixo:'<path d="M6 9l6 6 6-6"/>',
-  folha:'<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19l8-8"/>',
-  yin:'<circle cx="12" cy="12" r="9"/><path d="M12 3a4.5 4.5 0 0 1 0 9a4.5 4.5 0 0 0 0 9"/>',
-  estrela:'<path d="M12 3l2.6 6.3H21l-5.2 4.1 2 6.6L12 16l-5.8 4 2-6.6L3 9.3h6.4z"/>',
-  camadas:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
-  corpo:'<circle cx="12" cy="4.5" r="2"/><path d="M6 9h12M12 9v6M9 21l3-6 3 6"/>',
-  plano:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>',
-  evolucao:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
-  tel:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
-  sol:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M5 19l1.4-1.4M17.6 6.4L19 5"/>',
-  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/>',
-  lista:'<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>',
-  menu:'<path d="M4 6h16M4 12h16M4 18h16"/>'
-};
-const ic = (k,c='') => `<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k]}</svg>`;
+const ic = (k,c='') => `<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k]}</svg>`;
 const LOGO = `<svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" style="fill:none;stroke:var(--brand);stroke-width:1.6"/><path d="M12 2a5 5 0 0 1 0 10a5 5 0 0 0 0 10a10 10 0 0 1 0-20" style="fill:var(--brand)"/></svg>`;
 
 /* ---------- Gráficos ---------- */
@@ -130,7 +101,7 @@ function menu(atual){
   document.getElementById('topbar').innerHTML=`<button class="menu-btn" data-a="menu-abrir" aria-label="Abrir menu">${ic('menu')}</button>${LOGO}<b>Spazio</b>`;
   document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Spazio</b><small>Gestão clínica integrativa</small></div></div>`+
     NAV.map(([k,l,i])=>`<a href="#/${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span></a>`).join('')+
-    `<div class="foot"><p class="proposta">Proposta do fluxo clínico. Avaliação e Pentagrama ficam dentro do atendimento.</p>
+    `<div class="foot"><a href="#/guia" class="${atual==='guia'?'on':''}" aria-label="Guia visual">${ic('paleta')}<span>Guia visual</span></a>
      <button class="toggle" data-a="menu-mini" aria-label="${S.mini?'Expandir menu':'Recolher menu'}">${ic(S.mini?'dir':'esq')}<span class="tx">Recolher menu</span></button></div>`;
 }
 
@@ -146,7 +117,7 @@ function vPainel(){
   const sem=db.appts.filter(a=>a.date>=dias[0]&&a.date<=dias[6]), prev=sem.reduce((n,a)=>n+a.valor,0), real=sem.filter(a=>a.done).reduce((n,a)=>n+a.valor,0);
   const h=new Date().getHours();
   return `<div class="head"><div><h1>${h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'}</h1><p>${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</p></div>
-    <div class="quick"><a class="btn" href="#/pacientes">${ic('mais')}Novo paciente</a><a class="btn pri" href="#/agenda">${ic('agenda')}Novo agendamento</a></div></div>
+    <div class="quick"><a class="btn" href="#/pacientes/novo">${ic('novo')}Novo paciente</a><a class="btn pri" href="#/agenda">${ic('agenda')}Novo agendamento</a></div></div>
 
   ${pp?`<div class="hero"><div class="hero-t"><span class="cap">Próximo atendimento</span><span class="hora">${prox.time}</span></div>
     <a class="pessoa" href="#/paciente/${pp.id}"><span class="avatar lg">${initials(pp.name)}</span><span><b>${esc(pp.name)}</b><small>${esc(prox.tipo)} · ${pp.sessions.length?`${pp.sessions.length+1}º atendimento`:'primeira consulta'}</small></span></a>
@@ -185,9 +156,9 @@ function vPainel(){
 
 /* ---------- Pacientes ---------- */
 function vPacientes(){
-  return `<div class="head"><div><h1>Pacientes</h1><p>${db.patients.length} pacientes</p></div><button class="btn pri" data-a="toast" data-m="Cadastro de paciente: mesmo formulário de hoje, detalhado na etapa 2.">${ic('mais')}Novo paciente</button></div>
+  return `<div class="head"><div><h1>Pacientes</h1><p>${db.patients.length} pacientes</p></div><div class="quick"><label class="busca">${ic('busca')}<input id="pbusca" placeholder="Buscar paciente" aria-label="Buscar paciente"></label><a class="btn pri" href="#/pacientes/novo">${ic('novo')}Novo paciente</a></div></div>
   <div class="pgrid">${db.patients.map(p=>{const q=queixas(p)[0], m=melhora(q.serie), prox=db.appts.filter(a=>a.pid===p.id&&a.date>=TODAY&&!a.done).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
-    return `<a class="pc" href="#/paciente/${p.id}"><div class="pc-h"><span class="avatar lg">${initials(p.name)}</span><span class="grow"><b>${esc(p.name)}</b><small>${age(p.birth)} anos · ${p.sessions.length} atendimento${p.sessions.length===1?'':'s'}</small></span>${alertas(p).length?`<span class="pill crit" title="${alertas(p).join(', ')}">${ic('escudo')}</span>`:''}</div>
+    return `<a class="pc" data-n="${esc(p.name.toLowerCase())}" href="#/paciente/${p.id}"><div class="pc-h"><span class="avatar lg">${initials(p.name)}</span><span class="grow"><b>${esc(p.name)}</b><small>${age(p.birth)} anos · ${p.sessions.length} atendimento${p.sessions.length===1?'':'s'}</small></span>${alertas(p).length?`<span class="pill crit" title="${alertas(p).join(', ')}">${ic('escudo')}</span>`:''}</div>
       <div class="pc-q"><span class="trunc">${esc(q.nome)}</span>${q.serie.length>1?linhas([{cor:'var(--brand)',vals:q.serie}],[],{w:110,h:36,mini:1}):''}</div>
       <div class="pc-f">${m!==null?`<span class="pill ${m>0?'ok':'warn'}">${m>0?'▼ '+m+'%':'sem melhora'}</span>`:'<span class="pill acc">Aguarda avaliação basal</span>'}<span class="muted">${prox?`${ic('agenda')} ${fmt(prox.date)} ${prox.time}`:'sem agendamento'}</span></div></a>`;}).join('')}</div>`;
 }
@@ -203,7 +174,7 @@ function vPerfil(p){
   const prox=db.appts.filter(a=>a.pid===p.id&&a.date>=TODAY&&!a.done).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
   const m=melhora(Q[0].serie);
   return `${migalha([['#/pacientes','Pacientes'],[null,p.name]])}
-  ${cabecalho(p,`<div class="perfil-a"><a class="btn" href="#/paciente/${p.id}/historico">${ic('evolucao')}Histórico e evolução</a><a class="btn pri" href="#/atendimento/${p.id}/0">${ic('play')}Novo atendimento</a></div>`)}
+  ${cabecalho(p,`<div class="perfil-a"><a class="btn" href="#/paciente/${p.id}/historico">${ic('doc')}Prontuário</a><a class="btn pri" href="#/atendimento/${p.id}/0">${ic('play')}Novo atendimento</a></div>`)}
   <div class="tiles">
     <div class="tile"><span class="tico acc">${ic('lista')}</span><div><b class="num">${p.sessions.length}</b><small>atendimentos${p.sessions[0]?` desde ${fmt(p.sessions[0].date)}`:''}</small></div></div>
     <div class="tile">${m!==null?anel(Math.max(0,m)/100,m+'%','var(--ok)'):`<span class="tico">${ic('evolucao')}</span>`}<div><b>${m!==null?'Melhora':'Sem histórico'}</b><small>${m!==null?`${esc(Q[0].nome.toLowerCase())}, desde o basal`:'a primeira consulta gera a avaliação basal'}</small></div></div>
@@ -242,7 +213,7 @@ function vHistorico(p){
   const Q=queixas(p), a0=p.assess[0], a1=p.assess.at(-1), labels=p.sessions.map((s,i)=>i===0?'basal':`${i+1}º`);
   const s0=a0&&new Set(a0.signs), s1=a1&&new Set(a1.signs);
   const resolv=a0&&p.assess.length>1?a0.signs.filter(x=>!s1.has(x)):[], novos=a0&&p.assess.length>1?a1.signs.filter(x=>!s0.has(x)):[];
-  return `${migalha([['#/pacientes','Pacientes'],[`#/paciente/${p.id}`,p.name],[null,'Histórico e evolução']])}
+  return `${migalha([['#/pacientes','Pacientes'],[`#/paciente/${p.id}`,p.name],[null,'Prontuário']])}
   ${cabecalho(p,`<div class="perfil-a"><a class="btn pri" href="#/atendimento/${p.id}/0">${ic('play')}Novo atendimento</a></div>`)}
   <div class="card"><div class="card-h"><h2>Evolução das queixas</h2><div class="leg">${Q.map((q,i)=>`<span><i style="background:${QCOR[i]}"></i>${esc(q.nome)}</span>`).join('')}</div></div>
     ${p.sessions.length?`${linhas(Q.map((q,i)=>({cor:QCOR[i],vals:q.serie})),labels,{label:'Intensidade das queixas por atendimento',w:1000,h:240})}
@@ -369,14 +340,142 @@ function eDocumentos(p,A){
     <p class="muted sm" style="margin-top:10px">Etapas incompletas não impedem finalizar. O atendimento pode ser documentado depois, com registro de data e autor de cada alteração.</p></div>`;
 }
 
-/* ---------- Telas fora do escopo da proposta ---------- */
-function vOutra(k){
-  const T={agenda:['Agenda','Continua como no sistema atual, com o botão "Iniciar atendimento" em cada horário.','agenda','spazio.html#agenda'],
-    biblioteca:['Biblioteca clínica','Continua como no sistema atual: pontos, meridianos e cautelas.','biblioteca','spazio.html#pontos'],
-    financeiro:['Financeiro','Planejado para a etapa 8.','financeiro'],documentos:['Documentos','Planejado para a etapa 6.','doc'],
-    relatorios:['Relatórios','Planejado para a etapa 9.','relatorios'],administracao:['Administração','Equipe, permissões e configurações. Planejado para a etapa 10.','admin']}[k];
-  return `<div class="fora"><span class="tico acc xl">${ic(T[2])}</span><h1>${T[0]}</h1><p class="muted">${T[1]}</p>${T[3]?`<a class="btn" href="/${T[3]}">Abrir no sistema atual</a>`:''}<p class="muted sm">Esta proposta cobre o painel, o perfil do paciente, o atendimento integrado e o histórico.</p></div>`;
+/* ---------- Gráficos extras ---------- */
+function rosca(seg, centro){
+  const r=42, c=2*Math.PI*r, tot=seg.reduce((n,s)=>n+s[1],0)||1; let off=0;
+  return `<svg class="rosca" viewBox="0 0 110 110" width="132" height="132" role="img" aria-label="${seg.map(s=>`${s[0]} ${Math.round(s[1]/tot*100)}%`).join(', ')}"><circle cx="55" cy="55" r="${r}" fill="none" stroke="var(--line)" stroke-width="12"/>`+
+    seg.map(([,v,cor])=>{const L=v/tot*c, d=`<circle cx="55" cy="55" r="${r}" fill="none" stroke="${cor}" stroke-width="12" stroke-dasharray="${Math.max(0,L-2).toFixed(1)} ${c.toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}" transform="rotate(-90 55 55)"/>`; off+=L; return d;}).join('')+
+    `<text x="55" y="53" text-anchor="middle" class="r1">${centro[0]}</text><text x="55" y="69" text-anchor="middle" class="r2">${centro[1]}</text></svg>`;
 }
+function barrasV(vals, labels, o={}){
+  const W=o.w||560, H=o.h||190, B=24, T=18, max=Math.max(1,...vals), bw=W/vals.length;
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||'')}">`;
+  [0,.5,1].forEach(f=>s+=`<line class="gl" x1="0" x2="${W}" y1="${H-B-f*(H-B-T)}" y2="${H-B-f*(H-B-T)}"/>`);
+  vals.forEach((v,i)=>{const h=v/max*(H-B-T), x=i*bw+bw*.22, w=bw*.56, ult=i===vals.length-1;
+    s+=`<rect x="${x}" y="${H-B-h}" width="${w}" height="${h}" rx="6" fill="${ult?'var(--brand)':'var(--sage)'}"/><text class="ax" x="${x+w/2}" y="${H-B-h-6}" text-anchor="middle">${o.fmt?o.fmt(v):v}</text><text class="ax" x="${x+w/2}" y="${H-6}" text-anchor="middle">${labels[i]}</text>`;});
+  return s+'</svg>';
+}
+const MESES=['jun','jul','ago','set','out','nov'];
+
+/* ---------- Agenda ---------- */
+function vAgenda(){
+  const ws=addDays(-((new Date().getDay()+6)%7)), dias=[...Array(6)].map((_,i)=>addDays(i,ws)), H0=8, H1=19, alt=52;
+  const hoje=db.appts.filter(a=>a.date===TODAY);
+  const cor=a=>a.done?'ok':!P(a.pid).sessions.length?'nova':'ag';
+  return `<div class="head"><div><h1>Agenda</h1><p>Semana de ${fmt(dias[0])} a ${fmt(dias[5])}</p></div>
+    <div class="quick"><div class="seg-c"><button>Dia</button><button class="on">Semana</button><button>Mês</button></div><button class="btn">${ic('esq')}</button><button class="btn">Hoje</button><button class="btn">${ic('dir')}</button><button class="btn pri" data-a="toast" data-m="Novo agendamento: paciente, serviço, horário e valor, como hoje.">${ic('mais')}Agendar</button></div></div>
+  <div class="ag-l">
+    <div class="card cal-w"><div class="cal-g" style="--alt:${alt}px">
+      <div class="cal-c"></div>${dias.map(d=>`<div class="cal-d ${d===TODAY?'hoje':''}"><small>${new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','')}</small><b>${d.slice(8)}</b></div>`).join('')}
+      <div class="cal-hs">${[...Array(H1-H0)].map((_,i)=>`<span>${String(H0+i).padStart(2,'0')}:00</span>`).join('')}</div>
+      ${dias.map(d=>`<div class="cal-col ${d===TODAY?'hoje':''}">${db.appts.filter(a=>a.date===d).map(a=>{const [h,m]=a.time.split(':').map(Number), top=(h-H0+m/60)*alt, p=P(a.pid);
+        return `<a class="ev ${cor(a)}" style="top:${top}px;height:${alt-6}px" href="#/paciente/${p.id}"><b>${a.time} ${esc(p.name.split(' ')[0])}</b><small>${esc(a.tipo)}</small></a>`;}).join('')}
+        ${d===TODAY?`<i class="agora" style="top:${(Math.min(Math.max(new Date().getHours()+new Date().getMinutes()/60,H0),H1)-H0)*alt}px"></i>`:''}</div>`).join('')}
+    </div></div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h3>Hoje</h3><div class="ag-res">${rosca([['concluídos',hoje.filter(a=>a.done).length,'var(--ok)'],['agendados',hoje.filter(a=>!a.done).length,'var(--brand)']],[hoje.length,'atendimentos'])}
+        <div class="leg col"><span><i style="background:var(--brand)"></i>Agendado</span><span><i style="background:var(--ok)"></i>Concluído</span><span><i style="background:#c9a96b"></i>Primeira consulta</span></div></div></div>
+      <div class="card"><h3>Ocupação da semana</h3><div class="big" style="margin-top:8px">${Math.round(db.appts.filter(a=>a.date>=dias[0]&&a.date<=dias[5]).length/(6*8)*100)}%</div><div class="meter"><i style="width:${Math.round(db.appts.filter(a=>a.date>=dias[0]&&a.date<=dias[5]).length/(6*8)*100)}%"></i></div><small class="muted">dos horários disponíveis (8 por dia)</small></div>
+    </div></div>`;
+}
+
+/* ---------- Cadastro ---------- */
+function vCadastro(){
+  const campo=(id,l,t='text',ph='',cls='')=>`<div class="field ${cls}"><label class="lbl" for="${id}">${l}</label><input id="${id}" type="${t}" placeholder="${ph}"></div>`;
+  return `${migalha([['#/pacientes','Pacientes'],[null,'Novo paciente']])}
+  <div class="head"><div><h1>Novo paciente</h1><p>Os campos com * são obrigatórios.</p></div></div>
+  <div class="cad">
+    <div class="grid" style="align-content:start">
+      <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('doc_id')}</span><div><h3>Identificação</h3><small class="muted">Dados pessoais e contato</small></div></div>
+        <div class="form">${campo('c-nome','Nome completo *','text','Ex.: Marina Costa','full')}${campo('c-nasc','Data de nascimento *','date')}${campo('c-cpf','CPF','text','000.000.000-00')}${campo('c-tel','Telefone (WhatsApp)','tel','(11) 90000-0000')}${campo('c-mail','E-mail','email','nome@email.com')}</div></section>
+      <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('local')}</span><div><h3>Local de atendimento</h3><small class="muted">Usado no contexto sazonal (hemisfério e estação)</small></div></div>
+        <div class="form">${campo('c-cid','Cidade','text','São Paulo')}<div class="field"><label class="lbl" for="c-hem">Hemisfério</label><select id="c-hem"><option>Sul</option><option>Norte</option></select></div></div></section>
+      <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('pulso')}</span><div><h3>Queixa principal</h3><small class="muted">A intensidade inicial vira o valor basal</small></div></div>
+        <div class="form"><div class="field full"><label class="lbl" for="c-q">Queixa *</label><input id="c-q" placeholder="Ex.: dor cervical e tensão nos ombros"></div>
+        <div class="field full"><label class="lbl">Intensidade inicial</label><div class="qs-r"><input type="range" min="0" max="10" value="6" id="c-eva" aria-label="Intensidade inicial"><span class="qs-v" id="c-eva-v">6</span></div></div></div></section>
+      <section class="card fs"><div class="fs-h"><span class="tico crit">${ic('escudo')}</span><div><h3>Alertas de segurança</h3><small class="muted">Avisam sobre pontos e técnicas contraindicados</small></div></div>
+        <div class="tgs">${[['gestante','Gestante','Pontos com cautela na gestação'],['anticoagulante','Uso de anticoagulante','Ventosa e sangria'],['marcapasso','Marcapasso','Eletroacupuntura']].map(([k,l,d])=>`<label class="tg"><input type="checkbox" id="c-${k}"><span class="sw"></span><span><b>${l}</b><small>${d}</small></span></label>`).join('')}</div></section>
+      <section class="card fs"><label class="lgpd"><input type="checkbox" id="c-lgpd"> <span>Paciente autorizou o tratamento dos dados de saúde para fins de atendimento (LGPD). *</span></label></section>
+      <div class="at-f" style="margin-top:0"><a class="btn" href="#/pacientes">Cancelar</a><button class="btn pri" data-a="toast" data-m="Na versão definitiva o paciente é salvo e abre o perfil dele. Nesta proposta nada é salvo.">${ic('check')}Salvar paciente</button></div>
+    </div>
+    <aside class="card cad-p"><div class="lbl">Pré-visualização</div><div class="cad-pv"><span class="avatar xl" id="pv-av">?</span><b id="pv-n">Nome do paciente</b><small class="muted" id="pv-q">Queixa principal</small></div>
+      <div class="lbl" style="margin-top:16px">Próximo passo</div><p class="sm muted" style="margin-top:6px">Depois de salvar, o botão <b>Novo atendimento</b> abre a primeira consulta com a avaliação basal.</p></aside>
+  </div>`;
+}
+
+/* ---------- Biblioteca ---------- */
+function vBiblioteca(){
+  const f=S.mer||'', q=(S.bq||'').toLowerCase();
+  const L=POINTS.filter(p=>(!f||p.mer===f)&&(!q||(p.code+p.pinyin+p.acoes).toLowerCase().includes(q)));
+  const usados=[...new Set(POINTS.map(p=>p.mer))];
+  return `<div class="head"><div><h1>Biblioteca clínica</h1><p>${POINTS.length} pontos com localização, ações e cautelas</p></div><label class="busca">${ic('busca')}<input id="bq" placeholder="Buscar ponto, nome ou ação" value="${esc(S.bq||'')}"></label></div>
+  <div class="chips" style="margin-bottom:20px"><button class="chip ${!f?'on':''}" data-a="mer" data-m="">Todos</button>${usados.map(m=>`<button class="chip ${f===m?'on':''}" data-a="mer" data-m="${m}">${MER[m]?.[1]?`<i class="dotq" style="background:${EL[MER[m][1]].cor}"></i>`:''}${MER[m]?.[0]||m}</button>`).join('')}</div>
+  <div class="bib">${L.map(p=>{const el=MER[p.mer]?.[1];return `<article class="bc"><div class="bc-h"><span class="bc-c" style="${el?`color:${EL[el].cor};background:color-mix(in srgb, ${EL[el].cor} 12%, white)`:''}">${p.code}</span><div class="grow"><b>${esc(p.pinyin)}</b><small class="muted">${MER[p.mer]?.[0]||''}</small></div>${p.cautela?`<span class="pill warn" title="${esc(CAUT[p.cautela])}">${ic('alerta')}</span>`:''}</div>
+    <p class="sm">${esc(p.acoes)}</p><details class="mais"><summary>Localização ${ic('baixo')}</summary><p class="sm muted">${esc(p.loc)}</p>${p.cautela?`<p class="sm" style="color:var(--warn)">${esc(CAUT[p.cautela])}</p>`:''}</details></article>`;}).join('')||'<p class="muted">Nenhum ponto encontrado.</p>'}</div>`;
+}
+
+/* ---------- Financeiro (fictício, etapa 8) ---------- */
+function vFinanceiro(){
+  const rec=[8200,9100,8700,9900,10800,6200], L=[['22/10','Helena Prado','Acupuntura',180,'pago'],['20/10','Rafael Monteiro','Acupuntura e moxabustão',200,'pago'],['18/10','Lúcia Andrade','Pacote 5 sessões',800,'parcial'],['15/10','Tiago Sato','Acupuntura',180,'pendente'],['12/10','Helena Prado','Acupuntura',180,'pago']];
+  return `<div class="head"><div><h1>Financeiro</h1><p>Visão de novembro · <span class="pill ex">dados fictícios · etapa 8</span></p></div><div class="quick"><button class="btn">${ic('baixar')}Exportar</button><button class="btn pri" data-a="toast" data-m="Lançamentos e NFS-e entram na etapa 8.">${ic('mais')}Lançamento</button></div></div>
+  <div class="tiles">
+    <div class="tile"><span class="tico acc">${ic('dinheiro')}</span><div><small>Receita no mês</small><b class="num">${brl(6200)}</b><span class="tr bom">${ic('sobe')}12% vs out</span></div></div>
+    <div class="tile"><span class="tico">${ic('relogio')}</span><div><small>A receber</small><b class="num">${brl(1340)}</b><span class="tr">4 lançamentos</span></div></div>
+    <div class="tile"><span class="tico warn">${ic('alerta')}</span><div><small>Inadimplência</small><b class="num">3,1%</b><span class="tr ruim">${ic('sobe')}0,4 p.p.</span></div></div>
+    <div class="tile"><span class="tico">${ic('recibo')}</span><div><small>Ticket médio</small><b class="num">${brl(186)}</b><span class="tr">por atendimento</span></div></div></div>
+  <div class="grid g-side"><div class="card"><div class="card-h"><h3>Receita mensal</h3><span class="muted sm">últimos 6 meses</span></div>${barrasV(rec,MESES,{label:'Receita mensal',fmt:v=>(v/1000).toFixed(1).replace('.',',')+' mil'})}</div>
+    <div class="card"><h3>Receita por serviço</h3><div class="ag-res">${rosca([['Acupuntura',58,'var(--brand)'],['Pacotes',27,'#b8894a'],['Ventosa',15,'#5f7f9c']],['58%','acupuntura'])}<div class="leg col"><span><i style="background:var(--brand)"></i>Acupuntura 58%</span><span><i style="background:#b8894a"></i>Pacotes 27%</span><span><i style="background:#5f7f9c"></i>Ventosa 15%</span></div></div></div></div>
+  <div class="card" style="margin-top:20px"><div class="card-h"><h3>Últimos lançamentos</h3><button class="btn ghost sm">Ver todos ${ic('dir')}</button></div>
+    <div class="tab"><div class="tr-h"><span>Data</span><span>Paciente</span><span>Serviço</span><span>Valor</span><span>Status</span></div>${L.map(([d,n,s,v,st])=>`<div class="tr-r"><span class="mono">${d}</span><span><b>${n}</b></span><span class="muted">${s}</span><span class="mono">${brl(v)}</span><span><span class="pill ${st==='pago'?'ok':st==='parcial'?'warn':'crit'}">${st}</span></span></div>`).join('')}</div></div>`;
+}
+
+/* ---------- Relatórios (fictício, etapa 9) ---------- */
+function vRelatorios(){
+  const at=[38,42,40,47,52,21], hrs=['08','10','12','14','16','18'], dd=['seg','ter','qua','qui','sex','sáb'];
+  const heat=dd.map((_,i)=>hrs.map((_,j)=>[.8,.6,.3,.7,.9,.5][j]*[1,.9,.8,1,.95,.4][i]));
+  return `<div class="head"><div><h1>Relatórios</h1><p>Clínicos, agenda e financeiro · <span class="pill ex">dados fictícios · etapa 9</span></p></div><div class="seg-c"><button>30 dias</button><button class="on">6 meses</button><button>12 meses</button></div></div>
+  <div class="tiles">
+    <div class="tile">${anel(.72,'72%','var(--ok)')}<div><b>Melhora clínica</b><small>pacientes com queixa principal menor que no basal</small></div></div>
+    <div class="tile"><span class="tico acc">${ic('queda')}</span><div><small>Redução média da EVA</small><b class="num">−2,6</b><span class="tr bom">pontos desde o basal</span></div></div>
+    <div class="tile"><span class="tico">${ic('pacientes')}</span><div><small>Pacientes ativos</small><b class="num">48</b><span class="tr bom">${ic('sobe')}6 no mês</span></div></div>
+    <div class="tile"><span class="tico">${ic('agenda')}</span><div><small>Comparecimento</small><b class="num">94%</b><span class="tr">faltas: 6%</span></div></div></div>
+  <div class="grid g2"><div class="card"><div class="card-h"><h3>Atendimentos por mês</h3></div>${barrasV(at,MESES,{label:'Atendimentos por mês'})}</div>
+    <div class="card"><div class="card-h"><h3>Intensidade média das queixas</h3><span class="muted sm">EVA 0 a 10</span></div>${linhas([{cor:'var(--brand)',vals:[6.8,6.2,5.6,5.1,4.6,4.2]}],MESES,{w:560,h:190})}</div></div>
+  <div class="card" style="margin-top:20px"><div class="card-h"><h3>Ocupação por dia e horário</h3><div class="leg"><span><i style="background:var(--sage)"></i>baixa</span><span><i style="background:var(--brand)"></i>alta</span></div></div>
+    <div class="heat"><span></span>${hrs.map(h=>`<small>${h}h</small>`).join('')}${dd.map((d,i)=>`<small>${d}</small>${heat[i].map(v=>`<i style="background:color-mix(in srgb, var(--brand) ${Math.round(v*100)}%, var(--surface-2))" title="${Math.round(v*100)}%"></i>`).join('')}`).join('')}</div></div>`;
+}
+
+/* ---------- Documentos e Administração ---------- */
+function vDocumentos(){
+  const M=[['Ficha de anamnese','folha','12 usos'],['Termo de consentimento','assinatura','assinatura eletrônica'],['Orientações ao paciente','plano','a partir do plano'],['Registro de atendimento','doc','gerado ao finalizar'],['Declaração de comparecimento','conferido','1 clique'],['Recibo','recibo','etapa 8']];
+  return `<div class="head"><div><h1>Documentos</h1><p>Modelos preenchidos com os dados do paciente · <span class="pill ex">etapa 6</span></p></div><button class="btn pri" data-a="toast" data-m="Modelos de documento entram na etapa 6.">${ic('mais')}Novo modelo</button></div>
+  <div class="docs">${M.map(([t,i,s])=>`<button class="docc" data-a="toast" data-m="${t}: etapa 6.">${ic(i)}<b>${t}</b><small>${s}</small></button>`).join('')}</div>`;
+}
+function vAdmin(){
+  const E=[['Mauren Turcatti','Administradora · Acupuntura','admin'],['Profissional convidada','Fisioterapia · Acupuntura','clínica'],['Recepção','Agenda e financeiro','recepção']];
+  return `<div class="head"><div><h1>Administração</h1><p>Equipe, permissões e dados da clínica · <span class="pill ex">etapa 10</span></p></div><button class="btn pri" data-a="toast" data-m="Multiusuário entra na etapa 10.">${ic('novo')}Convidar</button></div>
+  <div class="grid g-side"><div class="card"><h3>Equipe</h3>${E.map(([n,d,r])=>`<div class="al-i"><span class="avatar">${initials(n)}</span><span class="grow"><b>${n}</b><small class="muted">${d}</small></span><span class="pill ${r==='admin'?'acc':''}">${r}</span></div>`).join('')}</div>
+    <div class="card"><h3>Clínica</h3><dl class="corr" style="margin-top:12px"><dt>Nome</dt><dd>Spazio Terapias Integrativas</dd><dt>Cidade</dt><dd>São Paulo · hemisfério Sul</dd><dt>Serviços</dt><dd>Acupuntura, moxabustão, ventosa, auriculoterapia</dd><dt>Privacidade</dt><dd>LGPD · consentimento por paciente</dd></dl></div></div>`;
+}
+
+/* ---------- Guia visual ---------- */
+function vGuia(){
+  const cores=[['--brand','Verde institucional','#66864b'],['--accent','Verde de texto e botões','#4f6b3a'],['--accent-soft','Verde claro','#eef3e7'],['--sage','Sálvia','#dfe8d3'],['--beige','Bege','#efe7d6'],['--bg','Fundo creme','#f6f3ec'],['--surface','Cartão','#ffffff'],['--ink','Texto','#1f2a1b'],['--muted','Texto secundário','#6b7363']];
+  const est=[['ok','Concluído / pago'],['acc','Agendado / ativo'],['warn','Pendente / cautela'],['crit','Alerta de segurança']];
+  return `<div class="head"><div><h1>Guia visual</h1><p>O padrão único aplicado a todas as telas do Spazio</p></div></div>
+  <div class="grid g2">
+    <div class="card"><h3>Cores</h3><div class="sw-g">${cores.map(([v,n,h])=>`<div><i style="background:var(${v})"></i><b>${n}</b><small class="mono">${h}</small></div>`).join('')}</div></div>
+    <div class="card"><h3>Tipografia · Inter</h3><div class="ty"><span style="font-size:1.7rem;font-weight:650;letter-spacing:-.025em">Título de página</span><span style="font-size:1.02rem;font-weight:600">Título de cartão</span><span>Texto de leitura, 14,5 px, entrelinha 1,55.</span><span class="muted sm">Texto de apoio e legendas</span><span class="lbl">Rótulo de seção</span><span class="big">4,2</span><span class="mono">09:30 · E36 · JetBrains Mono para horários e códigos</span></div></div>
+    <div class="card"><h3>Botões e estados</h3><div class="chips" style="margin:12px 0"><button class="btn pri">${ic('play')}Principal</button><button class="btn">Secundário</button><button class="btn ghost">Discreto</button><button class="btn sm">Pequeno</button></div>
+      <div class="chips">${est.map(([k,l])=>`<span class="pill ${k}">${l}</span>`).join('')}</div>
+      <div class="chips" style="margin-top:12px"><button class="chip on">Selecionado</button><button class="chip">Opção</button></div></div>
+    <div class="card"><h3>Formulário</h3><div class="form" style="margin-top:12px"><div class="field"><label class="lbl" for="g1">Campo</label><input id="g1" placeholder="Texto de exemplo"></div><div class="field"><label class="lbl" for="g2">Seleção</label><select id="g2"><option>Opção</option></select></div>
+      <label class="tg full"><input type="checkbox" checked><span class="sw"></span><span><b>Interruptor</b><small>para sim ou não</small></span></label></div></div>
+    <div class="card"><h3>Indicadores</h3><div class="tiles" style="margin:12px 0 0;grid-template-columns:1fr"><div class="tile">${anel(.68,'68%')}<div><b>Anel</b><small>proporção</small></div></div><div class="tile"><span class="tico acc">${ic('pacientes')}</span><div><b class="num">48</b><small>número em destaque</small></div></div></div></div>
+    <div class="card"><h3>Ícones · Lucide</h3><div class="ico-g">${Object.keys(I).slice(0,40).map(k=>`<span title="${k}">${ic(k)}</span>`).join('')}</div></div>
+  </div>`;
+}
+
 function migalha(L){ return `<nav class="migalha" aria-label="Caminho">${L.map(([h,t])=>h?`<a href="${h}">${esc(t)}</a>`:`<span>${esc(t)}</span>`).join(ic('dir'))}</nav>`; }
 
 /* ---------- Rotas e eventos ---------- */
@@ -386,8 +485,14 @@ function render(manter){
   let html, ativo=r;
   if(r==='paciente'&&p){ html=x==='historico'?vHistorico(p):vPerfil(p); ativo='pacientes'; }
   else if(r==='atendimento'&&p){ html=vAtendimento(p,Math.max(0,Math.min(7,Number(x)||0))); ativo='pacientes'; }
-  else if(r==='pacientes') html=vPacientes();
-  else if(['agenda','biblioteca','financeiro','documentos','relatorios','administracao'].includes(r)) html=vOutra(r);
+  else if(r==='pacientes') html=id==='novo'?vCadastro():vPacientes();
+  else if(r==='agenda') html=vAgenda();
+  else if(r==='biblioteca') html=vBiblioteca();
+  else if(r==='financeiro') html=vFinanceiro();
+  else if(r==='relatorios') html=vRelatorios();
+  else if(r==='documentos') html=vDocumentos();
+  else if(r==='administracao') html=vAdmin();
+  else if(r==='guia') html=vGuia();
   else { html=vPainel(); ativo='painel'; }
   menu(ativo); document.getElementById('view').innerHTML=html;
   if(manter) scrollTo(0,y);
@@ -401,6 +506,7 @@ document.addEventListener('click',ev=>{
   else if(a==='menu-abrir'){ S.aberto=!S.aberto; render(true); }
   else if(a==='menu-fechar'){ S.aberto=false; render(true); }
   else if(a==='toast'){ toast(t.dataset.m); }
+  else if(a==='mer'){ S.mer=t.dataset.m; render(true); }
   else if(a==='hist'){ S.histAberto[t.dataset.k]=!S.histAberto[t.dataset.k]; render(true); }
   else if(a==='el'){ S.el=t.dataset.e&&S.el!==t.dataset.e?t.dataset.e:null; render(true); }
   else if(a==='sinal'&&A){ const i=A.signs.indexOf(t.dataset.s); i<0?A.signs.push(t.dataset.s):A.signs.splice(i,1); render(true); }
@@ -412,7 +518,13 @@ document.addEventListener('click',ev=>{
 document.addEventListener('change',ev=>{ const t=ev.target, {id}=rota(), A=id&&AT[id]; if(t.dataset.a==='cmp'&&A){ A.cmp=t.checked; render(true); } });
 document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&S.aberto){ S.aberto=false; render(true); } if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); } });
 document.addEventListener('input',ev=>{
-  const t=ev.target, {id}=rota(), A=id&&AT[id]; if(!A) return;
+  const t=ev.target, {id}=rota(), A=id&&AT[id];
+  if(t.id==='bq'){ S.bq=t.value; const pos=t.selectionStart; render(true); const n=document.getElementById('bq'); n.focus(); n.setSelectionRange(pos,pos); return; }
+  if(t.id==='pbusca'){ const q=t.value.toLowerCase(); document.querySelectorAll('.pc').forEach(c=>c.hidden=!c.dataset.n.includes(q)); return; }
+  if(t.id==='c-nome'){ document.getElementById('pv-n').textContent=t.value||'Nome do paciente'; document.getElementById('pv-av').textContent=t.value?initials(t.value):'?'; return; }
+  if(t.id==='c-q'){ document.getElementById('pv-q').textContent=t.value||'Queixa principal'; return; }
+  if(t.id==='c-eva'){ document.getElementById('c-eva-v').textContent=t.value; return; }
+  if(!A) return;
   if(t.dataset.q){ A.qx[t.dataset.q]=Number(t.value); document.getElementById('qv-'+t.dataset.q).textContent=t.value; const q=queixas(P(id)).find(z=>z.id===t.dataset.q); if(q.serie.length) document.getElementById('qd-'+q.id).innerHTML=delta(q.serie.at(-1),Number(t.value)); }
   else if(t.dataset.an){ A.anam[t.dataset.an]=t.value; }
   else if(t.dataset.f){ A[t.dataset.f]=t.value; }
