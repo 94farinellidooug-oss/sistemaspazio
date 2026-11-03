@@ -4,8 +4,16 @@
   "type": "module",
   "scripts": {
     "test": "node tests/comparar.mjs",
+    "test:navegador": "node tests/navegador.mjs && node tests/compatibilidade.mjs",
+    "test:tudo": "npm test && npm run build && npm run test:navegador",
     "referencia": "node tests/gerar-referencia.mjs",
     "build": "node tools/build.mjs",
     "dev": "node tools/servidor.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
   }
 }

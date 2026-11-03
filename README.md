@@ -33,10 +33,37 @@ dist/spazio.html      arquivo único gerado por npm run build
 
 ## Testes
 
+### Preparar o ambiente (uma vez)
+
+Requer Node.js 18 ou superior.
+
+```
+npm ci                                   # instala o Playwright declarado no package.json
+npx playwright install --with-deps chromium   # baixa o Chromium usado nos testes de navegador
+```
+
+No Windows e no macOS, `--with-deps` pode ser omitido.
+
+### Comandos
+
 | Comando | O que verifica |
 | --- | --- |
 | `npm test` | 51 casos de hipóteses, Ba Gang, cinco elementos, alertas, pentagrama e EVA. O resultado precisa ser idêntico ao gravado a partir do protótipo original. |
-| `node tests/navegador.mjs` | Executa o mesmo roteiro de uso (cadastro, sessão, avaliação, pentagrama, pontos, agenda) no original, na versão modular e no arquivo único, e compara as telas e os dados salvos. Requer Playwright. |
+| `npm run test:navegador` | Roda `tests/navegador.mjs`, que executa o mesmo roteiro de uso (cadastro, sessão, avaliação, pentagrama, pontos, agenda) no original, na versão modular e no arquivo único e compara telas e dados salvos. Roda também `tests/compatibilidade.mjs`, que confirma que `dist/spazio.html` abre direto do disco e que os dados da chave `spazio-v1` gravados pelo original continuam acessíveis, nos dois sentidos. |
+| `npm run test:tudo` | Tudo acima, na ordem: cálculos, build e navegador. |
 | `npm run referencia` | Regrava a referência a partir de `legacy/`. Só deve ser usado se o próprio original mudar, o que não deve acontecer. |
 
 Depois de qualquer mudança em `css/` ou `js/`, rode `npm run build` para atualizar `dist/spazio.html`.
+
+### No GitHub
+
+O workflow `.github/workflows/testes.yml` roda todos os testes em cada pull request e em cada envio para `main`. Ele também falha se `dist/spazio.html` não corresponder aos módulos.
+
+## Dados salvos no navegador
+
+Os dados ficam no `localStorage` do navegador, na chave `spazio-v1`, no mesmo formato do protótipo v1. O navegador separa os dados por endereço de origem. Por isso:
+
+- Quem abrir o novo `dist/spazio.html` no mesmo endereço onde usava o protótipo antigo continua vendo os mesmos dados.
+- Arquivos abertos direto do disco (`file://`) compartilham os dados entre si no Chrome.
+- Um endereço diferente (outro site, `localhost` ou o disco) começa sem dados, como acontecia com o próprio v1.
+
