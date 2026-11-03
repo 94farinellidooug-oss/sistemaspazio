@@ -27,7 +27,7 @@ js/
   telas/              uma tela por arquivo
 tests/                testes de equivalência com o protótipo original
 tools/                build do arquivo único e servidor local
-legacy/               protótipo v1 original, preservado sem alterações (versão v1.0-prototipo)
+legacy/               protótipo v1 original, preservado sem alterações (branch backup/v1.0-prototipo)
 dist/spazio.html      arquivo único gerado por npm run build
 ```
 
