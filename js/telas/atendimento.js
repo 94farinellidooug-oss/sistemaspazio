@@ -222,7 +222,7 @@ function dicaMapa(a){
   if (M.rad) return `${ic('dir')}<b>Irradiação:</b> agora toque no ponto de destino, na mesma vista. <button class="btn ghost sm" data-act="at-mk-radx">Cancelar</button>`;
   if (M.ferr === 'sel') return `${ic('info')}<span>Toque numa marcação para editar e ver os pontos próximos, ou num ponto para ver a ficha. Para marcar, escolha um tipo acima: ele fica ativo até você parar.</span>`;
   const parar = ` Para parar, toque de novo no botão ou em <b>Selecionar</b>.`;
-  return M.ferr === 'irradiacao' ? `${ic('dir')}<span><b>Irradiação:</b> toque na origem e depois no destino. Repita para marcar outras.${parar}</span>` : `${ic('corpo')}<span>Toque no corpo quantas vezes quiser para marcar <b>${nomeMarca(M.ferr).toLowerCase()}</b>. Os pontos próximos de cada marcação aparecem ao lado.${parar}</span>`;
+  return M.ferr === 'irradiacao' ? `${ic('dir')}<span><b>Irradiação:</b> toque na origem e depois no destino. Repita para marcar outras. Toque em cima de uma marcação para apagá-la.${parar}</span>` : `${ic('corpo')}<span>Toque no corpo quantas vezes quiser para marcar <b>${nomeMarca(M.ferr).toLowerCase()}</b>. Toque em cima de uma marcação para apagá-la. Os pontos próximos aparecem ao lado.${parar}</span>`;
 }
 // Pontos perto do local marcado, com o resumo da ficha da Biblioteca. Critério: só a distância no desenho.
 function proximosMarca(p, a, m){

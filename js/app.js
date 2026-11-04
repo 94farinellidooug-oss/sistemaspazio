@@ -211,6 +211,9 @@ function toqueMapa(ev,svg){
   const ptp=ev.target.closest('.ptp');
   if(ptp&&(!rasc||M.ferr==='sel')){ M.pt=ptp.dataset.pt; M.rm=false; render(true); return; }
   if(!rasc||M.ferr==='sel'){ if(mk){ M.sel=mk.dataset.id; M.pt=null; M.rm=false; render(true); } return; }
+  // Com um tipo ativo, tocar numa marcação deste atendimento apaga a marcação.
+  if(mk&&marcasDe(A).some(y=>y.id===mk.dataset.id)){ const x=marcasDe(A).find(y=>y.id===mk.dataset.id); removerMarca(A,x.id); if(M.sel===x.id){ M.sel=null; M.rm=false; } M.pt=null;
+    toast(`${nomeTipo(x.tipo)} apagada`,'info'); mudou(`mapa corporal: marcação removida (${nomeTipo(x.tipo).toLowerCase()}${x.regiao?', '+x.regiao:''})`); return; }
   if(!sobre){ toast('Toque sobre o corpo para marcar','info'); return; }
   const tipo=M.ferr, m=adicionarMarca(A,{id:uid(),tipo,vista:v,face:f,x:q.x/w,y:q.y/h,lado:ladoDe(v,f,q.x)},new Date().toISOString()); if(!m) return;
   M.sel=m.id; M.pt=null; M.rm=false;
