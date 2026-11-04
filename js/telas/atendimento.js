@@ -6,7 +6,7 @@ import { anel, barrasEl, delta, linhas } from '../componentes/graficos.js';
 import { ic, vazio } from '../componentes/icones.js';
 import { pentagram } from '../componentes/pentagrama.js';
 import { EL, KE, SHENG, controlador, mae } from '../conhecimento/elementos.js';
-import { CAUT, PT } from '../conhecimento/pontos.js';
+import { CAUT, MER, PT } from '../conhecimento/pontos.js';
 import { FACES, LARGURA, PONTOS_NO_MAPA, TAM, VISTAS, desenho, iconeMarca, marcaSvg, pontosSvg, temPosicao, vistaNome, vistasDoPonto } from '../componentes/corpo.js';
 import { SIGN, SIGNS } from '../conhecimento/sinais.js';
 import { LADOS_MARCA, TIPOS_MARCA, atendimentosAnteriores, marcaComIntensidade, marcasDe, CATEGORIAS, ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, PARES_VASOS, categoriaDe, ehBasal, encaminhados, vasoDe, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
@@ -220,9 +220,9 @@ function dicaMapa(a){
   const M = ui.mapa;
   if (a.status !== 'rascunho') return `${ic('check')}Atendimento finalizado: as marcações estão no prontuário e não mudam mais. Toque numa marcação para ver os detalhes.`;
   if (M.rad) return `${ic('dir')}<b>Irradiação:</b> agora toque no ponto de destino, na mesma vista. <button class="btn ghost sm" data-act="at-mk-radx">Cancelar</button>`;
-  if (M.ferr === 'sel') return `${ic('info')}<span>Toque numa marcação para editar. Para marcar, escolha um tipo acima: ele fica ativo até você parar.</span>`;
+  if (M.ferr === 'sel') return `${ic('info')}<span>Toque numa marcação para editar ou num ponto para ver a ficha. Para marcar, escolha um tipo acima: ele fica ativo até você parar.</span>`;
   const parar = ` Para parar, toque de novo no botão ou em <b>Selecionar</b>.`;
-  if (M.ferr === 'ponto') return `${ic('corpo')}<span><b>Indicar pontos:</b> toque num ponto do mapa para incluir no plano e toque de novo para tirar. Os pontos do plano ficam em verde. Amplie o mapa para ver o nome de todos.${parar}</span>`;
+  if (M.ferr === 'ponto') return `${ic('corpo')}<span><b>Indicar pontos:</b> toque num ponto para ver a ficha (meridiano, número, localização e ações) e incluir ou tirar do plano. Os pontos do plano ficam em verde. Amplie o mapa para ver o nome de todos.${parar}</span>`;
   return M.ferr === 'irradiacao' ? `${ic('dir')}<span><b>Irradiação:</b> toque na origem e depois no destino. Repita para marcar outras.${parar}</span>` : `${ic('corpo')}<span>Toque no corpo quantas vezes quiser para marcar <b>${nomeMarca(M.ferr).toLowerCase()}</b>.${parar}</span>`;
 }
 function editorMarca(p, a, ant){
@@ -262,6 +262,17 @@ function avisosMapa(p, a){
   const w = a.plano.pontos.length ? pointWarnings(a.plano.pontos, p, a.plano.tec) : [];
   return w.length ? `<div class="mp-seg" id="mp-seg"><span class="lbl">${ic('escudo')}Verificação de segurança</span>${w.map(([k, m]) => `<div class="notice ${k === 'crit' ? 'crit' : ''}">${ic(k === 'crit' ? 'escudo' : 'alerta')}<div><b>${k === 'crit' ? 'Atenção' : 'Cautela'}</b> ${esc(m)}</div></div>`).join('')}</div>` : '';
 }
+// Ficha do ponto tocado no mapa: só o conteúdo que já está na Biblioteca clínica.
+function fichaPontoMapa(p, a){
+  const c = ui.mapa.pt, d = PT[c]; if (!d) return '';
+  const m = MER[d.mer], n = c.slice(d.mer.length), noPlano = a.plano.pontos.includes(c), rasc = a.status === 'rascunho';
+  const w = pointWarnings([c], p, a.plano.tec);
+  return `<div class="card" id="ficha-pt"><div class="card-h"><h3><span class="mono">${esc(c)}</span> · ${esc(d.pinyin)}<small>${m ? `Meridiano ${esc(m[0])} (${esc(d.mer)}) · ponto ${esc(n)}` : esc(d.mer)}</small></h3><button class="btn ghost sm" data-act="at-mv-ptf" aria-label="Fechar a ficha">${ic('x')}</button></div>
+    <dl class="ed-dl fp-dl"><dt>Meridiano</dt><dd>${m ? esc(m[0]) : '—'}</dd><dt>Número</dt><dd>${esc(n)}</dd><dt>Localização</dt><dd>${esc(d.loc)}</dd><dt>Ações</dt><dd>${esc(d.acoes)}</dd>${d.cautela ? `<dt>Cautela</dt><dd><span class="pill warn">${esc(CAUT[d.cautela] || d.cautela)}</span></dd>` : ''}</dl>
+    ${w.map(([k, t]) => `<div class="notice ${k === 'crit' ? 'crit' : ''}">${ic(k === 'crit' ? 'escudo' : 'alerta')}<div><b>${k === 'crit' ? 'Atenção' : 'Cautela'}</b> ${esc(t)}</div></div>`).join('')}
+    <div class="ed-a">${rasc ? `<button class="btn sm ${noPlano ? '' : 'pri'}" data-act="at-mv-ptx" data-c="${esc(c)}">${noPlano ? `${ic('x')}Tirar do plano` : `${ic('mais')}Incluir no plano`}</button>` : ''}${noPlano ? '<span class="pill acc">no plano</span>' : ''}</div>
+    <small class="muted">Conteúdo da Biblioteca clínica. Posição no mapa aproximada.</small></div>`;
+}
 function eMapa(p, a){
   const M = ui.mapa, v = M.vista, f = faceMapa(v), [w, h] = TAM[v], rasc = a.status === 'rascunho';
   const ant = atendimentosAnteriores(p, a), anterior = ant.at(-1), antigos = ant.slice(0, -1);
@@ -271,9 +282,9 @@ function eMapa(p, a){
   const camadas = [
     hist ? marcasDe(hist).filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'hist', M.sel === m.id)).join('') : '',
     M.ant && anterior ? marcasDe(anterior).filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'ant', M.sel === m.id)).join('') : '',
-    indicar ? '' : M.plano ? pontosSvg(P, v, f, () => 'plano') : '',
+    indicar ? '' : M.plano ? pontosSvg(P, v, f, c => 'plano' + (c === M.pt ? ' pt-on' : '')) : '',
     minhas.filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'at', M.sel === m.id)).join(''),
-    indicar ? pontosSvg(PONTOS_NO_MAPA, v, f, c => P.includes(c) ? 'plano' : 'disp') : ''].join('');
+    indicar ? pontosSvg(PONTOS_NO_MAPA, v, f, c => (P.includes(c) ? 'plano' : 'disp') + (c === M.pt ? ' pt-on' : '')) : ''].join('');
   const zi = ZOOMS_MAPA.indexOf(M.zoom), com = P.filter(temPosicao), sem = P.filter(c => !temPosicao(c));
   const tabela = tabelaMarcas(p, [...ant.filter(x => marcasDe(x).length), a], a);
   return `<div class="notice">${ic('info')}<div><b>Posições aproximadas.</b> D e E são sempre o lado direito e o lado esquerdo <b>do paciente</b>, em todas as vistas.</div></div>
@@ -298,7 +309,7 @@ function eMapa(p, a){
         <span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp plano"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto do plano</span>${indicar ? `<span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp disp"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto disponível</span>` : ''}
         <span><svg viewBox="0 0 20 20" class="lg-i mk" style="--c:var(--crit)" aria-hidden="true"><g class="esp"><circle cx="10" cy="10" r="6"/></g></svg>Lado espelhado (bilateral)</span></div>
     </div>
-    <aside class="grid" style="align-content:start">${editorMarca(p, a, ant)}
+    <aside class="grid" style="align-content:start">${ui.mapa.pt && PT[ui.mapa.pt] ? fichaPontoMapa(p, a) : editorMarca(p, a, ant)}
       <div class="card"><div class="card-h"><h3>Marcações deste atendimento<small>${fmt(a.data)} · ${ordemNo(p, a)}º atendimento</small></h3><span class="pill">${minhas.length}</span></div>
         <div class="mk-l">${minhas.map(linhaMarcaAt).join('') || '<p class="muted sm">Nenhuma marcação ainda.</p>'}</div></div>
       <div class="card" id="plano-mapa"><div class="card-h"><h3>Pontos do plano<small>os mesmos do Plano terapêutico deste atendimento</small></h3>${P.length ? `<span class="pill acc">${P.length}</span>` : ''}</div>

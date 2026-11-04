@@ -175,7 +175,7 @@ function acaoAtendimento(a,t){
     descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
 }
 // Mapa corporal (etapa 4A): marcações no atendimento em andamento. Depois de finalizado, só leitura.
-function limparMapa(){ Object.assign(ui.mapa,{ferr:'sel',sel:null,rm:false,rad:null,hist:''}); }
+function limparMapa(){ Object.assign(ui.mapa,{ferr:'sel',sel:null,rm:false,rad:null,hist:'',pt:null}); }
 const nomeTipo = k => TIPOS_MARCA.find(x=>x[0]===k)?.[1]||k;
 const nomeLadoMarca = k => LADOS_MARCA.find(x=>x[0]===k)?.[1]||'';
 function acaoMapa(a,t,A){
@@ -186,7 +186,11 @@ function acaoMapa(a,t,A){
   else if(a==='at-mv-zoom'){ M.zoom=ZM[Math.max(0,Math.min(ZM.length-1,ZM.indexOf(M.zoom)+Number(t.dataset.d)))]; render(true); }
   else if(a==='at-mv-ant'){ M.ant=!M.ant; render(true); }
   else if(a==='at-mv-plano'){ M.plano=!M.plano; render(true); }
-  else if(a==='at-mk-sel'){ const x=marcasDe(A).find(y=>y.id===t.dataset.id); if(!x) return; M.sel=x.id; M.rm=false; M.vista=x.vista; if(FACES[x.vista]) M.face[x.vista]=x.face; render(true); }
+  else if(a==='at-mv-ptf'){ M.pt=null; render(true); }
+  else if(a==='at-mv-ptx'){ const c=t.dataset.c; if(A.status!=='rascunho'||!c) return; const L=A.plano.pontos, tinha=L.includes(c); tinha?L.splice(L.indexOf(c),1):L.push(c);
+    if(tinha) toast(`${c} retirado do plano`,'info'); else toast(`${c} incluído no plano`);
+    mudou(`plano terapêutico: pontos (${c} ${tinha?'retirado':'indicado'} no mapa corporal)`); }
+  else if(a==='at-mk-sel'){ const x=marcasDe(A).find(y=>y.id===t.dataset.id); if(!x) return; M.sel=x.id; M.pt=null; M.rm=false; M.vista=x.vista; if(FACES[x.vista]) M.face[x.vista]=x.face; render(true); }
   else if(a==='at-mk-ok'){ M.sel=null; M.rm=false; render(true); }
   else if(a==='at-mk-radx'){ M.rad=null; render(true); }
   else if(!m||A.status!=='rascunho') return;
@@ -203,15 +207,13 @@ function toqueMapa(ev,svg){
   const mk=ev.target.closest('.mk'), sobre=ev.target.closest('.corpo, .mk, .ptp');
   if(rasc&&M.rad){ if(!sobre){ toast('Toque sobre o corpo para marcar o destino','info'); return; }
     const m=editarMarca(A,M.rad,'destino',[q.x/w,q.y/h]); M.rad=null; if(m){ M.sel=m.id; mudou('mapa corporal: trajeto da irradiação'); toast('Trajeto da irradiação marcado'); } else render(true); return; }
-  if(rasc&&M.ferr==='ponto'){ const p=ev.target.closest('.ptp');
-    if(!p){ if(mk){ M.sel=mk.dataset.id; M.rm=false; render(true); } else toast('Toque num dos pontos do mapa para incluir ou tirar do plano','info'); return; }
-    const c=p.dataset.pt, tinha=A.plano.pontos.includes(c); const L=A.plano.pontos; tinha?L.splice(L.indexOf(c),1):L.push(c);
-    if(tinha) toast(`${c} retirado do plano`,'info'); else toast(`${c} incluído no plano`);
-    mudou(`plano terapêutico: pontos (${c} ${tinha?'retirado':'indicado'} no mapa corporal)`); return; }
-  if(!rasc||M.ferr==='sel'){ if(mk){ M.sel=mk.dataset.id; M.rm=false; render(true); } else { const p=ev.target.closest('.ptp'); if(p) toast(`Ponto do plano ${p.dataset.pt} · posição aproximada`,'info'); } return; }
+  const ptp=ev.target.closest('.ptp');
+  if(ptp&&(!rasc||M.ferr==='sel'||M.ferr==='ponto')){ M.pt=ptp.dataset.pt; M.sel=null; M.rm=false; render(true); return; }
+  if(rasc&&M.ferr==='ponto'){ if(mk){ M.sel=mk.dataset.id; M.pt=null; M.rm=false; render(true); } else toast('Toque num dos pontos do mapa para ver a ficha','info'); return; }
+  if(!rasc||M.ferr==='sel'){ if(mk){ M.sel=mk.dataset.id; M.pt=null; M.rm=false; render(true); } return; }
   if(!sobre){ toast('Toque sobre o corpo para marcar','info'); return; }
   const tipo=M.ferr, m=adicionarMarca(A,{id:uid(),tipo,vista:v,face:f,x:q.x/w,y:q.y/h,lado:ladoDe(v,f,q.x)},new Date().toISOString()); if(!m) return;
-  M.sel=m.id; M.rm=false;
+  M.sel=m.id; M.pt=null; M.rm=false;
   if(tipo==='irradiacao'){ M.rad=m.id; toast('Origem marcada. Agora toque no destino','info'); }
   else toast(`${nomeTipo(tipo)} marcada · ${nomeLadoMarca(m.lado).toLowerCase()}`);
   mudou(`mapa corporal: marcação de ${nomeTipo(tipo).toLowerCase()} adicionada`);
