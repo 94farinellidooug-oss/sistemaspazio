@@ -115,6 +115,34 @@ export function pontosProximos(m){
     .filter(([, d]) => d <= R).sort((a, b) => a[1] - b[1]).map(([c]) => c);
 }
 
+// Região sugerida pelo local tocado (faixas aproximadas do desenho). Só preenche o campo "Região",
+// que continua editável. x e y em unidades do desenho da vista.
+export function regiaoDoToque(v, f, x, y, braco){
+  if (v === 'maos') return 'Punho e mão';
+  if (v === 'pes') return 'Tornozelo e pé';
+  const lat = v === 'lat_d' || v === 'lat_e', fx = v === 'lat_e' ? 200 - x : x, dx = Math.abs(x - 100), post = v === 'posterior';
+  if (lat) {
+    if (y < 56) return fx >= 106 ? 'Face e dentes' : 'Cabeça';
+    if (y < 70) return 'Pescoço e nuca';
+    if (y < 96) return 'Ombro';
+    if (braco && y < 230) return y < 210 ? 'Braço e cotovelo' : 'Punho e mão';
+  } else {
+    if (y < (post ? 50 : 22)) return 'Cabeça';
+    if (!post && y < 52) return 'Face e dentes';
+    if (y >= 63 && y < 98 && dx >= 18) return 'Ombro';
+    if (y < 70) return 'Pescoço e nuca';
+    if (y >= 98 && y < 266 && dx >= (y < 190 ? 41 : 51)) return y < 214 ? 'Braço e cotovelo' : 'Punho e mão';
+  }
+  const costas = post || (lat && fx < 100);
+  if (y < 150) return costas ? 'Costas' : 'Tórax';
+  if (y < 215) return costas ? 'Lombar e sacro' : 'Abdome';
+  if (y < 250) return 'Quadril e nádega';
+  if (y < 300) return 'Coxa';
+  if (y < 330) return 'Joelho';
+  if (y < 392) return 'Perna';
+  return 'Tornozelo e pé';
+}
+
 /* ---------- Marcações ---------- */
 export const COR_MARCA = { dor:'var(--crit)', sintoma:'var(--warn)', irradiacao:'var(--water)', limitacao:'var(--earth)', procedimento:'var(--brand)' };
 const nomeTipoMarca = k => TIPOS_MARCA.find(t => t[0] === k)?.[1] || k;

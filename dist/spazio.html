@@ -1033,6 +1033,19 @@ input[type=checkbox]{accent-color:var(--brand)}
 .px-n{margin:0}
 .mapa4 .ptp.prox text{display:inline;fill:var(--ink);font-weight:600}
 #ed-mk .px{margin:12px 0 14px;padding:12px 0 14px;border-bottom:1px solid var(--line)}
+/* Pontos indicados pelo livro para a região da marcação */
+#ed-mk .px.ind + .px{margin-top:0;padding-top:0;border-top:0}
+.ind-g{display:grid;gap:8px}
+.ind-l{display:flex;flex-wrap:wrap;gap:6px}
+.ind-b{display:inline-flex;align-items:baseline;gap:5px;min-height:34px;padding:5px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:.84rem;cursor:pointer}
+.ind-b small{color:var(--muted);font-size:.72rem}
+.ind-b:hover{border-color:var(--brand)}
+.ind-b.pend{border-style:dashed}
+.ind-b.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.ind-b.on small{color:rgba(255,255,255,.85)}
+.ind-r{display:flex;flex-wrap:wrap;gap:4px}
+.ind-f{display:block;margin-top:6px}
+.ptp.ind circle:not(.pt-h){stroke:var(--brand);stroke-width:2}
 /* ---------- Etapa 4B · Biblioteca clínica: Central, Particular e Atlas ---------- */
 :root{--vaso:#7b5ea7}
 :root[data-theme="dark"]{--vaso:#b49ae0}
@@ -1681,6 +1694,55 @@ function barrasEl(st, base){
 }
 // Variação entre dois valores de intensidade (queda é melhora).
 const delta = (a,b) => { if(a==null||b==null) return ''; const d=b-a; return `<span class="delta ${d<0?'bom':d>0?'ruim':''}">${d<0?'▼':d>0?'▲':'='} ${Math.abs(d)}</span>`; };
+// Fonte: MARTINS, Ednéa Iara Souza. Atlas dos Pontos de Acupuntura: guia de localização. GEN/Roca.
+// Seção "Indicações" de cada ponto, lida por palavras de região. Só o código do ponto e a página do livro;
+// nenhum texto do livro foi copiado. Cada linha foi conferida e aprovada ("sim") por Mauren em 04/11/2026.
+// [código, página no livro]
+const FONTE_INDICACOES = { obra:'Atlas dos Pontos de Acupuntura: guia de localização', autora:'Ednéa Iara Souza Martins', editora:'GEN/Roca', aprovadoPor:'Mauren', aprovadoEm:'2026-11-04' };
+const REGIOES_CORPO = ["Cabeça", "Face e dentes", "Olhos", "Ouvido", "Nariz", "Boca e garganta", "Pescoço e nuca", "Ombro", "Braço e cotovelo", "Punho e mão", "Tórax", "Abdome", "Costas", "Lombar e sacro", "Quadril e nádega", "Nervo ciático", "Coxa", "Joelho", "Perna", "Tornozelo e pé"];
+const INDICADOS_REGIAO = {
+  "Cabeça":[["P6",62],["P7",64],["P9",68],["IG2",82],["IG3",84],["IG5",88],["IG7",92],["IG8",94],["IG9",96],["IG11",100],["IG17",112],["E1",128],["E8",142],["E9",144],["E10",146],["E40",206],["E41",208],["E42",210],["BP3",228],["BP8",238],["C2",274],["C5",280],["C6",282],["ID1",296],["ID2",298],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["B2",342],["B3",344],["B5",348],["B6",350],["B7",352],["B8",354],["B10",358],["B11",360],["B12",362],["B18",374],["B22",382],["B27",392],["B37",412],["B58",454],["B59",456],["B60",458],["B64",466],["B65",468],["B67",472],["R1",480],["R2",482],["CS2",542],["CS6",550],["CS7",552],["TA1",564],["TA3",568],["TA5",572],["TA9",580],["TA10",582],["TA12",586],["TA16",594],["TA19",600],["TA21",604],["TA22",606],["TA23",608],["VB1",618],["VB3",622],["VB5",626],["VB6",628],["VB7",630],["VB9",634],["VB10",636],["VB11",638],["VB12",640],["VB13",642],["VB14",644],["VB15",646],["VB17",650],["VB18",652],["VB19",654],["VB20",656],["VB21",658],["VB36",688],["VB39",694],["VB41",698],["F1",712],["F2",714],["F3",716],["F4",718],["F7",724],["VG13",820],["VG14",822],["VG15",824],["VG16",826],["VG17",828],["VG18",830],["VG19",832],["VG20",834],["VG21",836],["VG24",842]],
+  "Face e dentes":[["P3",56],["P4",58],["P6",62],["P7",64],["P11",72],["IG1",80],["IG2",82],["IG3",84],["IG5",88],["IG6",90],["IG7",92],["IG8",94],["IG9",96],["IG10",98],["IG12",102],["IG15",108],["IG19",116],["IG20",118],["E1",128],["E3",132],["E5",136],["E7",140],["E8",142],["E9",144],["E33",192],["E41",208],["E42",210],["E43",212],["E45",216],["BP2",226],["BP4",230],["BP5",232],["BP14",250],["C1",272],["C3",276],["C5",280],["C6",282],["ID1",296],["ID3",300],["ID5",304],["ID8",310],["ID9",312],["ID18",330],["ID19",332],["B1",340],["B2",342],["B8",354],["B18",374],["B56",450],["B59",456],["B61",460],["B62",462],["B64",466],["B65",468],["R1",480],["R7",492],["R8",494],["R9",496],["CS2",542],["CS3",544],["TA1",564],["TA5",572],["TA8",578],["TA9",580],["TA12",586],["TA16",594],["TA21",604],["TA22",606],["TA23",608],["VB1",618],["VB2",620],["VB3",622],["VB5",626],["VB6",628],["VB7",630],["VB8",632],["VB10",636],["VB11",638],["VB12",640],["VB13",642],["VB14",644],["VB15",646],["VB17",650],["VB31",678],["VB32",680],["VB33",682],["VB34",684],["VB35",686],["VB36",688],["F1",712],["F2",714],["F3",716],["F7",724],["F12",734],["VG15",824],["VG25",844],["VG26",846],["VG27",848],["VG28",850]],
+  "Olhos":[["P7",64],["P9",68],["IG1",80],["IG2",82],["IG3",84],["IG6",90],["IG8",94],["IG11",100],["IG14",106],["E1",128],["E3",132],["E7",140],["E8",142],["E41",208],["E42",210],["E43",212],["C5",280],["ID1",296],["ID2",298],["ID3",300],["ID5",304],["ID6",306],["ID18",330],["B1",340],["B2",342],["B3",344],["B5",348],["B6",350],["B7",352],["B8",354],["B9",356],["B10",358],["B18",374],["B23",384],["B58",454],["B60",458],["B62",462],["B64",466],["B65",468],["B67",472],["R1",480],["R3",484],["R6",490],["TA1",564],["TA5",572],["TA6",574],["TA10",582],["TA16",594],["TA23",608],["VB1",618],["VB2",620],["VB5",626],["VB6",628],["VB7",630],["VB8",632],["VB9",634],["VB10",636],["VB11",638],["VB14",644],["VB15",646],["VB17",650],["VB18",652],["VB19",654],["VB20",656],["VB38",692],["VB41",698],["F2",714],["F3",716],["VG16",826],["VG17",828],["VG18",830],["VG20",834],["VG21",836],["VG26",846],["VG28",850]],
+  "Ouvido":[["IG1",80],["IG5",88],["IG6",90],["E7",140],["ID2",298],["ID3",300],["ID5",304],["ID8",310],["ID9",312],["ID16",326],["ID17",328],["ID19",332],["B23",384],["B65",468],["R3",484],["TA1",564],["TA3",568],["TA5",572],["TA6",574],["TA7",576],["TA8",578],["TA9",580],["TA10",582],["TA16",594],["TA19",600],["TA21",604],["VB2",620],["VB3",622],["VB8",632],["VB10",636],["VB11",638],["VB12",640],["VB15",646],["VB20",656],["VB41",698],["VG15",824],["VG16",826],["VG20",834]],
+  "Nariz":[["P3",56],["P4",58],["P7",64],["P11",72],["IG2",82],["IG3",84],["IG5",88],["IG6",90],["IG19",116],["IG20",118],["E3",132],["E45",216],["BP1",224],["C6",282],["ID2",298],["ID3",300],["B2",342],["B3",344],["B5",348],["B6",350],["B7",352],["B8",354],["B9",356],["B10",358],["B12",362],["B18",374],["B58",454],["B59",456],["B60",458],["B64",466],["B67",472],["R22",522],["CS4",546],["TA22",606],["VB5",626],["VB15",646],["VB18",652],["VB19",654],["VB20",656],["VB39",694],["VG15",824],["VG16",826],["VG20",834],["VG21",836],["VG24",842],["VG25",844],["VG26",846],["VG27",848],["VG28",850]],
+  "Boca e garganta":[["P1",52],["P6",62],["P7",64],["P8",66],["P9",68],["P10",70],["P11",72],["IG1",80],["IG2",82],["IG3",84],["IG7",92],["IG10",98],["IG11",100],["IG17",112],["IG18",114],["E5",136],["E9",144],["E10",146],["E11",148],["E12",150],["E24",174],["E43",212],["E45",216],["BP5",232],["C1",272],["C5",280],["C6",282],["C8",286],["ID1",296],["ID2",298],["ID3",300],["ID16",326],["ID17",328],["B10",358],["B11",360],["B57",452],["R1",480],["R2",482],["R3",484],["R4",486],["R6",490],["CS5",548],["CS6",550],["CS7",552],["CS8",554],["TA1",564],["TA3",568],["TA5",572],["TA6",574],["TA8",578],["TA9",580],["TA10",582],["TA16",594],["VB7",630],["VB10",636],["VB34",684],["VB35",686],["VB38",692],["VB39",694],["F5",720],["F7",724],["VG15",824],["VG16",826],["VG17",828],["VG27",848]],
+  "Pescoço e nuca":[["P7",64],["IG11",100],["IG13",104],["IG14",106],["IG15",108],["IG17",112],["IG18",114],["E5",136],["E9",144],["E10",146],["E11",148],["E12",150],["C1",272],["C3",276],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["ID9",312],["ID10",314],["ID12",318],["ID13",320],["ID14",322],["ID16",326],["ID17",328],["B7",352],["B8",354],["B9",356],["B10",358],["B11",360],["B12",362],["B41",420],["B42",422],["B60",458],["B64",466],["B65",468],["CS6",550],["TA5",572],["TA6",574],["TA10",582],["TA12",586],["TA16",594],["TA21",604],["TA22",606],["VB7",630],["VB11",638],["VB12",640],["VB13",642],["VB17",650],["VB19",654],["VB20",656],["VB21",658],["VB36",688],["VB38",692],["VB39",694],["VB40",696],["VB41",698],["VG13",820],["VG14",822],["VG15",824],["VG17",828],["VG18",830],["VG19",832]],
+  "Ombro":[["P1",52],["P2",54],["P4",58],["P7",64],["IG1",80],["IG2",82],["IG3",84],["IG9",96],["IG10",98],["IG12",102],["IG13",104],["IG14",106],["IG15",108],["IG18",114],["E12",150],["E40",206],["C1",272],["C2",274],["ID2",298],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["ID9",312],["ID10",314],["ID12",318],["ID13",320],["ID14",322],["B11",360],["B12",362],["B41",420],["B42",422],["B60",458],["CS2",542],["TA1",564],["TA6",574],["TA8",578],["TA10",582],["TA12",586],["VB10",636],["VB21",658],["VB22",660],["VB24",664],["VB34",684],["F9",728],["VG14",822]],
+  "Braço e cotovelo":[["P2",54],["P3",56],["P4",58],["P6",62],["P7",64],["P9",68],["IG6",90],["IG7",92],["IG8",94],["IG9",96],["IG10",98],["IG12",102],["IG13",104],["IG14",106],["IG15",108],["IG18",114],["E42",210],["C1",272],["C2",274],["C3",276],["C4",278],["C5",280],["C6",282],["C8",286],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["ID9",312],["ID10",314],["ID12",318],["ID13",320],["ID14",322],["B14",366],["B15",368],["B41",420],["B60",458],["B64",466],["CS2",542],["CS3",544],["CS4",546],["CS5",548],["CS6",550],["TA3",568],["TA5",572],["TA6",574],["TA7",576],["TA8",578],["TA9",580],["TA10",582],["TA12",586],["VB21",658],["VB22",660]],
+  "Punho e mão":[["P7",64],["P8",66],["P9",68],["P10",70],["IG1",80],["IG2",82],["IG3",84],["IG5",88],["IG6",90],["IG9",96],["C2",274],["C3",276],["C4",278],["C5",280],["C6",282],["C7",284],["C8",286],["ID1",296],["ID2",298],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["B11",360],["CS3",544],["CS6",550],["CS7",552],["CS8",554],["TA3",568],["TA5",572],["TA8",578],["TA9",580],["VB21",658]],
+  "Tórax":[["P1",52],["P2",54],["P3",56],["P4",58],["P7",64],["P8",66],["P9",68],["P10",70],["IG3",84],["E12",150],["E13",152],["E15",156],["E16",158],["E19",164],["E22",170],["E37",200],["E40",206],["BP3",228],["BP17",256],["BP18",258],["BP19",260],["BP20",262],["BP21",264],["C1",272],["C2",274],["C3",276],["C4",278],["C5",280],["C6",282],["C7",284],["C8",286],["C9",288],["ID3",300],["ID6",306],["B11",360],["B13",364],["B14",366],["B15",368],["B17",372],["B18",374],["B21",380],["B41",420],["B47",432],["R20",518],["R22",522],["R23",524],["R24",526],["R25",528],["R26",530],["CS2",542],["CS3",544],["CS4",546],["CS5",548],["CS6",550],["CS7",552],["CS8",554],["CS9",556],["TA1",564],["TA5",572],["TA6",574],["TA8",578],["VB11",638],["VB22",660],["VB23",662],["VB24",664],["VB25",666],["VB34",684],["VB35",686],["VB36",688],["VB39",694],["VB41",698],["F2",714],["F3",716],["F5",720],["F14",738],["VG1",796],["VG8",810],["VG9",812],["VG13",820]],
+  "Abdome":[["P2",54],["P10",70],["IG2",82],["IG7",92],["IG8",94],["IG9",96],["IG10",98],["E19",164],["E21",168],["E22",170],["E23",172],["E24",174],["E25",176],["E26",178],["E27",180],["E28",182],["E29",184],["E30",186],["E33",192],["E37",200],["E41",208],["E42",210],["E43",212],["E45",216],["BP1",224],["BP2",226],["BP3",228],["BP4",230],["BP5",232],["BP6",234],["BP7",236],["BP8",238],["BP9",240],["BP10",242],["BP13",248],["BP14",250],["BP15",252],["BP17",256],["BP21",264],["ID4",302],["B17",372],["B18",374],["B20",378],["B21",380],["B22",382],["B25",388],["B26",390],["B27",392],["B29",396],["B34",406],["B35",408],["B39",416],["B40",418],["B47",432],["B49",436],["B51",440],["B53",444],["R1",480],["R2",482],["R7",492],["R8",494],["R11",500],["R15",508],["R16",510],["R17",512],["R19",516],["R20",518],["R21",520],["R22",522],["R24",526],["CS6",550],["CS7",552],["CS9",556],["TA6",574],["VB24",664],["VB25",666],["VB26",668],["VB27",670],["VB34",684],["VB36",688],["VB39",694],["F2",714],["F3",716],["F4",718],["F9",728],["F10",730],["F13",736],["F14",738],["VG5",804],["VG6",806],["VG7",808],["VG8",810],["VG9",812]],
+  "Costas":[["P1",52],["P2",54],["P9",68],["IG3",84],["IG14",106],["E13",152],["BP19",260],["ID3",300],["ID4",302],["ID13",320],["ID14",322],["B10",358],["B11",360],["B13",364],["B15",368],["B20",378],["B21",380],["B22",382],["B23",384],["B24",386],["B25",388],["B27",392],["B34",406],["B47",432],["B53",444],["B58",454],["B60",458],["B62",462],["B63",464],["B64",466],["B65",468],["TA12",586],["VG1",796],["VG5",804],["VG6",806],["VG7",808],["VG9",812]],
+  "Lombar e sacro":[["P7",64],["P10",70],["IG10",98],["E25",176],["E30",186],["E37",200],["BP2",226],["BP3",228],["BP8",238],["BP9",240],["ID3",300],["ID6",306],["ID14",322],["B5",348],["B10",358],["B11",360],["B12",362],["B18",374],["B19",376],["B21",380],["B22",382],["B23",384],["B24",386],["B25",388],["B26",390],["B27",392],["B28",394],["B29",396],["B30",398],["B31",400],["B32",402],["B33",404],["B34",406],["B35",408],["B36",410],["B37",412],["B39",416],["B40",418],["B47",432],["B51",440],["B52",442],["B53",444],["B54",446],["B55",448],["B56",450],["B57",452],["B58",454],["B59",456],["B60",458],["B61",460],["B62",462],["B63",464],["B64",466],["B65",468],["R3",484],["R4",486],["R7",492],["R8",494],["R9",496],["R15",508],["TA3",568],["TA8",578],["TA12",586],["VB25",666],["VB26",668],["VB27",670],["VB29",674],["VB30",676],["VB31",678],["VB32",680],["VB35",686],["VB38",692],["VB41",698],["F9",728],["F11",732],["F12",734],["VG1",796],["VG3",800],["VG5",804],["VG7",808],["VG8",810],["VG9",812],["VG15",824],["VG26",846],["VG28",850]],
+  "Quadril e nádega":[["B30",398],["B36",410],["B37",412],["B54",446],["VB29",674],["VB30",676]],
+  "Nervo ciático":[["B26",390],["B53",444],["B56",450],["B58",454]],
+  "Coxa":[["E33",192],["BP10",242],["B64",466],["VB29",674],["VB30",676],["VB31",678],["VB32",680],["VB36",688],["F1",712],["F10",730],["F11",732],["F12",734]],
+  "Joelho":[["E33",192],["E35",196],["E37",200],["E40",206],["BP9",240],["BP10",242],["ID5",304],["B23",384],["B31",400],["B33",404],["B39",416],["B40",418],["B52",442],["B55",448],["B56",450],["B61",460],["B63",464],["B64",466],["R10",498],["VB30",676],["VB31",678],["VB32",680],["VB33",682],["VB34",684],["VB38",692],["VB39",694],["VB41",698],["F7",724],["F8",726]],
+  "Perna":[["IG9",96],["E33",192],["E43",212],["BP3",228],["BP9",240],["B22",382],["B33",404],["B34",406],["B37",412],["B39",416],["B40",418],["B54",446],["B56",450],["B57",452],["B58",454],["B61",460],["B63",464],["B64",466],["B65",468],["R8",494],["R9",496],["VB28",672],["VB31",678],["VB33",682],["VB35",686],["VB36",688],["VB39",694],["F5",720],["F11",732]],
+  "Tornozelo e pé":[["E35",196],["E41",208],["E42",210],["E43",212],["E45",216],["BP3",228],["BP4",230],["BP5",232],["BP7",236],["B11",360],["B39",416],["B57",452],["B59",456],["B61",460],["B62",462],["B63",464],["B64",466],["B65",468],["B67",472],["R1",480],["R2",482],["R4",486],["R7",492],["R8",494],["R9",496],["CS8",554],["VB31",678],["VB35",686],["VB39",694],["VB40",696],["VB41",698],["F4",718]],
+};
+
+// Liga o texto do campo "Região" da marcação às regiões da tabela, por palavras (sem acento, sem maiúsculas).
+// Só palavras de lugar do corpo: nenhuma regra clínica.
+const PALAVRAS_REGIAO = {
+  'Cabeça':['cabeca','cranio','testa','temporal','occipital'], 'Face e dentes':['face','rosto','dente','dentes','mandibula','maxilar'],
+  'Olhos':['olho','olhos'], 'Ouvido':['ouvido','ouvidos','orelha','orelhas'], 'Nariz':['nariz'], 'Boca e garganta':['boca','garganta','labio','labios','lingua'],
+  'Pescoço e nuca':['pescoco','nuca','cervical'], 'Ombro':['ombro','ombros'], 'Braço e cotovelo':['braco','bracos','antebraco','cotovelo','cotovelos'],
+  'Punho e mão':['punho','punhos','mao','maos','dedo','dedos'], 'Tórax':['torax','peito','toracica'], 'Abdome':['abdome','abdomen','abdominal','barriga'],
+  'Costas':['costas','dorsal','escapula'], 'Lombar e sacro':['lombar','lombo','sacro','sacral','coccix'], 'Quadril e nádega':['quadril','nadega','nadegas','gluteo','virilha'],
+  'Nervo ciático':['ciatico','ciatica'], 'Coxa':['coxa','coxas'], 'Joelho':['joelho','joelhos'], 'Perna':['perna','pernas','panturrilha','canela'],
+  'Tornozelo e pé':['tornozelo','tornozelos','pe','pes','calcanhar','planta']
+};
+const semAcentoReg = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function regioesDoTexto(t){
+  const pal = new Set(semAcentoReg(t).split(/[^a-z]+/).filter(Boolean));
+  return REGIOES_CORPO.filter(r => semAcentoReg(r) === semAcentoReg(t).trim() || PALAVRAS_REGIAO[r].some(w => pal.has(w)));
+}
+// [[código, página], ...] aprovados para a região, na ordem do livro.
+const indicadosDaRegiao = r => INDICADOS_REGIAO[r] || [];
+// Regiões em que o ponto foi aprovado: [[região, página], ...].
+const regioesDoPonto = c => REGIOES_CORPO.flatMap(r => (INDICADOS_REGIAO[r] || []).filter(([x]) => x === c).map(([, pg]) => [r, pg]));
 //
 // Um rascunho fica em p.atendimentos com status 'rascunho'. Ele não aparece nas sessões (p.sessions)
 // nem na exportação para o protótipo: só entra no prontuário quando é finalizado. Campos além do
@@ -2069,6 +2131,34 @@ function pontosProximos(m){
   const [w, h] = TAM[m.vista], R = RAIO_PROXIMO(m.vista), alvos = [[m.x * w, m.y * h], ...(m.x2 != null ? [[m.x2 * w, m.y2 * h]] : [])];
   return PONTOS_NO_MAPA.map(c => [c, Math.min(Infinity, ...posicoes(c, m.vista, m.face || '').flatMap(([x, y]) => alvos.map(([a, b]) => Math.hypot(x - a, y - b))))])
     .filter(([, d]) => d <= R).sort((a, b) => a[1] - b[1]).map(([c]) => c);
+}
+
+// Região sugerida pelo local tocado (faixas aproximadas do desenho). Só preenche o campo "Região",
+// que continua editável. x e y em unidades do desenho da vista.
+function regiaoDoToque(v, f, x, y, braco){
+  if (v === 'maos') return 'Punho e mão';
+  if (v === 'pes') return 'Tornozelo e pé';
+  const lat = v === 'lat_d' || v === 'lat_e', fx = v === 'lat_e' ? 200 - x : x, dx = Math.abs(x - 100), post = v === 'posterior';
+  if (lat) {
+    if (y < 56) return fx >= 106 ? 'Face e dentes' : 'Cabeça';
+    if (y < 70) return 'Pescoço e nuca';
+    if (y < 96) return 'Ombro';
+    if (braco && y < 230) return y < 210 ? 'Braço e cotovelo' : 'Punho e mão';
+  } else {
+    if (y < (post ? 50 : 22)) return 'Cabeça';
+    if (!post && y < 52) return 'Face e dentes';
+    if (y >= 63 && y < 98 && dx >= 18) return 'Ombro';
+    if (y < 70) return 'Pescoço e nuca';
+    if (y >= 98 && y < 266 && dx >= (y < 190 ? 41 : 51)) return y < 214 ? 'Braço e cotovelo' : 'Punho e mão';
+  }
+  const costas = post || (lat && fx < 100);
+  if (y < 150) return costas ? 'Costas' : 'Tórax';
+  if (y < 215) return costas ? 'Lombar e sacro' : 'Abdome';
+  if (y < 250) return 'Quadril e nádega';
+  if (y < 300) return 'Coxa';
+  if (y < 330) return 'Joelho';
+  if (y < 392) return 'Perna';
+  return 'Tornozelo e pé';
 }
 
 /* ---------- Marcações ---------- */
@@ -2579,7 +2669,18 @@ function proximosMarca(p, a, m){
       <div class="px-b"><button class="btn sm ghost" data-act="at-mv-ptv" data-c="${esc(c)}">Ver ficha completa</button>${rasc ? `<button class="btn sm ${noPlano ? '' : 'pri'}" data-act="at-mv-ptx" data-c="${esc(c)}">${noPlano ? `${ic('x')}Tirar do plano` : `${ic('mais')}Incluir no plano`}</button>` : ''}</div></div>`; };
   return `<div class="px" id="mk-prox"><span class="lbl">Pontos próximos deste local</span>
     ${L.length ? L.map(linha).join('') : '<p class="muted sm">Nenhum ponto com posição perto deste local ainda. Mais pontos entram com o Atlas.</p>'}
-    <p class="muted sm px-n">Pela posição aproximada no mapa, não é indicação para a queixa. Pontos indicados por queixa entram quando você enviar a tabela de indicações.</p></div>`;
+    <p class="muted sm px-n">Pela posição aproximada no mapa, não é indicação para a queixa.</p></div>`;
+}
+// Pontos que o livro indica para a região escrita na marcação (tabela conferida por Mauren).
+const fonteInd = () => { const F = FONTE_INDICACOES; return `${esc(F.autora)}, <i>${esc(F.obra)}</i> (${esc(F.editora)}), seção Indicações. Lista conferida por ${esc(F.aprovadoPor)} em ${fmt(F.aprovadoEm)}.`; };
+function indicadosMarca(p, a, m){
+  const R = regioesDoTexto(m.regiao), P = a.plano.pontos;
+  if (!R.length) return `<div class="px ind" id="mk-ind"><span class="lbl">Pontos indicados pelo livro</span><p class="muted sm">${m.regiao ? `Não encontrei "${esc(m.regiao)}" na tabela de regiões.` : 'Sem região.'} Escreva ou escolha a região (ex.: ombro, lombar, joelho) para ver os pontos indicados.</p></div>`;
+  const grupo = r => { const L = indicadosDaRegiao(r);
+    return `<div class="ind-g" data-regiao="${esc(r)}"><span class="lbl">Indicados para ${esc(r).toLowerCase()} · ${L.length} ponto${L.length === 1 ? '' : 's'}</span>
+      <div class="ind-l">${L.map(([c, pg]) => `<button class="ind-b${P.includes(c) ? ' on' : ''}${PT[c] ? '' : ' pend'}" data-act="at-mv-ptv" data-c="${esc(c)}" title="${esc(c)} · livro p. ${pg}${PT[c] ? ' · ' + esc(PT[c].pinyin) : ' · ficha pendente'}${P.includes(c) ? ' · no plano' : ''}"><b class="mono">${esc(c)}</b><small>p. ${pg}</small></button>`).join('')}</div></div>`; };
+  return `<div class="px ind" id="mk-ind">${R.map(grupo).join('')}
+    <p class="muted sm px-n">Toque num ponto para ver a ficha e incluir no plano. Em destaque, os que já estão no plano. Fonte: ${fonteInd()}</p></div>`;
 }
 function editorMarca(p, a, ant){
   const M = ui.mapa, todas = [...ant.flatMap(x => marcasDe(x).map(m => [m, x])), ...marcasDe(a).map(m => [m, a])], par = todas.find(([m]) => m.id === M.sel);
@@ -2589,20 +2690,20 @@ function editorMarca(p, a, ant){
   const cab = `<div class="card-h"><h3><span class="ed-t">${iconeMarca(m.tipo)}${nomeMarca(m.tipo)}</span></h3>${ro ? `<span class="pill">${at === a ? 'no prontuário' : 'somente leitura'}</span>` : '<span class="pill acc">editando</span>'}</div>`;
   if (ro) return `<div class="card" id="ed-mk">${cab}${meta}
     <dl class="ed-dl"><dt>Lado</dt><dd>${nomeLado(m.lado)}</dd>${marcaComIntensidade(m.tipo) ? `<dt>Intensidade</dt><dd>${m.intensidade ?? 'não informada'}${m.intensidade != null ? ' de 10' : ''}</dd>` : `<dt>Procedimento</dt><dd>${esc(m.procedimento) || '—'}</dd>`}<dt>Região</dt><dd>${esc(m.regiao) || '—'}</dd><dt>Anotação</dt><dd>${esc(m.nota) || '—'}</dd></dl>
-    ${proximosMarca(p, a, m)}
+    ${indicadosMarca(p, a, m)}${proximosMarca(p, a, m)}
     <p class="muted sm">${at === a ? 'Registrada no prontuário com este atendimento.' : 'Marcação de outro atendimento, mostrada só para comparar. Ela não é alterada nem copiada.'}</p></div>`;
   return `<div class="card" id="ed-mk">${cab}${meta}
-    ${proximosMarca(p, a, m)}
+    ${indicadosMarca(p, a, m)}${proximosMarca(p, a, m)}
     <div class="form ed-f">
       <div class="field"><label class="lbl" for="mk-tipo">Tipo</label><select id="mk-tipo" data-mk="tipo">${TIPOS_MARCA.map(([k, n]) => `<option value="${k}" ${k === m.tipo ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
       <div class="field"><label class="lbl" for="mk-lado">Lado do paciente</label><select id="mk-lado" data-mk="lado">${LADOS_MARCA.map(([k, n]) => `<option value="${k}" ${k === m.lado ? 'selected' : ''}>${n}</option>`).join('')}</select><small class="muted">Sugerido pela posição tocada.</small></div>
       ${marcaComIntensidade(m.tipo) ? `<div class="field full"><span class="lbl" id="mk-int-l">Intensidade (0 a 10)</span><div class="int-r" role="group" aria-labelledby="mk-int-l">${Array.from({ length:11 }, (_, n) => `<button class="int-b${m.intensidade === n ? ' on' : ''}" data-act="at-mk-int" data-n="${n}" aria-pressed="${m.intensidade === n}">${n}</button>`).join('')}</div><small class="muted" id="mk-int-v">${m.intensidade == null ? 'Não informada' : `Registrada: ${m.intensidade} de 10`}</small></div>`
         : `<div class="field full"><label class="lbl" for="mk-proc">Procedimento realizado</label><input id="mk-proc" data-mk="procedimento" value="${esc(m.procedimento)}" placeholder="Ex.: ventosa, moxabustão, acupuntura..."></div>`}
       ${m.tipo === 'irradiacao' ? `<div class="field full"><span class="lbl">Trajeto</span><div class="rad-s">${m.x2 != null ? `${ic('check')}Origem e destino marcados` : `${ic('alerta')}Falta o destino`}<button class="btn sm" data-act="at-mk-rad">${m.x2 != null ? 'Redesenhar destino' : 'Marcar destino'}</button></div></div>` : ''}
-      <div class="field full"><label class="lbl" for="mk-reg">Região</label><input id="mk-reg" data-mk="regiao" value="${esc(m.regiao)}" list="mk-regioes" placeholder="Ex.: lombar, ombro, joelho"></div>
+      <div class="field full"><label class="lbl" for="mk-reg">Região</label><input id="mk-reg" data-mk="regiao" value="${esc(m.regiao)}" list="mk-regioes" placeholder="Ex.: lombar, ombro, joelho"><small class="muted">Sugerida pelo local tocado. Pode mudar.</small></div>
       <div class="field full"><label class="lbl" for="mk-nota">Anotação</label><textarea id="mk-nota" data-mk="nota" placeholder="Como é, quando piora, o que melhora...">${esc(m.nota)}</textarea></div>
     </div>
-    <datalist id="mk-regioes">${[...new Set(todas.map(([x]) => x.regiao).filter(Boolean))].map(r => `<option value="${esc(r)}">`).join('')}</datalist>
+    <datalist id="mk-regioes">${[...new Set([...REGIOES_CORPO, ...todas.map(([x]) => x.regiao).filter(Boolean)])].map(r => `<option value="${esc(r)}">`).join('')}</datalist>
     <div class="ed-a">${M.rm ? `<div class="rm-c" role="alert"><span>Remover esta marcação?</span><button class="btn sm crit" data-act="at-mk-rms">Sim, remover</button><button class="btn sm" data-act="at-mk-rmn">Cancelar</button></div>` : `<button class="btn sm" data-act="at-mk-rm">${ic('x')}Remover</button><button class="btn sm ghost" data-act="at-mk-ok">Concluir</button>`}</div></div>`;
 }
 const linhaMarcaAt = m => `<button class="mk-li${ui.mapa.sel === m.id ? ' on' : ''}" data-act="at-mk-sel" data-id="${esc(m.id)}">${iconeMarca(m.tipo)}<span class="grow"><b>${nomeMarca(m.tipo)}${m.regiao ? ' · ' + esc(m.regiao) : ''}</b><small>${nomeLado(m.lado)} · ${vistaNome(m.vista, m.face)}${marcaComIntensidade(m.tipo) ? ` · ${m.intensidade ?? '—'}/10` : m.procedimento ? ' · ' + esc(m.procedimento) : ''}</small></span></button>`;
@@ -2622,27 +2723,29 @@ function avisosMapa(p, a){
 }
 // Ficha do ponto tocado no mapa: só o conteúdo que já está na Biblioteca clínica.
 function fichaPontoMapa(p, a){
-  const c = ui.mapa.pt, d = PT[c]; if (!d) return '';
-  const m = MER[d.mer], n = c.slice(d.mer.length), noPlano = a.plano.pontos.includes(c), rasc = a.status === 'rascunho';
-  const w = pointWarnings([c], p, a.plano.tec);
-  return `<div class="card" id="ficha-pt"><div class="card-h"><h3><span class="mono">${esc(c)}</span> · ${esc(d.pinyin)}<small>${m ? `Meridiano ${esc(m[0])} (${esc(d.mer)}) · ponto ${esc(n)}` : esc(d.mer)}</small></h3><button class="btn ghost sm" data-act="at-mv-ptf" aria-label="${ui.mapa.sel ? 'Voltar à marcação' : 'Fechar a ficha'}">${ui.mapa.sel ? 'Voltar' : ic('x')}</button></div>
-    <dl class="ed-dl fp-dl"><dt>Meridiano</dt><dd>${m ? esc(m[0]) : '—'}</dd><dt>Número</dt><dd>${esc(n)}</dd><dt>Localização</dt><dd>${esc(d.loc)}</dd><dt>Ações</dt><dd>${esc(d.acoes)}</dd>${d.cautela ? `<dt>Cautela</dt><dd><span class="pill warn">${esc(CAUT[d.cautela] || d.cautela)}</span></dd>` : ''}</dl>
+  const c = ui.mapa.pt, d = PT[c]; if (!CODIGOS.includes(c)) return '';
+  const mer = d ? d.mer : meridianoDe(c), m = MER[mer], n = c.slice(mer.length), noPlano = a.plano.pontos.includes(c), rasc = a.status === 'rascunho';
+  const w = d ? pointWarnings([c], p, a.plano.tec) : [], ind = regioesDoPonto(c);
+  return `<div class="card" id="ficha-pt"><div class="card-h"><h3><span class="mono">${esc(c)}</span> · ${d ? esc(d.pinyin) : 'nome pendente'}<small>${m ? `Meridiano ${esc(m[0])} (${esc(mer)}) · ponto ${esc(n)}` : esc(mer)}</small></h3><button class="btn ghost sm" data-act="at-mv-ptf" aria-label="${ui.mapa.sel ? 'Voltar à marcação' : 'Fechar a ficha'}">${ui.mapa.sel ? 'Voltar' : ic('x')}</button></div>
+    <dl class="ed-dl fp-dl"><dt>Meridiano</dt><dd>${m ? esc(m[0]) : '—'}</dd><dt>Número</dt><dd>${esc(n)}</dd>${d ? `<dt>Localização</dt><dd>${esc(d.loc)}</dd><dt>Ações</dt><dd>${esc(d.acoes)}</dd>${d.cautela ? `<dt>Cautela</dt><dd><span class="pill warn">${esc(CAUT[d.cautela] || d.cautela)}</span></dd>` : ''}` : ''}
+      <dt>Indicado para</dt><dd>${ind.length ? `<span class="ind-r">${ind.map(([r, pg]) => `<span class="pill">${esc(r)} · p. ${pg}</span>`).join('')}</span>` : '<span class="muted">Nenhuma região aprovada na tabela.</span>'}</dd></dl>
+    ${d ? '' : `<div class="notice" id="fp-pend">${ic('info')}<div><b>Ficha pendente na Biblioteca clínica.</b> Localização, ações e cautelas deste ponto ainda não foram cadastradas. Confira no livro${ind.length ? ` (p. ${ind[0][1]})` : ''} antes de usar.</div></div>`}
     ${w.map(([k, t]) => `<div class="notice ${k === 'crit' ? 'crit' : ''}">${ic(k === 'crit' ? 'escudo' : 'alerta')}<div><b>${k === 'crit' ? 'Atenção' : 'Cautela'}</b> ${esc(t)}</div></div>`).join('')}
     <div class="ed-a">${rasc ? `<button class="btn sm ${noPlano ? '' : 'pri'}" data-act="at-mv-ptx" data-c="${esc(c)}">${noPlano ? `${ic('x')}Tirar do plano` : `${ic('mais')}Incluir no plano`}</button>` : ''}${noPlano ? '<span class="pill acc">no plano</span>' : ''}</div>
-    <small class="muted">Conteúdo da Biblioteca clínica. Posição no mapa aproximada.</small></div>`;
+    <small class="muted">${d ? 'Conteúdo da Biblioteca clínica. Posição no mapa aproximada.' : 'Sem ficha ainda.'}${ind.length ? ` Indicações: ${fonteInd()}` : ''}</small></div>`;
 }
 function eMapa(p, a){
   const M = ui.mapa, v = M.vista, f = faceMapa(v), [w, h] = TAM[v], rasc = a.status === 'rascunho';
   const ant = atendimentosAnteriores(p, a), anterior = ant.at(-1), antigos = ant.slice(0, -1);
   if (M.hist && !antigos.some(x => x.id === M.hist)) M.hist = '';
   const hist = antigos.find(x => x.id === M.hist);
-  const minhas = marcasDe(a), P = a.plano.pontos, mSel = minhas.find(m => m.id === M.sel && naVistaMapa(m, v, f)), prox = mSel ? pontosProximos(mSel).filter(c => !(M.plano && P.includes(c))) : [];
+  const minhas = marcasDe(a), P = a.plano.pontos, mSel = minhas.find(m => m.id === M.sel && naVistaMapa(m, v, f)), indM = new Set(mSel ? regioesDoTexto(mSel.regiao).flatMap(r => indicadosDaRegiao(r).map(([c]) => c)) : []), prox = mSel ? [...new Set([...pontosProximos(mSel), ...[...indM].filter(temPosicao)])].filter(c => !(M.plano && P.includes(c))) : [];
   const camadas = [
     hist ? marcasDe(hist).filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'hist', M.sel === m.id)).join('') : '',
     M.ant && anterior ? marcasDe(anterior).filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'ant', M.sel === m.id)).join('') : '',
     M.plano ? pontosSvg(P, v, f, c => 'plano' + (c === M.pt ? ' pt-on' : '')) : '',
     minhas.filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'at', M.sel === m.id)).join(''),
-    pontosSvg(prox, v, f, c => (P.includes(c) ? 'plano' : 'disp') + ' prox' + (c === M.pt ? ' pt-on' : ''))].join('');
+    pontosSvg(prox, v, f, c => (P.includes(c) ? 'plano' : 'disp') + ' prox' + (indM.has(c) ? ' ind' : '') + (c === M.pt ? ' pt-on' : ''))].join('');
   const zi = ZOOMS_MAPA.indexOf(M.zoom), com = P.filter(temPosicao), sem = P.filter(c => !temPosicao(c));
   const tabela = tabelaMarcas(p, [...ant.filter(x => marcasDe(x).length), a], a);
   return `<div class="notice">${ic('info')}<div><b>Posições aproximadas.</b> D e E são sempre o lado direito e o lado esquerdo <b>do paciente</b>, em todas as vistas.</div></div>
@@ -2667,7 +2770,7 @@ function eMapa(p, a){
         <span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp plano"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto do plano</span><span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp disp"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto próximo da marcação</span>
         <span><svg viewBox="0 0 20 20" class="lg-i mk" style="--c:var(--crit)" aria-hidden="true"><g class="esp"><circle cx="10" cy="10" r="6"/></g></svg>Lado espelhado (bilateral)</span></div>
     </div>
-    <aside class="grid" style="align-content:start">${ui.mapa.pt && PT[ui.mapa.pt] ? fichaPontoMapa(p, a) : editorMarca(p, a, ant)}
+    <aside class="grid" style="align-content:start">${ui.mapa.pt && CODIGOS.includes(ui.mapa.pt) ? fichaPontoMapa(p, a) : editorMarca(p, a, ant)}
       <div class="card"><div class="card-h"><h3>Marcações deste atendimento<small>${fmt(a.data)} · ${ordemNo(p, a)}º atendimento</small></h3><span class="pill">${minhas.length}</span></div>
         <div class="mk-l">${minhas.map(linhaMarcaAt).join('') || '<p class="muted sm">Nenhuma marcação ainda.</p>'}</div></div>
       <div class="card" id="plano-mapa"><div class="card-h"><h3>Pontos do plano<small>os mesmos do Plano terapêutico deste atendimento</small></h3>${P.length ? `<span class="pill acc">${P.length}</span>` : ''}</div>
@@ -3089,14 +3192,18 @@ function listaTodos(){
 }
 
 /* ---------- Ficha do ponto (Central e Atlas) ---------- */
+// Regiões do corpo em que o livro indica o ponto, com a página. Só as linhas aprovadas por Mauren.
+const indRegioes = c => { const L = regioesDoPonto(c), F = FONTE_INDICACOES;
+  return L.length ? `<span class="ind-r">${L.map(([r, pg]) => `<span class="pill">${esc(r)} · p. ${pg}</span>`).join('')}</span><small class="muted ind-f">${esc(F.autora)}, ${esc(F.obra)} (${esc(F.editora)}) · conferido por ${esc(F.aprovadoPor)} em ${fmt(F.aprovadoEm)}</small>` : '<span class="muted">Nenhuma região aprovada na tabela.</span>'; };
 function fichaPonto(c, fechar){
   const p = PT[c], m = meridianoDe(c), mer = MER[m], nota = bibliotecaDe(db).notas[c] || '', vistas = vistasDoPonto(c);
   const conteudo = p ? `<dl class="fx-dl"><dt>Meridiano</dt><dd>${esc(mer[0])} (${m})</dd><dt>Número</dt><dd>${esc(c.slice(m.length))}</dd>
       <dt>Localização</dt><dd>${esc(p.loc)}</dd><dt>Ações</dt><dd>${esc(p.acoes)}</dd>
-      <dt>Indicações</dt><dd class="muted">Entram pela fonte aprovada.</dd>
+      <dt>Indicações por região</dt><dd>${indRegioes(c)}</dd>
       <dt>Cautela</dt><dd>${p.cautela ? `<span class="pill warn">${esc(CAUT[p.cautela])}</span>` : '<span class="muted">Nenhuma cadastrada.</span>'}</dd></dl>
     <div class="fx-fonte"><span class="lbl">Fonte</span><span>Ficha existente do sistema · obra e página não informadas</span></div>`
     : `<dl class="fx-dl"><dt>Meridiano</dt><dd>${esc(mer[0])} (${m})</dd><dt>Número</dt><dd>${esc(c.slice(m.length))}</dd></dl>
+    <dl class="fx-dl"><dt>Indicações por região</dt><dd>${indRegioes(c)}</dd></dl>
     <div class="notice fx-pend">${ic('info')}<div><b>Ficha pendente.</b> Nome, localização, ações, indicações e cautelas entram pela importação da fonte aprovada, com obra e página.</div></div>`;
   return `<div class="ficha" data-ficha="${c}"><div class="fx-h"><span class="fx-c">${c}</span><div class="grow"><b>${p ? esc(p.pinyin) : 'Nome pendente'}</b><small>${esc(mer[0])}${mer[1] ? ' · ' + elTag(mer[1]) : ''}</small></div>${p ? '<span class="pill ok">ficha</span>' : '<span class="pill warn fx-pend-t">ficha pendente</span>'}<button class="btn ghost sm fx-x" data-act="${fechar}" aria-label="Fechar a ficha">${ic('x')}</button></div>
     ${conteudo}
@@ -3269,7 +3376,7 @@ document.addEventListener('input',ev=>{
   else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
   else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
-  if(t.dataset.mk&&t.tagName!=='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)) mudou(`mapa corporal: ${({procedimento:'procedimento',regiao:'região',nota:'anotação'})[t.dataset.mk]||t.dataset.mk} da marcação`,false); return; }
+  if(t.dataset.mk&&t.tagName!=='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)) mudou(`mapa corporal: ${({procedimento:'procedimento',regiao:'região',nota:'anotação'})[t.dataset.mk]||t.dataset.mk} da marcação`,false); if(t.dataset.mk==='regiao'){ const x=atendimentoAberto(), m=x&&marcasDe(x.a).find(y=>y.id===ui.mapa.sel), e=document.getElementById('mk-ind'); if(m&&e) e.outerHTML=indicadosMarca(x.p,x.a,m); } return; }
   // Ambiente de atendimento: salva a cada alteração, sem redesenhar a tela enquanto se digita.
   const x=(t.dataset.atq||t.dataset.atan||t.dataset.atf||t.dataset.vnota||t.dataset.atp||t.dataset.atr||t.dataset.atln)&&atendimentoAberto(); if(!x) return;
   if(t.dataset.atln){ const av=avaliacaoEditavel(x.p,x.a); if(!av||travada(x.p,x.a,av)) return; notaCategoria(av,t.dataset.atln,t.value); mudou(`avaliação energética: ${catNome(t.dataset.atln)}: anotações`,false); return; }
@@ -3384,9 +3491,10 @@ function toqueMapa(ev,svg){
     toast(`${nomeTipo(x.tipo)} apagada`,'info'); mudou(`mapa corporal: marcação removida (${nomeTipo(x.tipo).toLowerCase()}${x.regiao?', '+x.regiao:''})`); return; }
   if(!sobre){ toast('Toque sobre o corpo para marcar','info'); return; }
   const tipo=M.ferr, m=adicionarMarca(A,{id:uid(),tipo,vista:v,face:f,x:q.x/w,y:q.y/h,lado:ladoDe(v,f,q.x)},new Date().toISOString()); if(!m) return;
+  const rg=regiaoDoToque(v,f,q.x,q.y,!!ev.target.closest('.b2')); if(rg) editarMarca(A,m.id,'regiao',rg);
   M.sel=m.id; M.pt=null; M.rm=false;
   if(tipo==='irradiacao'){ M.rad=m.id; toast('Origem marcada. Agora toque no destino','info'); }
-  else toast(`${nomeTipo(tipo)} marcada · ${nomeLadoMarca(m.lado).toLowerCase()}`);
+  else toast(`${nomeTipo(tipo)} marcada · ${m.regiao?m.regiao.toLowerCase()+' · ':''}${nomeLadoMarca(m.lado).toLowerCase()}`);
   mudou(`mapa corporal: marcação de ${nomeTipo(tipo).toLowerCase()} adicionada`);
 }
 // Baixa um texto como arquivo (cópia de segurança).

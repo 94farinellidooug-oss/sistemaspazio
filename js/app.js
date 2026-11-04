@@ -5,14 +5,14 @@ import { ui } from './estado.js';
 import { pointWarnings } from './raciocinio/seguranca.js';
 import { vAgenda } from './telas/agenda.js';
 import { vAvaliacao } from './telas/avaliacao.js';
-import { atendimentoAberto, textoSalvo, vAtendimento } from './telas/atendimento.js';
+import { atendimentoAberto, indicadosMarca, textoSalvo, vAtendimento } from './telas/atendimento.js';
 import { TIPOS_MARCA, LADOS_MARCA, adicionarMarca, editarMarca, marcasDe, removerMarca, CATEGORIAS, PARES_VASOS, adicionarAchadoLivre, definirVaso, ehBasal, fotoVersao, registrarCorrecao, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirAchadoLivre, definirPulso, notaCategoria, removerAchadoLivre, descartarRascunho, finalizarAtendimento, iniciarAtendimento, rascunhoDe, registrarAlteracao } from './dados/atendimento.js';
 import { cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { PROF, listaBusca, renderNav } from './telas/menu.js';
 import { notificacoes } from './dados/indicadores.js';
 import { ic } from './componentes/icones.js';
-import { FACES, MERIDIANOS, TAM, VASOS_ATLAS, ladoDe } from './componentes/corpo.js';
+import { FACES, MERIDIANOS, TAM, VASOS_ATLAS, ladoDe, regiaoDoToque } from './componentes/corpo.js';
 import { patientRows, vPacientes } from './telas/pacientes.js';
 import { vPainel } from './telas/painel.js';
 import { vPentagrama } from './telas/pentagrama.js';
@@ -124,7 +124,7 @@ document.addEventListener('input',ev=>{
   else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
   else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
-  if(t.dataset.mk&&t.tagName!=='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)) mudou(`mapa corporal: ${({procedimento:'procedimento',regiao:'região',nota:'anotação'})[t.dataset.mk]||t.dataset.mk} da marcação`,false); return; }
+  if(t.dataset.mk&&t.tagName!=='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)) mudou(`mapa corporal: ${({procedimento:'procedimento',regiao:'região',nota:'anotação'})[t.dataset.mk]||t.dataset.mk} da marcação`,false); if(t.dataset.mk==='regiao'){ const x=atendimentoAberto(), m=x&&marcasDe(x.a).find(y=>y.id===ui.mapa.sel), e=document.getElementById('mk-ind'); if(m&&e) e.outerHTML=indicadosMarca(x.p,x.a,m); } return; }
   // Ambiente de atendimento: salva a cada alteração, sem redesenhar a tela enquanto se digita.
   const x=(t.dataset.atq||t.dataset.atan||t.dataset.atf||t.dataset.vnota||t.dataset.atp||t.dataset.atr||t.dataset.atln)&&atendimentoAberto(); if(!x) return;
   if(t.dataset.atln){ const av=avaliacaoEditavel(x.p,x.a); if(!av||travada(x.p,x.a,av)) return; notaCategoria(av,t.dataset.atln,t.value); mudou(`avaliação energética: ${catNome(t.dataset.atln)}: anotações`,false); return; }
@@ -239,9 +239,10 @@ function toqueMapa(ev,svg){
     toast(`${nomeTipo(x.tipo)} apagada`,'info'); mudou(`mapa corporal: marcação removida (${nomeTipo(x.tipo).toLowerCase()}${x.regiao?', '+x.regiao:''})`); return; }
   if(!sobre){ toast('Toque sobre o corpo para marcar','info'); return; }
   const tipo=M.ferr, m=adicionarMarca(A,{id:uid(),tipo,vista:v,face:f,x:q.x/w,y:q.y/h,lado:ladoDe(v,f,q.x)},new Date().toISOString()); if(!m) return;
+  const rg=regiaoDoToque(v,f,q.x,q.y,!!ev.target.closest('.b2')); if(rg) editarMarca(A,m.id,'regiao',rg);
   M.sel=m.id; M.pt=null; M.rm=false;
   if(tipo==='irradiacao'){ M.rad=m.id; toast('Origem marcada. Agora toque no destino','info'); }
-  else toast(`${nomeTipo(tipo)} marcada · ${nomeLadoMarca(m.lado).toLowerCase()}`);
+  else toast(`${nomeTipo(tipo)} marcada · ${m.regiao?m.regiao.toLowerCase()+' · ':''}${nomeLadoMarca(m.lado).toLowerCase()}`);
   mudou(`mapa corporal: marcação de ${nomeTipo(tipo).toLowerCase()} adicionada`);
 }
 // Baixa um texto como arquivo (cópia de segurança).

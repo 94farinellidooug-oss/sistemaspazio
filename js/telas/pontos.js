@@ -4,6 +4,7 @@
 import { elTag } from '../componentes/campos.js';
 import { FACES, LARGURA, MERIDIANOS, PONTOS_NO_MAPA, SIGLA_VASO, TAM, VASOS_ATLAS, VISTAS, corTrajeto, desenho, pontosSvg, temTrajetoNaVista, trajetoDoPonto, trajetoSvg, vistaNome, vistasDoPonto, vistasDoTrajeto } from '../componentes/corpo.js';
 import { CAUT, CODIGOS, MER, NPT, POINTS, PT, meridianoDe } from '../conhecimento/pontos.js';
+import { FONTE_INDICACOES, regioesDoPonto } from '../conhecimento/indicacoes-regiao.js';
 import { PARES_VASOS } from '../dados/atendimento.js';
 import { bibliotecaDe } from '../dados/biblioteca.js';
 import { db } from '../dados/repositorio.js';
@@ -51,14 +52,18 @@ export function listaTodos(){
 }
 
 /* ---------- Ficha do ponto (Central e Atlas) ---------- */
+// Regiões do corpo em que o livro indica o ponto, com a página. Só as linhas aprovadas por Mauren.
+const indRegioes = c => { const L = regioesDoPonto(c), F = FONTE_INDICACOES;
+  return L.length ? `<span class="ind-r">${L.map(([r, pg]) => `<span class="pill">${esc(r)} · p. ${pg}</span>`).join('')}</span><small class="muted ind-f">${esc(F.autora)}, ${esc(F.obra)} (${esc(F.editora)}) · conferido por ${esc(F.aprovadoPor)} em ${fmt(F.aprovadoEm)}</small>` : '<span class="muted">Nenhuma região aprovada na tabela.</span>'; };
 function fichaPonto(c, fechar){
   const p = PT[c], m = meridianoDe(c), mer = MER[m], nota = bibliotecaDe(db).notas[c] || '', vistas = vistasDoPonto(c);
   const conteudo = p ? `<dl class="fx-dl"><dt>Meridiano</dt><dd>${esc(mer[0])} (${m})</dd><dt>Número</dt><dd>${esc(c.slice(m.length))}</dd>
       <dt>Localização</dt><dd>${esc(p.loc)}</dd><dt>Ações</dt><dd>${esc(p.acoes)}</dd>
-      <dt>Indicações</dt><dd class="muted">Entram pela fonte aprovada.</dd>
+      <dt>Indicações por região</dt><dd>${indRegioes(c)}</dd>
       <dt>Cautela</dt><dd>${p.cautela ? `<span class="pill warn">${esc(CAUT[p.cautela])}</span>` : '<span class="muted">Nenhuma cadastrada.</span>'}</dd></dl>
     <div class="fx-fonte"><span class="lbl">Fonte</span><span>Ficha existente do sistema · obra e página não informadas</span></div>`
     : `<dl class="fx-dl"><dt>Meridiano</dt><dd>${esc(mer[0])} (${m})</dd><dt>Número</dt><dd>${esc(c.slice(m.length))}</dd></dl>
+    <dl class="fx-dl"><dt>Indicações por região</dt><dd>${indRegioes(c)}</dd></dl>
     <div class="notice fx-pend">${ic('info')}<div><b>Ficha pendente.</b> Nome, localização, ações, indicações e cautelas entram pela importação da fonte aprovada, com obra e página.</div></div>`;
   return `<div class="ficha" data-ficha="${c}"><div class="fx-h"><span class="fx-c">${c}</span><div class="grow"><b>${p ? esc(p.pinyin) : 'Nome pendente'}</b><small>${esc(mer[0])}${mer[1] ? ' · ' + elTag(mer[1]) : ''}</small></div>${p ? '<span class="pill ok">ficha</span>' : '<span class="pill warn fx-pend-t">ficha pendente</span>'}<button class="btn ghost sm fx-x" data-act="${fechar}" aria-label="Fechar a ficha">${ic('x')}</button></div>
     ${conteudo}

@@ -6,7 +6,8 @@ import { anel, barrasEl, delta, linhas } from '../componentes/graficos.js';
 import { ic, vazio } from '../componentes/icones.js';
 import { pentagram } from '../componentes/pentagrama.js';
 import { EL, KE, SHENG, controlador, mae } from '../conhecimento/elementos.js';
-import { CAUT, MER, PT } from '../conhecimento/pontos.js';
+import { FONTE_INDICACOES, REGIOES_CORPO, indicadosDaRegiao, regioesDoPonto, regioesDoTexto } from '../conhecimento/indicacoes-regiao.js';
+import { CAUT, CODIGOS, MER, PT, meridianoDe } from '../conhecimento/pontos.js';
 import { FACES, LARGURA, TAM, pontosProximos, VISTAS, desenho, iconeMarca, marcaSvg, pontosSvg, temPosicao, vistaNome, vistasDoPonto } from '../componentes/corpo.js';
 import { SIGN, SIGNS } from '../conhecimento/sinais.js';
 import { LADOS_MARCA, TIPOS_MARCA, atendimentosAnteriores, marcaComIntensidade, marcasDe, CATEGORIAS, ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, PARES_VASOS, categoriaDe, ehBasal, encaminhados, vasoDe, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
@@ -233,7 +234,18 @@ function proximosMarca(p, a, m){
       <div class="px-b"><button class="btn sm ghost" data-act="at-mv-ptv" data-c="${esc(c)}">Ver ficha completa</button>${rasc ? `<button class="btn sm ${noPlano ? '' : 'pri'}" data-act="at-mv-ptx" data-c="${esc(c)}">${noPlano ? `${ic('x')}Tirar do plano` : `${ic('mais')}Incluir no plano`}</button>` : ''}</div></div>`; };
   return `<div class="px" id="mk-prox"><span class="lbl">Pontos próximos deste local</span>
     ${L.length ? L.map(linha).join('') : '<p class="muted sm">Nenhum ponto com posição perto deste local ainda. Mais pontos entram com o Atlas.</p>'}
-    <p class="muted sm px-n">Pela posição aproximada no mapa, não é indicação para a queixa. Pontos indicados por queixa entram quando você enviar a tabela de indicações.</p></div>`;
+    <p class="muted sm px-n">Pela posição aproximada no mapa, não é indicação para a queixa.</p></div>`;
+}
+// Pontos que o livro indica para a região escrita na marcação (tabela conferida por Mauren).
+const fonteInd = () => { const F = FONTE_INDICACOES; return `${esc(F.autora)}, <i>${esc(F.obra)}</i> (${esc(F.editora)}), seção Indicações. Lista conferida por ${esc(F.aprovadoPor)} em ${fmt(F.aprovadoEm)}.`; };
+export function indicadosMarca(p, a, m){
+  const R = regioesDoTexto(m.regiao), P = a.plano.pontos;
+  if (!R.length) return `<div class="px ind" id="mk-ind"><span class="lbl">Pontos indicados pelo livro</span><p class="muted sm">${m.regiao ? `Não encontrei "${esc(m.regiao)}" na tabela de regiões.` : 'Sem região.'} Escreva ou escolha a região (ex.: ombro, lombar, joelho) para ver os pontos indicados.</p></div>`;
+  const grupo = r => { const L = indicadosDaRegiao(r);
+    return `<div class="ind-g" data-regiao="${esc(r)}"><span class="lbl">Indicados para ${esc(r).toLowerCase()} · ${L.length} ponto${L.length === 1 ? '' : 's'}</span>
+      <div class="ind-l">${L.map(([c, pg]) => `<button class="ind-b${P.includes(c) ? ' on' : ''}${PT[c] ? '' : ' pend'}" data-act="at-mv-ptv" data-c="${esc(c)}" title="${esc(c)} · livro p. ${pg}${PT[c] ? ' · ' + esc(PT[c].pinyin) : ' · ficha pendente'}${P.includes(c) ? ' · no plano' : ''}"><b class="mono">${esc(c)}</b><small>p. ${pg}</small></button>`).join('')}</div></div>`; };
+  return `<div class="px ind" id="mk-ind">${R.map(grupo).join('')}
+    <p class="muted sm px-n">Toque num ponto para ver a ficha e incluir no plano. Em destaque, os que já estão no plano. Fonte: ${fonteInd()}</p></div>`;
 }
 function editorMarca(p, a, ant){
   const M = ui.mapa, todas = [...ant.flatMap(x => marcasDe(x).map(m => [m, x])), ...marcasDe(a).map(m => [m, a])], par = todas.find(([m]) => m.id === M.sel);
@@ -243,20 +255,20 @@ function editorMarca(p, a, ant){
   const cab = `<div class="card-h"><h3><span class="ed-t">${iconeMarca(m.tipo)}${nomeMarca(m.tipo)}</span></h3>${ro ? `<span class="pill">${at === a ? 'no prontuário' : 'somente leitura'}</span>` : '<span class="pill acc">editando</span>'}</div>`;
   if (ro) return `<div class="card" id="ed-mk">${cab}${meta}
     <dl class="ed-dl"><dt>Lado</dt><dd>${nomeLado(m.lado)}</dd>${marcaComIntensidade(m.tipo) ? `<dt>Intensidade</dt><dd>${m.intensidade ?? 'não informada'}${m.intensidade != null ? ' de 10' : ''}</dd>` : `<dt>Procedimento</dt><dd>${esc(m.procedimento) || '—'}</dd>`}<dt>Região</dt><dd>${esc(m.regiao) || '—'}</dd><dt>Anotação</dt><dd>${esc(m.nota) || '—'}</dd></dl>
-    ${proximosMarca(p, a, m)}
+    ${indicadosMarca(p, a, m)}${proximosMarca(p, a, m)}
     <p class="muted sm">${at === a ? 'Registrada no prontuário com este atendimento.' : 'Marcação de outro atendimento, mostrada só para comparar. Ela não é alterada nem copiada.'}</p></div>`;
   return `<div class="card" id="ed-mk">${cab}${meta}
-    ${proximosMarca(p, a, m)}
+    ${indicadosMarca(p, a, m)}${proximosMarca(p, a, m)}
     <div class="form ed-f">
       <div class="field"><label class="lbl" for="mk-tipo">Tipo</label><select id="mk-tipo" data-mk="tipo">${TIPOS_MARCA.map(([k, n]) => `<option value="${k}" ${k === m.tipo ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
       <div class="field"><label class="lbl" for="mk-lado">Lado do paciente</label><select id="mk-lado" data-mk="lado">${LADOS_MARCA.map(([k, n]) => `<option value="${k}" ${k === m.lado ? 'selected' : ''}>${n}</option>`).join('')}</select><small class="muted">Sugerido pela posição tocada.</small></div>
       ${marcaComIntensidade(m.tipo) ? `<div class="field full"><span class="lbl" id="mk-int-l">Intensidade (0 a 10)</span><div class="int-r" role="group" aria-labelledby="mk-int-l">${Array.from({ length:11 }, (_, n) => `<button class="int-b${m.intensidade === n ? ' on' : ''}" data-act="at-mk-int" data-n="${n}" aria-pressed="${m.intensidade === n}">${n}</button>`).join('')}</div><small class="muted" id="mk-int-v">${m.intensidade == null ? 'Não informada' : `Registrada: ${m.intensidade} de 10`}</small></div>`
         : `<div class="field full"><label class="lbl" for="mk-proc">Procedimento realizado</label><input id="mk-proc" data-mk="procedimento" value="${esc(m.procedimento)}" placeholder="Ex.: ventosa, moxabustão, acupuntura..."></div>`}
       ${m.tipo === 'irradiacao' ? `<div class="field full"><span class="lbl">Trajeto</span><div class="rad-s">${m.x2 != null ? `${ic('check')}Origem e destino marcados` : `${ic('alerta')}Falta o destino`}<button class="btn sm" data-act="at-mk-rad">${m.x2 != null ? 'Redesenhar destino' : 'Marcar destino'}</button></div></div>` : ''}
-      <div class="field full"><label class="lbl" for="mk-reg">Região</label><input id="mk-reg" data-mk="regiao" value="${esc(m.regiao)}" list="mk-regioes" placeholder="Ex.: lombar, ombro, joelho"></div>
+      <div class="field full"><label class="lbl" for="mk-reg">Região</label><input id="mk-reg" data-mk="regiao" value="${esc(m.regiao)}" list="mk-regioes" placeholder="Ex.: lombar, ombro, joelho"><small class="muted">Sugerida pelo local tocado. Pode mudar.</small></div>
       <div class="field full"><label class="lbl" for="mk-nota">Anotação</label><textarea id="mk-nota" data-mk="nota" placeholder="Como é, quando piora, o que melhora...">${esc(m.nota)}</textarea></div>
     </div>
-    <datalist id="mk-regioes">${[...new Set(todas.map(([x]) => x.regiao).filter(Boolean))].map(r => `<option value="${esc(r)}">`).join('')}</datalist>
+    <datalist id="mk-regioes">${[...new Set([...REGIOES_CORPO, ...todas.map(([x]) => x.regiao).filter(Boolean)])].map(r => `<option value="${esc(r)}">`).join('')}</datalist>
     <div class="ed-a">${M.rm ? `<div class="rm-c" role="alert"><span>Remover esta marcação?</span><button class="btn sm crit" data-act="at-mk-rms">Sim, remover</button><button class="btn sm" data-act="at-mk-rmn">Cancelar</button></div>` : `<button class="btn sm" data-act="at-mk-rm">${ic('x')}Remover</button><button class="btn sm ghost" data-act="at-mk-ok">Concluir</button>`}</div></div>`;
 }
 const linhaMarcaAt = m => `<button class="mk-li${ui.mapa.sel === m.id ? ' on' : ''}" data-act="at-mk-sel" data-id="${esc(m.id)}">${iconeMarca(m.tipo)}<span class="grow"><b>${nomeMarca(m.tipo)}${m.regiao ? ' · ' + esc(m.regiao) : ''}</b><small>${nomeLado(m.lado)} · ${vistaNome(m.vista, m.face)}${marcaComIntensidade(m.tipo) ? ` · ${m.intensidade ?? '—'}/10` : m.procedimento ? ' · ' + esc(m.procedimento) : ''}</small></span></button>`;
@@ -276,27 +288,29 @@ function avisosMapa(p, a){
 }
 // Ficha do ponto tocado no mapa: só o conteúdo que já está na Biblioteca clínica.
 function fichaPontoMapa(p, a){
-  const c = ui.mapa.pt, d = PT[c]; if (!d) return '';
-  const m = MER[d.mer], n = c.slice(d.mer.length), noPlano = a.plano.pontos.includes(c), rasc = a.status === 'rascunho';
-  const w = pointWarnings([c], p, a.plano.tec);
-  return `<div class="card" id="ficha-pt"><div class="card-h"><h3><span class="mono">${esc(c)}</span> · ${esc(d.pinyin)}<small>${m ? `Meridiano ${esc(m[0])} (${esc(d.mer)}) · ponto ${esc(n)}` : esc(d.mer)}</small></h3><button class="btn ghost sm" data-act="at-mv-ptf" aria-label="${ui.mapa.sel ? 'Voltar à marcação' : 'Fechar a ficha'}">${ui.mapa.sel ? 'Voltar' : ic('x')}</button></div>
-    <dl class="ed-dl fp-dl"><dt>Meridiano</dt><dd>${m ? esc(m[0]) : '—'}</dd><dt>Número</dt><dd>${esc(n)}</dd><dt>Localização</dt><dd>${esc(d.loc)}</dd><dt>Ações</dt><dd>${esc(d.acoes)}</dd>${d.cautela ? `<dt>Cautela</dt><dd><span class="pill warn">${esc(CAUT[d.cautela] || d.cautela)}</span></dd>` : ''}</dl>
+  const c = ui.mapa.pt, d = PT[c]; if (!CODIGOS.includes(c)) return '';
+  const mer = d ? d.mer : meridianoDe(c), m = MER[mer], n = c.slice(mer.length), noPlano = a.plano.pontos.includes(c), rasc = a.status === 'rascunho';
+  const w = d ? pointWarnings([c], p, a.plano.tec) : [], ind = regioesDoPonto(c);
+  return `<div class="card" id="ficha-pt"><div class="card-h"><h3><span class="mono">${esc(c)}</span> · ${d ? esc(d.pinyin) : 'nome pendente'}<small>${m ? `Meridiano ${esc(m[0])} (${esc(mer)}) · ponto ${esc(n)}` : esc(mer)}</small></h3><button class="btn ghost sm" data-act="at-mv-ptf" aria-label="${ui.mapa.sel ? 'Voltar à marcação' : 'Fechar a ficha'}">${ui.mapa.sel ? 'Voltar' : ic('x')}</button></div>
+    <dl class="ed-dl fp-dl"><dt>Meridiano</dt><dd>${m ? esc(m[0]) : '—'}</dd><dt>Número</dt><dd>${esc(n)}</dd>${d ? `<dt>Localização</dt><dd>${esc(d.loc)}</dd><dt>Ações</dt><dd>${esc(d.acoes)}</dd>${d.cautela ? `<dt>Cautela</dt><dd><span class="pill warn">${esc(CAUT[d.cautela] || d.cautela)}</span></dd>` : ''}` : ''}
+      <dt>Indicado para</dt><dd>${ind.length ? `<span class="ind-r">${ind.map(([r, pg]) => `<span class="pill">${esc(r)} · p. ${pg}</span>`).join('')}</span>` : '<span class="muted">Nenhuma região aprovada na tabela.</span>'}</dd></dl>
+    ${d ? '' : `<div class="notice" id="fp-pend">${ic('info')}<div><b>Ficha pendente na Biblioteca clínica.</b> Localização, ações e cautelas deste ponto ainda não foram cadastradas. Confira no livro${ind.length ? ` (p. ${ind[0][1]})` : ''} antes de usar.</div></div>`}
     ${w.map(([k, t]) => `<div class="notice ${k === 'crit' ? 'crit' : ''}">${ic(k === 'crit' ? 'escudo' : 'alerta')}<div><b>${k === 'crit' ? 'Atenção' : 'Cautela'}</b> ${esc(t)}</div></div>`).join('')}
     <div class="ed-a">${rasc ? `<button class="btn sm ${noPlano ? '' : 'pri'}" data-act="at-mv-ptx" data-c="${esc(c)}">${noPlano ? `${ic('x')}Tirar do plano` : `${ic('mais')}Incluir no plano`}</button>` : ''}${noPlano ? '<span class="pill acc">no plano</span>' : ''}</div>
-    <small class="muted">Conteúdo da Biblioteca clínica. Posição no mapa aproximada.</small></div>`;
+    <small class="muted">${d ? 'Conteúdo da Biblioteca clínica. Posição no mapa aproximada.' : 'Sem ficha ainda.'}${ind.length ? ` Indicações: ${fonteInd()}` : ''}</small></div>`;
 }
 function eMapa(p, a){
   const M = ui.mapa, v = M.vista, f = faceMapa(v), [w, h] = TAM[v], rasc = a.status === 'rascunho';
   const ant = atendimentosAnteriores(p, a), anterior = ant.at(-1), antigos = ant.slice(0, -1);
   if (M.hist && !antigos.some(x => x.id === M.hist)) M.hist = '';
   const hist = antigos.find(x => x.id === M.hist);
-  const minhas = marcasDe(a), P = a.plano.pontos, mSel = minhas.find(m => m.id === M.sel && naVistaMapa(m, v, f)), prox = mSel ? pontosProximos(mSel).filter(c => !(M.plano && P.includes(c))) : [];
+  const minhas = marcasDe(a), P = a.plano.pontos, mSel = minhas.find(m => m.id === M.sel && naVistaMapa(m, v, f)), indM = new Set(mSel ? regioesDoTexto(mSel.regiao).flatMap(r => indicadosDaRegiao(r).map(([c]) => c)) : []), prox = mSel ? [...new Set([...pontosProximos(mSel), ...[...indM].filter(temPosicao)])].filter(c => !(M.plano && P.includes(c))) : [];
   const camadas = [
     hist ? marcasDe(hist).filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'hist', M.sel === m.id)).join('') : '',
     M.ant && anterior ? marcasDe(anterior).filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'ant', M.sel === m.id)).join('') : '',
     M.plano ? pontosSvg(P, v, f, c => 'plano' + (c === M.pt ? ' pt-on' : '')) : '',
     minhas.filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'at', M.sel === m.id)).join(''),
-    pontosSvg(prox, v, f, c => (P.includes(c) ? 'plano' : 'disp') + ' prox' + (c === M.pt ? ' pt-on' : ''))].join('');
+    pontosSvg(prox, v, f, c => (P.includes(c) ? 'plano' : 'disp') + ' prox' + (indM.has(c) ? ' ind' : '') + (c === M.pt ? ' pt-on' : ''))].join('');
   const zi = ZOOMS_MAPA.indexOf(M.zoom), com = P.filter(temPosicao), sem = P.filter(c => !temPosicao(c));
   const tabela = tabelaMarcas(p, [...ant.filter(x => marcasDe(x).length), a], a);
   return `<div class="notice">${ic('info')}<div><b>Posições aproximadas.</b> D e E são sempre o lado direito e o lado esquerdo <b>do paciente</b>, em todas as vistas.</div></div>
@@ -321,7 +335,7 @@ function eMapa(p, a){
         <span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp plano"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto do plano</span><span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp disp"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto próximo da marcação</span>
         <span><svg viewBox="0 0 20 20" class="lg-i mk" style="--c:var(--crit)" aria-hidden="true"><g class="esp"><circle cx="10" cy="10" r="6"/></g></svg>Lado espelhado (bilateral)</span></div>
     </div>
-    <aside class="grid" style="align-content:start">${ui.mapa.pt && PT[ui.mapa.pt] ? fichaPontoMapa(p, a) : editorMarca(p, a, ant)}
+    <aside class="grid" style="align-content:start">${ui.mapa.pt && CODIGOS.includes(ui.mapa.pt) ? fichaPontoMapa(p, a) : editorMarca(p, a, ant)}
       <div class="card"><div class="card-h"><h3>Marcações deste atendimento<small>${fmt(a.data)} · ${ordemNo(p, a)}º atendimento</small></h3><span class="pill">${minhas.length}</span></div>
         <div class="mk-l">${minhas.map(linhaMarcaAt).join('') || '<p class="muted sm">Nenhuma marcação ainda.</p>'}</div></div>
       <div class="card" id="plano-mapa"><div class="card-h"><h3>Pontos do plano<small>os mesmos do Plano terapêutico deste atendimento</small></h3>${P.length ? `<span class="pill acc">${P.length}</span>` : ''}</div>
