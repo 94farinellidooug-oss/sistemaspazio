@@ -785,6 +785,19 @@ input[type=checkbox]{accent-color:var(--brand)}
 .px-n{margin:0}
 .mapa4 .ptp.prox text{display:inline;fill:var(--ink);font-weight:600}
 #ed-mk .px{margin:12px 0 14px;padding:12px 0 14px;border-bottom:1px solid var(--line)}
+/* Pontos indicados pelo livro para a região da marcação */
+#ed-mk .px.ind + .px{margin-top:0;padding-top:0;border-top:0}
+.ind-g{display:grid;gap:8px}
+.ind-l{display:flex;flex-wrap:wrap;gap:6px}
+.ind-b{display:inline-flex;align-items:baseline;gap:5px;min-height:34px;padding:5px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:.84rem;cursor:pointer}
+.ind-b small{color:var(--muted);font-size:.72rem}
+.ind-b:hover{border-color:var(--brand)}
+.ind-b.pend{border-style:dashed}
+.ind-b.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.ind-b.on small{color:rgba(255,255,255,.85)}
+.ind-r{display:flex;flex-wrap:wrap;gap:4px}
+.ind-f{display:block;margin-top:6px}
+.ptp.ind circle:not(.pt-h){stroke:var(--brand);stroke-width:2}
 /* ---------- Etapa 4B · Biblioteca clínica: Central, Particular e Atlas ---------- */
 :root{--vaso:#7b5ea7}
 :root[data-theme="dark"]{--vaso:#b49ae0}

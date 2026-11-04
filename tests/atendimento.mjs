@@ -11,7 +11,8 @@ import { TIPOS_MARCA, adicionarMarca, atendimentosAnteriores, editarMarca, marca
 import { POS, TAM, VISTAS, ladoDe, posicoes, temPosicao } from '../js/componentes/corpo.js';
 import { PT, CODIGOS, NPT } from '../js/conhecimento/pontos.js';
 import { bibliotecaDe, adicionarFichaParticular, removerFichaParticular, definirNotaPonto } from '../js/dados/biblioteca.js';
-import { MERIDIANOS, VASOS_ATLAS, TRAJETOS, trajetoDoPonto } from '../js/componentes/corpo.js';
+import { MERIDIANOS, VASOS_ATLAS, TRAJETOS, trajetoDoPonto, regiaoDoToque } from '../js/componentes/corpo.js';
+import { FONTE_INDICACOES, INDICADOS_REGIAO, REGIOES_CORPO, indicadosDaRegiao, regioesDoPonto, regioesDoTexto } from '../js/conhecimento/indicacoes-regiao.js';
 
 let falhas = 0, total = 0;
 const ok = (cond, msg) => { total++; console.log(`${cond ? 'ok   ' : 'FALHA'} ${msg}`); if (!cond) falhas++; };
@@ -205,6 +206,25 @@ console.log('\n11. Etapa 4B: Biblioteca (Particular) e Atlas');
   ok(CODIGOS.length === 361 && Object.values(NPT).reduce((a, b) => a + b, 0) === 361 && Object.keys(PT).every(c => CODIGOS.includes(c)), '361 códigos, incluindo os 28 com ficha');
   ok(MERIDIANOS.length === 12 && VASOS_ATLAS.length === 8 && [...MERIDIANOS, ...VASOS_ATLAS].every(k => TRAJETOS[k] && ['ant','post','lat'].some(c => TRAJETOS[k][c])), '12 meridianos e 8 vasos com trajeto aproximado');
   ok(trajetoDoPonto('VC12') === 'Ren Mai' && trajetoDoPonto('VG20') === 'Du Mai' && trajetoDoPonto('E36') === 'E', 'VC e VG seguem Ren Mai e Du Mai'); }
+
+console.log('\n12. Etapa 4A: pontos indicados por região (tabela conferida)');
+{ const L = Object.values(INDICADOS_REGIAO).flat();
+  ok(REGIOES_CORPO.length === 20 && REGIOES_CORPO.every(r => Array.isArray(INDICADOS_REGIAO[r])) && L.length === 1030, '20 regiões e as 1030 linhas aprovadas');
+  ok(L.every(([c, pg]) => CODIGOS.includes(c) && Number.isInteger(pg) && pg > 0), 'toda linha tem código válido e página do livro');
+  ok(REGIOES_CORPO.every(r => new Set(INDICADOS_REGIAO[r].map(([c]) => c)).size === INDICADOS_REGIAO[r].length), 'sem ponto repetido na mesma região');
+  ok(FONTE_INDICACOES.aprovadoPor === 'Mauren' && FONTE_INDICACOES.aprovadoEm === '2026-11-04' && /Martins/.test(FONTE_INDICACOES.autora), 'fonte e aprovação registradas');
+  ok(indicadosDaRegiao('Ombro').length === 47 && indicadosDaRegiao('Abdome').length === 93 && indicadosDaRegiao('xyz').length === 0, 'contagem por região igual à planilha');
+  ok(regioesDoTexto('dor no ombro esquerdo').join() === 'Ombro' && regioesDoTexto('LOMBAR').join() === 'Lombar e sacro' && regioesDoTexto('pé').join() === 'Tornozelo e pé' && regioesDoTexto('Pescoço e nuca').join() === 'Pescoço e nuca', 'texto da região ligado à tabela, sem acento e sem maiúsculas');
+  ok(regioesDoTexto('ombro e pescoço').length === 2 && regioesDoTexto('').length === 0 && regioesDoTexto('xyz').length === 0, 'mais de uma região no texto; texto vazio ou desconhecido não liga a nada');
+  ok(regioesDoPonto('E36').every(([r, pg]) => INDICADOS_REGIAO[r].some(([c, p]) => c === 'E36' && p === pg)), 'regiões de um ponto vêm da mesma tabela');
+  const t = [['anterior',100,10,'Cabeça'],['anterior',100,36,'Face e dentes'],['anterior',100,60,'Pescoço e nuca'],['anterior',66,80,'Ombro'],['anterior',40,168,'Braço e cotovelo'],['anterior',30,236,'Punho e mão'],
+    ['anterior',100,118,'Tórax'],['anterior',104,163,'Abdome'],['anterior',80,230,'Quadril e nádega'],['anterior',80,270,'Coxa'],['anterior',80,315,'Joelho'],['anterior',86,350,'Perna'],['anterior',90,410,'Tornozelo e pé'],
+    ['posterior',100,30,'Cabeça'],['posterior',93,58,'Pescoço e nuca'],['posterior',88,120,'Costas'],['posterior',88,180,'Lombar e sacro'],['posterior',80,230,'Quadril e nádega'],
+    ['lat_d',115,30,'Face e dentes'],['lat_d',90,30,'Cabeça'],['lat_d',78,130,'Costas'],['lat_d',118,130,'Tórax'],['lat_e',82,130,'Tórax'],['maos',100,100,'Punho e mão'],['pes',100,100,'Tornozelo e pé']];
+  const erradas = t.filter(([v, x, y, r]) => regiaoDoToque(v, '', x, y) !== r);
+  ok(!erradas.length, 'região sugerida pelo local tocado' + (erradas.length ? ': ' + erradas.map(e => e.join(' ') + ' → ' + regiaoDoToque(e[0], '', e[1], e[2])).join('; ') : ''));
+  ok(regiaoDoToque('lat_d', '', 90, 150, true) === 'Braço e cotovelo' && regiaoDoToque('lat_d', '', 95, 220, true) === 'Punho e mão', 'no perfil, tocar no braço sugere braço');
+  ok(REGIOES_CORPO.includes(regiaoDoToque('anterior', '', 100, 200)), 'a sugestão é sempre uma região da tabela'); }
 
 console.log(falhas ? `\n${falhas} de ${total} verificações falharam.` : `\n${total} verificações do atendimento passaram.`);
 process.exit(falhas ? 1 : 0);

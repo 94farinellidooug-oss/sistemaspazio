@@ -245,6 +245,27 @@ async function verificar(browser, url, nome) {
   ok(await tem('#ficha-pt', 'Vaso Concepção') && await tem('#ficha-pt .fp-dl', 'Linha média') && await p.locator('svg.mapa4 .ptp.pt-on[data-pt="VC12"]').count() === 1, `${nome}: ficha completa do ponto (meridiano, número, localização e ações)`);
   await p.click('#ficha-pt [data-act="at-mv-ptf"]'); await espera();
   ok(await p.locator('#ficha-pt').count() === 0 && await tem('#ed-mk', 'Pontos próximos'), `${nome}: voltar da ficha para a marcação`);
+  // Pontos indicados pelo livro para a região (tabela conferida por Mauren)
+  const IND = await p.evaluate(async () => { const m = await import('/js/conhecimento/indicacoes-regiao.js').catch(() => null); return m ? m.INDICADOS_REGIAO : null; });
+  const nInd = r => IND ? IND[r].length : (r === 'Abdome' ? 93 : r === 'Ombro' ? 47 : 29);
+  ok((await marcas()).at(-1).regiao === 'Abdome' && await p.inputValue('#mk-reg') === 'Abdome', `${nome}: a região é sugerida pelo local tocado`);
+  ok(await tem('#mk-ind', 'Indicados para abdome') && await p.locator('#mk-ind .ind-b').count() === nInd('Abdome') && await tem('#mk-ind', 'Ednéa Iara Souza Martins') && await tem('#mk-ind', 'conferida por Mauren'), `${nome}: aparecem os pontos indicados pelo livro para a região, com a fonte`);
+  await marcar('dor', 66, 80);
+  ok((await marcas()).at(-1).regiao === 'Ombro' && await p.locator('#mk-ind .ind-b').count() === nInd('Ombro'), `${nome}: dor no ombro mostra os pontos indicados para o ombro`);
+  const pend = await p.$eval('#mk-ind .ind-b.pend', e => e.dataset.c);
+  await p.click(`#mk-ind .ind-b[data-c="${pend}"]`); await espera();
+  ok(await tem('#ficha-pt', pend) && await tem('#fp-pend', 'Ficha pendente') && await tem('#ficha-pt .fp-dl', 'Ombro · p.'), `${nome}: ponto indicado sem ficha abre a ficha pendente com a página do livro`);
+  await p.click(`#ficha-pt [data-act="at-mv-ptx"][data-c="${pend}"]`); await espera();
+  ok((await pontosPlano()).includes(pend), `${nome}: ponto indicado entra no plano pela ficha`);
+  await p.click('#ficha-pt [data-act="at-mv-ptf"]'); await espera();
+  ok(await p.locator(`#mk-ind .ind-b.on[data-c="${pend}"]`).count() === 1, `${nome}: ponto do plano fica em destaque na lista de indicados`);
+  await p.click(`#mk-ind .ind-b[data-c="${pend}"]`); await espera(); await p.click(`#ficha-pt [data-act="at-mv-ptx"][data-c="${pend}"]`); await espera(); await p.click('#ficha-pt [data-act="at-mv-ptf"]'); await espera();
+  ok(!(await pontosPlano()).includes(pend), `${nome}: e sai do plano do mesmo jeito`);
+  await p.fill('#mk-reg', 'dor no joelho'); await espera();
+  ok(await tem('#mk-ind', 'Indicados para joelho') && await p.locator('#mk-ind .ind-b').count() === nInd('Joelho'), `${nome}: mudar a região escrita muda os pontos indicados`);
+  await p.fill('#mk-reg', 'xyz'); await espera();
+  ok(await tem('#mk-ind', 'Não encontrei') && await p.locator('#mk-ind .ind-b').count() === 0, `${nome}: região fora da tabela não inventa pontos`);
+  await p.fill('#mk-reg', 'Ombro'); await espera();
   await p.click('[data-act="at-mv-ferr"][data-t="dor"]'); await espera();
   await p.locator('svg.mapa4 .ptp.plano[data-pt="BP6"]').first().click(); await espera();
   ok(await tem('#ficha-pt', 'BP6') && await tem('#ficha-pt', 'Sanyinjiao'), `${nome}: tocar num ponto do plano abre a ficha`);

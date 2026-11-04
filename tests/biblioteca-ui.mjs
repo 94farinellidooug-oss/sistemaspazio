@@ -54,6 +54,7 @@ async function verificar(browser, url, nome) {
   ok(await tem('.fx-panel .ficha', 'Zusanli') && await tem('.fx-panel .fx-dl', '3 cun abaixo do E35') && await tem('.fx-panel .fx-dl', 'Estômago (E)') && await tem('.fx-panel .fx-pos', 'Aproximada'), `${nome}: ficha existente com meridiano, número, localização, ações e posição`);
   await p.click('[data-act="bib-pt"][data-c="E37"]'); await espera();
   ok(await tem('.fx-panel .ficha', 'Nome pendente') && await tem('.fx-panel .fx-pend-t', 'ficha pendente') && await tem('.fx-panel .fx-pos', 'Sem posição no mapa'), `${nome}: ponto sem conteúdo aparece como ficha pendente`);
+  ok(await tem('.fx-panel .fx-dl', 'Joelho · p. 200') && await tem('.fx-panel .ind-f', 'conferido por Mauren'), `${nome}: ficha mostra as regiões indicadas pelo livro, com página e aprovação`);
   // Anotação particular na ficha
   await p.click('[data-act="bib-pt"][data-c="E36"]'); await espera();
   await p.fill('[data-bibnota="E36"]', 'Nota da clínica para teste'); await espera();
