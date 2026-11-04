@@ -41,6 +41,21 @@ async function verificar(browser, url, nome) {
   const marcas = async () => (await paciente()).atendimentos.find(a => a.status === 'rascunho')?.mapa?.marcas || [];
 
   await p.goto(url); await p.waitForSelector('#view h1');
+  // Todos os pontos com posição ficam dentro do desenho do corpo, com folga (desenho real, com as transformações)
+  if (nome === 'modular') {
+    const fora = await p.evaluate(async () => {
+      const C = await import('/js/componentes/corpo.js'), out = [], S = 2;
+      for (const [v, f] of [['anterior',''],['posterior',''],['lat_d',''],['lat_e',''],['maos','palmar'],['maos','dorsal'],['pes','dorsal'],['pes','plantar']]) {
+        const [w, h] = C.TAM[v], d = document.createElement('div'); d.style.cssText = 'position:fixed;left:0;top:0;z-index:99999;background:#fff';
+        d.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="${w * S}" height="${h * S}" style="display:block">${C.desenho(v, f)}</svg>`; document.body.append(d);
+        const den = (x, y) => document.elementsFromPoint(x * S, y * S).some(e => e.closest('.corpo'));
+        for (const c of C.PONTOS_NO_MAPA) for (const [x, y] of C.posicoes(c, v, f)) if (![[0,0],[2.5,0],[-2.5,0],[0,2.5],[0,-2.5]].every(([a, b]) => den(x + a, y + b))) out.push(`${v}${f ? ':' + f : ''} ${c}`);
+        d.remove();
+      }
+      return out;
+    });
+    ok(!fora.length, `${nome}: todos os pontos com posição ficam dentro do corpo${fora.length ? ' (fora: ' + fora.join(', ') + ')' : ''}`);
+  }
   await ir('cadastro');
   await p.fill('#np-name', NOME); await p.fill('#np-birth', '1990-02-02'); await p.fill('#np-q', 'Cefaleia');
   await p.click('label.tg:has(#np-al-gestante)'); await p.check('#np-lgpd'); await p.click('#f-patient button.pri'); await espera();
@@ -214,11 +229,19 @@ async function verificar(browser, url, nome) {
   await ferr('ponto');
   ok(await p.locator('svg.mapa4 .ptp.disp').count() > 10 && await p.locator('svg.mapa4 .ptp.plano[data-pt="BP6"]').count() === 2, `${nome}: indicar pontos mostra os pontos com posição, os do plano em destaque`);
   await tocar(100, 158);
-  ok((await pontosPlano()).includes('VC12') && await p.locator('svg.mapa4 .ptp.plano[data-pt="VC12"]').count() === 1 && await tem('#plano-mapa', 'VC12'), `${nome}: tocar num ponto inclui no plano`);
+  ok(await tem('#ficha-pt', 'VC12') && await tem('#ficha-pt', 'Zhongwan') && await tem('#ficha-pt', 'Vaso Concepção') && await tem('#ficha-pt .fp-dl', 'Aquecedor Médio') && !(await pontosPlano()).includes('VC12'), `${nome}: tocar num ponto abre a ficha (meridiano, número, localização e ações), sem incluir sozinho`);
+  ok(await p.locator('svg.mapa4 .ptp.pt-on[data-pt="VC12"]').count() === 1, `${nome}: ponto tocado em destaque no mapa`);
+  await p.click('#ficha-pt [data-act="at-mv-ptx"]'); await espera();
+  ok((await pontosPlano()).includes('VC12') && await p.locator('svg.mapa4 .ptp.plano[data-pt="VC12"]').count() === 1 && await tem('#plano-mapa', 'VC12') && await tem('#ficha-pt', 'Tirar do plano'), `${nome}: incluir no plano pela ficha`);
   ok(await p.locator('#mp-seg .notice').count() > 0, `${nome}: verificação de segurança do plano também no mapa`);
-  await tocar(100, 158);
-  ok(!(await pontosPlano()).includes('VC12') && await p.locator('svg.mapa4 .ptp.disp[data-pt="VC12"]').count() === 1, `${nome}: tocar de novo tira do plano`);
+  await tocar(100, 158); await p.click('#ficha-pt [data-act="at-mv-ptx"]'); await espera();
+  ok(!(await pontosPlano()).includes('VC12') && await p.locator('svg.mapa4 .ptp.disp[data-pt="VC12"]').count() === 1, `${nome}: tirar do plano pela ficha`);
   ok((await paciente()).atendimentos[0].historico.some(h => /VC12 indicado no mapa corporal/.test(h.acao)), `${nome}: ponto indicado pelo mapa registrado no histórico`);
+  await vista('pes', 'dorsal'); await tocar(98, 92);
+  ok(await tem('#ficha-pt', 'F3') && await tem('#ficha-pt', 'Fígado'), `${nome}: ficha também nas vistas de mãos e pés`);
+  await p.click('#ficha-pt [data-act="at-mv-ptf"]'); await espera();
+  ok(await p.locator('#ficha-pt').count() === 0 && await p.locator('#ed-mk').count() === 1, `${nome}: fechar a ficha volta ao editor de marcação`);
+  await vista('anterior');
   await p.click('[data-act="at-mv-ferr"][data-t="sel"]'); await espera();
   ok(await p.locator('svg.mapa4 .ptp.disp').count() === 0, `${nome}: ao parar, ficam só os pontos do plano`);
   ok(await tem('#plano-mapa', 'BP6') && await p.locator('#sem-posicao').count() === 1, `${nome}: pontos do plano no mapa e lista "sem posição no mapa"`);
