@@ -12,11 +12,13 @@ import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { PROF, listaBusca, renderNav } from './telas/menu.js';
 import { notificacoes } from './dados/indicadores.js';
 import { ic } from './componentes/icones.js';
-import { FACES, TAM, ladoDe } from './componentes/corpo.js';
+import { FACES, MERIDIANOS, TAM, VASOS_ATLAS, ladoDe } from './componentes/corpo.js';
 import { patientRows, vPacientes } from './telas/pacientes.js';
 import { vPainel } from './telas/painel.js';
 import { vPentagrama } from './telas/pentagrama.js';
-import { pointCards, vPontos } from './telas/pontos.js';
+import { listaTodos, pointCards, vPontos } from './telas/pontos.js';
+import { adicionarFichaParticular, definirNotaPonto, removerFichaParticular } from './dados/biblioteca.js';
+import { CODIGOS } from './conhecimento/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
 import { TODAY, esc, uid } from './util.js';
 
@@ -67,6 +69,9 @@ document.addEventListener('click',ev=>{
     if(item.matches('a[href]')){ ev.preventDefault(); irPara(item.getAttribute('href').slice(1)); return; } }
   // Mapa corporal do atendimento: toque no desenho marca, seleciona ou define o destino da irradiação.
   const sv=ev.target.closest('svg.mapa4[data-mapa="atendimento"]'); if(sv){ toqueMapa(ev,sv); return; }
+  // Atlas: toque num ponto abre a ficha; num trajeto, o painel do meridiano ou do vaso.
+  const sa=ev.target.closest('svg.mapa4[data-mapa="atlas"]');
+  if(sa){ const pt=ev.target.closest('.ptp'), tj=ev.target.closest('.tj'); if(pt){ ui.atlas.sel=pt.dataset.pt; ui.atlas.traj=null; render(true); } else if(tj){ ui.atlas.traj=tj.dataset.tj; ui.atlas.sel=null; render(true); } return; }
   const t=ev.target.closest('[data-act]'); if(!t||t.disabled) return;
   const a=t.dataset.act;
   if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
@@ -80,7 +85,8 @@ document.addEventListener('click',ev=>{
   else if(a==='editar-paciente'){ ui.editPid=t.dataset.pid; irPara('cadastro'); }
   else if(a==='queixa-ativa'){ const q=alternarQueixa(patient(ui.pid),t.dataset.q,new Date().toISOString()); if(q){ save(); render(true); toast(q.ativa?'Queixa reativada':'Queixa marcada como resolvida'); } }
   else if(a==='sessao'){ ui.pid=t.dataset.pid; ui.tab='nova'; irPara('prontuario'); }
-  else if(a==='ver-ponto'){ ui.ptQ=t.dataset.c; ui.ptMer=''; irPara('biblioteca'); }
+  else if(a==='ver-ponto'){ ui.ptQ=t.dataset.c; ui.ptMer=''; ui.bib='central'; irPara('biblioteca'); }
+  else if(a.startsWith('bib-')||a.startsWith('atl-')){ acaoBiblioteca(a,t); }
   else if(a==='busca'||a==='notif'||a==='perfil'||a==='atalhos'){ abrir(a); }
   else if(a==='fechar'){ ui.ov=null; render(true); }
   else if(a==='ler-todas'){ notificacoes().forEach(n=>ui.lidas.add(n.k)); ui.ov=null; render(true); toast('Notificações marcadas como lidas'); }
@@ -110,7 +116,8 @@ document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.id==='pal-q'){ ui.q=t.value; ui.bi=0; document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(t.id==='pq'){ ui.pq=t.value; document.getElementById('plist').innerHTML=patientRows(); }
-  else if(t.id==='pt-q'){ ui.ptQ=t.value; document.getElementById('ptlist').innerHTML=pointCards(); }
+  else if(t.id==='pt-q'){ ui.ptQ=t.value; document.getElementById('ptlist').innerHTML=pointCards(); const ct=document.getElementById('c-todos'); if(ct) ct.innerHTML=listaTodos(); }
+  else if(t.dataset.bibnota){ definirNotaPonto(db,t.dataset.bibnota,t.value); save(); }
   else if(t.id==='as-nota'){ ui.assess.nota=t.value; }
   else if(t.id==='ns-eva'){ document.getElementById('ns-eva-v').textContent=t.value; }
   else if(t.dataset.q&&t.type==='range'){ document.getElementById(t.id+'-v').textContent=t.value; }
@@ -174,6 +181,22 @@ function acaoAtendimento(a,t){
   else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
     descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
 }
+// Biblioteca clínica (etapa 4B): Central, Particular e Atlas.
+function acaoBiblioteca(a,t){
+  const A=ui.atlas, ZA=[1,1.5,2,3], c=t.dataset.c;
+  if(a==='bib-area'){ ui.bib=t.dataset.a; render(true); }
+  else if(a==='bib-pt'){ ui.bibSel=ui.bibSel===c?null:c; render(true); }
+  else if(a==='bib-fx-x'){ ui.bibSel=null; render(true); }
+  else if(a==='bib-pa-pt'){ if(!CODIGOS.includes(c)){ toast(`${c}: ponto não encontrado na Central`,'info'); return; } ui.bib='central'; ui.bibSel=c; ui.ptQ=''; ui.ptMer=''; render(true); }
+  else if(a==='bib-pa-rm'){ if(!confirm('Apagar esta ficha particular?')) return; if(removerFichaParticular(db,t.dataset.id)){ save(); render(true); toast('Ficha particular apagada','info'); } }
+  else if(a==='atl-tj'){ const k=t.dataset.k, i=A.ativos.indexOf(k); i<0?A.ativos.push(k):A.ativos.splice(i,1); if(i>=0&&A.traj===k) A.traj=null; render(true); }
+  else if(a==='atl-todos'||a==='atl-nenhum'){ const L=t.dataset.g==='m'?MERIDIANOS:VASOS_ATLAS; A.ativos=a==='atl-todos'?[...new Set([...A.ativos,...L])]:A.ativos.filter(k=>!L.includes(k)); if(A.traj&&!A.ativos.includes(A.traj)) A.traj=null; render(true); }
+  else if(a==='atl-vista'){ A.vista=t.dataset.v; render(true); }
+  else if(a==='atl-face'){ A.face[A.vista]=t.dataset.f; render(true); }
+  else if(a==='atl-zoom'){ A.zoom=ZA[Math.max(0,Math.min(ZA.length-1,ZA.indexOf(A.zoom)+Number(t.dataset.d)))]; render(true); }
+  else if(a==='atl-pt'){ A.sel=c; A.traj=null; render(true); }
+  else if(a==='atl-fx-x'){ A.sel=null; A.traj=null; render(true); }
+}
 // Mapa corporal (etapa 4A): marcações no atendimento em andamento. Depois de finalizado, só leitura.
 function limparMapa(){ Object.assign(ui.mapa,{ferr:'sel',sel:null,rm:false,rad:null,hist:'',pt:null}); }
 const nomeTipo = k => TIPOS_MARCA.find(x=>x[0]===k)?.[1]||k;
@@ -225,6 +248,7 @@ function toqueMapa(ev,svg){
 function baixar(texto, nome){ const u=URL.createObjectURL(new Blob([texto],{type:'application/json'})), l=document.createElement('a'); l.href=u; l.download=nome; document.body.append(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
 document.addEventListener('change',ev=>{
   const t=ev.target;
+  if(t.matches('[data-atltodos]')){ ui.atlas.todos=t.checked; render(true); return; }
   if(t.id==='imp-arq' && t.files[0]){ const f=t.files[0]; t.value='';
     if(!confirm(`Importar “${f.name}”? Os dados atuais deste navegador serão substituídos. Exporte antes se quiser guardá-los.`)) return;
     f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
@@ -245,6 +269,7 @@ document.addEventListener('change',ev=>{
 });
 document.addEventListener('submit',ev=>{
   ev.preventDefault(); const f=ev.target, v=id=>document.getElementById(id).value;
+  if(f.id==='f-part'){ const d=Object.fromEntries(new FormData(f)); if(adicionarFichaParticular(db,d,new Date().toISOString(),uid())){ save(); render(true); toast('Ficha adicionada à Particular'); } return; }
   if(f.id==='f-patient'){
     const cpf=document.getElementById('np-cpf');
     if(!cpfValido(cpf.value)){ cpf.setCustomValidity('CPF inválido: confira os 11 números.'); cpf.reportValidity(); return; }

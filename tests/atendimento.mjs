@@ -9,7 +9,9 @@ import { PARES_VASOS, basalDe, definirVaso, ehBasal, fotoVersao, registrarCorrec
 import { evaluate } from '../js/raciocinio/avaliacao.js';
 import { TIPOS_MARCA, adicionarMarca, atendimentosAnteriores, editarMarca, marcasDe, removerMarca, preenchimento as preench4 } from '../js/dados/atendimento.js';
 import { POS, TAM, VISTAS, ladoDe, posicoes, temPosicao } from '../js/componentes/corpo.js';
-import { PT } from '../js/conhecimento/pontos.js';
+import { PT, CODIGOS, NPT } from '../js/conhecimento/pontos.js';
+import { bibliotecaDe, adicionarFichaParticular, removerFichaParticular, definirNotaPonto } from '../js/dados/biblioteca.js';
+import { MERIDIANOS, VASOS_ATLAS, TRAJETOS, trajetoDoPonto } from '../js/componentes/corpo.js';
 
 let falhas = 0, total = 0;
 const ok = (cond, msg) => { total++; console.log(`${cond ? 'ok   ' : 'FALHA'} ${msg}`); if (!cond) falhas++; };
@@ -188,6 +190,21 @@ const comPos = Object.keys(PT).filter(temPosicao);
 ok(comPos.length > 0 && Object.values(POS).every(o => Object.keys(o).every(c => PT[c])), 'só pontos com ficha têm posição');
 ok(Object.keys(PT).every(c => ['anterior','posterior','lat_d','maos','pes'].every(v => posicoes(c, v, v === 'maos' ? 'palmar' : v === 'pes' ? 'dorsal' : '').every(([x, y]) => x >= 0 && y >= 0 && x <= TAM[v][0] && y <= TAM[v][1]))), 'posições dentro do desenho de cada vista');
 ok(posicoes('E36', 'anterior').length === 2 && posicoes('VC12', 'anterior').length === 1 && !temPosicao('TA5'), 'pontos bilaterais espelhados, linha média única, TA5 sem posição');
+
+
+console.log('\n11. Etapa 4B: Biblioteca (Particular) e Atlas');
+{ const d = hidratar(migrarV1(seed(), '2026-11-04T10:00:00Z', 'exemplos')), v1 = JSON.stringify(paraV1(d));
+  ok(!('biblioteca' in d) && bibliotecaDe(d).particular.length === 0, 'sem uso, os dados não ganham o campo biblioteca');
+  ok(adicionarFichaParticular(d, { titulo:' ', texto:'x' }, 'em', 'f0') === null, 'ficha particular exige título e texto');
+  const f = adicionarFichaParticular(d, { titulo:'Protocolo', ponto:'b23', texto:'Texto' }, '2026-11-04T10:00:00Z', 'f1');
+  ok(f.ponto === 'B23' && d.biblioteca.particular.length === 1, 'ficha particular gravada, código em maiúsculas');
+  definirNotaPonto(d, 'E36', 'nota'); ok(d.biblioteca.notas.E36 === 'nota', 'anotação particular no ponto');
+  definirNotaPonto(d, 'E36', '   '); ok(!('E36' in d.biblioteca.notas), 'anotação vazia é apagada');
+  ok(removerFichaParticular(d, 'f1') && d.biblioteca.particular.length === 0 && !removerFichaParticular(d, 'f1'), 'apagar ficha particular');
+  ok(JSON.stringify(paraV1(d)) === v1, 'exportação v1 igual com a Particular em uso');
+  ok(CODIGOS.length === 361 && Object.values(NPT).reduce((a, b) => a + b, 0) === 361 && Object.keys(PT).every(c => CODIGOS.includes(c)), '361 códigos, incluindo os 28 com ficha');
+  ok(MERIDIANOS.length === 12 && VASOS_ATLAS.length === 8 && [...MERIDIANOS, ...VASOS_ATLAS].every(k => TRAJETOS[k] && ['ant','post','lat'].some(c => TRAJETOS[k][c])), '12 meridianos e 8 vasos com trajeto aproximado');
+  ok(trajetoDoPonto('VC12') === 'Ren Mai' && trajetoDoPonto('VG20') === 'Du Mai' && trajetoDoPonto('E36') === 'E', 'VC e VG seguem Ren Mai e Du Mai'); }
 
 console.log(falhas ? `\n${falhas} de ${total} verificações falharam.` : `\n${total} verificações do atendimento passaram.`);
 process.exit(falhas ? 1 : 0);

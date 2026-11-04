@@ -2,7 +2,8 @@
 // aproximadas dos pontos que já têm ficha e o desenho das marcações. As marcações guardam x e y como
 // fração do desenho de cada vista (0 a 1), por isso não dependem do tamanho da tela nem da ampliação.
 // Tudo aqui é aproximado e só de apresentação: nenhum cálculo clínico.
-import { TIPOS_MARCA, marcaComIntensidade } from '../dados/atendimento.js';
+import { PARES_VASOS, TIPOS_MARCA, marcaComIntensidade } from '../dados/atendimento.js';
+import { MER } from '../conhecimento/pontos.js';
 import { esc, fmt } from '../util.js';
 
 /* ---------- Vistas ---------- */
@@ -147,4 +148,49 @@ export function pontosSvg(codes, v, f, classe = () => ''){
     const fora = x < w / 2 - 2;
     return `<g class="ptp ${classe(c)}" data-pt="${esc(c)}"><title>${esc(c)}</title><circle class="pt-h" cx="${x}" cy="${y}" r="9"/><circle cx="${x}" cy="${y}" r="4.5"/><text x="${fora ? x - 7 : x + 7}" y="${y + 3.5}" text-anchor="${fora ? 'end' : 'start'}">${esc(c)}</text></g>`;
   })).join('');
+}
+
+/* ---------- Atlas (etapa 4B): trajetos aproximados dos 12 meridianos e dos 8 vasos ----------
+   Linhas de apresentação nas vistas anterior (ant), posterior (post) e laterais (lat), no desenho
+   da vista; os bilaterais são espelhados. Sempre identificados como aproximados. */
+export const MERIDIANOS = ['P','IG','E','BP','C','ID','B','R','CS','TA','VB','F'];
+export const VASOS_ATLAS = PARES_VASOS.map(p => p[0]);
+export const TRAJETOS = {
+  P:{ant:[[66,84],[57,92],[46,130],[42,180],[36,224],[28,240]]},
+  IG:{ant:[[30,238],[34,200],[38,160],[47,110],[56,79],[82,72],[95,64],[94,50],[94,40]]},
+  E:{ant:[[93,34],[90,46],[95,62],[80,84],[80,140],[86,186],[82,230],[80,290],[84,330],[86,380],[86,416]]},
+  BP:{ant:[[92,416],[94,396],[94,350],[92,300],[94,250],[80,200],[72,150],[64,96]]},
+  C:{ant:[[56,88],[48,120],[44,170],[40,226],[36,246]]},
+  ID:{post:[[32,242],[40,200],[48,150],[50,104],[70,98],[78,76],[95,68],[96,58],[84,32]]},
+  B:{post:[[94,16],[95,50],[95,70],[92,200],[86,222],[82,270],[80,320],[82,370],[78,410],[74,418]]},
+  R:{ant:[[90,418],[94,402],[94,340],[96,260],[96,206],[94,180],[92,120],[90,84]]},
+  CS:{ant:[[64,90],[52,104],[46,150],[40,200],[36,228],[34,246]]},
+  TA:{post:[[34,244],[38,200],[42,150],[46,108],[60,80],[82,72],[95,64],[92,40],[82,22]]},
+  VB:{lat:[[100,22],[92,30],[94,44],[88,52],[96,90],[102,150],[100,206],[102,270],[102,330],[106,398],[124,414]]},
+  F:{ant:[[86,418],[86,402],[92,360],[92,300],[96,240],[90,210],[76,160],[72,124]]},
+  'Du Mai':{meio:1,post:[[100,210],[100,120],[100,66],[100,30],[100,10]]},
+  'Ren Mai':{meio:1,ant:[[100,208],[100,120],[100,60],[100,46]]},
+  'Chong Mai':{ant:[[96,208],[94,180],[92,140],[92,100],[96,60]]},
+  'Dai Mai':{meio:1,ant:[[62,186],[100,192],[138,186]],post:[[62,186],[100,192],[138,186]],lat:[[76,186],[120,190]]},
+  'Yin Qiao Mai':{ant:[[94,404],[92,360],[96,260],[92,206],[84,140],[86,72],[95,62],[96,30]]},
+  'Yang Qiao Mai':{lat:[[104,410],[104,330],[98,206],[92,150],[90,80],[104,30]]},
+  'Yin Wei Mai':{ant:[[94,368],[92,300],[94,240],[80,190],[76,120],[98,54]]},
+  'Yang Wei Mai':{lat:[[100,404],[100,300],[96,206],[88,140],[86,70],[88,40],[96,12]]}
+};
+export const SIGLA_VASO = { 'Du Mai':'Du', 'Ren Mai':'Ren', 'Chong Mai':'Chong', 'Dai Mai':'Dai', 'Yin Qiao Mai':'Yin Q', 'Yang Qiao Mai':'Yang Q', 'Yin Wei Mai':'Yin W', 'Yang Wei Mai':'Yang W' };
+const COR_ELEMENTO = { madeira:'var(--wood)', fogo:'var(--fire)', terra:'var(--earth)', metal:'var(--metal)', agua:'var(--water)' };
+export const corTrajeto = k => VASOS_ATLAS.includes(k) ? 'var(--vaso)' : COR_ELEMENTO[MER[k][1]];
+const chaveTrajeto = v => v === 'anterior' ? 'ant' : v === 'posterior' ? 'post' : v === 'lat_d' || v === 'lat_e' ? 'lat' : null;
+export const temTrajetoNaVista = (k, v) => !!TRAJETOS[k][chaveTrajeto(v)];
+const NOME_TRAJ = { ant:'anterior', post:'posterior', lat:'laterais' };
+export const vistasDoTrajeto = k => ['ant','post','lat'].filter(c => TRAJETOS[k][c]).map(c => NOME_TRAJ[c]);
+// Trajeto a que o ponto pertence: VC segue Ren Mai e VG segue Du Mai.
+export const trajetoDoPonto = c => ({ VC:'Ren Mai', VG:'Du Mai' })[c.replace(/\d+$/, '')] || c.replace(/\d+$/, '');
+export function trajetoSvg(k, v, on){
+  const ch = chaveTrajeto(v), T = TRAJETOS[k];
+  if (!ch || !T[ch]) return '';
+  const base = T[ch].map(([x, y]) => [v === 'lat_e' ? 200 - x : x, y]);
+  const linhas = [base]; if (!T.meio && ch !== 'lat') linhas.push(base.map(([x, y]) => [200 - x, y]));
+  const fim = base[base.length - 1], vaso = VASOS_ATLAS.includes(k);
+  return `<g class="tj${vaso ? ' vaso' : ''}${on ? ' on' : ''}" data-tj="${esc(k)}" style="--c:${corTrajeto(k)}"><title>${esc(vaso ? k : MER[k][0])} · trajeto aproximado</title>${linhas.map(l => { const d = 'M' + l.map(q => q.join(' ')).join('L'); return `<path class="tj-h" d="${d}"/><path class="tj-l" d="${d}"/>`; }).join('')}<text class="tj-t" x="${fim[0]}" y="${fim[1] - 5}" text-anchor="middle">${esc(vaso ? SIGLA_VASO[k] : k)}</text></g>`;
 }

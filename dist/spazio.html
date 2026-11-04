@@ -1033,6 +1033,82 @@ input[type=checkbox]{accent-color:var(--brand)}
 .px-n{margin:0}
 .mapa4 .ptp.prox text{display:inline;fill:var(--ink);font-weight:600}
 #ed-mk .px{margin:12px 0 14px;padding:12px 0 14px;border-bottom:1px solid var(--line)}
+/* ---------- Etapa 4B · Biblioteca clínica: Central, Particular e Atlas ---------- */
+:root{--vaso:#7b5ea7}
+:root[data-theme="dark"]{--vaso:#b49ae0}
+.bib-t{margin-bottom:16px}
+.bib-t button{display:inline-flex;align-items:center;gap:6px}
+.bib-t .ic{width:16px;height:16px}
+.ptp.abre circle:not(.pt-h){fill:var(--vaso);stroke:var(--surface)}
+.ptp.abre text{fill:var(--vaso)}
+.tj{cursor:pointer}
+.tj-h{fill:none;stroke:transparent;stroke-width:12}
+.tj-l{fill:none;stroke:var(--c);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+.tj.vaso .tj-l{stroke-dasharray:5 3;stroke-width:2.2}
+.tj.on .tj-l,.tj:hover .tj-l{stroke-width:3.4;opacity:1}
+.tj-t{font:700 8px var(--f-body);fill:var(--c);paint-order:stroke;stroke:var(--surface-2);stroke-width:2.5px;pointer-events:none}
+.lg-w{width:24px;height:10px}
+.lg-m{stroke:var(--wood);stroke-width:2.2;fill:none}
+.lg-v{stroke:var(--vaso);stroke-width:2.2;stroke-dasharray:5 3;fill:none}
+.fx-dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;margin:10px 0;font-size:.86rem}
+.fx-dl dt{color:var(--muted);font-weight:500}
+.fx-dl dd{margin:0;min-width:0}
+.tj-gr{display:grid;gap:8px;margin-bottom:12px}
+.tj-gh{display:flex;align-items:center;gap:2px}
+.tj-gh .btn{padding:3px 7px;white-space:nowrap}
+.tj-gh .lbl{margin-right:auto}
+.chip.tjc{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:.8rem}
+.chip.tjc i{width:10px;height:10px;border-radius:50%;border:2px solid var(--c);flex:none}
+.chip.tjc.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,var(--surface));color:var(--ink);font-weight:600}
+.chip.tjc.on i{background:var(--c)}
+.at-cols{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:18px;align-items:start}
+.at-ctl,.at-map{min-width:0}
+.at-map .zoom{margin:8px 0 10px}
+.tp-l{display:flex;align-items:center;gap:8px;font-size:.84rem;margin:0 0 8px}
+.fx-panel{min-width:0;align-self:start;position:sticky;top:12px}
+.fx-vazio{display:grid;justify-items:center;text-align:center;gap:6px;padding:26px 10px;color:var(--muted)}
+.fx-vazio .ic{width:28px;height:28px}
+.fx-vazio b{color:var(--ink)}
+.fx-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.fx-h .grow{display:grid;gap:3px;min-width:0}
+.fx-h small{color:var(--muted);font-size:.8rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.fx-c{display:inline-grid;place-items:center;min-width:46px;height:46px;padding:0 6px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font:700 .9rem var(--f-mono);flex:none}
+.fx-c.tj-c{background:color-mix(in srgb,var(--c) 14%,var(--surface));color:var(--c);font-size:.8rem}
+.fx-x{margin-left:auto;padding:4px}
+.fx-fonte,.fx-pos,.fx-part{display:grid;gap:6px;border-top:1px solid var(--line);padding:10px 0;font-size:.86rem;justify-items:start}
+.fx-part{padding-bottom:0}
+.fx-part textarea{width:100%;min-height:60px}
+.fx-part small{display:inline-flex;align-items:center;gap:5px}
+.fx-part small .ic{width:13px;height:13px}
+.fx-pend{margin:4px 0 10px}
+.pc-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:6px}
+.pc{display:grid;gap:1px;text-align:left;border:1px dashed var(--line-2);background:var(--surface);border-radius:9px;padding:6px 8px;cursor:pointer;color:var(--muted);font:inherit;min-width:0}
+.pc b{font:600 .8rem var(--f-mono);color:var(--ink)}
+.pc small{font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc.tem{border-style:solid;border-color:var(--accent-line);background:var(--accent-soft)}
+.pc.tem small{color:var(--accent)}
+.pc.on{outline:2px solid var(--accent);outline-offset:1px}
+.pc:hover{border-color:var(--accent)}
+.vs-p{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}
+.vs-p>div{display:grid;gap:6px}
+#c-todos-card .notice{margin-bottom:12px}
+.cg{margin-bottom:14px}
+.cg h4{font-size:.9rem;margin:0 0 8px}
+.pa-l{display:grid;gap:10px}
+.pa{display:flex;gap:8px;align-items:flex-start;border-top:1px solid var(--line);padding-top:10px}
+.pa:first-child{border-top:0;padding-top:0}
+.pa .grow{display:grid;gap:4px;justify-items:start;flex:1;min-width:0}
+.pa p{margin:0;font-size:.86rem;white-space:pre-wrap;overflow-wrap:anywhere}
+.pa .pill{cursor:pointer;font-family:var(--f-mono);border:0}
+.pa-f{display:grid;gap:12px}
+.pa-f textarea{min-height:80px}
+@media (max-width:760px){.at-cols{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1100px){
+  .fx-panel{position:static}
+  .fx-panel.aberta{position:fixed;left:0;right:0;bottom:0;z-index:30;max-height:66vh;overflow:auto;padding:0 8px calc(8px + env(safe-area-inset-bottom,0px));background:transparent}
+  .fx-panel.aberta>.card{box-shadow:0 -6px 28px rgba(30,30,20,.22);border-radius:16px 16px 12px 12px}
+  .vs-p{grid-template-columns:minmax(0,1fr)}
+}
 </style>
 
 
@@ -1274,6 +1350,9 @@ function importar(texto){
 const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', week:0, pq:'', menuMini:false, menuAberto:false,
   ov:null, q:'', bi:0, lidas:new Set(), dia:null, crumbs:[],
   // Mapa corporal do atendimento (etapa 4A): vista, face, ampliação, ferramenta, marcação selecionada e camadas de comparação.
+  // Biblioteca clínica (etapa 4B): área (central, particular, atlas), ficha aberta e estado do Atlas.
+  bib:'central', bibSel:null,
+  atlas:{ ativos:['E','F'], todos:false, vista:'anterior', face:{ maos:'palmar', pes:'dorsal' }, zoom:1, sel:null, traj:null },
   mapa:{ vista:'anterior', face:{ maos:'palmar', pes:'dorsal' }, zoom:1, ferr:'sel', sel:null, rm:false, rad:null, ant:true, hist:'', plano:true, pt:null } };
 const MER = {P:['Pulmão','metal'],IG:['Intestino Grosso','metal'],E:['Estômago','terra'],BP:['Baço-Pâncreas','terra'],C:['Coração','fogo'],ID:['Intestino Delgado','fogo'],B:['Bexiga','agua'],R:['Rim','agua'],CS:['Circulação-Sexo','fogo'],TA:['Triplo Aquecedor','fogo'],VB:['Vesícula Biliar','madeira'],F:['Fígado','madeira'],VC:['Vaso Concepção',null],VG:['Vaso Governador',null]};
 const POINTS = [
@@ -1309,6 +1388,11 @@ const POINTS = [
 const PT = {};
 POINTS.forEach(p=>PT[p.code]=p);
 const CAUT = {gestacao:'Evitar na gestação',torax:'Agulhamento oblíquo; risco de pneumotórax',profundidade:'Atenção à direção e profundidade'};
+// Quantidade de pontos de cada meridiano e vaso (códigos). Só os códigos: o conteúdo de cada ponto
+// vem das fichas acima ou da fonte aprovada; os demais aparecem como "ficha pendente".
+const NPT = {P:11,IG:20,E:45,BP:21,C:9,ID:19,B:67,R:27,CS:9,TA:23,VB:44,F:14,VC:24,VG:28};
+const CODIGOS = Object.entries(NPT).flatMap(([m,n])=>Array.from({length:n},(_,i)=>m+(i+1)));
+const meridianoDe = c => c.replace(/\d+$/,'');
 function pointWarnings(codes, p, tec){
   const w=[];
   codes.forEach(c=>{
@@ -2020,6 +2104,51 @@ function pontosSvg(codes, v, f, classe = () => ''){
     const fora = x < w / 2 - 2;
     return `<g class="ptp ${classe(c)}" data-pt="${esc(c)}"><title>${esc(c)}</title><circle class="pt-h" cx="${x}" cy="${y}" r="9"/><circle cx="${x}" cy="${y}" r="4.5"/><text x="${fora ? x - 7 : x + 7}" y="${y + 3.5}" text-anchor="${fora ? 'end' : 'start'}">${esc(c)}</text></g>`;
   })).join('');
+}
+
+/* ---------- Atlas (etapa 4B): trajetos aproximados dos 12 meridianos e dos 8 vasos ----------
+   Linhas de apresentação nas vistas anterior (ant), posterior (post) e laterais (lat), no desenho
+   da vista; os bilaterais são espelhados. Sempre identificados como aproximados. */
+const MERIDIANOS = ['P','IG','E','BP','C','ID','B','R','CS','TA','VB','F'];
+const VASOS_ATLAS = PARES_VASOS.map(p => p[0]);
+const TRAJETOS = {
+  P:{ant:[[66,84],[57,92],[46,130],[42,180],[36,224],[28,240]]},
+  IG:{ant:[[30,238],[34,200],[38,160],[47,110],[56,79],[82,72],[95,64],[94,50],[94,40]]},
+  E:{ant:[[93,34],[90,46],[95,62],[80,84],[80,140],[86,186],[82,230],[80,290],[84,330],[86,380],[86,416]]},
+  BP:{ant:[[92,416],[94,396],[94,350],[92,300],[94,250],[80,200],[72,150],[64,96]]},
+  C:{ant:[[56,88],[48,120],[44,170],[40,226],[36,246]]},
+  ID:{post:[[32,242],[40,200],[48,150],[50,104],[70,98],[78,76],[95,68],[96,58],[84,32]]},
+  B:{post:[[94,16],[95,50],[95,70],[92,200],[86,222],[82,270],[80,320],[82,370],[78,410],[74,418]]},
+  R:{ant:[[90,418],[94,402],[94,340],[96,260],[96,206],[94,180],[92,120],[90,84]]},
+  CS:{ant:[[64,90],[52,104],[46,150],[40,200],[36,228],[34,246]]},
+  TA:{post:[[34,244],[38,200],[42,150],[46,108],[60,80],[82,72],[95,64],[92,40],[82,22]]},
+  VB:{lat:[[100,22],[92,30],[94,44],[88,52],[96,90],[102,150],[100,206],[102,270],[102,330],[106,398],[124,414]]},
+  F:{ant:[[86,418],[86,402],[92,360],[92,300],[96,240],[90,210],[76,160],[72,124]]},
+  'Du Mai':{meio:1,post:[[100,210],[100,120],[100,66],[100,30],[100,10]]},
+  'Ren Mai':{meio:1,ant:[[100,208],[100,120],[100,60],[100,46]]},
+  'Chong Mai':{ant:[[96,208],[94,180],[92,140],[92,100],[96,60]]},
+  'Dai Mai':{meio:1,ant:[[62,186],[100,192],[138,186]],post:[[62,186],[100,192],[138,186]],lat:[[76,186],[120,190]]},
+  'Yin Qiao Mai':{ant:[[94,404],[92,360],[96,260],[92,206],[84,140],[86,72],[95,62],[96,30]]},
+  'Yang Qiao Mai':{lat:[[104,410],[104,330],[98,206],[92,150],[90,80],[104,30]]},
+  'Yin Wei Mai':{ant:[[94,368],[92,300],[94,240],[80,190],[76,120],[98,54]]},
+  'Yang Wei Mai':{lat:[[100,404],[100,300],[96,206],[88,140],[86,70],[88,40],[96,12]]}
+};
+const SIGLA_VASO = { 'Du Mai':'Du', 'Ren Mai':'Ren', 'Chong Mai':'Chong', 'Dai Mai':'Dai', 'Yin Qiao Mai':'Yin Q', 'Yang Qiao Mai':'Yang Q', 'Yin Wei Mai':'Yin W', 'Yang Wei Mai':'Yang W' };
+const COR_ELEMENTO = { madeira:'var(--wood)', fogo:'var(--fire)', terra:'var(--earth)', metal:'var(--metal)', agua:'var(--water)' };
+const corTrajeto = k => VASOS_ATLAS.includes(k) ? 'var(--vaso)' : COR_ELEMENTO[MER[k][1]];
+const chaveTrajeto = v => v === 'anterior' ? 'ant' : v === 'posterior' ? 'post' : v === 'lat_d' || v === 'lat_e' ? 'lat' : null;
+const temTrajetoNaVista = (k, v) => !!TRAJETOS[k][chaveTrajeto(v)];
+const NOME_TRAJ = { ant:'anterior', post:'posterior', lat:'laterais' };
+const vistasDoTrajeto = k => ['ant','post','lat'].filter(c => TRAJETOS[k][c]).map(c => NOME_TRAJ[c]);
+// Trajeto a que o ponto pertence: VC segue Ren Mai e VG segue Du Mai.
+const trajetoDoPonto = c => ({ VC:'Ren Mai', VG:'Du Mai' })[c.replace(/\d+$/, '')] || c.replace(/\d+$/, '');
+function trajetoSvg(k, v, on){
+  const ch = chaveTrajeto(v), T = TRAJETOS[k];
+  if (!ch || !T[ch]) return '';
+  const base = T[ch].map(([x, y]) => [v === 'lat_e' ? 200 - x : x, y]);
+  const linhas = [base]; if (!T.meio && ch !== 'lat') linhas.push(base.map(([x, y]) => [200 - x, y]));
+  const fim = base[base.length - 1], vaso = VASOS_ATLAS.includes(k);
+  return `<g class="tj${vaso ? ' vaso' : ''}${on ? ' on' : ''}" data-tj="${esc(k)}" style="--c:${corTrajeto(k)}"><title>${esc(vaso ? k : MER[k][0])} · trajeto aproximado</title>${linhas.map(l => { const d = 'M' + l.map(q => q.join(' ')).join('L'); return `<path class="tj-h" d="${d}"/><path class="tj-l" d="${d}"/>`; }).join('')}<text class="tj-t" x="${fim[0]}" y="${fim[1] - 5}" text-anchor="middle">${esc(vaso ? SIGLA_VASO[k] : k)}</text></g>`;
 }
 // Não cria números: se um dado não existe, o indicador não aparece.
 
@@ -2891,13 +3020,57 @@ function vPentagrama(){
     <div class="card" style="align-self:start">${det}</div>
   </div>`;
 }
+// db.biblioteca = { particular:[{ id, titulo, ponto, texto, em }], notas:{ [codigo]:texto } }
+// O campo só é criado quando a clínica grava algo: quem não usa a Particular continua com os dados iguais.
+// Nada aqui altera as fichas Central nem a exportação no formato v1.
+const vazia = () => ({ particular:[], notas:{} });
+const bibliotecaDe = d => d?.biblioteca && typeof d.biblioteca === 'object' ? { ...vazia(), ...d.biblioteca } : vazia();
+function garantir(d){
+  if (!d.biblioteca || typeof d.biblioteca !== 'object') d.biblioteca = vazia();
+  if (!Array.isArray(d.biblioteca.particular)) d.biblioteca.particular = [];
+  if (!d.biblioteca.notas || typeof d.biblioteca.notas !== 'object') d.biblioteca.notas = {};
+  return d.biblioteca;
+}
+function adicionarFichaParticular(d, { titulo, ponto, texto }, em, id){
+  const t = String(titulo || '').trim(), x = String(texto || '').trim();
+  if (!t || !x) return null;
+  const f = { id, titulo:t, ponto:String(ponto || '').trim().toUpperCase(), texto:x, em };
+  garantir(d).particular.unshift(f); return f;
+}
+function removerFichaParticular(d, id){
+  const B = garantir(d), i = B.particular.findIndex(f => f.id === id);
+  if (i < 0) return false; B.particular.splice(i, 1); return true;
+}
+// Anotação particular num ponto. Texto vazio apaga a anotação.
+function definirNotaPonto(d, codigo, texto){
+  const B = garantir(d), t = String(texto || '');
+  if (t.trim()) B.notas[codigo] = t; else delete B.notas[codigo];
+}
+// (silhueta com os trajetos aproximados dos 12 meridianos e dos 8 vasos). Etapa 4B.
+// O conteúdo clínico é só o das fichas que já existem; os demais pontos aparecem como "ficha pendente".
+
+const AREAS_BIB = [['central','Central','lista'],['particular','Particular','escudo'],['atlas','Atlas','corpo']];
+
 function vPontos(){
-  return `<div class="head"><div><h1>Biblioteca clínica</h1><p>Pontos e meridianos · ${POINTS.length} pontos de uso frequente, com localização e cautelas</p></div></div>
-  <div class="card" style="margin-bottom:16px;display:grid;gap:10px">
+  const area = AREAS_BIB.some(x => x[0] === ui.bib) ? ui.bib : 'central';
+  return `<div class="head"><div><h1>Biblioteca clínica</h1><p>Central, Particular e Atlas · ${POINTS.length} pontos com ficha, ${CODIGOS.length} pontos nos 14 meridianos</p></div></div>
+  <div class="tabs bib-t" role="tablist" aria-label="Áreas da Biblioteca">${AREAS_BIB.map(([k, n, i]) => `<button role="tab" class="${area === k ? 'on' : ''}" aria-selected="${area === k}" data-act="bib-area" data-a="${k}">${ic(i)}${n}</button>`).join('')}</div>
+  ${({ central:vCentral, particular:vParticular, atlas:vAtlas })[area]()}`;
+}
+
+/* ---------- Central ---------- */
+function vCentral(){
+  return `<div class="grid g-side bib-g"><div class="grid" style="align-content:start">
+  <div class="card" style="display:grid;gap:10px">
     <div class="field"><label class="lbl" for="pt-q">Buscar por código, nome ou ação</label><label class="busca">${ic('busca')}<input id="pt-q" value="${esc(ui.ptQ)}" placeholder="Ex.: Shen, umidade, BP6"></label></div>
-    <div class="chips"><button class="chip ${!ui.ptMer?'on':''}" data-act="mer" data-m="">Todos</button>${Object.entries(MER).filter(([k])=>POINTS.some(p=>p.mer===k)).map(([k,[n,e]])=>`<button class="chip ${ui.ptMer===k?'on':''}" data-act="mer" data-m="${k}">${k} · ${n}</button>`).join('')}</div>
+    <div class="chips"><button class="chip ${!ui.ptMer?'on':''}" data-act="mer" data-m="">Todos</button>${Object.entries(MER).filter(([k])=>POINTS.some(p=>p.mer===k)).map(([k,[n]])=>`<button class="chip ${ui.ptMer===k?'on':''}" data-act="mer" data-m="${k}">${k} · ${n}</button>`).join('')}</div>
   </div>
-  <div class="pcards" id="ptlist">${pointCards()}</div>`;
+  <div class="pcards" id="ptlist">${pointCards()}</div>
+  <div class="card" id="c-todos-card"><div class="card-h"><h3>Todos os pontos dos meridianos<small>${CODIGOS.length} pontos · ${POINTS.length} com ficha · os demais com ficha pendente</small></h3></div>
+    <div class="notice">${ic('info')}<div><b>Fichas pendentes.</b> Nome, localização, ações, indicações e cautelas dos demais pontos entram pela importação da fonte que você aprovar, com obra e página. O sistema não escreve esse conteúdo.</div></div>
+    <div id="c-todos">${listaTodos()}</div></div>
+  </div>
+  ${painelFicha(ui.bibSel, 'bib-fx-x', 'Escolha um ponto', 'A ficha abre aqui, ao lado da lista.')}</div>`;
 }
 function pointCards(){
   const q=ui.ptQ.toLowerCase();
@@ -2905,6 +3078,94 @@ function pointCards(){
   return l.map(p=>`<div class="pcard"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span class="code">${p.code}</span><span class="muted">${p.pinyin}</span></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="muted" style="font-size:.8rem">${MER[p.mer][0]}</span>${elTag(MER[p.mer][1])}</div>
     <div><span class="lbl">Localização</span><br>${p.loc}</div><div><span class="lbl">Ações</span><br>${p.acoes}</div>${p.cautela?`<span class="pill warn" style="justify-self:start">${CAUT[p.cautela]}</span>`:''}</div>`).join('')||'<p class="muted">Nenhum ponto encontrado.</p>';
+}
+const botaoPonto = (c, act, sel) => `<button class="pc${PT[c] ? ' tem' : ''}${sel === c ? ' on' : ''}" data-act="${act}" data-c="${c}"><b>${c}</b><small>${PT[c] ? esc(PT[c].pinyin) : 'pendente'}</small></button>`;
+function listaTodos(){
+  const q = ui.ptQ.trim().toLowerCase();
+  const L = CODIGOS.filter(c => (!ui.ptMer || meridianoDe(c) === ui.ptMer) && (!q || c.toLowerCase().includes(q) || (PT[c] ? (PT[c].pinyin + PT[c].acoes + PT[c].loc).toLowerCase().includes(q) : false)));
+  const grupos = Object.keys(NPT).map(m => [m, L.filter(c => meridianoDe(c) === m)]).filter(([, l]) => l.length);
+  return `<p class="muted sm" id="c-total">${L.length} de ${CODIGOS.length} pontos · ${L.filter(c => PT[c]).length} com ficha</p>`
+    + (grupos.map(([m, l]) => `<div class="cg"><h4>${MER[m][0]} <span class="muted">· ${m} · ${NPT[m]} pontos</span></h4><div class="pc-g">${l.map(c => botaoPonto(c, 'bib-pt', ui.bibSel)).join('')}</div></div>`).join('') || '<p class="muted">Nenhum ponto encontrado.</p>');
+}
+
+/* ---------- Ficha do ponto (Central e Atlas) ---------- */
+function fichaPonto(c, fechar){
+  const p = PT[c], m = meridianoDe(c), mer = MER[m], nota = bibliotecaDe(db).notas[c] || '', vistas = vistasDoPonto(c);
+  const conteudo = p ? `<dl class="fx-dl"><dt>Meridiano</dt><dd>${esc(mer[0])} (${m})</dd><dt>Número</dt><dd>${esc(c.slice(m.length))}</dd>
+      <dt>Localização</dt><dd>${esc(p.loc)}</dd><dt>Ações</dt><dd>${esc(p.acoes)}</dd>
+      <dt>Indicações</dt><dd class="muted">Entram pela fonte aprovada.</dd>
+      <dt>Cautela</dt><dd>${p.cautela ? `<span class="pill warn">${esc(CAUT[p.cautela])}</span>` : '<span class="muted">Nenhuma cadastrada.</span>'}</dd></dl>
+    <div class="fx-fonte"><span class="lbl">Fonte</span><span>Ficha existente do sistema · obra e página não informadas</span></div>`
+    : `<dl class="fx-dl"><dt>Meridiano</dt><dd>${esc(mer[0])} (${m})</dd><dt>Número</dt><dd>${esc(c.slice(m.length))}</dd></dl>
+    <div class="notice fx-pend">${ic('info')}<div><b>Ficha pendente.</b> Nome, localização, ações, indicações e cautelas entram pela importação da fonte aprovada, com obra e página.</div></div>`;
+  return `<div class="ficha" data-ficha="${c}"><div class="fx-h"><span class="fx-c">${c}</span><div class="grow"><b>${p ? esc(p.pinyin) : 'Nome pendente'}</b><small>${esc(mer[0])}${mer[1] ? ' · ' + elTag(mer[1]) : ''}</small></div>${p ? '<span class="pill ok">ficha</span>' : '<span class="pill warn fx-pend-t">ficha pendente</span>'}<button class="btn ghost sm fx-x" data-act="${fechar}" aria-label="Fechar a ficha">${ic('x')}</button></div>
+    ${conteudo}
+    <div class="fx-pos"><span class="lbl">Posição no mapa</span>${vistas.length ? `<span>Aproximada · ${vistas.join(', ')}</span>` : '<span class="muted">Sem posição no mapa</span>'}</div>
+    <div class="fx-part"><label class="lbl" for="nota-${c}">Anotação particular da clínica</label><textarea id="nota-${c}" data-bibnota="${c}" placeholder="Fica na Particular e não altera a Central.">${esc(nota)}</textarea><small class="muted">${ic('escudo')}Particular · não altera a ficha Central</small></div></div>`;
+}
+function painelFicha(c, fechar, vazioT, vazioS){
+  return `<aside class="fx-panel${c ? ' aberta' : ''}" aria-label="Ficha do ponto"><div class="card">${c && CODIGOS.includes(c) ? fichaPonto(c, fechar) : `<div class="fx-vazio">${ic('lista')}<b>${vazioT}</b><p class="muted sm">${vazioS}</p></div>`}</div></aside>`;
+}
+
+/* ---------- Particular ---------- */
+function vParticular(){
+  const B = bibliotecaDe(db), notas = Object.entries(B.notas).filter(([, t]) => String(t).trim());
+  return `<div class="notice" style="margin-bottom:16px">${ic('escudo')}<div><b>Particular da clínica.</b> Fichas e anotações próprias ficam só aqui e não alteram a Central. Vão junto na cópia de segurança.</div></div>
+  <div class="grid g-side"><div class="grid" style="align-content:start">
+    <div class="card" id="pa-fichas"><div class="card-h"><h3>Fichas particulares</h3><span class="pill">${B.particular.length}</span></div>
+      <div class="pa-l">${B.particular.map(x => `<div class="pa" data-id="${esc(x.id)}"><div class="grow"><b>${esc(x.titulo)}</b>${x.ponto ? `<button class="pill acc" data-act="bib-pa-pt" data-c="${esc(x.ponto)}">${esc(x.ponto)}</button>` : ''}<p>${esc(x.texto)}</p><small class="muted">Particular · ${fmt(String(x.em).slice(0, 10))}</small></div><button class="btn ghost sm" data-act="bib-pa-rm" data-id="${esc(x.id)}" aria-label="Apagar a ficha ${esc(x.titulo)}">${ic('x')}</button></div>`).join('') || '<p class="muted sm">Nenhuma ficha particular ainda.</p>'}</div></div>
+    <div class="card" id="pa-notas"><div class="card-h"><h3>Anotações em pontos</h3><span class="pill">${notas.length}</span></div>
+      <div class="pa-l">${notas.map(([c, t]) => `<div class="pa"><div class="grow"><button class="pill acc" data-act="bib-pa-pt" data-c="${esc(c)}">${esc(c)}</button><p>${esc(t)}</p><small class="muted">Feita na ficha do ponto · a ficha Central continua igual</small></div></div>`).join('') || '<p class="muted sm">Nenhuma anotação. Escreva na ficha de um ponto, na Central ou no Atlas.</p>'}</div></div>
+  </div>
+  <aside><form class="card pa-f" id="f-part"><div class="card-h"><h3>Nova ficha particular</h3></div>
+    <div class="field"><label class="lbl" for="pa-t">Título</label><input id="pa-t" name="titulo" required placeholder="Ex.: protocolo da clínica"></div>
+    <div class="field"><label class="lbl" for="pa-p">Ponto relacionado (opcional)</label><input id="pa-p" name="ponto" class="mono" placeholder="Ex.: E36"></div>
+    <div class="field"><label class="lbl" for="pa-x">Texto</label><textarea id="pa-x" name="texto" required></textarea></div>
+    <button class="btn pri">${ic('novo')}Adicionar à Particular</button></form></aside></div>`;
+}
+
+/* ---------- Atlas ---------- */
+const ZOOMS_ATLAS = [1, 1.5, 2, 3];
+const larguraAtlas = (v, z) => z === 1 ? `min(100%,${LARGURA[v]}px)` : LARGURA[v] * z + 'px';
+function painelTrajeto(k){
+  const vaso = VASOS_ATLAS.includes(k);
+  const cab = `<div class="fx-h"><span class="fx-c tj-c" style="--c:${corTrajeto(k)}">${esc(vaso ? SIGLA_VASO[k] : k)}</span><div class="grow"><b>${esc(vaso ? k : MER[k][0])}</b><small>${vaso ? 'Vaso extraordinário' : 'Meridiano principal · ' + elTag(MER[k][1])}</small></div><button class="btn ghost sm fx-x" data-act="atl-fx-x" aria-label="Fechar">${ic('x')}</button></div>
+    <p class="muted sm">Trajeto aproximado · vistas ${vistasDoTrajeto(k).join(', ')}.</p>`;
+  if (vaso) {
+    const [, ab, ac] = PARES_VASOS.find(p => p[0] === k), par = PARES_VASOS.find(p => p[1] === ac)?.[0];
+    return `${cab}<div class="vs-p"><div><span class="lbl">Ponto de abertura</span>${botaoPonto(ab, 'atl-pt')}</div><div><span class="lbl">Ponto acoplado</span>${botaoPonto(ac, 'atl-pt')}</div></div>
+      ${par ? `<p class="sm">Par: <b>${esc(par)}</b>. Os mesmos pares do Plano terapêutico.</p>` : ''}
+      <p class="muted sm">A indicação de vasos no tratamento continua como dica no Plano e aguarda os seus critérios.</p>`;
+  }
+  const L = CODIGOS.filter(c => meridianoDe(c) === k), n = L.filter(c => PT[c]).length;
+  return `${cab}<p class="sm">${L.length} pontos · <b>${n}</b> com ficha · ${L.length - n} pendentes</p><div class="pc-g">${L.map(c => botaoPonto(c, 'atl-pt')).join('')}</div>`;
+}
+function vAtlas(){
+  const A = ui.atlas, v = A.vista, f = FACES[v] ? A.face[v] : '', [w, h] = TAM[v], ativos = A.ativos.filter(k => MERIDIANOS.includes(k) || VASOS_ATLAS.includes(k));
+  const abre = new Set(PARES_VASOS.filter(p => ativos.includes(p[0])).flatMap(p => [p[1], p[2]]));
+  const pts = PONTOS_NO_MAPA.filter(c => A.todos || ativos.includes(trajetoDoPonto(c)) || abre.has(c));
+  const semTrajeto = ['maos','pes'].includes(v) ? [] : ativos.filter(k => !temTrajetoNaVista(k, v));
+  const chip = k => `<button class="chip tjc${ativos.includes(k) ? ' on' : ''}" data-act="atl-tj" data-k="${esc(k)}" aria-pressed="${ativos.includes(k)}" style="--c:${corTrajeto(k)}"><i></i>${esc(VASOS_ATLAS.includes(k) ? k : k + ' · ' + MER[k][0])}</button>`;
+  const zi = ZOOMS_ATLAS.indexOf(A.zoom);
+  const painel = A.sel && CODIGOS.includes(A.sel) ? fichaPonto(A.sel, 'atl-fx-x') : A.traj && (MERIDIANOS.includes(A.traj) || VASOS_ATLAS.includes(A.traj)) ? painelTrajeto(A.traj)
+    : `<div class="fx-vazio">${ic('corpo')}<b>Toque num ponto ou num trajeto</b><p class="muted sm">A ficha abre aqui, sem sair do Atlas.</p></div>`;
+  return `<div class="grid g-side at-g">
+    <div class="card"><div class="card-h"><h3>Atlas<small>12 meridianos e 8 vasos extraordinários</small></h3><span class="pill warn">trajetos aproximados</span></div>
+      <div class="at-cols"><div class="at-ctl">
+        <div class="tj-gr"><div class="tj-gh"><span class="lbl">Meridianos principais</span><button class="btn ghost sm" data-act="atl-todos" data-g="m">Todos</button><button class="btn ghost sm" data-act="atl-nenhum" data-g="m">Nenhum</button></div><div class="chips">${MERIDIANOS.map(chip).join('')}</div></div>
+        <div class="tj-gr"><div class="tj-gh"><span class="lbl">Vasos extraordinários</span><button class="btn ghost sm" data-act="atl-todos" data-g="v">Todos</button><button class="btn ghost sm" data-act="atl-nenhum" data-g="v">Nenhum</button></div><div class="chips">${VASOS_ATLAS.map(chip).join('')}</div></div>
+        <label class="tp-l"><input type="checkbox" data-atltodos ${A.todos ? 'checked' : ''}> Mostrar todos os pontos com posição (${PONTOS_NO_MAPA.length})</label>
+        <p class="muted sm">Nos vasos, os pontos de abertura e acoplado ficam em roxo.</p></div>
+      <div class="at-map">
+        <div class="vbar" role="tablist" aria-label="Vistas do corpo">${VISTAS.map(([k, n]) => `<button class="vb${k === v ? ' on' : ''}" role="tab" aria-selected="${k === v}" data-act="atl-vista" data-v="${k}">${n}</button>`).join('')}</div>
+        ${FACES[v] ? `<div class="seg-c vface" role="group" aria-label="Face">${FACES[v].map(([k, n]) => `<button class="${k === f ? 'on' : ''}" data-act="atl-face" data-f="${k}">${n}</button>`).join('')}</div>` : ''}
+        <div class="zoom" role="group" aria-label="Ampliação"><button class="btn sm" data-act="atl-zoom" data-d="-1" aria-label="Diminuir" ${zi === 0 ? 'disabled' : ''}>−</button><span class="zoom-v">${Math.round(A.zoom * 100)}%</span><button class="btn sm" data-act="atl-zoom" data-d="1" aria-label="Ampliar" ${zi === ZOOMS_ATLAS.length - 1 ? 'disabled' : ''}>${ic('mais')}</button></div>
+        <div class="mp-zoom"><svg class="mapa4 atlas${A.zoom > 1 ? ' ampliado' : ''}" data-mapa="atlas" data-vista="${v}" data-face="${f}" viewBox="0 0 ${w} ${h}" style="width:${larguraAtlas(v, A.zoom)}" role="img" aria-label="Atlas, vista ${vistaNome(v, f)}">${desenho(v, f)}${ativos.map(k => trajetoSvg(k, v, A.traj === k)).join('')}${pontosSvg(pts, v, f, c => [abre.has(c) ? 'abre' : '', A.sel === c ? 'pt-on' : ''].join(' '))}</svg></div>
+        ${['maos','pes'].includes(v) ? '<p class="muted sm">Mãos e pés mostram os pontos; os trajetos aparecem nas vistas do corpo.</p>' : semTrajeto.length ? `<p class="muted sm" id="sem-trajeto">Sem trajeto nesta vista: ${semTrajeto.map(k => `${esc(k)} (${vistasDoTrajeto(k).join(', ')})`).join(' · ')}</p>` : ''}
+        <div class="legenda"><span><svg viewBox="0 0 24 10" class="lg-i lg-w" aria-hidden="true"><path d="M1 5h22" class="lg-m"/></svg>Meridiano</span><span><svg viewBox="0 0 24 10" class="lg-i lg-w" aria-hidden="true"><path d="M1 5h22" class="lg-v"/></svg>Vaso extraordinário</span><span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto com posição</span><span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp abre"><circle cx="10" cy="10" r="4.5"/></g></svg>Abertura ou acoplado</span></div>
+      </div></div></div>
+    <aside class="fx-panel${A.sel || A.traj ? ' aberta' : ''}" aria-label="Ficha"><div class="card">${painel}</div></aside>
+  </div>`;
 }
 const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
@@ -2953,6 +3214,9 @@ document.addEventListener('click',ev=>{
     if(item.matches('a[href]')){ ev.preventDefault(); irPara(item.getAttribute('href').slice(1)); return; } }
   // Mapa corporal do atendimento: toque no desenho marca, seleciona ou define o destino da irradiação.
   const sv=ev.target.closest('svg.mapa4[data-mapa="atendimento"]'); if(sv){ toqueMapa(ev,sv); return; }
+  // Atlas: toque num ponto abre a ficha; num trajeto, o painel do meridiano ou do vaso.
+  const sa=ev.target.closest('svg.mapa4[data-mapa="atlas"]');
+  if(sa){ const pt=ev.target.closest('.ptp'), tj=ev.target.closest('.tj'); if(pt){ ui.atlas.sel=pt.dataset.pt; ui.atlas.traj=null; render(true); } else if(tj){ ui.atlas.traj=tj.dataset.tj; ui.atlas.sel=null; render(true); } return; }
   const t=ev.target.closest('[data-act]'); if(!t||t.disabled) return;
   const a=t.dataset.act;
   if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
@@ -2966,7 +3230,8 @@ document.addEventListener('click',ev=>{
   else if(a==='editar-paciente'){ ui.editPid=t.dataset.pid; irPara('cadastro'); }
   else if(a==='queixa-ativa'){ const q=alternarQueixa(patient(ui.pid),t.dataset.q,new Date().toISOString()); if(q){ save(); render(true); toast(q.ativa?'Queixa reativada':'Queixa marcada como resolvida'); } }
   else if(a==='sessao'){ ui.pid=t.dataset.pid; ui.tab='nova'; irPara('prontuario'); }
-  else if(a==='ver-ponto'){ ui.ptQ=t.dataset.c; ui.ptMer=''; irPara('biblioteca'); }
+  else if(a==='ver-ponto'){ ui.ptQ=t.dataset.c; ui.ptMer=''; ui.bib='central'; irPara('biblioteca'); }
+  else if(a.startsWith('bib-')||a.startsWith('atl-')){ acaoBiblioteca(a,t); }
   else if(a==='busca'||a==='notif'||a==='perfil'||a==='atalhos'){ abrir(a); }
   else if(a==='fechar'){ ui.ov=null; render(true); }
   else if(a==='ler-todas'){ notificacoes().forEach(n=>ui.lidas.add(n.k)); ui.ov=null; render(true); toast('Notificações marcadas como lidas'); }
@@ -2996,7 +3261,8 @@ document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.id==='pal-q'){ ui.q=t.value; ui.bi=0; document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(t.id==='pq'){ ui.pq=t.value; document.getElementById('plist').innerHTML=patientRows(); }
-  else if(t.id==='pt-q'){ ui.ptQ=t.value; document.getElementById('ptlist').innerHTML=pointCards(); }
+  else if(t.id==='pt-q'){ ui.ptQ=t.value; document.getElementById('ptlist').innerHTML=pointCards(); const ct=document.getElementById('c-todos'); if(ct) ct.innerHTML=listaTodos(); }
+  else if(t.dataset.bibnota){ definirNotaPonto(db,t.dataset.bibnota,t.value); save(); }
   else if(t.id==='as-nota'){ ui.assess.nota=t.value; }
   else if(t.id==='ns-eva'){ document.getElementById('ns-eva-v').textContent=t.value; }
   else if(t.dataset.q&&t.type==='range'){ document.getElementById(t.id+'-v').textContent=t.value; }
@@ -3060,6 +3326,22 @@ function acaoAtendimento(a,t){
   else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
     descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
 }
+// Biblioteca clínica (etapa 4B): Central, Particular e Atlas.
+function acaoBiblioteca(a,t){
+  const A=ui.atlas, ZA=[1,1.5,2,3], c=t.dataset.c;
+  if(a==='bib-area'){ ui.bib=t.dataset.a; render(true); }
+  else if(a==='bib-pt'){ ui.bibSel=ui.bibSel===c?null:c; render(true); }
+  else if(a==='bib-fx-x'){ ui.bibSel=null; render(true); }
+  else if(a==='bib-pa-pt'){ if(!CODIGOS.includes(c)){ toast(`${c}: ponto não encontrado na Central`,'info'); return; } ui.bib='central'; ui.bibSel=c; ui.ptQ=''; ui.ptMer=''; render(true); }
+  else if(a==='bib-pa-rm'){ if(!confirm('Apagar esta ficha particular?')) return; if(removerFichaParticular(db,t.dataset.id)){ save(); render(true); toast('Ficha particular apagada','info'); } }
+  else if(a==='atl-tj'){ const k=t.dataset.k, i=A.ativos.indexOf(k); i<0?A.ativos.push(k):A.ativos.splice(i,1); if(i>=0&&A.traj===k) A.traj=null; render(true); }
+  else if(a==='atl-todos'||a==='atl-nenhum'){ const L=t.dataset.g==='m'?MERIDIANOS:VASOS_ATLAS; A.ativos=a==='atl-todos'?[...new Set([...A.ativos,...L])]:A.ativos.filter(k=>!L.includes(k)); if(A.traj&&!A.ativos.includes(A.traj)) A.traj=null; render(true); }
+  else if(a==='atl-vista'){ A.vista=t.dataset.v; render(true); }
+  else if(a==='atl-face'){ A.face[A.vista]=t.dataset.f; render(true); }
+  else if(a==='atl-zoom'){ A.zoom=ZA[Math.max(0,Math.min(ZA.length-1,ZA.indexOf(A.zoom)+Number(t.dataset.d)))]; render(true); }
+  else if(a==='atl-pt'){ A.sel=c; A.traj=null; render(true); }
+  else if(a==='atl-fx-x'){ A.sel=null; A.traj=null; render(true); }
+}
 // Mapa corporal (etapa 4A): marcações no atendimento em andamento. Depois de finalizado, só leitura.
 function limparMapa(){ Object.assign(ui.mapa,{ferr:'sel',sel:null,rm:false,rad:null,hist:'',pt:null}); }
 const nomeTipo = k => TIPOS_MARCA.find(x=>x[0]===k)?.[1]||k;
@@ -3111,6 +3393,7 @@ function toqueMapa(ev,svg){
 function baixar(texto, nome){ const u=URL.createObjectURL(new Blob([texto],{type:'application/json'})), l=document.createElement('a'); l.href=u; l.download=nome; document.body.append(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
 document.addEventListener('change',ev=>{
   const t=ev.target;
+  if(t.matches('[data-atltodos]')){ ui.atlas.todos=t.checked; render(true); return; }
   if(t.id==='imp-arq' && t.files[0]){ const f=t.files[0]; t.value='';
     if(!confirm(`Importar “${f.name}”? Os dados atuais deste navegador serão substituídos. Exporte antes se quiser guardá-los.`)) return;
     f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
@@ -3131,6 +3414,7 @@ document.addEventListener('change',ev=>{
 });
 document.addEventListener('submit',ev=>{
   ev.preventDefault(); const f=ev.target, v=id=>document.getElementById(id).value;
+  if(f.id==='f-part'){ const d=Object.fromEntries(new FormData(f)); if(adicionarFichaParticular(db,d,new Date().toISOString(),uid())){ save(); render(true); toast('Ficha adicionada à Particular'); } return; }
   if(f.id==='f-patient'){
     const cpf=document.getElementById('np-cpf');
     if(!cpfValido(cpf.value)){ cpf.setCustomValidity('CPF inválido: confira os 11 números.'); cpf.reportValidity(); return; }
