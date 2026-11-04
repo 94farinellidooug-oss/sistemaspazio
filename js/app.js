@@ -187,6 +187,7 @@ function acaoMapa(a,t,A){
   else if(a==='at-mv-ant'){ M.ant=!M.ant; render(true); }
   else if(a==='at-mv-plano'){ M.plano=!M.plano; render(true); }
   else if(a==='at-mv-ptf'){ M.pt=null; render(true); }
+  else if(a==='at-mv-ptv'){ M.pt=t.dataset.c; render(true); }
   else if(a==='at-mv-ptx'){ const c=t.dataset.c; if(A.status!=='rascunho'||!c) return; const L=A.plano.pontos, tinha=L.includes(c); tinha?L.splice(L.indexOf(c),1):L.push(c);
     if(tinha) toast(`${c} retirado do plano`,'info'); else toast(`${c} incluído no plano`);
     mudou(`plano terapêutico: pontos (${c} ${tinha?'retirado':'indicado'} no mapa corporal)`); }
@@ -208,8 +209,7 @@ function toqueMapa(ev,svg){
   if(rasc&&M.rad){ if(!sobre){ toast('Toque sobre o corpo para marcar o destino','info'); return; }
     const m=editarMarca(A,M.rad,'destino',[q.x/w,q.y/h]); M.rad=null; if(m){ M.sel=m.id; mudou('mapa corporal: trajeto da irradiação'); toast('Trajeto da irradiação marcado'); } else render(true); return; }
   const ptp=ev.target.closest('.ptp');
-  if(ptp&&(!rasc||M.ferr==='sel'||M.ferr==='ponto')){ M.pt=ptp.dataset.pt; M.sel=null; M.rm=false; render(true); return; }
-  if(rasc&&M.ferr==='ponto'){ if(mk){ M.sel=mk.dataset.id; M.pt=null; M.rm=false; render(true); } else toast('Toque num dos pontos do mapa para ver a ficha','info'); return; }
+  if(ptp&&(!rasc||M.ferr==='sel')){ M.pt=ptp.dataset.pt; M.rm=false; render(true); return; }
   if(!rasc||M.ferr==='sel'){ if(mk){ M.sel=mk.dataset.id; M.pt=null; M.rm=false; render(true); } return; }
   if(!sobre){ toast('Toque sobre o corpo para marcar','info'); return; }
   const tipo=M.ferr, m=adicionarMarca(A,{id:uid(),tipo,vista:v,face:f,x:q.x/w,y:q.y/h,lado:ladoDe(v,f,q.x)},new Date().toISOString()); if(!m) return;

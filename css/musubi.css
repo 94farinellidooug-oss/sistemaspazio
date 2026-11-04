@@ -760,9 +760,9 @@ input[type=checkbox]{accent-color:var(--brand)}
 /* Etapa 4A · ajustes: indicar pontos no mapa */
 .ptp.disp circle:not(.pt-h){fill:var(--surface);stroke:var(--line-2,#b8bfb0);stroke-width:1.4}
 
-.mapa4.indicando .ptp{cursor:copy}
-.mapa4.indicando .ptp.plano{cursor:pointer}
-.mapa4.indicando .ptp .pt-h{r:11px}
+
+
+
 .mp-seg{margin-top:12px;display:grid;gap:8px}
 .mp-seg .lbl{display:flex;align-items:center;gap:6px}
 .mp-seg .notice{margin:0}
@@ -775,3 +775,13 @@ input[type=checkbox]{accent-color:var(--brand)}
 .fp-dl dd{white-space:normal}
 #ficha-pt .ed-a{display:flex;align-items:center;gap:8px;margin:12px 0 6px}
 #ficha-pt .notice{margin-top:8px}
+/* Pontos próximos da marcação */
+.px{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:grid;gap:10px}
+.px-i{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;background:var(--surface)}
+.px-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
+.px-a{margin:0;font-size:.86rem}
+.px-b{display:flex;flex-wrap:wrap;gap:6px}
+.px-i .pill{justify-self:start}
+.px-n{margin:0}
+.mapa4 .ptp.prox text{display:inline;fill:var(--ink);font-weight:600}
+#ed-mk .px{margin:12px 0 14px;padding:12px 0 14px;border-bottom:1px solid var(--line)}
