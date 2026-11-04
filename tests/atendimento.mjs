@@ -5,7 +5,8 @@
 // Uso: node tests/atendimento.mjs
 import { seed } from '../js/dados/exemplos.js';
 import { hidratar, migrarV1, paraV1, registrarSessao } from '../js/dados/migracao.js';
-import { avaliacaoEditavel, descartarRascunho, estacao, finalizarAtendimento, iniciarAtendimento, preenchimento, rascunhoDe, registrarAlteracao } from '../js/dados/atendimento.js';
+import { alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirPulso, descartarRascunho, estacao, finalizarAtendimento, iniciarAtendimento, preenchimento, rascunhoDe, registrarAlteracao, registroDe } from '../js/dados/atendimento.js';
+import { evaluate } from '../js/raciocinio/avaliacao.js';
 
 let falhas = 0, total = 0;
 const ok = (cond, msg) => { total++; console.log(`${cond ? 'ok   ' : 'FALHA'} ${msg}`); if (!cond) falhas++; };
@@ -65,6 +66,42 @@ ok(!descartarRascunho(p, c), 'atendimento finalizado não pode ser descartado');
 const f = iniciarAtendimento(p, { id: 'r5', data: '2026-11-03' }, EM);
 ok(preenchimento(p, f, 5, []) === 0 && (f.plano.pontos.push('F3'), f.plano.tec.push('Ventosa'), preenchimento(p, f, 5, [])) === 1, 'preenchimento do plano: pontos e técnicas');
 ok(estacao(10, 'Sul') === 'Primavera' && estacao(10, 'Norte') === 'Outono' && estacao(0, 'Sul') === 'Verão' && estacao(6, 'Norte') === 'Verão', 'estação pelo mês e hemisfério');
+
+// 7. Etapa 3A: registro da avaliação com camada de compatibilidade
+d = novo(); p = d.patients[0];
+const v1Antes = J(paraV1(d));
+const g = iniciarAtendimento(p, { id: 'r6', data: '2026-11-03' }, EM), gv = g.avaliacao, sig0 = [...gv.signs];
+const R0 = registroDe(gv);
+ok(J(gv.signs) === J(sig0) && !gv.achados && !gv.pulso, 'avaliação antiga é lida sem conversão (nada é alterado ao abrir)');
+ok(sig0.filter(k => !k.startsWith('pulso_')).every(k => R0.achados[k].sit === 'pos' && R0.achados[k].orig === '') && J(R0.pulso.semLado) === J(sig0.filter(k => k.startsWith('pulso_'))), 'sinais antigos aparecem como positivos de origem não informada; pulso antigo fica sem lado');
+alternarPulso(gv, 'esq', 'pulso_rapido'); alternarPulso(gv, 'dir', 'pulso_rapido');
+ok(gv.signs.filter(k => k === 'pulso_rapido').length === 1, 'mesma classificação nos dois lados conta uma vez');
+alternarPulso(gv, 'esq', 'pulso_rapido');
+ok(gv.signs.includes('pulso_rapido'), 'retirar de um lado mantém o sinal se o outro lado ainda tem');
+alternarPulso(gv, 'dir', 'pulso_rapido');
+ok(!gv.signs.includes('pulso_rapido'), 'retirar dos dois lados retira o sinal');
+ok(J(gv.signs) === J(sig0), 'depois de marcar e desmarcar, os sinais voltam ao que eram (ordem preservada)');
+definirPulso(gv, 'esq.deficiencia', 'Yin'); definirPulso(gv, 'dir.pos.chi', 'fraco');
+ok(J(gv.signs) === J(sig0) && gv.pulso.esq.deficiencia === 'Yin' && gv.pulso.dir.pos.chi === 'fraco', 'campos escritos do pulso não entram no cálculo');
+alternarAchado(gv, 'zumbido', 'anamnese');
+ok(gv.signs.at(-1) === 'zumbido' && gv.achados.zumbido.sit === 'pos' && gv.achados.zumbido.orig === 'anamnese', 'achado positivo entra no cálculo com a origem padrão');
+alternarAchado(gv, 'zumbido', 'anamnese');
+ok(!gv.signs.includes('zumbido') && gv.achados.zumbido.sit === 'neg', 'negativo fica registrado e sai do cálculo');
+alternarAchado(gv, 'zumbido', 'anamnese');
+ok(!gv.achados.zumbido && J(gv.signs) === J(sig0), 'terceiro toque volta a não avaliado');
+definirAchado(gv, sig0.find(k => !k.startsWith('pulso_')), 'orig', 'exame');
+ok(J(evaluate(gv.signs)) === J(evaluate(sig0)), 'origem não muda as hipóteses');
+definirAchado(gv, 'lombalgia', 'sit', 'pos'); definirAchado(gv, 'lombalgia', 'sit', 'na');
+ok(J(gv.signs) === J(sig0) && !gv.achados.lombalgia, 'situação pela lista: positivo entra, não avaliado sai');
+alternarPulso(gv, 'semLado', sig0.find(k => k.startsWith('pulso_')) || 'pulso_corda');
+gv.linguaObs = 'saburra fina';
+ok(J(paraV1(d)) === v1Antes, 'rascunho com registro novo não muda o formato do protótipo');
+g.etapas.push(1); finalizarAtendimento(p, g, EM, 'av6');
+const rg = p.avaliacoes.find(x => x.id === 'av6');
+ok(rg.pulso.esq.deficiencia === 'Yin' && rg.linguaObs === 'saburra fina' && rg.achados && rg.signs.length === gv.signs.length, 'finalizar leva o registro para a avaliação no musubi-v2');
+ok(J(Object.keys(paraV1(d).patients[0].assess.at(-1))) === J(['id','date','signs','status','nota']), 'exportação v1 continua só com sinais, status e nota');
+const h = iniciarAtendimento(p, { id: 'r7', data: '2026-11-04' }, EM);
+ok(J(h.avaliacao.pulso.esq.cls) === J(rg.pulso.esq.cls) && h.avaliacao.pulso.esq.deficiencia === '' && J(h.avaliacao.achados) === J(rg.achados) && !h.avaliacao.linguaObs, 'novo atendimento traz classificações e achados; campos escritos começam vazios');
 
 console.log(falhas ? `\n${falhas} de ${total} verificações falharam.` : `\n${total} verificações do atendimento passaram.`);
 process.exit(falhas ? 1 : 0);

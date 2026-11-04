@@ -12,6 +12,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
 let falhas = 0;
+const J = x => JSON.stringify(x);
 const ok = (cond, msg) => { console.log(`${cond ? 'ok   ' : 'FALHA'} ${msg}`); if (!cond) falhas++; };
 const NOME = 'Clara Atendimento';
 const SINAIS = ['pulso_corda', 'irritabilidade', 'tpm', 'suspiros'];
@@ -57,12 +58,37 @@ async function verificar(browser, url, nome) {
   await etapa(1);
 
   // Avaliação com o raciocínio existente
-  for (const s of SINAIS) await p.click(`[data-act="at-sinal"][data-s="${s}"]`);
+  // Etapa 3A: 9 abas; o pulso é marcado por lado, os demais sinais pelo achado
+  ok(JSON.stringify((await p.locator('.ab-bar .ab').allTextContents()).map(t => t.replace(/^\d+/, '').replace(/\d+$/, '').trim())) === JSON.stringify(['Língua e pulso','Ba Gang','Zang-Fu','Qi e Xue','Jin Ye','Jing e Shen','Fatores patogênicos','Vasos extraordinários','Contexto sazonal']), `${nome}: avaliação em 9 abas na ordem aprovada`);
+  ok(await p.locator('.pulso-l').count() === 2 && await p.locator('[data-act="at-pulso"][data-l="esq"]').count() === 7 && await p.locator('[data-act="at-pulso"][data-l="dir"]').count() === 7, `${nome}: pulso esquerdo e direito com as 7 classificações`);
+  for (const s of SINAIS) await p.click(s.startsWith('pulso_') ? `[data-act="at-pulso"][data-l="esq"][data-k="${s}"]` : `[data-act="at-sinal"][data-s="${s}"]`);
+  await espera();
   const H = evaluate(SINAIS);
   ok(await p.locator('.hp').count() === H.length && await tem('.hp', H[0].p.nome), `${nome}: hipóteses iguais às do raciocínio clínico (${H.length})`);
   await p.click(`[data-act="at-hip"][data-p="${H[0].p.id}"][data-st="aceito"]`); await espera();
-  await p.click('.mais-card summary >> text=Oito vasos'); await p.check('[data-vaso="Chong Mai"]'); await espera();
+  // Registro bilateral e achados: gravados no musubi-v2, sem mudar o cálculo
+  await p.click('[data-act="at-pulso"][data-l="dir"][data-k="pulso_corda"]'); await espera();
+  await p.click('[data-act="at-pulso"][data-l="dir"][data-k="pulso_fino"]'); await espera();
+  await p.fill('[data-atp="dir.orgao"]', 'Baço'); await p.fill('[data-atp="esq.deficiencia"]', 'Yin');
+  await p.click('.pulso-l[aria-label="Pulso esquerdo"] summary'); await p.fill('[data-atp="esq.pos.guan"]', 'Em corda'); await espera();
+  await p.click('[data-act="at-sinal"][data-s="insonia"]'); await p.click('[data-act="at-sinal"][data-s="insonia"]'); await espera();
+  await p.selectOption('[data-atorig="irritabilidade"]', 'obs'); await espera();
+  await p.fill('[data-atr="linguaObs"]', 'Saburra fina'); await espera();
+  j = await paciente(); let rv = j.atendimentos[0].avaliacao;
+  ok(J(rv.pulso.esq.cls) === J(['pulso_corda']) && J(rv.pulso.dir.cls) === J(['pulso_corda', 'pulso_fino']) && rv.pulso.dir.orgao === 'Baço' && rv.pulso.esq.deficiencia === 'Yin' && rv.pulso.esq.pos.guan === 'Em corda', `${nome}: pulso por lado, campos e posições gravados`);
+  ok(rv.achados.insonia.sit === 'neg' && rv.achados.irritabilidade.orig === 'obs' && rv.achados.tpm.orig === 'anamnese' && rv.linguaObs === 'Saburra fina', `${nome}: situação, origem e observação da língua gravadas`);
+  ok(J(rv.signs) === J([...SINAIS, 'pulso_fino']), `${nome}: sinais do cálculo = positivos + classificações de qualquer lado`);
+  ok(await p.locator('.hp').count() === evaluate(rv.signs).length, `${nome}: hipóteses = raciocínio existente para esses sinais`);
+  await p.click('[data-act="at-pulso"][data-l="dir"][data-k="pulso_fino"]'); await p.click('[data-act="at-pulso"][data-l="dir"][data-k="pulso_corda"]'); await espera();
+  j = await paciente(); rv = j.atendimentos[0].avaliacao;
+  ok(J(rv.signs) === J(SINAIS), `${nome}: classificação ainda marcada no outro lado continua contando`);
+  ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${nome}: aba Língua e pulso sem rolagem horizontal`);
+  await p.click('[data-act="at-aba"][data-i="1"]'); await espera();
+  ok(await tem('.axis') && await p.locator('[data-atr="bgInterp"]').count() === 1, `${nome}: aba Ba Gang com cálculo e interpretação`);
+  await p.click('[data-act="at-aba"][data-i="7"]'); await espera();
+  await p.check('[data-vaso="Chong Mai"]'); await espera();
   await p.fill('[data-vnota="Chong Mai"]', 'considerar no ciclo'); await espera();
+  await p.click('[data-act="at-aba"][data-i="8"]'); await espera();
   ok(await tem('.sazonal', 'hemisfério Sul'), `${nome}: contexto sazonal complementar`);
   j = await paciente();
   ok(J(j.atendimentos[0].avaliacao.signs) === J(SINAIS) && j.atendimentos[0].avaliacao.status[H[0].p.id] === 'aceito', `${nome}: sinais e hipótese aceita no rascunho`);
@@ -132,7 +158,6 @@ async function verificar(browser, url, nome) {
   ok(erros.length === 0, `${nome}: sem erros no console${erros.length ? ' → ' + erros.join(' | ') : ''}`);
   await ctx.close();
 }
-const J = x => JSON.stringify(x);
 const srv = await iniciar(0); const base = `http://localhost:${srv.address().port}/`;
 const browser = await chromium.launch();
 await verificar(browser, base + 'index.html', 'modular');

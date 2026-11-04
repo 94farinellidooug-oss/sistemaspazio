@@ -8,7 +8,7 @@ import { pentagram } from '../componentes/pentagrama.js';
 import { EL, KE, SHENG, controlador, mae } from '../conhecimento/elementos.js';
 import { CAUT, PT } from '../conhecimento/pontos.js';
 import { SIGN, SIGNS } from '../conhecimento/sinais.js';
-import { ELEMENTO_ESTACAO, ETAPAS, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento } from '../dados/atendimento.js';
+import { ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
 import { alertasDe } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
 import { db, patient } from '../dados/repositorio.js';
@@ -50,29 +50,82 @@ function cmpBasal(p,a,av){
     <div class="cmp3"><div class="ok"><b>${res.length}</b><small>não aparecem mais</small></div><div><b>${man.length}</b><small>mantidos</small></div><div class="warn"><b>${nov.length}</b><small>novos</small></div></div>
     <details class="mais"><summary>Ver sinais ${ic('baixo')}</summary>${[['Não aparecem mais',res,'ok'],['Novos',nov,'warn'],['Mantidos',man,'']].filter(x=>x[1].length).map(([t,L,k])=>`<div class="lbl" style="margin:10px 0 6px">${t}</div><div class="chips">${L.map(x=>`<span class="pill ${k}">${esc(SIGN[x]||x)}</span>`).join('')}</div>`).join('')}</details></div>`;
 }
+export const ABAS_AVALIACAO = ['Língua e pulso','Ba Gang','Zang-Fu','Qi e Xue','Jin Ye','Jing e Shen','Fatores patogênicos','Vasos extraordinários','Contexto sazonal'];
+const SIT_NOME = Object.fromEntries(SITUACOES_ACHADO);
+const optsAt = (L,v) => L.map(([k,l])=>`<option value="${k}" ${k===v?'selected':''}>${l}</option>`).join('');
+function chipAchadoAt(R,k,l,orig){
+  const x=R.achados[k], sit=x?.sit||'na';
+  return `<button class="chip achado s-${sit}" data-act="at-sinal" data-s="${k}" data-o="${orig}" aria-pressed="${sit==='pos'}" data-tip="${SIT_NOME[sit]} · toque para alternar">${sit==='pos'?ic('check'):sit==='neg'?ic('x'):''}${l}</button>`;
+}
+function listaAchadosAt(R,chaves){
+  const L=chaves.filter(k=>R.achados[k]);
+  return L.length?`<div class="achados">${L.map(k=>{ const x=R.achados[k]; return `<div class="ach-r"><span class="grow">${esc(SIGN[k])}</span>
+    <select class="mini-sel" data-atsit="${k}" aria-label="Situação: ${esc(SIGN[k])}">${optsAt(SITUACOES_ACHADO,x.sit)}</select>
+    <select class="mini-sel" data-atorig="${k}" aria-label="Origem: ${esc(SIGN[k])}">${x.orig?'':'<option value="" selected>Origem não informada</option>'}${optsAt(ORIGENS_ACHADO,x.orig)}</select></div>`; }).join('')}</div>`:'';
+}
+function abaLinguaPulso(R){
+  const LG=SIGNS['Língua'], PU=SIGNS['Pulso'], ST=SIGNS['Sinais e sintomas'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
+  const uniao=PU.filter(([k])=>R.pulso.esq.cls.includes(k)||R.pulso.dir.cls.includes(k)||R.pulso.semLado.includes(k));
+  return `<div class="card"><div class="card-h"><h3>Língua</h3><span class="muted sm">toque: positivo, negativo, não avaliado</span></div>
+      <div class="chips">${LG.map(([k,l])=>chipAchadoAt(R,k,l,'exame')).join('')}</div>${listaAchadosAt(R,LG.map(x=>x[0]))}
+      <div class="field" style="margin-top:12px"><label class="lbl" for="at-lgobs">Observações da língua</label><textarea id="at-lgobs" data-atr="linguaObs">${esc(R.linguaObs)}</textarea></div></div>
+    <div class="card"><div class="card-h"><h3>Pulsologia bilateral</h3><span class="pill">várias classificações por lado</span></div>
+      <div class="pulso-g">${LADOS_PULSO.map(([ld,nm])=>{ const L=R.pulso[ld]; return `<section class="pulso-l" aria-label="${nm}"><h4>${nm}</h4>
+        <div class="lbl">Classificações</div><div class="chips">${PU.map(([k,l])=>`<button class="chip ${L.cls.includes(k)?'on':''}" data-act="at-pulso" data-l="${ld}" data-k="${k}" aria-pressed="${L.cls.includes(k)}">${l}</button>`).join('')}</div>
+        <div class="form" style="margin-top:12px">
+          <div class="field"><label class="lbl" for="at-p-${ld}-def">Deficiência identificada</label><input id="at-p-${ld}-def" data-atp="${ld}.deficiencia" value="${esc(L.deficiencia)}" placeholder="Registro do profissional"></div>
+          <div class="field"><label class="lbl" for="at-p-${ld}-org">Órgão ou sistema relacionado</label><input id="at-p-${ld}-org" data-atp="${ld}.orgao" value="${esc(L.orgao)}" placeholder="Registro do profissional"></div>
+          <div class="field full"><label class="lbl" for="at-p-${ld}-obs">Observações da avaliação</label><textarea id="at-p-${ld}-obs" data-atp="${ld}.obs">${esc(L.obs)}</textarea></div></div>
+        <details class="mais pos-d" ${Object.values(L.pos).some(Boolean)?'open':''}><summary>Por posição: Cun, Guan e Chi ${ic('baixo')}</summary>
+          <div class="pos-g">${POSICOES_PULSO.map(([pk,pl])=>`<div class="field"><label class="lbl" for="at-p-${ld}-${pk}">${pl}</label><textarea id="at-p-${ld}-${pk}" data-atp="${ld}.pos.${pk}" placeholder="Características e observações">${esc(L.pos[pk])}</textarea></div>`).join('')}</div></details>
+      </section>`; }).join('')}</div>
+      ${R.pulso.semLado.length?`<div class="notice" style="margin-top:14px">${ic('info')}<div><b>Registrado antes do pulso bilateral, sem lado:</b> <span class="chips" style="display:inline-flex;margin-top:6px">${R.pulso.semLado.map(k=>`<button class="chip on" data-act="at-pulso" data-l="semLado" data-k="${k}" data-tip="Retirar">${nome(k)} ✕</button>`).join('')}</span><div class="sm" style="margin-top:6px">Continua contando para as hipóteses. Marque no lado certo e retire daqui.</div></div></div>`:''}
+      <div class="notice" style="margin-top:14px">${ic('info')}<div><b>Compatibilidade com o cálculo.</b> Uma classificação conta para as hipóteses se estiver marcada em qualquer lado. Hoje entram: ${uniao.map(([,l])=>`<b>${l}</b>`).join(', ')||'nenhuma'}. Deficiência, órgão, observações e posições são registro do profissional e não alteram o cálculo.</div></div></div>
+    <div class="card"><div class="card-h"><h3>Sinais e sintomas</h3><span class="muted sm">alimentam as hipóteses, como antes</span></div>
+      <div class="chips">${ST.map(([k,l])=>chipAchadoAt(R,k,l,'anamnese')).join('')}</div>${listaAchadosAt(R,ST.map(x=>x[0]))}</div>`;
+}
+function abaBaGang(av,R){
+  const bg=bagang(av.signs);
+  return `<div class="card"><div class="card-h"><h3>Oito princípios (Ba Gang)</h3><span class="pill warn">calculado pelo sistema</span></div>
+      <div class="grid" style="gap:12px;margin-top:6px">${eixoBg('Frio','Calor',bg.fc)}${eixoBg('Deficiência','Excesso',bg.de)}</div>
+      <p class="muted sm" style="margin-top:10px">Mesma lógica de antes, a partir de ${bg.n} sinais.</p></div>
+    <div class="card"><div class="field"><label class="lbl" for="at-bgint">Interpretação do profissional</label><textarea id="at-bgint" data-atr="bgInterp" placeholder="Interior/exterior, frio/calor, deficiência/excesso, Yin/Yang segundo a sua avaliação">${esc(R.bgInterp)}</textarea></div></div>`;
+}
+function abaVasos(a){
+  return `<div class="card"><div class="card-h"><h3>Oito vasos extraordinários</h3><span class="pill">pares e encaminhamento na etapa 3C</span></div>
+      <p class="muted sm" style="margin-bottom:10px">Marque os vasos que o profissional considerou e anote o raciocínio. Nada é sugerido automaticamente.</p>
+      <div class="vasos">${VASOS.map(v=>{ const x=a.vasos?.[v]||{}; return `<div class="vaso"><label class="chip ${x.considerar?'on':''}"><input type="checkbox" data-vaso="${v}" ${x.considerar?'checked':''}>${v}</label><input class="vaso-n" data-vnota="${v}" placeholder="Anotação" value="${esc(x.nota||'')}" aria-label="Anotação sobre ${v}"></div>`; }).join('')}</div></div>`;
+}
+function abaSazonal(p,a){
+  const c=p.cadastro||{}, hem=c.hemisferio||'Sul', est=estacao(Number(a.data.slice(5,7))-1,hem);
+  return `<div class="card sazonal"><div class="card-h"><h3>${ic('sol')} Contexto sazonal</h3><span class="pill">complementar</span></div>
+      <p class="sm">${c.cidade?esc(c.cidade)+' · ':''}hemisfério ${hem} · <b>${est}</b>, estação ligada a ${elTag(ELEMENTO_ESTACAO[est])}.</p>
+      <p class="muted sm" style="margin-top:6px">Informação de contexto pela data do atendimento${c.cidade?'':' (cidade não cadastrada; hemisfério Sul por padrão)'}. Não indica pontos nem conduta.</p></div>`;
+}
+const abaEmBreve = n => `<div class="card">${vazio('lista',`${n}: campos livres na etapa 3B`,'Esta aba recebe os registros do profissional por categoria na próxima etapa. Nada é sugerido nem calculado aqui.')}</div>`;
+function contaAbaAt(i,R,a){
+  if(i===0) return Object.keys(R.achados).length+R.pulso.esq.cls.length+R.pulso.dir.cls.length+R.pulso.semLado.length;
+  if(i===7) return Object.values(a.vasos||{}).filter(v=>v.considerar).length;
+  return 0;
+}
 function eAvaliacao(p,a){
   const av=avaliacaoEditavel(p,a);
   if(!av) return vazio('yin','Atendimento finalizado sem avaliação energética','A avaliação deste dia pode ser feita como reavaliação avulsa no perfil do paciente.');
-  const H=evaluate(av.signs), bg=bagang(av.signs), c=p.cadastro||{}, hem=c.hemisferio||'Sul', est=estacao(Number(a.data.slice(5,7))-1,hem);
-  return `<div class="notice" style="margin-bottom:16px">${ic('info')}<div><b>Apoio ao raciocínio clínico.</b> As hipóteses vêm dos sinais marcados e não são diagnóstico. Cabe ao profissional aceitar, descartar e decidir.</div></div>
+  const H=evaluate(av.signs), R=registroDe(av), i=Math.max(0,Math.min(8,ui.avAba|0));
+  const corpo=[()=>abaLinguaPulso(R),()=>abaBaGang(av,R),...ABAS_AVALIACAO.slice(2,7).map(n=>()=>abaEmBreve(n)),()=>abaVasos(a),()=>abaSazonal(p,a)][i]();
+  return `<div class="notice" style="margin-bottom:16px">${ic('info')}<div><b>Apoio ao raciocínio clínico.</b> As hipóteses vêm dos sinais positivos e das classificações de pulso, e não são diagnóstico. Cabe ao profissional aceitar, descartar e decidir.</div></div>
+  <div class="ab-bar" role="tablist" aria-label="Abas da avaliação">${ABAS_AVALIACAO.map((t,j)=>{ const n=contaAbaAt(j,R,a); return `<button role="tab" class="ab ${i===j?'on':''}" aria-selected="${i===j}" data-act="at-aba" data-i="${j}"><span class="ab-n">${j+1}</span>${t}${n?`<span class="ab-c">${n}</span>`:''}</button>`; }).join('')}</div>
   <div class="grid g-side"><div class="grid" style="align-content:start">
-    <div class="card"><div class="card-h"><h3>Sinais observados</h3><span class="pill acc">${av.signs.length} marcados</span></div>
-      ${a.status==='rascunho'&&p.avaliacoes.length?'<p class="muted sm" style="margin-bottom:10px">Sinais trazidos da última avaliação. Desmarque o que não está mais presente.</p>':''}
-      <div class="sigs">${Object.entries(SIGNS).map(([g,L])=>`<div><div class="lbl" style="margin-bottom:8px">${g}</div><div class="chips">${L.map(([k,l])=>`<button class="chip ${av.signs.includes(k)?'on':''}" data-act="at-sinal" data-s="${k}" aria-pressed="${av.signs.includes(k)}">${l}</button>`).join('')}</div></div>`).join('')}</div></div>
-    <details class="card mais-card" ${Object.values(a.vasos||{}).some(v=>v.considerar||v.nota)?'open':''}><summary><h3>Oito vasos extraordinários</h3><span class="pill">conteúdo completo na etapa 3</span>${ic('baixo')}</summary>
-      <p class="muted sm" style="margin:10px 0">Marque os vasos que o profissional considerou e anote o raciocínio. Critérios e pontos de abertura entram na etapa 3; aqui nada é sugerido automaticamente.</p>
-      <div class="vasos">${VASOS.map(v=>{ const x=a.vasos?.[v]||{}; return `<div class="vaso"><label class="chip ${x.considerar?'on':''}"><input type="checkbox" data-vaso="${v}" ${x.considerar?'checked':''}>${v}</label><input class="vaso-n" data-vnota="${v}" placeholder="Anotação" value="${esc(x.nota||'')}" aria-label="Anotação sobre ${v}"></div>`; }).join('')}</div></details>
+    ${a.status==='rascunho'&&p.avaliacoes.length&&i===0?'<p class="muted sm">Achados trazidos da última avaliação. Ajuste o que mudou.</p>':''}
+    ${corpo}
+    <div class="ab-nav">${i?`<button class="btn" data-act="at-aba" data-i="${i-1}">${ic('esq')}${ABAS_AVALIACAO[i-1]}</button>`:'<span></span>'}${i<8?`<button class="btn" data-act="at-aba" data-i="${i+1}">${ABAS_AVALIACAO[i+1]}${ic('dir')}</button>`:''}</div>
   </div>
   <div class="grid" style="align-content:start">
-    <div class="card"><div class="card-h"><h3>Hipóteses de padrão</h3><span class="muted sm">${H.length} encontradas</span></div>
+    <div class="card"><div class="card-h"><h3>Hipóteses de padrão</h3><span class="muted sm">${av.signs.length} sinais · ${H.length} hipóteses</span></div>
       ${H.length?H.map(h=>{const s=av.status[h.p.id]||'';return `<div class="hp ${s}"><div class="hp-h">${anel(h.score,Math.round(h.score*100)+'%',EL[h.p.el].cor)}<div class="grow"><b>${h.p.nome}</b><div>${elTag(h.p.el)} <span class="muted sm">· ${h.m.length}/${h.p.sinais.length} sinais</span></div></div></div>
         <div class="hp-a"><button class="btn sm ${s==='aceito'?'pri':''}" data-act="at-hip" data-p="${h.p.id}" data-st="aceito">${ic('check')}${s==='aceito'?'Aceito':'Aceitar'}</button><button class="btn sm" data-act="at-hip" data-p="${h.p.id}" data-st="descartado">${s==='descartado'?'Descartado':'Descartar'}</button></div>
         <details class="mais"><summary>Por que aparece ${ic('baixo')}</summary><p class="sm"><b>Presentes:</b> ${h.m.map(x=>SIGN[x]).join(', ')}</p>${h.falta.length?`<p class="sm muted"><b>Esperados, não observados:</b> ${h.falta.map(x=>SIGN[x]).join(', ')}</p>`:''}</details></div>`;}).join(''):vazio('yin','Sem hipóteses ainda','Marque ao menos dois sinais de língua, pulso ou sintomas.')}</div>
     ${cmpBasal(p,a,av)}
-    <div class="card"><h3>Oito princípios (Ba Gang)</h3><div class="grid" style="gap:12px;margin-top:10px">${eixoBg('Frio','Calor',bg.fc)}${eixoBg('Deficiência','Excesso',bg.de)}</div></div>
-    <div class="card sazonal"><div class="card-h"><h3>${ic('sol')} Contexto sazonal</h3><span class="pill">complementar</span></div>
-      <p class="sm">${c.cidade?esc(c.cidade)+' · ':''}hemisfério ${hem} · <b>${est}</b>, estação ligada a ${elTag(ELEMENTO_ESTACAO[est])}.</p>
-      <p class="muted sm" style="margin-top:6px">Informação de contexto pela data do atendimento${c.cidade?'':' (cidade não cadastrada; hemisfério Sul por padrão)'}. Não indica pontos nem conduta.</p></div>
     <div class="card"><div class="field"><label class="lbl" for="at-avnota">Observações da avaliação</label><textarea id="at-avnota" data-atf="avnota">${esc(av.nota||'')}</textarea></div></div>
   </div></div>`;
 }
