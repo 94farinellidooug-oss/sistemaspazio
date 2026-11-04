@@ -5,7 +5,7 @@
 // Uso: node tests/atendimento.mjs
 import { seed } from '../js/dados/exemplos.js';
 import { hidratar, migrarV1, paraV1, registrarSessao } from '../js/dados/migracao.js';
-import { alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirPulso, descartarRascunho, estacao, finalizarAtendimento, iniciarAtendimento, preenchimento, rascunhoDe, registrarAlteracao, registroDe } from '../js/dados/atendimento.js';
+import { CATEGORIAS, adicionarAchadoLivre, definirAchadoLivre, encaminhados, notaCategoria, removerAchadoLivre, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirPulso, descartarRascunho, estacao, finalizarAtendimento, iniciarAtendimento, preenchimento, rascunhoDe, registrarAlteracao, registroDe } from '../js/dados/atendimento.js';
 import { evaluate } from '../js/raciocinio/avaliacao.js';
 
 let falhas = 0, total = 0;
@@ -102,6 +102,31 @@ ok(rg.pulso.esq.deficiencia === 'Yin' && rg.linguaObs === 'saburra fina' && rg.a
 ok(J(Object.keys(paraV1(d).patients[0].assess.at(-1))) === J(['id','date','signs','status','nota']), 'exportação v1 continua só com sinais, status e nota');
 const h = iniciarAtendimento(p, { id: 'r7', data: '2026-11-04' }, EM);
 ok(J(h.avaliacao.pulso.esq.cls) === J(rg.pulso.esq.cls) && h.avaliacao.pulso.esq.deficiencia === '' && J(h.avaliacao.achados) === J(rg.achados) && !h.avaliacao.linguaObs, 'novo atendimento traz classificações e achados; campos escritos começam vazios');
+
+// 8. Etapa 3B: achados livres por categoria
+d = novo(); p = d.patients[0];
+const v1b = J(paraV1(d));
+const k = iniciarAtendimento(p, { id: 'r8', data: '2026-11-04' }, EM), kv = k.avaliacao, ks = J(kv.signs);
+ok(J(CATEGORIAS.map(x => x[1])) === J(['Zang-Fu','Qi e Xue','Jin Ye','Jing e Shen','Fatores patogênicos']), 'as 5 categorias na ordem aprovada');
+const i1 = adicionarAchadoLivre(kv, 'jinye', { id: 'l1', texto: 'Edema leve', orig: 'exame', sit: 'pos' }, EM);
+adicionarAchadoLivre(kv, 'zangfu', { id: 'l2', texto: 'Fígado em excesso', orig: 'obs', sit: 'pos' }, EM);
+notaCategoria(kv, 'jingshen', 'Shen agitado');
+ok(!i1.sintese && !i1.plano && encaminhados(kv, 'sintese').length === 0 && encaminhados(kv, 'plano').length === 0, 'achado novo não vai sozinho para a Síntese nem para o Plano');
+ok(J(kv.signs) === ks, 'achados livres não entram no cálculo');
+definirAchadoLivre(kv, 'jinye', 'l1', 'sintese', true);
+ok(J(encaminhados(kv, 'sintese').map(x => [x[1], x[2].map(i => i.texto)])) === J([['Jin Ye', ['Edema leve']]]) && encaminhados(kv, 'plano').length === 0, 'Síntese recebe só o marcado, na sua categoria; o Plano continua vazio');
+definirAchadoLivre(kv, 'zangfu', 'l2', 'plano', true);
+ok(encaminhados(kv, 'plano').map(x => x[0]).join() === 'zangfu', 'Plano recebe só o que foi marcado para o Plano');
+definirAchadoLivre(kv, 'jinye', 'l1', 'sit', 'neg'); definirAchadoLivre(kv, 'jinye', 'l1', 'orig', 'anamnese');
+ok(i1.sit === 'neg' && i1.orig === 'anamnese', 'situação e origem do achado livre');
+ok(J(paraV1(d)) === v1b, 'achados livres não mudam o formato do protótipo');
+k.etapas.push(1); finalizarAtendimento(p, k, EM, 'av8');
+const rk = p.avaliacoes.find(x => x.id === 'av8');
+ok(rk.categorias.jinye.itens[0].texto === 'Edema leve' && rk.categorias.jingshen.nota === 'Shen agitado' && rk.categorias !== kv.categorias, 'finalizar leva os achados livres para a avaliação (cópia)');
+ok(J(Object.keys(paraV1(d).patients[0].assess.at(-1))) === J(['id','date','signs','status','nota']), 'exportação v1 continua sem os achados livres');
+ok(removerAchadoLivre(rk, 'zangfu', 'l2')?.texto === 'Fígado em excesso' && rk.categorias.zangfu.itens.length === 0 && removerAchadoLivre(rk, 'zangfu', 'x') === null, 'remoção de achado livre');
+const m = iniciarAtendimento(p, { id: 'r9', data: '2026-11-05' }, EM);
+ok(!m.avaliacao.categorias, 'novo atendimento começa sem achados livres');
 
 console.log(falhas ? `\n${falhas} de ${total} verificações falharam.` : `\n${total} verificações do atendimento passaram.`);
 process.exit(falhas ? 1 : 0);
