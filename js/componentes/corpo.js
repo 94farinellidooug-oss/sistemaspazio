@@ -106,6 +106,13 @@ const NOME_POS = { anterior:'Anterior', posterior:'Posterior', lat:'Laterais', '
 export const vistasDoPonto = c => Object.keys(POS).filter(k => POS[k][c]).map(k => NOME_POS[k]);
 export const temPosicao = c => vistasDoPonto(c).length > 0;
 export const PONTOS_NO_MAPA = [...new Set(Object.values(POS).flatMap(o => Object.keys(o)))];
+// Pontos com posição perto de uma marcação, na mesma vista. Só distância no desenho: não é indicação clínica.
+export const RAIO_PROXIMO = v => FACES[v] ? 45 : 35;
+export function pontosProximos(m){
+  const [w, h] = TAM[m.vista], R = RAIO_PROXIMO(m.vista), alvos = [[m.x * w, m.y * h], ...(m.x2 != null ? [[m.x2 * w, m.y2 * h]] : [])];
+  return PONTOS_NO_MAPA.map(c => [c, Math.min(Infinity, ...posicoes(c, m.vista, m.face || '').flatMap(([x, y]) => alvos.map(([a, b]) => Math.hypot(x - a, y - b))))])
+    .filter(([, d]) => d <= R).sort((a, b) => a[1] - b[1]).map(([c]) => c);
+}
 
 /* ---------- Marcações ---------- */
 export const COR_MARCA = { dor:'var(--crit)', sintoma:'var(--warn)', irradiacao:'var(--water)', limitacao:'var(--earth)', procedimento:'var(--brand)' };
