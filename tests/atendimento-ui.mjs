@@ -30,6 +30,13 @@ async function verificar(browser, url, nome) {
   const tem = async (sel, txt) => (await p.locator(sel, txt ? { hasText: txt } : {}).count()) > 0;
   const etapa = async i => { await p.click(`.steps [data-i="${i}"]`); await espera(); };
   const atual = () => p.$eval('.steps [aria-current="step"]', e => e.dataset.i);
+  // Mapa corporal: toca no desenho em coordenadas do próprio desenho (viewBox), com qualquer ampliação.
+  const tocar = async (x, y) => { await p.locator('svg.mapa4').scrollIntoViewIfNeeded();
+    const [cx, cy] = await p.evaluate(([x, y]) => { const s = document.querySelector('svg.mapa4'), q = s.createSVGPoint(); q.x = x; q.y = y; const r = q.matrixTransform(s.getScreenCTM()); return [r.x, r.y]; }, [x, y]);
+    await p.mouse.click(cx, cy); await espera(); };
+  const vista = async (v, f) => { await p.click(`[data-act="at-mv-vista"][data-v="${v}"]`); await espera(); if (f) { await p.click(`[data-act="at-mv-face"][data-f="${f}"]`); await espera(); } };
+  const marcar = async (t, x, y) => { await p.click(`[data-act="at-mv-ferr"][data-t="${t}"]`); await espera(); await tocar(x, y); };
+  const marcas = async () => (await paciente()).atendimentos.find(a => a.status === 'rascunho')?.mapa?.marcas || [];
 
   await p.goto(url); await p.waitForSelector('#view h1');
   await ir('cadastro');
@@ -146,7 +153,55 @@ async function verificar(browser, url, nome) {
   const plano = j.atendimentos[0].plano, W = pointWarnings(plano.pontos, j, plano.tec);
   ok(plano.pontos.includes('BP6') && plano.pontos.includes('IG4') && plano.tec[0] === 'Acupuntura', `${nome}: pontos e técnicas no plano`);
   ok(W.length > 0 && await p.locator('#at-seg .notice').count() === W.length, `${nome}: avisos de segurança iguais aos da verificação existente (${W.length}, gestante)`);
-  await etapa(4); ok(await tem('.mapa .ptl', 'BP6'), `${nome}: mapa corporal mostra os pontos do plano`);
+  await etapa(4); ok(await p.locator('svg.mapa4 .ptp.plano[data-pt="BP6"]').count() === 2, `${nome}: mapa corporal mostra os pontos do plano (BP6 dos dois lados)`);
+
+  // Etapa 4A: mapa corporal com seis vistas e marcações
+  const VB = { anterior:'0 0 200 430', posterior:'0 0 200 430', lat_d:'0 0 200 430', lat_e:'0 0 200 430', maos:'0 0 280 256', pes:'0 0 280 276' };
+  for (const [v, vb] of Object.entries(VB)) { await vista(v); ok(await p.locator('svg.mapa4').getAttribute('viewBox') === vb && await p.locator('svg.mapa4 .corpo path').count() > 0, `${nome}: vista ${v}`); }
+  await vista('maos', 'dorsal'); ok(await p.locator('svg.mapa4[data-face="dorsal"]').count() === 1, `${nome}: mãos com face dorsal`);
+  await vista('pes', 'plantar'); ok(await p.locator('svg.mapa4[data-face="plantar"]').count() === 1, `${nome}: pés com face plantar`);
+  await vista('anterior');
+  ok(J(await p.locator('svg.mapa4 .lado-t').allTextContents()) === J(['D','E']), `${nome}: D e E do paciente na vista anterior`);
+  await marcar('dor', 78, 260);
+  let M = await marcas();
+  ok(M.length === 1 && M[0].tipo === 'dor' && M[0].lado === 'dir' && M[0].vista === 'anterior' && Math.abs(M[0].x - .39) < .01 && Math.abs(M[0].y - 260 / 430) < .01, `${nome}: marcação de dor gravada no atendimento, lado direito do paciente`);
+  await marcar('sintoma', 5, 300); ok((await marcas()).length === 1, `${nome}: toque fora do corpo não marca`);
+  for (const t of ['sintoma', 'limitacao', 'procedimento']) await marcar(t, 120, 300);
+  M = await marcas();
+  ok(J(M.map(m => m.tipo)) === J(['dor','sintoma','limitacao','procedimento']) && M.slice(1).every(m => m.lado === 'esq'), `${nome}: marcações de cada tipo, várias na mesma região`);
+  ok(await p.locator('#ed-mk [data-act="at-mk-int"]').count() === 0 && await p.locator('#mk-proc').count() === 1, `${nome}: procedimento sem intensidade, com o campo do procedimento`);
+  await p.fill('#mk-proc', 'Ventosa fixa'); await espera();
+  await marcar('irradiacao', 90, 240); ok(await tem('#mp-dica', 'destino'), `${nome}: irradiação pede o destino`);
+  await tocar(86, 330);
+  M = await marcas(); const rad = M.at(-1);
+  ok(rad.tipo === 'irradiacao' && Math.abs(rad.y2 - 330 / 430) < .01 && await p.locator(`.mk[data-id="${rad.id}"] path.rad`).count() === 1, `${nome}: irradiação com trajeto da origem ao destino`);
+  // Edição
+  await p.click(`[data-act="at-mk-sel"][data-id="${M[0].id}"]`); await espera();
+  await p.click('#ed-mk [data-act="at-mk-int"][data-n="7"]'); await espera();
+  await p.selectOption('#mk-lado', 'bil'); await espera();
+  await p.fill('#mk-reg', 'Lombar'); await p.fill('#mk-nota', 'Piora sentada'); await espera();
+  M = await marcas();
+  ok(M[0].intensidade === 7 && M[0].lado === 'bil' && M[0].regiao === 'Lombar' && M[0].nota === 'Piora sentada' && M[3].procedimento === 'Ventosa fixa', `${nome}: editar intensidade, lado, região, anotação e procedimento`);
+  ok(await p.locator(`.mk[data-id="${M[0].id}"] .esp`).count() === 1 && await p.locator(`.mk[data-id="${M[0].id}"] .mk-n`).textContent() === '7', `${nome}: bilateral espelhado e intensidade no mapa`);
+  // Remoção com confirmação
+  await p.click(`[data-act="at-mk-sel"][data-id="${M[1].id}"]`); await espera();
+  await p.click('[data-act="at-mk-rm"]'); await p.click('[data-act="at-mk-rmn"]'); await espera();
+  ok((await marcas()).length === 5, `${nome}: cancelar não remove`);
+  await p.click('[data-act="at-mk-rm"]'); await p.click('[data-act="at-mk-rms"]'); await espera();
+  ok((await marcas()).length === 4 && !(await marcas()).some(m => m.id === M[1].id), `${nome}: remover depois de confirmar`);
+  // Coordenadas independentes da ampliação
+  await p.click('[data-act="at-mv-zoom"][data-d="1"]'); await p.click('[data-act="at-mv-zoom"][data-d="1"]'); await espera();
+  await marcar('dor', 130, 250);
+  M = await marcas();
+  ok(Math.abs(M.at(-1).x - .65) < .005 && Math.abs(M.at(-1).y - 250 / 430) < .005 && await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${nome}: com 200% de ampliação, a mesma coordenada do desenho e sem rolagem horizontal`);
+  await p.click(`[data-act="at-mk-sel"][data-id="${M.at(-1).id}"]`); await p.click('[data-act="at-mk-rm"]'); await p.click('[data-act="at-mk-rms"]'); await espera();
+  await p.click('[data-act="at-mv-zoom"][data-d="-1"]'); await p.click('[data-act="at-mv-zoom"][data-d="-1"]'); await espera();
+  await vista('maos', 'palmar'); await marcar('sintoma', 70, 150);
+  ok((await marcas()).at(-1).lado === 'dir' && (await marcas()).at(-1).face === 'palmar', `${nome}: mão direita na palma`);
+  await vista('anterior');
+  ok(await tem('#plano-mapa', 'BP6') && await p.locator('#sem-posicao').count() === 1, `${nome}: pontos do plano no mapa e lista "sem posição no mapa"`);
+  ok((await paciente()).atendimentos[0].historico.some(h => /mapa corporal: marcação de dor adicionada/.test(h.acao)), `${nome}: marcações registradas no histórico do atendimento`);
+  const nMarcas = (await marcas()).length;
 
   // Recarregar: o rascunho continua
   await p.reload(); await p.waitForSelector('#view h1'); await ir('pacientes');
@@ -167,6 +222,8 @@ async function verificar(browser, url, nome) {
   const v1 = paraV1(JSON.parse(await p.evaluate(() => localStorage.getItem('musubi-v2')))).patients.find(x => x.name === NOME);
   ok(v1.sessions.length === 1 && v1.sessions[0].eva === 7 && v1.sessions[0].nota === 'Respondeu bem' && v1.assess.length === 1, `${nome}: no formato do protótipo vira sessão e avaliação`);
   ok(await tem('.tabs [data-t="sessoes"].on') && await tem('.lt-i', '1º atendimento') && await tem('.lt-i', 'Estagnação, priorizar fluxo'), `${nome}: prontuário mostra o atendimento e a síntese`);
+  ok(at.mapa.marcas.length === nMarcas && await tem('.pr-mapa summary', `Mapa corporal (${nMarcas} marcações)`), `${nome}: marcações passam ao prontuário com o atendimento`);
+  ok(!J(v1).includes('marcas'), `${nome}: exportação v1 sem as marcações`);
 
   // Complementar depois de finalizar
   await p.click('.lt-i [data-act="abrir-atendimento"]'); await espera();
@@ -182,11 +239,21 @@ async function verificar(browser, url, nome) {
   await p.evaluate(() => { const b = document.querySelector('[data-act="at-sinal"][data-s="lombalgia"]'); b.closest('fieldset').disabled = false; b.click(); }); await espera();
   ok(J((await paciente()).avaliacoes[0].signs) === sinaisBasal, `${nome}: mesmo forçando o clique, a basal não muda`);
   await etapa(2); ok(await p.locator('[data-atr="interp"][disabled]').count() === 1, `${nome}: interpretação da basal bloqueada`);
+  await etapa(4);
+  ok(await p.locator('[data-act="at-mv-ferr"][data-t="dor"][disabled]').count() === 1, `${nome}: atendimento finalizado: marcações não mudam`);
+  await p.click('.mk-li >> nth=0'); await espera();
+  ok(await tem('#ed-mk', 'no prontuário') && await p.locator('#mk-tipo').count() === 0, `${nome}: marcação finalizada abre só para leitura`);
 
   // Descartar rascunho
   await p.click('[data-act="at-prontuario"]'); await espera();
   await p.click('.perfil-a [data-act="novo-atendimento"]'); await espera();
   ok(await tem('.at-id', '2º atendimento · retorno') && (await paciente()).atendimentos.length === 2, `${nome}: segundo atendimento como retorno`);
+  await etapa(4);
+  ok(await p.locator('svg.mapa4 .mk.e-ant').count() > 0 && await p.locator('svg.mapa4 .mk.e-at').count() === 0 && (await marcas()).length === 0, `${nome}: atendimento seguinte mostra as anteriores em cinza, sem copiá-las`);
+  ok(await tem('#mk-evolucao', 'Lombar'), `${nome}: comparação entre atendimentos`);
+  await p.click('[data-act="at-mv-ant"]'); await espera();
+  ok(await p.locator('svg.mapa4 .mk.e-ant').count() === 0, `${nome}: comparação pode ser ocultada`);
+  await p.click('[data-act="at-mv-ant"]'); await espera(); await etapa(0);
   await p.click('[data-act="at-descartar"]'); await espera();
   j = await paciente();
   ok(j.atendimentos.length === 1 && j.anam.sono === 'Acorda às 3h' && await p.evaluate(() => location.hash) === '#prontuario', `${nome}: descartar remove só o rascunho`);
@@ -214,6 +281,10 @@ async function verificar(browser, url, nome) {
   const largas = [];
   for (let i = 0; i < 8; i++) { await pc.click(`.steps [data-i="${i}"]`); await pc.waitForTimeout(60); if (await pc.evaluate(() => document.documentElement.scrollWidth > innerWidth)) largas.push(i + 1); }
   ok(largas.length === 0, `${nome} celular: nenhuma etapa com rolagem horizontal${largas.length ? ' → ' + largas.join(', ') : ''}`);
+  await pc.click('.steps [data-i="4"]'); await pc.waitForTimeout(60);
+  const vLargas = [];
+  for (const v of ['anterior','posterior','lat_d','lat_e','maos','pes']) { await pc.click(`[data-act="at-mv-vista"][data-v="${v}"]`); await pc.waitForTimeout(50); if (await pc.evaluate(() => document.documentElement.scrollWidth > innerWidth)) vLargas.push(v); }
+  ok(vLargas.length === 0, `${nome} celular: as seis vistas do mapa sem rolagem horizontal${vLargas.length ? ' → ' + vLargas.join(', ') : ''}`);
   await cel.close();
 
   ok(erros.length === 0, `${nome}: sem erros no console${erros.length ? ' → ' + erros.join(' | ') : ''}`);

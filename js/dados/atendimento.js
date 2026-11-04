@@ -5,7 +5,7 @@
 // formato da etapa 2B:
 //   inicio, atualizadoEm, etapas (índices das etapas abertas), sintese,
 //   avaliacao:{signs, status, nota} (rascunho; vira um registro em p.avaliacoes ao finalizar),
-//   vasos:{[vaso]:{considerar, nota}}, mapa:{nota}, documentos:[] (estrutura para as etapas 3 a 6),
+//   vasos:{[vaso]:{considerar, nota}}, mapa:{nota, marcas:[]}, documentos:[] (estrutura para as etapas 3 a 6),
 //   finalizadoEm.
 // historico registra data e hora de cada alteração; alterações seguidas na mesma etapa, em menos
 // de 5 minutos, ficam num único registro com a hora da última.
@@ -28,7 +28,7 @@ export function iniciarAtendimento(p, { id, data }, em){
   const a = { id, data, status: 'rascunho', origem: 'sistema', inicio: em, atualizadoEm: em, etapas: [0],
     plano: { pontos: [], tec: [] }, evolucao: { intensidades, nota: '' }, sintese: '',
     avaliacao: { signs: ult ? [...ult.signs] : [], status: ult ? { ...ult.status } : {}, nota: '', ...registroInicial(ult) },
-    vasos: {}, mapa: { nota: '' }, documentos: [], avaliacaoId: null,
+    vasos: {}, mapa: { nota: '', marcas: [] }, documentos: [], avaliacaoId: null,
     historico: [{ em, acao: 'atendimento iniciado' }] };
   p.atendimentos.push(a);
   return a;
@@ -85,7 +85,7 @@ export function preenchimento(p, a, i, H){
     av.signs.length ? .5 + .5 * (H.length ? dec / H.length : 1) : 0,
     vis,
     (Object.values(av.status).includes('aceito') ? .5 : 0) + (a.sintese ? .5 : 0),
-    a.plano.pontos.length || a.mapa.nota ? 1 : vis * .5,
+    a.plano.pontos.length || a.mapa?.nota || marcasDe(a).length ? 1 : vis * .5,
     (a.plano.pontos.length ? .6 : 0) + (a.plano.tec.length ? .4 : 0),
     vis * .5 + (a.evolucao.nota ? .5 : 0),
     a.status === 'finalizado' ? 1 : vis * .5][i];
@@ -224,4 +224,56 @@ const CAMPOS_VERSAO = ['signs','status','nota','achados','pulso','linguaObs','bg
 export const fotoVersao = av => JSON.parse(JSON.stringify(Object.fromEntries(CAMPOS_VERSAO.filter(k => av[k] !== undefined).map(k => [k, av[k]]))));
 export function registrarCorrecao(av, anterior, em, motivo = ''){
   (av.historico ||= []).push({ em, acao: `correção registrada${motivo ? '. Motivo: ' + motivo : ''}; valores anteriores preservados`, anterior });
+}
+
+/* ---------- Mapa corporal (etapa 4A) ----------
+   Cada marcação fica no atendimento em que foi feita (a.mapa.marcas) e passa para o prontuário com ele
+   ao finalizar. Depois de finalizado, as marcações não mudam mais: o atendimento seguinte só as mostra
+   para comparar. x e y são frações (0 a 1) do desenho da vista; o lado é sempre o do paciente.
+   Marcação: {id, tipo, vista, face, x, y, x2?, y2? (destino da irradiação), lado, intensidade (0 a 10
+   ou null; não existe no procedimento), procedimento, regiao, nota, data, criadaEm}. */
+export const TIPOS_MARCA = [['dor','Dor'],['sintoma','Outro sintoma'],['irradiacao','Irradiação'],['limitacao','Limitação funcional'],['procedimento','Procedimento']];
+export const LADOS_MARCA = [['dir','Direito'],['esq','Esquerdo'],['bil','Bilateral'],['na','Não se aplica']];
+export const marcaComIntensidade = t => t !== 'procedimento';
+export const marcasDe = a => a?.mapa?.marcas || [];
+const fracao = v => Math.min(1, Math.max(0, +Number(v).toFixed(4)));
+const EDITAVEIS_MARCA = ['tipo','lado','intensidade','procedimento','regiao','nota'];
+
+export function adicionarMarca(a, m, em){
+  if (a.status !== 'rascunho' || !TIPOS_MARCA.some(t => t[0] === m.tipo)) return null;
+  const mp = a.mapa ||= { nota: '' }; mp.marcas ||= [];
+  const nova = { id: m.id, tipo: m.tipo, vista: m.vista, face: m.face || '', x: fracao(m.x), y: fracao(m.y),
+    lado: LADOS_MARCA.some(l => l[0] === m.lado) ? m.lado : 'na', intensidade: null, procedimento: '', regiao: '', nota: '', data: a.data, criadaEm: em };
+  if (m.tipo === 'irradiacao' && m.x2 != null) { nova.x2 = fracao(m.x2); nova.y2 = fracao(m.y2); }
+  mp.marcas.push(nova);
+  return nova;
+}
+export function editarMarca(a, id, campo, valor){
+  const m = a.status === 'rascunho' && marcasDe(a).find(x => x.id === id);
+  if (!m) return null;
+  if (campo === 'destino') { if (m.tipo !== 'irradiacao') return null; m.x2 = fracao(valor[0]); m.y2 = fracao(valor[1]); return m; }
+  if (!EDITAVEIS_MARCA.includes(campo)) return null;
+  if (campo === 'intensidade') { if (!marcaComIntensidade(m.tipo)) return null; m.intensidade = valor == null || valor === '' ? null : Math.min(10, Math.max(0, Math.round(Number(valor)))); return m; }
+  if (campo === 'tipo') {
+    if (!TIPOS_MARCA.some(t => t[0] === valor)) return null;
+    m.tipo = valor;
+    if (!marcaComIntensidade(valor)) m.intensidade = null;
+    if (valor !== 'irradiacao') { delete m.x2; delete m.y2; }
+    return m;
+  }
+  if (campo === 'lado' && !LADOS_MARCA.some(l => l[0] === valor)) return null;
+  m[campo] = String(valor ?? '');
+  return m;
+}
+export function removerMarca(a, id){
+  if (a.status !== 'rascunho') return false;
+  const L = marcasDe(a), i = L.findIndex(x => x.id === id);
+  if (i < 0) return false;
+  L.splice(i, 1);
+  return true;
+}
+// Atendimentos finalizados antes deste, do mais antigo ao mais recente (para comparar).
+export function atendimentosAnteriores(p, a){
+  const F = finalizados(p), i = F.indexOf(a);
+  return i >= 0 ? F.slice(0, i) : F.filter(x => x.data <= a.data);
 }
