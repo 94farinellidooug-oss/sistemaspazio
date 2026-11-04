@@ -7,7 +7,7 @@ import { ic, vazio } from '../componentes/icones.js';
 import { pentagram } from '../componentes/pentagrama.js';
 import { EL, KE, SHENG, controlador, mae } from '../conhecimento/elementos.js';
 import { CAUT, PT } from '../conhecimento/pontos.js';
-import { FACES, LARGURA, TAM, VISTAS, desenho, iconeMarca, marcaSvg, pontosSvg, temPosicao, vistaNome, vistasDoPonto } from '../componentes/corpo.js';
+import { FACES, LARGURA, PONTOS_NO_MAPA, TAM, VISTAS, desenho, iconeMarca, marcaSvg, pontosSvg, temPosicao, vistaNome, vistasDoPonto } from '../componentes/corpo.js';
 import { SIGN, SIGNS } from '../conhecimento/sinais.js';
 import { LADOS_MARCA, TIPOS_MARCA, atendimentosAnteriores, marcaComIntensidade, marcasDe, CATEGORIAS, ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, PARES_VASOS, categoriaDe, ehBasal, encaminhados, vasoDe, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
 import { alertasDe } from '../dados/indicadores.js';
@@ -220,8 +220,10 @@ function dicaMapa(a){
   const M = ui.mapa;
   if (a.status !== 'rascunho') return `${ic('check')}Atendimento finalizado: as marcações estão no prontuário e não mudam mais. Toque numa marcação para ver os detalhes.`;
   if (M.rad) return `${ic('dir')}<b>Irradiação:</b> agora toque no ponto de destino, na mesma vista. <button class="btn ghost sm" data-act="at-mk-radx">Cancelar</button>`;
-  if (M.ferr === 'sel') return `${ic('info')}Toque numa marcação para editar. Para marcar, escolha um tipo acima.`;
-  return M.ferr === 'irradiacao' ? `${ic('dir')}<b>Irradiação:</b> toque primeiro na origem e depois no destino.` : `${ic('corpo')}Toque no corpo para marcar <b>${nomeMarca(M.ferr).toLowerCase()}</b>. Pode haver várias marcações na mesma região.`;
+  if (M.ferr === 'sel') return `${ic('info')}<span>Toque numa marcação para editar. Para marcar, escolha um tipo acima: ele fica ativo até você parar.</span>`;
+  const parar = ` Para parar, toque de novo no botão ou em <b>Selecionar</b>.`;
+  if (M.ferr === 'ponto') return `${ic('corpo')}<span><b>Indicar pontos:</b> toque num ponto do mapa para incluir no plano e toque de novo para tirar. Os pontos do plano ficam em verde. Amplie o mapa para ver o nome de todos.${parar}</span>`;
+  return M.ferr === 'irradiacao' ? `${ic('dir')}<span><b>Irradiação:</b> toque na origem e depois no destino. Repita para marcar outras.${parar}</span>` : `${ic('corpo')}<span>Toque no corpo quantas vezes quiser para marcar <b>${nomeMarca(M.ferr).toLowerCase()}</b>.${parar}</span>`;
 }
 function editorMarca(p, a, ant){
   const M = ui.mapa, todas = [...ant.flatMap(x => marcasDe(x).map(m => [m, x])), ...marcasDe(a).map(m => [m, a])], par = todas.find(([m]) => m.id === M.sel);
@@ -255,17 +257,23 @@ export function tabelaMarcas(p, ats, atual){
   return `<div class="tbl-w"><table class="ev-t"><thead><tr><th>Marcação</th>${ats.map(at => `<th>${fmt(at.data).slice(0,5)}<small>${ordemNo(p, at)}º</small></th>`).join('')}</tr></thead>
     <tbody>${[...grupos.values()].map(g => `<tr><td><span class="ev-n">${iconeMarca(g.tipo)}<span>${nomeMarca(g.tipo)}<small>${esc(g.regiao)}</small></span></span></td>${ats.map(at => `<td class="${at === atual ? 'at' : ''}">${val(g.por.get(at))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
+// Reaproveita a verificação de segurança do Plano, sem regra nova.
+function avisosMapa(p, a){
+  const w = a.plano.pontos.length ? pointWarnings(a.plano.pontos, p, a.plano.tec) : [];
+  return w.length ? `<div class="mp-seg" id="mp-seg"><span class="lbl">${ic('escudo')}Verificação de segurança</span>${w.map(([k, m]) => `<div class="notice ${k === 'crit' ? 'crit' : ''}">${ic(k === 'crit' ? 'escudo' : 'alerta')}<div><b>${k === 'crit' ? 'Atenção' : 'Cautela'}</b> ${esc(m)}</div></div>`).join('')}</div>` : '';
+}
 function eMapa(p, a){
   const M = ui.mapa, v = M.vista, f = faceMapa(v), [w, h] = TAM[v], rasc = a.status === 'rascunho';
   const ant = atendimentosAnteriores(p, a), anterior = ant.at(-1), antigos = ant.slice(0, -1);
   if (M.hist && !antigos.some(x => x.id === M.hist)) M.hist = '';
   const hist = antigos.find(x => x.id === M.hist);
-  const minhas = marcasDe(a), P = a.plano.pontos;
+  const minhas = marcasDe(a), P = a.plano.pontos, indicar = rasc && M.ferr === 'ponto';
   const camadas = [
     hist ? marcasDe(hist).filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'hist', M.sel === m.id)).join('') : '',
     M.ant && anterior ? marcasDe(anterior).filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'ant', M.sel === m.id)).join('') : '',
-    M.plano ? pontosSvg(P, v, f, () => 'plano') : '',
-    minhas.filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'at', M.sel === m.id)).join('')].join('');
+    indicar ? '' : M.plano ? pontosSvg(P, v, f, () => 'plano') : '',
+    minhas.filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'at', M.sel === m.id)).join(''),
+    indicar ? pontosSvg(PONTOS_NO_MAPA, v, f, c => P.includes(c) ? 'plano' : 'disp') : ''].join('');
   const zi = ZOOMS_MAPA.indexOf(M.zoom), com = P.filter(temPosicao), sem = P.filter(c => !temPosicao(c));
   const tabela = tabelaMarcas(p, [...ant.filter(x => marcasDe(x).length), a], a);
   return `<div class="notice">${ic('info')}<div><b>Posições aproximadas.</b> D e E são sempre o lado direito e o lado esquerdo <b>do paciente</b>, em todas as vistas.</div></div>
@@ -273,7 +281,7 @@ function eMapa(p, a){
     <div class="card mp-card"><div class="card-h"><h3>Mapa corporal<small>${vistaNome(v, f)}</small></h3><span class="pill warn">aproximado</span></div>
       <div class="vbar" role="tablist" aria-label="Vistas do corpo">${VISTAS.map(([k, n]) => `<button class="vb${k === v ? ' on' : ''}" role="tab" aria-selected="${k === v}" data-act="at-mv-vista" data-v="${k}">${n}</button>`).join('')}</div>
       ${FACES[v] ? `<div class="seg-c vface" role="group" aria-label="Face">${FACES[v].map(([k, n]) => `<button class="${k === f ? 'on' : ''}" data-act="at-mv-face" data-f="${k}">${n}</button>`).join('')}</div>` : ''}
-      <div class="ferr" role="group" aria-label="Marcar"><span class="lbl">Marcar</span>${TIPOS_MARCA.map(([k, n]) => `<button class="chip fr${M.ferr === k ? ' on' : ''}" data-act="at-mv-ferr" data-t="${k}" aria-pressed="${M.ferr === k}" ${rasc ? '' : 'disabled'}>${iconeMarca(k)}${n}</button>`).join('')}<button class="chip fr${M.ferr === 'sel' ? ' on' : ''}" data-act="at-mv-ferr" data-t="sel" aria-pressed="${M.ferr === 'sel'}">${ic('editar')}Selecionar</button></div>
+      <div class="ferr" role="group" aria-label="Marcar"><span class="lbl">Marcar</span>${TIPOS_MARCA.map(([k, n]) => `<button class="chip fr${M.ferr === k ? ' on' : ''}" data-act="at-mv-ferr" data-t="${k}" aria-pressed="${M.ferr === k}" ${rasc ? '' : 'disabled'}>${iconeMarca(k)}${n}</button>`).join('')}<button class="chip fr fr-pt${M.ferr === 'ponto' ? ' on' : ''}" data-act="at-mv-ferr" data-t="ponto" aria-pressed="${M.ferr === 'ponto'}" ${rasc ? '' : 'disabled'}><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp plano"><circle cx="10" cy="10" r="4.5"/></g></svg>Indicar pontos</button><button class="chip fr${M.ferr === 'sel' ? ' on' : ''}" data-act="at-mv-ferr" data-t="sel" aria-pressed="${M.ferr === 'sel'}">${ic('editar')}Selecionar</button></div>
       <p class="mp-dica" id="mp-dica">${dicaMapa(a)}</p>
       <div class="mp-ctl">
         <div class="zoom" role="group" aria-label="Ampliação"><button class="btn sm" data-act="at-mv-zoom" data-d="-1" aria-label="Diminuir" ${zi === 0 ? 'disabled' : ''}>−</button><span class="zoom-v">${Math.round(M.zoom * 100)}%</span><button class="btn sm" data-act="at-mv-zoom" data-d="1" aria-label="Ampliar" ${zi === ZOOMS_MAPA.length - 1 ? 'disabled' : ''}>${ic('mais')}</button></div>
@@ -284,18 +292,18 @@ function eMapa(p, a){
           <button class="chip${M.plano ? ' on' : ''}" data-act="at-mv-plano" aria-pressed="${M.plano}">Pontos do plano</button>
         </div>
       </div>
-      <div class="mp-zoom"><svg class="mapa4${rasc && (M.ferr !== 'sel' || M.rad) ? ' marcando' : ''}" data-mapa="atendimento" data-vista="${v}" data-face="${f}" viewBox="0 0 ${w} ${h}" style="width:${larguraMapa(v, M.zoom)}" role="img" aria-label="Mapa corporal, vista ${vistaNome(v, f)}">${desenho(v, f)}${camadas}</svg></div>
+      <div class="mp-zoom"><svg class="mapa4${rasc && (M.ferr !== 'sel' || M.rad) ? ' marcando' : ''}${indicar ? ' indicando' : ''}${M.zoom > 1 ? ' ampliado' : ''}" data-mapa="atendimento" data-vista="${v}" data-face="${f}" viewBox="0 0 ${w} ${h}" style="width:${larguraMapa(v, M.zoom)}" role="img" aria-label="Mapa corporal, vista ${vistaNome(v, f)}">${desenho(v, f)}${camadas}</svg></div>
       <div class="legenda" aria-label="Legenda">${TIPOS_MARCA.map(([k, n]) => `<span>${iconeMarca(k)}${n}</span>`).join('')}<span class="lg-sep"></span>
         <span>${iconeMarca('dor','ant')}Atendimento anterior</span><span>${iconeMarca('dor','hist')}Histórico</span>
-        <span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp plano"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto do plano</span>
+        <span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp plano"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto do plano</span>${indicar ? `<span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp disp"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto disponível</span>` : ''}
         <span><svg viewBox="0 0 20 20" class="lg-i mk" style="--c:var(--crit)" aria-hidden="true"><g class="esp"><circle cx="10" cy="10" r="6"/></g></svg>Lado espelhado (bilateral)</span></div>
     </div>
     <aside class="grid" style="align-content:start">${editorMarca(p, a, ant)}
       <div class="card"><div class="card-h"><h3>Marcações deste atendimento<small>${fmt(a.data)} · ${ordemNo(p, a)}º atendimento</small></h3><span class="pill">${minhas.length}</span></div>
         <div class="mk-l">${minhas.map(linhaMarcaAt).join('') || '<p class="muted sm">Nenhuma marcação ainda.</p>'}</div></div>
-      <div class="card" id="plano-mapa"><div class="card-h"><h3>Pontos do plano<small>do Plano terapêutico deste atendimento</small></h3></div>
+      <div class="card" id="plano-mapa"><div class="card-h"><h3>Pontos do plano<small>os mesmos do Plano terapêutico deste atendimento</small></h3>${P.length ? `<span class="pill acc">${P.length}</span>` : ''}</div>
         ${P.length ? `<div class="pp"><span class="lbl">No mapa</span><div class="chips">${com.map(c => `<span class="pill pp-c">${esc(c)}<small>${vistasDoPonto(c).join(', ')}</small></span>`).join('') || '<span class="muted sm">nenhum</span>'}</div></div>
-        <div class="pp" id="sem-posicao"><span class="lbl">Sem posição no mapa</span><div class="chips">${sem.map(c => `<span class="pill warn pp-c">${esc(c)}</span>`).join('') || '<span class="muted sm">nenhum</span>'}</div></div>` : '<p class="muted sm">Os pontos escolhidos no Plano terapêutico aparecem aqui e no mapa.</p>'}</div>
+        <div class="pp" id="sem-posicao"><span class="lbl">Sem posição no mapa</span><div class="chips">${sem.map(c => `<span class="pill warn pp-c">${esc(c)}</span>`).join('') || '<span class="muted sm">nenhum</span>'}</div></div>` : `<p class="muted sm">Os pontos escolhidos no Plano terapêutico aparecem aqui e no mapa.${rasc ? ' Também dá para indicar pelo mapa, em "Indicar pontos".' : ''}</p>`}${avisosMapa(p, a)}</div>
       ${tabela ? `<div class="card" id="mk-evolucao"><div class="card-h"><h3>Comparação entre atendimentos<small>valores registrados, lado a lado, sem cálculo</small></h3></div>${tabela}<small class="muted">Intensidade de 0 a 10 nos sintomas e limitações; nome do procedimento quando houver.</small></div>` : ''}
       <div class="card"><div class="field"><label class="lbl" for="at-mapa">Observações do mapa corporal</label><textarea id="at-mapa" data-atf="mapa" placeholder="Cicatrizes, áreas sensíveis, outras observações...">${esc(a.mapa?.nota || '')}</textarea></div></div>
     </aside></div>`;

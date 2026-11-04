@@ -35,7 +35,9 @@ async function verificar(browser, url, nome) {
     const [cx, cy] = await p.evaluate(([x, y]) => { const s = document.querySelector('svg.mapa4'), q = s.createSVGPoint(); q.x = x; q.y = y; const r = q.matrixTransform(s.getScreenCTM()); return [r.x, r.y]; }, [x, y]);
     await p.mouse.click(cx, cy); await espera(); };
   const vista = async (v, f) => { await p.click(`[data-act="at-mv-vista"][data-v="${v}"]`); await espera(); if (f) { await p.click(`[data-act="at-mv-face"][data-f="${f}"]`); await espera(); } };
-  const marcar = async (t, x, y) => { await p.click(`[data-act="at-mv-ferr"][data-t="${t}"]`); await espera(); await tocar(x, y); };
+  // O tipo escolhido fica ativo: só clica no botão quando ele ainda não está ligado.
+  const ferr = async t => { if (!await p.locator(`[data-act="at-mv-ferr"][data-t="${t}"].on`).count()) { await p.click(`[data-act="at-mv-ferr"][data-t="${t}"]`); await espera(); } };
+  const marcar = async (t, x, y) => { await ferr(t); await tocar(x, y); };
   const marcas = async () => (await paciente()).atendimentos.find(a => a.status === 'rascunho')?.mapa?.marcas || [];
 
   await p.goto(url); await p.waitForSelector('#view h1');
@@ -198,7 +200,27 @@ async function verificar(browser, url, nome) {
   await p.click('[data-act="at-mv-zoom"][data-d="-1"]'); await p.click('[data-act="at-mv-zoom"][data-d="-1"]'); await espera();
   await vista('maos', 'palmar'); await marcar('sintoma', 70, 150);
   ok((await marcas()).at(-1).lado === 'dir' && (await marcas()).at(-1).face === 'palmar', `${nome}: mão direita na palma`);
+  // Marcar continua ativo: vários toques seguidos, sem escolher o tipo de novo
+  ok(await p.locator('[data-act="at-mv-ferr"][data-t="sintoma"].on').count() === 1, `${nome}: depois de marcar, o tipo continua ativo`);
+  let n0 = (await marcas()).length; await tocar(90, 160); await tocar(110, 120);
+  ok((await marcas()).length === n0 + 2 && (await marcas()).slice(-2).every(m => m.tipo === 'sintoma'), `${nome}: várias marcações seguidas sem escolher o tipo de novo`);
+  await p.click('[data-act="at-mv-ferr"][data-t="sintoma"]'); await espera();
+  ok(await p.locator('[data-act="at-mv-ferr"][data-t="sel"].on').count() === 1, `${nome}: tocar de novo no tipo para de marcar`);
+  n0 = (await marcas()).length; await tocar(90, 200);
+  ok((await marcas()).length === n0, `${nome}: depois de parar, tocar no corpo não marca`);
   await vista('anterior');
+  // Indicar pontos pelo mapa: inclui e tira do plano, com a mesma verificação de segurança
+  const pontosPlano = async () => (await paciente()).atendimentos.find(a => a.status === 'rascunho').plano.pontos;
+  await ferr('ponto');
+  ok(await p.locator('svg.mapa4 .ptp.disp').count() > 10 && await p.locator('svg.mapa4 .ptp.plano[data-pt="BP6"]').count() === 2, `${nome}: indicar pontos mostra os pontos com posição, os do plano em destaque`);
+  await tocar(100, 158);
+  ok((await pontosPlano()).includes('VC12') && await p.locator('svg.mapa4 .ptp.plano[data-pt="VC12"]').count() === 1 && await tem('#plano-mapa', 'VC12'), `${nome}: tocar num ponto inclui no plano`);
+  ok(await p.locator('#mp-seg .notice').count() > 0, `${nome}: verificação de segurança do plano também no mapa`);
+  await tocar(100, 158);
+  ok(!(await pontosPlano()).includes('VC12') && await p.locator('svg.mapa4 .ptp.disp[data-pt="VC12"]').count() === 1, `${nome}: tocar de novo tira do plano`);
+  ok((await paciente()).atendimentos[0].historico.some(h => /VC12 indicado no mapa corporal/.test(h.acao)), `${nome}: ponto indicado pelo mapa registrado no histórico`);
+  await p.click('[data-act="at-mv-ferr"][data-t="sel"]'); await espera();
+  ok(await p.locator('svg.mapa4 .ptp.disp').count() === 0, `${nome}: ao parar, ficam só os pontos do plano`);
   ok(await tem('#plano-mapa', 'BP6') && await p.locator('#sem-posicao').count() === 1, `${nome}: pontos do plano no mapa e lista "sem posição no mapa"`);
   ok((await paciente()).atendimentos[0].historico.some(h => /mapa corporal: marcação de dor adicionada/.test(h.acao)), `${nome}: marcações registradas no histórico do atendimento`);
   const nMarcas = (await marcas()).length;

@@ -105,6 +105,7 @@ export function posicoes(c, v, f){
 const NOME_POS = { anterior:'Anterior', posterior:'Posterior', lat:'Laterais', 'maos:palmar':'Mãos (palmar)', 'maos:dorsal':'Mãos (dorsal)', 'pes:dorsal':'Pés (dorsal)', 'pes:plantar':'Pés (plantar)' };
 export const vistasDoPonto = c => Object.keys(POS).filter(k => POS[k][c]).map(k => NOME_POS[k]);
 export const temPosicao = c => vistasDoPonto(c).length > 0;
+export const PONTOS_NO_MAPA = [...new Set(Object.values(POS).flatMap(o => Object.keys(o)))];
 
 /* ---------- Marcações ---------- */
 export const COR_MARCA = { dor:'var(--crit)', sintoma:'var(--warn)', irradiacao:'var(--water)', limitacao:'var(--earth)', procedimento:'var(--brand)' };
@@ -137,6 +138,6 @@ export function pontosSvg(codes, v, f, classe = () => ''){
   const [w] = TAM[v];
   return codes.flatMap(c => posicoes(c, v, f).map(([x, y]) => {
     const fora = x < w / 2 - 2;
-    return `<g class="ptp ${classe(c)}" data-pt="${esc(c)}"><circle class="pt-h" cx="${x}" cy="${y}" r="9"/><circle cx="${x}" cy="${y}" r="4.5"/><text x="${fora ? x - 7 : x + 7}" y="${y + 3.5}" text-anchor="${fora ? 'end' : 'start'}">${esc(c)}</text></g>`;
+    return `<g class="ptp ${classe(c)}" data-pt="${esc(c)}"><title>${esc(c)}</title><circle class="pt-h" cx="${x}" cy="${y}" r="9"/><circle cx="${x}" cy="${y}" r="4.5"/><text x="${fora ? x - 7 : x + 7}" y="${y + 3.5}" text-anchor="${fora ? 'end' : 'start'}">${esc(c)}</text></g>`;
   })).join('');
 }
