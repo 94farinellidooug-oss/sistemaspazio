@@ -85,6 +85,27 @@ async function verificar(browser, url, nome) {
   ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${nome}: aba Língua e pulso sem rolagem horizontal`);
   await p.click('[data-act="at-aba"][data-i="1"]'); await espera();
   ok(await tem('.axis') && await p.locator('[data-atr="bgInterp"]').count() === 1, `${nome}: aba Ba Gang com cálculo e interpretação`);
+  // Etapa 3B: achados livres por categoria, Síntese e Plano só por escolha
+  await p.click('[data-act="at-aba"][data-i="4"]'); await espera();
+  ok(await p.locator('.livre').count() === 0 && await p.locator('form.livre-f[data-cat="jinye"]').count() === 1, `${nome}: Jin Ye com campo livre, sem lista inventada`);
+  await p.fill('#lv-jinye', 'Edema leve em tornozelos'); await p.click('form.livre-f button'); await espera();
+  ok(await p.locator('.livre', { hasText: 'Edema leve' }).count() === 1 && await p.locator('.livre [data-act="at-levar"].on').count() === 0, `${nome}: achado registrado, sem encaminhamento automático`);
+  ok(await p.locator('.ab[data-i="4"] .ab-c').textContent() === '1', `${nome}: aba mostra quantos achados tem`);
+  await p.fill('[data-atln="jinye"]', 'Retenção leve'); await espera();
+  await p.click('.livre:has-text("Edema leve") [data-dest="sintese"]'); await espera();
+  j = await paciente(); rv = j.atendimentos[0].avaliacao;
+  ok(rv.categorias.jinye.itens[0].sintese === true && rv.categorias.jinye.itens[0].plano === false && rv.categorias.jinye.nota === 'Retenção leve' && J(rv.signs) === J(SINAIS), `${nome}: Jin Ye gravado; levar para a Síntese não muda o cálculo`);
+  ok(j.atendimentos[0].historico.some(h => /Jin Ye: "Edema leve em tornozelos" levado para a Síntese/.test(h.acao)), `${nome}: encaminhamento registrado no histórico`);
+  await p.click('[data-act="at-aba"][data-i="2"]'); await espera();
+  await p.fill('#lv-zangfu', 'Fígado com sinais de excesso'); await p.selectOption('#lv-zangfu-o', 'obs'); await p.click('form.livre-f button'); await espera();
+  await p.click('.livre:has-text("Fígado com sinais") [data-dest="plano"]'); await espera();
+  await etapa(3);
+  ok(await p.locator('.sx-cat:has(h3:text-is("Jin Ye")) .sx-i', { hasText: 'Edema leve' }).count() === 1 && await p.locator('.sx-cat', { hasText: 'Fígado com sinais' }).count() === 0, `${nome}: Síntese mostra por categoria só o que foi levado`);
+  await etapa(5);
+  ok(await tem('.sx-i', 'Fígado com sinais') && !(await tem('#view', 'Edema leve')), `${nome}: Plano mostra só o que foi marcado para o Plano`);
+  await p.click('.sx-i:has-text("Fígado com sinais") [data-act="at-levar"]'); await espera();
+  ok(!(await tem('.sx-i', 'Fígado com sinais')), `${nome}: retirar do Plano`);
+  await etapa(1);
   await p.click('[data-act="at-aba"][data-i="7"]'); await espera();
   await p.check('[data-vaso="Chong Mai"]'); await espera();
   await p.fill('[data-vnota="Chong Mai"]', 'considerar no ciclo'); await espera();

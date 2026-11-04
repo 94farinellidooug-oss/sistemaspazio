@@ -168,5 +168,33 @@ export function registroInicial(ult){
   const lado = l => ({ ...ladoVazio(), cls: [...ult.pulso[l].cls] });
   return { achados: JSON.parse(JSON.stringify(ult.achados)), pulso: { esq: lado('esq'), dir: lado('dir'), semLado: [...(ult.pulso.semLado || [])] } };
 }
-const CAMPOS_REGISTRO = ['achados','pulso','linguaObs','bgInterp'];
+const CAMPOS_REGISTRO = ['achados','pulso','linguaObs','bgInterp','categorias'];
 export const camposRegistro = av => Object.fromEntries(CAMPOS_REGISTRO.filter(k => av[k] !== undefined).map(k => [k, JSON.parse(JSON.stringify(av[k]))]));
+
+/* ---------- Etapa 3B: achados livres por categoria ----------
+   av.categorias:{[cat]:{nota, itens:[{id, texto, orig, sit, sintese, plano, em}]}}
+   Só registro do profissional: nada entra no cálculo, nada é sugerido e nada é encaminhado sozinho.
+   A Síntese e o Plano mostram só os itens marcados pelo profissional. A lista clínica de cada
+   categoria será definida pela profissional; até lá, os achados são escritos livremente. */
+export const CATEGORIAS = [['zangfu','Zang-Fu'],['qixue','Qi e Xue'],['jinye','Jin Ye'],['jingshen','Jing e Shen'],['fatores','Fatores patogênicos']];
+const catVazia = () => ({ nota: '', itens: [] });
+export const categoriaDe = (av, c) => av.categorias?.[c] || catVazia();
+const garantirCat = (av, c) => ((av.categorias ||= {})[c] ||= catVazia());
+export function adicionarAchadoLivre(av, c, { id, texto, orig, sit }, em){
+  const it = { id, texto, orig, sit, sintese: false, plano: false, em };
+  garantirCat(av, c).itens.push(it);
+  return it;
+}
+const itemLivre = (av, c, id) => av.categorias?.[c]?.itens.find(x => x.id === id) || null;
+export function definirAchadoLivre(av, c, id, campo, valor){
+  const it = itemLivre(av, c, id); if (!it) return null;
+  if (campo === 'sintese' || campo === 'plano') it[campo] = !!valor; else it[campo] = valor;
+  return it;
+}
+export function removerAchadoLivre(av, c, id){
+  const L = av.categorias?.[c]?.itens, i = L ? L.findIndex(x => x.id === id) : -1;
+  return i < 0 ? null : L.splice(i, 1)[0];
+}
+export function notaCategoria(av, c, texto){ garantirCat(av, c).nota = texto; }
+// Itens que o profissional levou para a Síntese ou para o Plano, por categoria.
+export const encaminhados = (av, destino) => CATEGORIAS.map(([c, nome]) => [c, nome, categoriaDe(av, c).itens.filter(x => x[destino])]).filter(x => x[2].length);
