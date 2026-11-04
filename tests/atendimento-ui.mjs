@@ -59,7 +59,7 @@ async function verificar(browser, url, nome) {
 
   // Avaliação com o raciocínio existente
   // Etapa 3A: 9 abas; o pulso é marcado por lado, os demais sinais pelo achado
-  ok(JSON.stringify((await p.locator('.ab-bar .ab').allTextContents()).map(t => t.replace(/^\d+/, '').replace(/\d+$/, '').trim())) === JSON.stringify(['Língua e pulso','Ba Gang','Zang-Fu','Qi e Xue','Jin Ye','Jing e Shen','Fatores patogênicos','Vasos extraordinários','Contexto sazonal']), `${nome}: avaliação em 9 abas na ordem aprovada`);
+  ok(JSON.stringify((await p.locator('.ab-bar .ab').allTextContents()).map(t => t.replace(/^\d+/, '').replace(/\d+$/, '').trim())) === JSON.stringify(['Língua e pulso','Ba Gang','Zang-Fu','Qi e Xue','Jin Ye','Jing e Shen','Fatores patogênicos']), `${nome}: avaliação em 7 abas (vasos e estação ficam no Plano)`);
   ok(await p.locator('.pulso-l').count() === 2 && await p.locator('[data-act="at-pulso"][data-l="esq"]').count() === 7 && await p.locator('[data-act="at-pulso"][data-l="dir"]').count() === 7, `${nome}: pulso esquerdo e direito com as 7 classificações`);
   for (const s of SINAIS) await p.click(s.startsWith('pulso_') ? `[data-act="at-pulso"][data-l="esq"][data-k="${s}"]` : `[data-act="at-sinal"][data-s="${s}"]`);
   await espera();
@@ -105,18 +105,35 @@ async function verificar(browser, url, nome) {
   ok(await tem('.sx-i', 'Fígado com sinais') && !(await tem('#view', 'Edema leve')), `${nome}: Plano mostra só o que foi marcado para o Plano`);
   await p.click('.sx-i:has-text("Fígado com sinais") [data-act="at-levar"]'); await espera();
   ok(!(await tem('.sx-i', 'Fígado com sinais')), `${nome}: retirar do Plano`);
-  await etapa(1);
-  await p.click('[data-act="at-aba"][data-i="7"]'); await espera();
-  await p.check('[data-vaso="Chong Mai"]'); await espera();
+  // Etapa 3C: vasos extraordinários e estação como dicas no Plano, sem indicação automática
+  const pares = await p.locator('.dicas .vt-r').evaluateAll(rs => rs.map(r => r.querySelector('.vt-n b').textContent + ' ' + r.querySelector('.vt-n small').textContent));
+  ok(J(pares) === J(['Du Mai ID3 + B62','Ren Mai P7 + R6','Chong Mai BP4 + CS6','Dai Mai VB41 + TA5','Yin Qiao Mai R6 + P7','Yang Qiao Mai B62 + ID3','Yin Wei Mai CS6 + BP4','Yang Wei Mai TA5 + VB41']), `${nome}: Plano mostra os 8 vasos com os pares aprovados`);
+  ok(await tem('.dicas .sazonal', 'hemisfério Sul'), `${nome}: estação do ano como dica no Plano`);
+  await p.click('.dica-v summary'); await espera();
+  const ptsAntes = J((await paciente()).atendimentos[0].plano.pontos);
+  ok(!JSON.parse(ptsAntes).some(c => ['BP4','CS6'].includes(c)), `${nome}: nenhum par entra nos pontos sozinho`);
   await p.fill('[data-vnota="Chong Mai"]', 'considerar no ciclo'); await espera();
-  await p.click('[data-act="at-aba"][data-i="8"]'); await espera();
-  ok(await tem('.sazonal', 'hemisfério Sul'), `${nome}: contexto sazonal complementar`);
+  await p.click('[data-act="at-par"][data-v="Chong Mai"]'); await espera();
+  j = await paciente();
+  ok(['BP4','CS6'].every(c => j.atendimentos[0].plano.pontos.includes(c)) && j.atendimentos[0].vasos['Chong Mai'].considerar && j.atendimentos[0].vasos['Chong Mai'].nota === 'considerar no ciclo' && await tem('.dicas .vt-r.tem', 'par no plano'), `${nome}: par incluído só pelo botão do profissional`);
+  for (const c of ['BP4','CS6']) await p.click(`.chip.on[data-act="at-pt"][data-c="${c}"]`);
+  await espera(); ok(J((await paciente()).atendimentos[0].plano.pontos) === ptsAntes, `${nome}: pontos do par podem ser retirados`);
+  await etapa(1);
   j = await paciente();
   ok(J(j.atendimentos[0].avaliacao.signs) === J(SINAIS) && j.atendimentos[0].avaliacao.status[H[0].p.id] === 'aceito', `${nome}: sinais e hipótese aceita no rascunho`);
-  ok(j.atendimentos[0].vasos['Chong Mai'].considerar && j.atendimentos[0].vasos['Chong Mai'].nota === 'considerar no ciclo', `${nome}: vasos extraordinários gravados`);
 
   // Pentagrama e síntese
   await etapa(2); ok(await p.locator('svg.penta').count() === 1, `${nome}: pentagrama do componente existente`);
+  // Etapa 3C: pentagrama em camadas, mesmo cálculo
+  ok(await p.locator('[data-act="at-camada"]').count() === 3 && await p.locator('[data-act="at-camada"][data-k="atual"].on').count() === 1, `${nome}: pentagrama com 3 camadas, começando no cálculo de antes`);
+  for (const k of ['obs','hip','conf']) ok(await p.locator(`.pe-l .ly-${k}`).count() === 5, `${nome}: camada ${k} separada em cada elemento`);
+  const pentaAtual = await p.locator('svg.penta').innerHTML();
+  await p.click('[data-act="at-camada"][data-k="hip"]'); await espera();
+  const pentaHip = await p.locator('svg.penta').innerHTML();
+  await p.click('[data-act="at-camada"][data-k="atual"]'); await espera();
+  ok(await p.locator('svg.penta').innerHTML() === pentaAtual && typeof pentaHip === 'string', `${nome}: trocar de camada e voltar mostra o mesmo mapa de antes`);
+  await p.fill('[data-atr="interp"]', 'Madeira em excesso'); await espera();
+  j = await paciente(); ok(j.atendimentos[0].avaliacao.interp === 'Madeira em excesso' && J(j.atendimentos[0].avaliacao.signs) === J(SINAIS), `${nome}: interpretação do pentagrama gravada, sem mudar o cálculo`);
   await p.click('.node[data-e="madeira"]'); await espera(); ok(await tem('.corr-g', 'Fígado'), `${nome}: detalhe do elemento`);
   await etapa(3); ok(await tem('.sx', H[0].p.nome), `${nome}: síntese mostra o padrão validado`);
   await p.fill('[data-atf="sintese"]', 'Estagnação, priorizar fluxo'); await espera();
@@ -158,6 +175,14 @@ async function verificar(browser, url, nome) {
   j = await paciente();
   ok(j.atendimentos[0].evolucao.nota.endsWith('7 dias') && j.atendimentos[0].historico.at(-1).acao === 'evolução (após finalizar)', `${nome}: complemento registrado no histórico como "após finalizar"`);
 
+  // Etapa 3C: a avaliação basal fica bloqueada depois de finalizada
+  await etapa(1);
+  ok(await tem('.trava', 'Avaliação basal bloqueada') && await p.locator('fieldset.trava-f[disabled]').count() === 1, `${nome}: basal bloqueada na avaliação`);
+  const sinaisBasal = J((await paciente()).avaliacoes[0].signs);
+  await p.evaluate(() => { const b = document.querySelector('[data-act="at-sinal"][data-s="lombalgia"]'); b.closest('fieldset').disabled = false; b.click(); }); await espera();
+  ok(J((await paciente()).avaliacoes[0].signs) === sinaisBasal, `${nome}: mesmo forçando o clique, a basal não muda`);
+  await etapa(2); ok(await p.locator('[data-atr="interp"][disabled]').count() === 1, `${nome}: interpretação da basal bloqueada`);
+
   // Descartar rascunho
   await p.click('[data-act="at-prontuario"]'); await espera();
   await p.click('.perfil-a [data-act="novo-atendimento"]'); await espera();
@@ -165,6 +190,21 @@ async function verificar(browser, url, nome) {
   await p.click('[data-act="at-descartar"]'); await espera();
   j = await paciente();
   ok(j.atendimentos.length === 1 && j.anam.sono === 'Acorda às 3h' && await p.evaluate(() => location.hash) === '#prontuario', `${nome}: descartar remove só o rascunho`);
+
+  // Etapa 3C: versões da avaliação e reavaliação avulsa com motivo
+  await p.click('.tabs [data-t="versoes"]'); await espera();
+  ok(await p.locator('.ver').count() === 1 && await tem('.ver.basal', 'bloqueada') && await tem('.ver.basal', 'Mauren Turcatti') && await tem('.ver.basal', 'Atendimento de'), `${nome}: versões mostram a basal, profissional e contexto`);
+  await p.click('#f-reav button'); await espera();
+  ok(await p.evaluate(() => location.hash) === '#prontuario', `${nome}: reavaliação sem motivo não começa`);
+  await p.fill('#rv-motivo', 'Piora após viagem'); await p.click('#f-reav button'); await espera();
+  ok(await p.evaluate(() => location.hash) === '#avaliacao', `${nome}: reavaliação abre a avaliação energética`);
+  for (const s of ['irritabilidade', 'tpm', 'lombalgia']) await p.click(`[data-s="${s}"]`);
+  await p.click('[data-act="save-assess"]'); await espera();
+  j = await paciente();
+  ok(j.avaliacoes.length === 2 && J(j.avaliacoes[0].signs) === J(SINAIS) && j.avaliacoes[1].motivo === 'Piora após viagem' && j.avaliacoes[1].prof === 'Mauren Turcatti', `${nome}: nova versão com motivo e profissional; a basal continua igual`);
+  ok(await tem('.tabs [data-t="versoes"].on') && await p.locator('.ver').count() === 2 && await tem('.ver:not(.basal)', 'Piora após viagem') && await tem('.ver:not(.basal)', 'Reavaliação avulsa'), `${nome}: versões listam a reavaliação avulsa`);
+  ok(await p.locator('.cmp svg.penta').count() === 2 && await tem('.sinais-cmp', 'Lombalgia'), `${nome}: compara duas versões`);
+  ok(J(Object.keys(paraV1(JSON.parse(await p.evaluate(() => localStorage.getItem('musubi-v2')))).patients.find(x => x.name === NOME).assess[1])) === J(['id','date','signs','status','nota']), `${nome}: exportação v1 sem os campos de versão`);
 
   // Celular
   const cel = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });

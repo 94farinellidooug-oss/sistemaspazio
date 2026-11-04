@@ -168,7 +168,7 @@ export function registroInicial(ult){
   const lado = l => ({ ...ladoVazio(), cls: [...ult.pulso[l].cls] });
   return { achados: JSON.parse(JSON.stringify(ult.achados)), pulso: { esq: lado('esq'), dir: lado('dir'), semLado: [...(ult.pulso.semLado || [])] } };
 }
-const CAMPOS_REGISTRO = ['achados','pulso','linguaObs','bgInterp','categorias'];
+const CAMPOS_REGISTRO = ['achados','pulso','linguaObs','bgInterp','categorias','interp'];
 export const camposRegistro = av => Object.fromEntries(CAMPOS_REGISTRO.filter(k => av[k] !== undefined).map(k => [k, JSON.parse(JSON.stringify(av[k]))]));
 
 /* ---------- Etapa 3B: achados livres por categoria ----------
@@ -198,3 +198,30 @@ export function removerAchadoLivre(av, c, id){
 export function notaCategoria(av, c, texto){ garantirCat(av, c).nota = texto; }
 // Itens que o profissional levou para a Síntese ou para o Plano, por categoria.
 export const encaminhados = (av, destino) => CATEGORIAS.map(([c, nome]) => [c, nome, categoriaDe(av, c).itens.filter(x => x[destino])]).filter(x => x[2].length);
+
+/* ---------- Etapa 3C: vasos extraordinários ----------
+   Decisão de 04/11: os vasos não são achado de avaliação; são opções de tratamento, mostradas no Plano
+   como dicas, com os pares de abertura e acoplado conferidos pela profissional.
+   a.vasos:{[vaso]:{considerar (par incluído no plano pelo profissional), nota}}. A indicação automática
+   depende dos critérios clínicos da profissional; até lá nada é sugerido. */
+export const PARES_VASOS = [['Du Mai','ID3','B62'],['Ren Mai','P7','R6'],['Chong Mai','BP4','CS6'],['Dai Mai','VB41','TA5'],
+  ['Yin Qiao Mai','R6','P7'],['Yang Qiao Mai','B62','ID3'],['Yin Wei Mai','CS6','BP4'],['Yang Wei Mai','TA5','VB41']];
+export const vasoDe = (a, v) => ({ nota: '', considerar: false, ...(a.vasos?.[v] || {}) });
+export function definirVaso(a, v, campo, valor){
+  const x = ((a.vasos ||= {})[v] ||= { considerar: false, nota: '' });
+  x[campo] = campo === 'considerar' ? !!valor : valor;
+  return x;
+}
+
+/* ---------- Etapa 3C: versões da avaliação ----------
+   Cada registro em p.avaliacoes é uma versão; nenhuma é sobrescrita por uma nova avaliação.
+   A basal (a primeira por data) fica bloqueada. Uma versão ligada a um atendimento finalizado pode
+   ser corrigida: antes da primeira alteração, os valores anteriores ficam guardados no histórico. */
+export const versoesDe = p => p.avaliacoes.map((v, i) => [v, i]).sort((x, y) => x[0].date.localeCompare(y[0].date) || x[1] - y[1]).map(x => x[0]);
+export const basalDe = p => versoesDe(p)[0] || null;
+export const ehBasal = (p, av) => !!av && basalDe(p) === av;
+const CAMPOS_VERSAO = ['signs','status','nota','achados','pulso','linguaObs','bgInterp','categorias','interp'];
+export const fotoVersao = av => JSON.parse(JSON.stringify(Object.fromEntries(CAMPOS_VERSAO.filter(k => av[k] !== undefined).map(k => [k, av[k]]))));
+export function registrarCorrecao(av, anterior, em, motivo = ''){
+  (av.historico ||= []).push({ em, acao: `correção registrada${motivo ? '. Motivo: ' + motivo : ''}; valores anteriores preservados`, anterior });
+}
