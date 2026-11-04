@@ -7,8 +7,9 @@ import { ic, vazio } from '../componentes/icones.js';
 import { pentagram } from '../componentes/pentagrama.js';
 import { EL, KE, SHENG, controlador, mae } from '../conhecimento/elementos.js';
 import { CAUT, PT } from '../conhecimento/pontos.js';
+import { FACES, LARGURA, TAM, VISTAS, desenho, iconeMarca, marcaSvg, pontosSvg, temPosicao, vistaNome, vistasDoPonto } from '../componentes/corpo.js';
 import { SIGN, SIGNS } from '../conhecimento/sinais.js';
-import { CATEGORIAS, ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, PARES_VASOS, categoriaDe, ehBasal, encaminhados, vasoDe, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
+import { LADOS_MARCA, TIPOS_MARCA, atendimentosAnteriores, marcaComIntensidade, marcasDe, CATEGORIAS, ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, PARES_VASOS, categoriaDe, ehBasal, encaminhados, vasoDe, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
 import { alertasDe } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
 import { db, patient } from '../dados/repositorio.js';
@@ -206,22 +207,98 @@ function eSintese(p,a){
     <div class="card"><div class="field"><label class="lbl" for="at-sintese">Síntese do profissional</label><textarea id="at-sintese" data-atf="sintese" placeholder="Raciocínio clínico, prioridades do tratamento...">${esc(a.sintese)}</textarea></div><p class="muted sm" style="margin-top:8px">A síntese é escrita e validada pelo profissional. O sistema não conclui diagnóstico.</p></div></div>
     <div class="card"><h3>Elementos</h3>${barrasEl(st)}${av.interp?`<p class="sm" style="margin-top:10px"><b>Interpretação:</b> ${esc(av.interp)}</p>`:''}</div></div>`;
 }
-// Posições ilustrativas (frente: x até 200; costas: x de 210 a 410). O atlas completo é da etapa 4.
-const MAPA = {VG20:[310,16],VB20:[296,60],B13:[298,104],B15:[298,116],B17:[298,132],B23:[298,180],VG4:[310,182],
-  VC17:[100,118],VC12:[100,158],VC4:[100,200],IG11:[40,168],CS6:[44,214],CS7:[44,224],P9:[50,222],C7:[54,226],C8:[40,240],IG4:[30,236],
-  BP10:[88,292],BP9:[90,322],VB34:[78,320],E36:[86,334],E40:[80,352],BP6:[92,370],R7:[94,384],R3:[94,396],R6:[97,401],BP3:[90,409],F3:[82,414]};
-const silhueta = dx => `<g transform="translate(${dx},0)" class="corpo"><circle cx="100" cy="30" r="20"/><rect x="91" y="48" width="18" height="16" rx="5"/>
-  <path d="M62 66h76q10 0 12 12l3 120q0 8-8 10H55q-8-2-8-10l3-120q2-12 12-12z"/><path d="M50 74q-12 4-14 20l-10 140q0 8 7 9t8-7l11-118z"/><path d="M150 74q12 4 14 20l10 140q0 8-7 9t-8-7l-11-118z"/>
-  <path d="M58 206h40l-2 200q0 14 -12 14t-12-14z"/><path d="M102 206h40l-14 200q0 14-12 14t-12-14z"/></g>`;
-function eMapa(p,a){
-  const P=a.plano.pontos, pts=P.filter(c=>MAPA[c]), fora=P.filter(c=>!MAPA[c]);
-  return `<div class="grid g-side"><div class="card"><div class="card-h"><h3>Mapa corporal</h3><span class="pill">atlas completo na etapa 4</span></div>
-    <svg viewBox="0 0 420 458" class="mapa" role="img" aria-label="Mapa corporal com os pontos do plano">${silhueta(0)}${silhueta(210)}
-    <text x="100" y="452" text-anchor="middle" class="ax">frente</text><text x="310" y="452" text-anchor="middle" class="ax">costas</text>
-    ${pts.map(c=>`<g><circle cx="${MAPA[c][0]}" cy="${MAPA[c][1]}" r="6" class="pt"/><text x="${MAPA[c][0]+9}" y="${MAPA[c][1]+4}" class="ptl">${c}</text></g>`).join('')}</svg>
-    <p class="muted sm" style="text-align:center">Posições ilustrativas.${fora.length?` Sem posição no mapa ainda: ${fora.join(', ')}.`:''}</p></div>
-    <div class="grid" style="align-content:start"><div class="card"><h3>Pontos do plano</h3>${P.length?`<div class="chips" style="margin-top:10px">${P.map(c=>`<span class="pill acc mono">${esc(c)}${PT[c]?` · ${PT[c].pinyin}`:''}</span>`).join('')}</div>`:`<div class="vazio">${ic('info')}Os pontos escolhidos no plano terapêutico aparecem aqui.</div><button class="btn sm" data-act="etapa" data-i="5" style="margin-top:8px">Ir ao plano</button>`}</div>
-      <div class="card"><div class="field"><label class="lbl" for="at-mapa">Observações do mapa corporal</label><textarea id="at-mapa" data-atf="mapa" placeholder="Regiões de dor, cicatrizes, áreas sensíveis...">${esc(a.mapa?.nota||'')}</textarea></div></div></div></div>`;
+/* ---------- Mapa corporal (etapa 4A) ----------
+   Seis vistas com silhuetas próprias, marcações tocando no corpo, comparação com os atendimentos
+   anteriores e os pontos do plano que já têm posição. Tudo aproximado; nada é calculado. */
+const ZOOMS_MAPA = [1, 1.5, 2, 3];
+const nomeMarca = k => TIPOS_MARCA.find(t => t[0] === k)?.[1] || k;
+const nomeLado = k => LADOS_MARCA.find(l => l[0] === k)?.[1] || 'Não se aplica';
+const faceMapa = v => FACES[v] ? ui.mapa.face[v] : '';
+const naVistaMapa = (m, v, f) => m.vista === v && (m.face || '') === (f || '');
+const larguraMapa = (v, z) => z === 1 ? `min(100%,${LARGURA[v]}px)` : LARGURA[v] * z + 'px';
+function dicaMapa(a){
+  const M = ui.mapa;
+  if (a.status !== 'rascunho') return `${ic('check')}Atendimento finalizado: as marcações estão no prontuário e não mudam mais. Toque numa marcação para ver os detalhes.`;
+  if (M.rad) return `${ic('dir')}<b>Irradiação:</b> agora toque no ponto de destino, na mesma vista. <button class="btn ghost sm" data-act="at-mk-radx">Cancelar</button>`;
+  if (M.ferr === 'sel') return `${ic('info')}Toque numa marcação para editar. Para marcar, escolha um tipo acima.`;
+  return M.ferr === 'irradiacao' ? `${ic('dir')}<b>Irradiação:</b> toque primeiro na origem e depois no destino.` : `${ic('corpo')}Toque no corpo para marcar <b>${nomeMarca(M.ferr).toLowerCase()}</b>. Pode haver várias marcações na mesma região.`;
+}
+function editorMarca(p, a, ant){
+  const M = ui.mapa, todas = [...ant.flatMap(x => marcasDe(x).map(m => [m, x])), ...marcasDe(a).map(m => [m, a])], par = todas.find(([m]) => m.id === M.sel);
+  if (!par) return `<div class="card" id="ed-mk"><div class="card-h"><h3>Marcação</h3></div><p class="muted sm">${a.status === 'rascunho' ? 'Escolha um tipo em "Marcar" e toque no corpo. Para editar, toque numa marcação no mapa ou escolha na lista abaixo.' : 'Toque numa marcação para ver os detalhes.'}</p></div>`;
+  const [m, at] = par, ro = at !== a || a.status !== 'rascunho';
+  const meta = `<div class="ed-meta">${ic('agenda')}<span>${fmt(m.data)}${m.criadaEm ? ' às ' + hhmm(m.criadaEm) : ''} · ${ordemNo(p, at)}º atendimento${at === a ? '' : ' (anterior)'}</span></div><div class="ed-meta">${ic('corpo')}<span>Vista ${vistaNome(m.vista, m.face)} · posição aproximada</span></div>`;
+  const cab = `<div class="card-h"><h3><span class="ed-t">${iconeMarca(m.tipo)}${nomeMarca(m.tipo)}</span></h3>${ro ? `<span class="pill">${at === a ? 'no prontuário' : 'somente leitura'}</span>` : '<span class="pill acc">editando</span>'}</div>`;
+  if (ro) return `<div class="card" id="ed-mk">${cab}${meta}
+    <dl class="ed-dl"><dt>Lado</dt><dd>${nomeLado(m.lado)}</dd>${marcaComIntensidade(m.tipo) ? `<dt>Intensidade</dt><dd>${m.intensidade ?? 'não informada'}${m.intensidade != null ? ' de 10' : ''}</dd>` : `<dt>Procedimento</dt><dd>${esc(m.procedimento) || '—'}</dd>`}<dt>Região</dt><dd>${esc(m.regiao) || '—'}</dd><dt>Anotação</dt><dd>${esc(m.nota) || '—'}</dd></dl>
+    <p class="muted sm">${at === a ? 'Registrada no prontuário com este atendimento.' : 'Marcação de outro atendimento, mostrada só para comparar. Ela não é alterada nem copiada.'}</p></div>`;
+  return `<div class="card" id="ed-mk">${cab}${meta}
+    <div class="form ed-f">
+      <div class="field"><label class="lbl" for="mk-tipo">Tipo</label><select id="mk-tipo" data-mk="tipo">${TIPOS_MARCA.map(([k, n]) => `<option value="${k}" ${k === m.tipo ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      <div class="field"><label class="lbl" for="mk-lado">Lado do paciente</label><select id="mk-lado" data-mk="lado">${LADOS_MARCA.map(([k, n]) => `<option value="${k}" ${k === m.lado ? 'selected' : ''}>${n}</option>`).join('')}</select><small class="muted">Sugerido pela posição tocada.</small></div>
+      ${marcaComIntensidade(m.tipo) ? `<div class="field full"><span class="lbl" id="mk-int-l">Intensidade (0 a 10)</span><div class="int-r" role="group" aria-labelledby="mk-int-l">${Array.from({ length:11 }, (_, n) => `<button class="int-b${m.intensidade === n ? ' on' : ''}" data-act="at-mk-int" data-n="${n}" aria-pressed="${m.intensidade === n}">${n}</button>`).join('')}</div><small class="muted" id="mk-int-v">${m.intensidade == null ? 'Não informada' : `Registrada: ${m.intensidade} de 10`}</small></div>`
+        : `<div class="field full"><label class="lbl" for="mk-proc">Procedimento realizado</label><input id="mk-proc" data-mk="procedimento" value="${esc(m.procedimento)}" placeholder="Ex.: ventosa, moxabustão, acupuntura..."></div>`}
+      ${m.tipo === 'irradiacao' ? `<div class="field full"><span class="lbl">Trajeto</span><div class="rad-s">${m.x2 != null ? `${ic('check')}Origem e destino marcados` : `${ic('alerta')}Falta o destino`}<button class="btn sm" data-act="at-mk-rad">${m.x2 != null ? 'Redesenhar destino' : 'Marcar destino'}</button></div></div>` : ''}
+      <div class="field full"><label class="lbl" for="mk-reg">Região</label><input id="mk-reg" data-mk="regiao" value="${esc(m.regiao)}" list="mk-regioes" placeholder="Ex.: lombar, ombro, joelho"></div>
+      <div class="field full"><label class="lbl" for="mk-nota">Anotação</label><textarea id="mk-nota" data-mk="nota" placeholder="Como é, quando piora, o que melhora...">${esc(m.nota)}</textarea></div>
+    </div>
+    <datalist id="mk-regioes">${[...new Set(todas.map(([x]) => x.regiao).filter(Boolean))].map(r => `<option value="${esc(r)}">`).join('')}</datalist>
+    <div class="ed-a">${M.rm ? `<div class="rm-c" role="alert"><span>Remover esta marcação?</span><button class="btn sm crit" data-act="at-mk-rms">Sim, remover</button><button class="btn sm" data-act="at-mk-rmn">Cancelar</button></div>` : `<button class="btn sm" data-act="at-mk-rm">${ic('x')}Remover</button><button class="btn sm ghost" data-act="at-mk-ok">Concluir</button>`}</div></div>`;
+}
+const linhaMarcaAt = m => `<button class="mk-li${ui.mapa.sel === m.id ? ' on' : ''}" data-act="at-mk-sel" data-id="${esc(m.id)}">${iconeMarca(m.tipo)}<span class="grow"><b>${nomeMarca(m.tipo)}${m.regiao ? ' · ' + esc(m.regiao) : ''}</b><small>${nomeLado(m.lado)} · ${vistaNome(m.vista, m.face)}${marcaComIntensidade(m.tipo) ? ` · ${m.intensidade ?? '—'}/10` : m.procedimento ? ' · ' + esc(m.procedimento) : ''}</small></span></button>`;
+// Valores registrados lado a lado, por tipo e região. Nada é calculado.
+export function tabelaMarcas(p, ats, atual){
+  const grupos = new Map();
+  ats.forEach(at => marcasDe(at).forEach(m => { const k = m.tipo + '|' + (m.regiao || '').trim().toLowerCase(); if (!grupos.has(k)) grupos.set(k, { tipo:m.tipo, regiao:m.regiao || 'sem região', por:new Map() }); const g = grupos.get(k); g.por.set(at, [...(g.por.get(at) || []), m]); }));
+  if (!grupos.size) return '';
+  const val = L => !L ? '<span class="muted">—</span>' : L.map(m => marcaComIntensidade(m.tipo) ? (m.intensidade == null ? '✓' : `<b>${m.intensidade}</b>`) : esc(m.procedimento || '✓')).join(' · ');
+  return `<div class="tbl-w"><table class="ev-t"><thead><tr><th>Marcação</th>${ats.map(at => `<th>${fmt(at.data).slice(0,5)}<small>${ordemNo(p, at)}º</small></th>`).join('')}</tr></thead>
+    <tbody>${[...grupos.values()].map(g => `<tr><td><span class="ev-n">${iconeMarca(g.tipo)}<span>${nomeMarca(g.tipo)}<small>${esc(g.regiao)}</small></span></span></td>${ats.map(at => `<td class="${at === atual ? 'at' : ''}">${val(g.por.get(at))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+function eMapa(p, a){
+  const M = ui.mapa, v = M.vista, f = faceMapa(v), [w, h] = TAM[v], rasc = a.status === 'rascunho';
+  const ant = atendimentosAnteriores(p, a), anterior = ant.at(-1), antigos = ant.slice(0, -1);
+  if (M.hist && !antigos.some(x => x.id === M.hist)) M.hist = '';
+  const hist = antigos.find(x => x.id === M.hist);
+  const minhas = marcasDe(a), P = a.plano.pontos;
+  const camadas = [
+    hist ? marcasDe(hist).filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'hist', M.sel === m.id)).join('') : '',
+    M.ant && anterior ? marcasDe(anterior).filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'ant', M.sel === m.id)).join('') : '',
+    M.plano ? pontosSvg(P, v, f, () => 'plano') : '',
+    minhas.filter(m => naVistaMapa(m, v, f)).map(m => marcaSvg(m, 'at', M.sel === m.id)).join('')].join('');
+  const zi = ZOOMS_MAPA.indexOf(M.zoom), com = P.filter(temPosicao), sem = P.filter(c => !temPosicao(c));
+  const tabela = tabelaMarcas(p, [...ant.filter(x => marcasDe(x).length), a], a);
+  return `<div class="notice">${ic('info')}<div><b>Posições aproximadas.</b> D e E são sempre o lado direito e o lado esquerdo <b>do paciente</b>, em todas as vistas.</div></div>
+  <div class="grid g-side mp-g">
+    <div class="card mp-card"><div class="card-h"><h3>Mapa corporal<small>${vistaNome(v, f)}</small></h3><span class="pill warn">aproximado</span></div>
+      <div class="vbar" role="tablist" aria-label="Vistas do corpo">${VISTAS.map(([k, n]) => `<button class="vb${k === v ? ' on' : ''}" role="tab" aria-selected="${k === v}" data-act="at-mv-vista" data-v="${k}">${n}</button>`).join('')}</div>
+      ${FACES[v] ? `<div class="seg-c vface" role="group" aria-label="Face">${FACES[v].map(([k, n]) => `<button class="${k === f ? 'on' : ''}" data-act="at-mv-face" data-f="${k}">${n}</button>`).join('')}</div>` : ''}
+      <div class="ferr" role="group" aria-label="Marcar"><span class="lbl">Marcar</span>${TIPOS_MARCA.map(([k, n]) => `<button class="chip fr${M.ferr === k ? ' on' : ''}" data-act="at-mv-ferr" data-t="${k}" aria-pressed="${M.ferr === k}" ${rasc ? '' : 'disabled'}>${iconeMarca(k)}${n}</button>`).join('')}<button class="chip fr${M.ferr === 'sel' ? ' on' : ''}" data-act="at-mv-ferr" data-t="sel" aria-pressed="${M.ferr === 'sel'}">${ic('editar')}Selecionar</button></div>
+      <p class="mp-dica" id="mp-dica">${dicaMapa(a)}</p>
+      <div class="mp-ctl">
+        <div class="zoom" role="group" aria-label="Ampliação"><button class="btn sm" data-act="at-mv-zoom" data-d="-1" aria-label="Diminuir" ${zi === 0 ? 'disabled' : ''}>−</button><span class="zoom-v">${Math.round(M.zoom * 100)}%</span><button class="btn sm" data-act="at-mv-zoom" data-d="1" aria-label="Ampliar" ${zi === ZOOMS_MAPA.length - 1 ? 'disabled' : ''}>${ic('mais')}</button></div>
+        <div class="mp-cmp" role="group" aria-label="Comparar">
+          <span class="chip on mp-at">${iconeMarca('dor')}Atual · ${fmt(a.data).slice(0,5)}</span>
+          ${anterior ? `<button class="chip${M.ant ? ' on' : ''}" data-act="at-mv-ant" aria-pressed="${M.ant}">${iconeMarca('dor','ant')}Anterior · ${fmt(anterior.data).slice(0,5)}</button>` : ''}
+          ${antigos.length ? `<label class="hist-l">${iconeMarca('dor','hist')}<select class="mini-sel" data-mvhist aria-label="Atendimento mais antigo"><option value="">Histórico: nenhum</option>${antigos.slice().reverse().map(x => `<option value="${x.id}" ${M.hist === x.id ? 'selected' : ''}>Histórico: ${fmt(x.data).slice(0,5)} (${ordemNo(p, x)}º)</option>`).join('')}</select></label>` : ''}
+          <button class="chip${M.plano ? ' on' : ''}" data-act="at-mv-plano" aria-pressed="${M.plano}">Pontos do plano</button>
+        </div>
+      </div>
+      <div class="mp-zoom"><svg class="mapa4${rasc && (M.ferr !== 'sel' || M.rad) ? ' marcando' : ''}" data-mapa="atendimento" data-vista="${v}" data-face="${f}" viewBox="0 0 ${w} ${h}" style="width:${larguraMapa(v, M.zoom)}" role="img" aria-label="Mapa corporal, vista ${vistaNome(v, f)}">${desenho(v, f)}${camadas}</svg></div>
+      <div class="legenda" aria-label="Legenda">${TIPOS_MARCA.map(([k, n]) => `<span>${iconeMarca(k)}${n}</span>`).join('')}<span class="lg-sep"></span>
+        <span>${iconeMarca('dor','ant')}Atendimento anterior</span><span>${iconeMarca('dor','hist')}Histórico</span>
+        <span><svg viewBox="0 0 20 20" class="lg-i" aria-hidden="true"><g class="ptp plano"><circle cx="10" cy="10" r="4.5"/></g></svg>Ponto do plano</span>
+        <span><svg viewBox="0 0 20 20" class="lg-i mk" style="--c:var(--crit)" aria-hidden="true"><g class="esp"><circle cx="10" cy="10" r="6"/></g></svg>Lado espelhado (bilateral)</span></div>
+    </div>
+    <aside class="grid" style="align-content:start">${editorMarca(p, a, ant)}
+      <div class="card"><div class="card-h"><h3>Marcações deste atendimento<small>${fmt(a.data)} · ${ordemNo(p, a)}º atendimento</small></h3><span class="pill">${minhas.length}</span></div>
+        <div class="mk-l">${minhas.map(linhaMarcaAt).join('') || '<p class="muted sm">Nenhuma marcação ainda.</p>'}</div></div>
+      <div class="card" id="plano-mapa"><div class="card-h"><h3>Pontos do plano<small>do Plano terapêutico deste atendimento</small></h3></div>
+        ${P.length ? `<div class="pp"><span class="lbl">No mapa</span><div class="chips">${com.map(c => `<span class="pill pp-c">${esc(c)}<small>${vistasDoPonto(c).join(', ')}</small></span>`).join('') || '<span class="muted sm">nenhum</span>'}</div></div>
+        <div class="pp" id="sem-posicao"><span class="lbl">Sem posição no mapa</span><div class="chips">${sem.map(c => `<span class="pill warn pp-c">${esc(c)}</span>`).join('') || '<span class="muted sm">nenhum</span>'}</div></div>` : '<p class="muted sm">Os pontos escolhidos no Plano terapêutico aparecem aqui e no mapa.</p>'}</div>
+      ${tabela ? `<div class="card" id="mk-evolucao"><div class="card-h"><h3>Comparação entre atendimentos<small>valores registrados, lado a lado, sem cálculo</small></h3></div>${tabela}<small class="muted">Intensidade de 0 a 10 nos sintomas e limitações; nome do procedimento quando houver.</small></div>` : ''}
+      <div class="card"><div class="field"><label class="lbl" for="at-mapa">Observações do mapa corporal</label><textarea id="at-mapa" data-atf="mapa" placeholder="Cicatrizes, áreas sensíveis, outras observações...">${esc(a.mapa?.nota || '')}</textarea></div></div>
+    </aside></div>`;
 }
 function ePlano(p,a){
   const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, ac=evaluate(av.signs).filter(h=>av.status[h.p.id]==='aceito'), P=a.plano.pontos, w=pointWarnings(P,p,a.plano.tec);

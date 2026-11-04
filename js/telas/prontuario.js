@@ -14,7 +14,8 @@ import { SIGN } from '../conhecimento/sinais.js';
 import { db, patient } from '../dados/repositorio.js';
 import { alertasDe, melhoraPct } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
-import { basalDe, rascunhoDe, versoesDe } from '../dados/atendimento.js';
+import { LADOS_MARCA, TIPOS_MARCA, basalDe, marcaComIntensidade, marcasDe, rascunhoDe, versoesDe } from '../dados/atendimento.js';
+import { iconeMarca, vistaNome } from '../componentes/corpo.js';
 import { ui } from '../estado.js';
 import { elemState, evaluate } from '../raciocinio/avaliacao.js';
 import { TODAY, age, esc, fmt, initials } from '../util.js';
@@ -34,6 +35,12 @@ function eventos(p){
   p.avaliacoes.filter(x=>!x.atendimentoId).forEach(av=>E.push({tipo:'av',data:av.date,av}));
   return E.sort((x,y)=>x.data.localeCompare(y.data));
 }
+// Marcações do mapa corporal registradas no atendimento (etapa 4A). Só leitura: nunca são sobrescritas.
+function marcasProntuario(a){
+  const L=marcasDe(a); if(!L.length) return '';
+  const tn=k=>TIPOS_MARCA.find(x=>x[0]===k)?.[1]||k, ln=k=>LADOS_MARCA.find(x=>x[0]===k)?.[1]||'Não se aplica';
+  return `<details class="mais pr-mapa"><summary>${ic('corpo')}Mapa corporal (${L.length} marcaç${L.length===1?'ão':'ões'}) ${ic('baixo')}</summary><div class="pr-mk">${L.map(m=>`<div class="pr-m" data-id="${esc(m.id)}">${iconeMarca(m.tipo)}<div class="grow"><b>${tn(m.tipo)}${m.regiao?' · '+esc(m.regiao):''}</b><small>${ln(m.lado)} · ${vistaNome(m.vista,m.face)}${marcaComIntensidade(m.tipo)?` · intensidade ${m.intensidade??'—'}/10`:' · '+esc(m.procedimento||'procedimento')}</small>${m.nota?`<p>${esc(m.nota)}</p>`:''}</div></div>`).join('')}</div></details>`;
+}
 const rotuloAv = (p,av) => av===p.avaliacoes[0]?'avaliação basal':'reavaliação';
 function itemTempo(p,e){
   if(e.tipo==='av'){ const h=aceitos(e.av);
@@ -45,6 +52,7 @@ function itemTempo(p,e){
     ${outras.length?`<div class="chips">${outras.map(q=>`<span class="pill"><i class="dotq" style="background:${corQ(p,q)}"></i>${esc(q.descricao)}: ${e.a.evolucao.intensidades[q.id]}/10</span>`).join('')}</div>`:''}
     ${h.length?`<p class="muted sm">Padrões validados na avaliação: ${h.map(x=>esc(x.p.nome)).join(', ')}</p>`:''}
     ${e.a.sintese?`<p class="sm"><b>Síntese:</b> ${esc(e.a.sintese)}</p>`:''}
+    ${marcasProntuario(e.a)}
     <div class="lt-a">${e.a.historico.length>1?`<details class="mais"><summary>Histórico de alterações (${e.a.historico.length}) ${ic('baixo')}</summary><div class="hist-alt">${[...e.a.historico].reverse().map(x=>`<div><span class="mono muted">${fmt(x.em.slice(0,10))} ${new Date(x.em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span><span>${esc(x.acao)}</span></div>`).join('')}</div></details>`:'<span></span>'}
       <button class="btn ghost sm" data-act="abrir-atendimento" data-pid="${p.id}" data-id="${e.a.id}">${ic('editar')}Abrir no ambiente</button></div></div></div>`;
 }
