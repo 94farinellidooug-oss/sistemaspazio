@@ -183,7 +183,7 @@ async function verificar(browser, url, nome) {
   let M = await marcas();
   ok(M.length === 1 && M[0].tipo === 'dor' && M[0].lado === 'dir' && M[0].vista === 'anterior' && Math.abs(M[0].x - .39) < .01 && Math.abs(M[0].y - 260 / 430) < .01, `${nome}: marcação de dor gravada no atendimento, lado direito do paciente`);
   await marcar('sintoma', 5, 300); ok((await marcas()).length === 1, `${nome}: toque fora do corpo não marca`);
-  for (const t of ['sintoma', 'limitacao', 'procedimento']) await marcar(t, 120, 300);
+  for (const [t, y] of [['sintoma', 290], ['limitacao', 312], ['procedimento', 334]]) await marcar(t, 114, y);
   M = await marcas();
   ok(J(M.map(m => m.tipo)) === J(['dor','sintoma','limitacao','procedimento']) && M.slice(1).every(m => m.lado === 'esq'), `${nome}: marcações de cada tipo, várias na mesma região`);
   ok(await p.locator('#ed-mk [data-act="at-mk-int"]').count() === 0 && await p.locator('#mk-proc').count() === 1, `${nome}: procedimento sem intensidade, com o campo do procedimento`);
@@ -215,6 +215,10 @@ async function verificar(browser, url, nome) {
   await p.click('[data-act="at-mv-zoom"][data-d="-1"]'); await p.click('[data-act="at-mv-zoom"][data-d="-1"]'); await espera();
   await vista('maos', 'palmar'); await marcar('sintoma', 70, 150);
   ok((await marcas()).at(-1).lado === 'dir' && (await marcas()).at(-1).face === 'palmar', `${nome}: mão direita na palma`);
+  // Com um tipo ativo, tocar em cima de uma marcação apaga
+  { const n1 = (await marcas()).length, ult = (await marcas()).at(-1); await tocar(70, 150);
+    ok((await marcas()).length === n1 - 1 && !(await marcas()).some(m => m.id === ult.id) && await p.locator('[data-act="at-mv-ferr"][data-t="sintoma"].on').count() === 1, `${nome}: tocar em cima de uma marcação apaga, e o tipo continua ativo`);
+    await tocar(70, 150); ok((await marcas()).length === n1, `${nome}: tocar de novo no mesmo lugar marca outra vez`); }
   // Marcar continua ativo: vários toques seguidos, sem escolher o tipo de novo
   ok(await p.locator('[data-act="at-mv-ferr"][data-t="sintoma"].on').count() === 1, `${nome}: depois de marcar, o tipo continua ativo`);
   let n0 = (await marcas()).length; await tocar(90, 160); await tocar(110, 120);
