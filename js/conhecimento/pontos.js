@@ -34,3 +34,8 @@ export const POINTS = [
 export const PT = {};
 POINTS.forEach(p=>PT[p.code]=p);
 export const CAUT = {gestacao:'Evitar na gestação',torax:'Agulhamento oblíquo; risco de pneumotórax',profundidade:'Atenção à direção e profundidade'};
+// Quantidade de pontos de cada meridiano e vaso (códigos). Só os códigos: o conteúdo de cada ponto
+// vem das fichas acima ou da fonte aprovada; os demais aparecem como "ficha pendente".
+export const NPT = {P:11,IG:20,E:45,BP:21,C:9,ID:19,B:67,R:27,CS:9,TA:23,VB:44,F:14,VC:24,VG:28};
+export const CODIGOS = Object.entries(NPT).flatMap(([m,n])=>Array.from({length:n},(_,i)=>m+(i+1)));
+export const meridianoDe = c => c.replace(/\d+$/,'');
