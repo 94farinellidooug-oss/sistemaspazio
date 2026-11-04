@@ -27,7 +27,7 @@ export function iniciarAtendimento(p, { id, data }, em){
   const intensidades = Object.fromEntries(p.queixas.filter(q => q.ativa).map(q => [q.id, serieQueixa(p, q.id).at(-1)?.valor ?? 5]));
   const a = { id, data, status: 'rascunho', origem: 'sistema', inicio: em, atualizadoEm: em, etapas: [0],
     plano: { pontos: [], tec: [] }, evolucao: { intensidades, nota: '' }, sintese: '',
-    avaliacao: { signs: ult ? [...ult.signs] : [], status: ult ? { ...ult.status } : {}, nota: '' },
+    avaliacao: { signs: ult ? [...ult.signs] : [], status: ult ? { ...ult.status } : {}, nota: '', ...registroInicial(ult) },
     vasos: {}, mapa: { nota: '' }, documentos: [], avaliacaoId: null,
     historico: [{ em, acao: 'atendimento iniciado' }] };
   p.atendimentos.push(a);
@@ -55,7 +55,7 @@ export function finalizarAtendimento(p, a, em, idAvaliacao){
   if (a.status !== 'rascunho') return a;
   const av = a.avaliacao;
   if (a.etapas.includes(1) && av.signs.length) {
-    p.avaliacoes.push({ id: idAvaliacao, date: a.data, signs: [...av.signs], status: { ...av.status }, nota: av.nota || '', atendimentoId: a.id,
+    p.avaliacoes.push({ id: idAvaliacao, date: a.data, signs: [...av.signs], status: { ...av.status }, nota: av.nota || '', ...camposRegistro(av), atendimentoId: a.id,
       historico: [{ em, acao: 'avaliação registrada no atendimento' }] });
     a.avaliacaoId = idAvaliacao;
   }
@@ -97,3 +97,76 @@ export function estacao(mes, hemisferio = 'Sul'){
   return hemisferio === 'Norte' ? { Verão:'Inverno', Inverno:'Verão', Outono:'Primavera', Primavera:'Outono' }[sul] : sul;
 }
 export const ELEMENTO_ESTACAO = { Primavera:'madeira', Verão:'fogo', Outono:'metal', Inverno:'agua' };
+
+/* ---------- Etapa 3A: registro da avaliação (língua e pulso) ----------
+   Campos novos dentro da avaliação (rascunho ou registro em p.avaliacoes), todos opcionais:
+     achados:{[sinal]:{sit:'pos'|'neg', orig:'anamnese'|'exame'|'obs'|''}}  (língua e sinais e sintomas)
+     pulso:{esq:{cls[],deficiencia,orgao,obs,pos:{cun,guan,chi}}, dir:{...}, semLado:[]}
+     linguaObs, bgInterp
+   Camada de compatibilidade: av.signs continua sendo a única entrada do cálculo e da exportação v1.
+   Entram nela os achados "Positivo" e cada classificação de pulso marcada em pelo menos um lado,
+   exatamente como um sinal marcado antes. "Negativo", "Não avaliado", origem e campos escritos não
+   entram no cálculo. Avaliações antigas (só signs) são lidas sem conversão: os sinais viram achados
+   positivos de origem não informada e as classificações de pulso ficam "sem lado" até o profissional
+   registrá-las num lado. */
+export const ORIGENS_ACHADO = [['anamnese','Anamnese'],['exame','Exame'],['obs','Observação profissional']];
+export const SITUACOES_ACHADO = [['pos','Positivo'],['neg','Negativo'],['na','Não avaliado']];
+export const LADOS_PULSO = [['esq','Pulso esquerdo'],['dir','Pulso direito']];
+export const POSICOES_PULSO = [['cun','Cun'],['guan','Guan'],['chi','Chi']];
+const ehPulso = k => k.startsWith('pulso_');
+const ladoVazio = () => ({ cls: [], deficiencia: '', orgao: '', obs: '', pos: { cun: '', guan: '', chi: '' } });
+
+// Visão do registro sem alterar a avaliação (para desenhar a tela).
+export function registroDe(av){
+  const achados = av.achados ? av.achados : Object.fromEntries(av.signs.filter(k => !ehPulso(k)).map(k => [k, { sit: 'pos', orig: '' }]));
+  const pulso = av.pulso ? av.pulso : { esq: ladoVazio(), dir: ladoVazio(), semLado: av.signs.filter(ehPulso) };
+  return { achados, pulso, linguaObs: av.linguaObs || '', bgInterp: av.bgInterp || '' };
+}
+// Materializa o registro na avaliação antes da primeira alteração.
+export function garantirRegistro(av){
+  const r = registroDe(av);
+  if (!av.achados) av.achados = JSON.parse(JSON.stringify(r.achados));
+  if (!av.pulso) av.pulso = JSON.parse(JSON.stringify(r.pulso));
+  av.pulso.semLado ||= [];
+  return av;
+}
+// Mantém av.signs coerente, preservando a ordem em que os sinais foram marcados.
+function sincronizar(av, k, presente){
+  const i = av.signs.indexOf(k);
+  if (presente && i < 0) av.signs.push(k);
+  else if (!presente && i >= 0) av.signs.splice(i, 1);
+}
+const pulsoPresente = (av, k) => ['esq','dir'].some(l => av.pulso[l].cls.includes(k)) || av.pulso.semLado.includes(k);
+
+// Toque no achado: não avaliado → positivo → negativo → não avaliado.
+export function alternarAchado(av, k, origemPadrao){
+  garantirRegistro(av);
+  const cur = av.achados[k], prox = { na: 'pos', pos: 'neg', neg: 'na' }[cur?.sit || 'na'];
+  if (prox === 'na') delete av.achados[k]; else av.achados[k] = { sit: prox, orig: cur ? cur.orig : origemPadrao };
+  sincronizar(av, k, prox === 'pos');
+}
+export function definirAchado(av, k, campo, valor){
+  garantirRegistro(av);
+  if (campo === 'sit'){ if (valor === 'na') delete av.achados[k]; else (av.achados[k] ||= { sit: valor, orig: '' }).sit = valor; sincronizar(av, k, valor === 'pos'); }
+  else if (av.achados[k]) av.achados[k].orig = valor;
+}
+// Classificação de pulso num lado (esq, dir ou semLado, este último só para retirar).
+export function alternarPulso(av, lado, k){
+  garantirRegistro(av);
+  const L = av.pulso[lado], i = L.cls ? L.cls.indexOf(k) : L.indexOf(k), lista = L.cls || L;
+  if (i < 0) lista.push(k); else lista.splice(i, 1);
+  sincronizar(av, k, pulsoPresente(av, k));
+}
+export function definirPulso(av, caminho, valor){
+  garantirRegistro(av);
+  const k = caminho.split('.'), u = k.pop(); k.reduce((o, x) => o[x], av.pulso)[u] = valor;
+}
+// Cópia do registro de uma avaliação anterior para um novo atendimento: situação e origem dos
+// achados e classificações de pulso; os campos escritos começam vazios.
+export function registroInicial(ult){
+  if (!ult || !ult.achados || !ult.pulso) return {};
+  const lado = l => ({ ...ladoVazio(), cls: [...ult.pulso[l].cls] });
+  return { achados: JSON.parse(JSON.stringify(ult.achados)), pulso: { esq: lado('esq'), dir: lado('dir'), semLado: [...(ult.pulso.semLado || [])] } };
+}
+const CAMPOS_REGISTRO = ['achados','pulso','linguaObs','bgInterp'];
+export const camposRegistro = av => Object.fromEntries(CAMPOS_REGISTRO.filter(k => av[k] !== undefined).map(k => [k, JSON.parse(JSON.stringify(av[k]))]));
