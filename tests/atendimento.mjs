@@ -5,7 +5,7 @@
 // Uso: node tests/atendimento.mjs
 import { seed } from '../js/dados/exemplos.js';
 import { hidratar, migrarV1, paraV1, registrarSessao } from '../js/dados/migracao.js';
-import { CATEGORIAS, adicionarAchadoLivre, definirAchadoLivre, encaminhados, notaCategoria, removerAchadoLivre, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirPulso, descartarRascunho, estacao, finalizarAtendimento, iniciarAtendimento, preenchimento, rascunhoDe, registrarAlteracao, registroDe } from '../js/dados/atendimento.js';
+import { PARES_VASOS, basalDe, definirVaso, ehBasal, fotoVersao, registrarCorrecao, vasoDe, versoesDe, CATEGORIAS, adicionarAchadoLivre, definirAchadoLivre, encaminhados, notaCategoria, removerAchadoLivre, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirPulso, descartarRascunho, estacao, finalizarAtendimento, iniciarAtendimento, preenchimento, rascunhoDe, registrarAlteracao, registroDe } from '../js/dados/atendimento.js';
 import { evaluate } from '../js/raciocinio/avaliacao.js';
 
 let falhas = 0, total = 0;
@@ -127,6 +127,21 @@ ok(J(Object.keys(paraV1(d).patients[0].assess.at(-1))) === J(['id','date','signs
 ok(removerAchadoLivre(rk, 'zangfu', 'l2')?.texto === 'Fígado em excesso' && rk.categorias.zangfu.itens.length === 0 && removerAchadoLivre(rk, 'zangfu', 'x') === null, 'remoção de achado livre');
 const m = iniciarAtendimento(p, { id: 'r9', data: '2026-11-05' }, EM);
 ok(!m.avaliacao.categorias, 'novo atendimento começa sem achados livres');
+
+// 9. Etapa 3C: vasos, versões e correção
+d = novo(); p = d.patients[0];
+const q = iniciarAtendimento(p, { id: 'r10', data: '2026-11-04' }, EM);
+ok(J(PARES_VASOS.map(x => x.join(' '))) === J(['Du Mai ID3 B62','Ren Mai P7 R6','Chong Mai BP4 CS6','Dai Mai VB41 TA5','Yin Qiao Mai R6 P7','Yang Qiao Mai B62 ID3','Yin Wei Mai CS6 BP4','Yang Wei Mai TA5 VB41']), 'pares dos vasos conferidos');
+definirVaso(q, 'Dai Mai', 'nota', 'peso lombar');
+ok(vasoDe(q, 'Dai Mai').nota === 'peso lombar' && !vasoDe(q, 'Dai Mai').considerar && q.plano.pontos.length === 0, 'anotação do vaso não inclui pontos nem marca o vaso');
+ok(vasoDe({ vasos: { 'Ren Mai': { considerar: true, nota: 'x' } } }, 'Ren Mai').considerar, 'registro anterior (considerar) continua legível');
+q.etapas.push(1); finalizarAtendimento(p, q, EM, 'av10');
+const V = versoesDe(p);
+ok(V.length === p.avaliacoes.length && V.every((v, i) => !i || V[i - 1].date <= v.date) && basalDe(p) === V[0] && ehBasal(p, V[0]) && !ehBasal(p, V.at(-1)), 'versões em ordem de data; a primeira é a basal');
+const ult = V.at(-1), antes = fotoVersao(ult);
+ult.signs.push('lombalgia'); registrarCorrecao(ult, antes, EM, 'erro de digitação');
+ok(ult.historico.at(-1).anterior.signs.length === ult.signs.length - 1 && /erro de digitação/.test(ult.historico.at(-1).acao), 'correção guarda os valores anteriores e o motivo no histórico');
+ok(J(Object.keys(paraV1(d).patients[0].assess.at(-1))) === J(['id','date','signs','status','nota']), 'exportação v1 sem histórico de correções');
 
 console.log(falhas ? `\n${falhas} de ${total} verificações falharam.` : `\n${total} verificações do atendimento passaram.`);
 process.exit(falhas ? 1 : 0);

@@ -8,7 +8,7 @@ import { pentagram } from '../componentes/pentagrama.js';
 import { EL, KE, SHENG, controlador, mae } from '../conhecimento/elementos.js';
 import { CAUT, PT } from '../conhecimento/pontos.js';
 import { SIGN, SIGNS } from '../conhecimento/sinais.js';
-import { CATEGORIAS, ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, categoriaDe, encaminhados, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
+import { CATEGORIAS, ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, PARES_VASOS, categoriaDe, ehBasal, encaminhados, vasoDe, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
 import { alertasDe } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
 import { db, patient } from '../dados/repositorio.js';
@@ -50,7 +50,7 @@ function cmpBasal(p,a,av){
     <div class="cmp3"><div class="ok"><b>${res.length}</b><small>não aparecem mais</small></div><div><b>${man.length}</b><small>mantidos</small></div><div class="warn"><b>${nov.length}</b><small>novos</small></div></div>
     <details class="mais"><summary>Ver sinais ${ic('baixo')}</summary>${[['Não aparecem mais',res,'ok'],['Novos',nov,'warn'],['Mantidos',man,'']].filter(x=>x[1].length).map(([t,L,k])=>`<div class="lbl" style="margin:10px 0 6px">${t}</div><div class="chips">${L.map(x=>`<span class="pill ${k}">${esc(SIGN[x]||x)}</span>`).join('')}</div>`).join('')}</details></div>`;
 }
-export const ABAS_AVALIACAO = ['Língua e pulso','Ba Gang','Zang-Fu','Qi e Xue','Jin Ye','Jing e Shen','Fatores patogênicos','Vasos extraordinários','Contexto sazonal'];
+export const ABAS_AVALIACAO = ['Língua e pulso','Ba Gang','Zang-Fu','Qi e Xue','Jin Ye','Jing e Shen','Fatores patogênicos'];
 const SIT_NOME = Object.fromEntries(SITUACOES_ACHADO);
 const optsAt = (L,v) => L.map(([k,l])=>`<option value="${k}" ${k===v?'selected':''}>${l}</option>`).join('');
 function chipAchadoAt(R,k,l,orig){
@@ -91,16 +91,18 @@ function abaBaGang(av,R){
       <p class="muted sm" style="margin-top:10px">Mesma lógica de antes, a partir de ${bg.n} sinais.</p></div>
     <div class="card"><div class="field"><label class="lbl" for="at-bgint">Interpretação do profissional</label><textarea id="at-bgint" data-atr="bgInterp" placeholder="Interior/exterior, frio/calor, deficiência/excesso, Yin/Yang segundo a sua avaliação">${esc(R.bgInterp)}</textarea></div></div>`;
 }
-function abaVasos(a){
-  return `<div class="card"><div class="card-h"><h3>Oito vasos extraordinários</h3><span class="pill">pares e encaminhamento na etapa 3C</span></div>
-      <p class="muted sm" style="margin-bottom:10px">Marque os vasos que o profissional considerou e anote o raciocínio. Nada é sugerido automaticamente.</p>
-      <div class="vasos">${VASOS.map(v=>{ const x=a.vasos?.[v]||{}; return `<div class="vaso"><label class="chip ${x.considerar?'on':''}"><input type="checkbox" data-vaso="${v}" ${x.considerar?'checked':''}>${v}</label><input class="vaso-n" data-vnota="${v}" placeholder="Anotação" value="${esc(x.nota||'')}" aria-label="Anotação sobre ${v}"></div>`; }).join('')}</div></div>`;
-}
-function abaSazonal(p,a){
-  const c=p.cadastro||{}, hem=c.hemisferio||'Sul', est=estacao(Number(a.data.slice(5,7))-1,hem);
-  return `<div class="card sazonal"><div class="card-h"><h3>${ic('sol')} Contexto sazonal</h3><span class="pill">complementar</span></div>
-      <p class="sm">${c.cidade?esc(c.cidade)+' · ':''}hemisfério ${hem} · <b>${est}</b>, estação ligada a ${elTag(ELEMENTO_ESTACAO[est])}.</p>
-      <p class="muted sm" style="margin-top:6px">Informação de contexto pela data do atendimento${c.cidade?'':' (cidade não cadastrada; hemisfério Sul por padrão)'}. Não indica pontos nem conduta.</p></div>`;
+// Dicas para o tratamento (decisão de 04/11): vasos extraordinários e estação do ano ficam no Plano,
+// como opções. A indicação automática depende dos critérios da profissional; até lá nada é sugerido.
+function dicasTratamento(p,a){
+  const c=p.cadastro||{}, hem=c.hemisferio||'Sul', est=estacao(Number(a.data.slice(5,7))-1,hem), P=a.plano.pontos;
+  return `<div class="card dicas"><div class="card-h"><h3>${ic('info')} Dicas para o tratamento</h3><span class="pill">opções</span></div>
+    <div class="sazonal dica-est"><b>${ic('sol')} Estação: ${est}</b><span class="sm">${c.cidade?esc(c.cidade)+' · ':''}hemisfério ${hem} · estação ligada a ${elTag(ELEMENTO_ESTACAO[est])}</span></div>
+    <details class="mais dica-v" ${PARES_VASOS.some(([v,ab,ac])=>vasoDe(a,v).nota||[ab,ac].every(k=>P.includes(k)))?'open':''}><summary>Vasos extraordinários · 8 pares de abertura e acoplado ${ic('baixo')}</summary>
+    <div class="vt" style="margin-top:10px">${PARES_VASOS.map(([v,ab,ac])=>{ const x=vasoDe(a,v), no=[ab,ac].every(k=>P.includes(k)); return `<div class="vt-r ${no?'tem':''}">
+      <div class="vt-n"><b>${v}</b><small class="mono">${ab} + ${ac}</small></div>
+      ${no?'<span class="pill ok">par no plano</span>':`<button class="btn sm" data-act="at-par" data-v="${v}">${ic('mais')}Incluir ${ab} e ${ac}</button>`}
+      <input class="vt-a" data-vnota="${v}" value="${esc(x.nota||'')}" placeholder="Anotação" aria-label="Anotação sobre ${v}"></div>`; }).join('')}</div></details>
+    <p class="muted sm" style="margin-top:10px">O sistema ainda não indica vasos nem condutas pela estação: isso entra quando os critérios clínicos forem definidos pela profissional. A escolha é sempre do profissional.</p></div>`;
 }
 const ORIG_NOME = Object.fromEntries(ORIGENS_ACHADO);
 const levarAt = (c,it) => `<div class="levar">${[['sintese','Síntese','camadas'],['plano','Plano','plano']].map(([d,l,i])=>`<button class="chip ${it[d]?'on':''}" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="${d}" aria-pressed="${!!it[d]}" data-tip="${it[d]?'Retirar da '+l:'Levar para '+(d==='plano'?'o ':'a ')+l}">${ic(i)}${l}</button>`).join('')}</div>`;
@@ -122,20 +124,20 @@ function abaLivre(av,c,nome){
 function contaAbaAt(i,R,a,av){
   if(i>=2&&i<=6) return categoriaDe(av,CATEGORIAS[i-2][0]).itens.length;
   if(i===0) return Object.keys(R.achados).length+R.pulso.esq.cls.length+R.pulso.dir.cls.length+R.pulso.semLado.length;
-  if(i===7) return Object.values(a.vasos||{}).filter(v=>v.considerar).length;
   return 0;
 }
 function eAvaliacao(p,a){
   const av=avaliacaoEditavel(p,a);
   if(!av) return vazio('yin','Atendimento finalizado sem avaliação energética','A avaliação deste dia pode ser feita como reavaliação avulsa no perfil do paciente.');
-  const H=evaluate(av.signs), R=registroDe(av), i=Math.max(0,Math.min(8,ui.avAba|0));
-  const corpo=[()=>abaLinguaPulso(R),()=>abaBaGang(av,R),...CATEGORIAS.map(([c,n])=>()=>abaLivre(av,c,n)),()=>abaVasos(a),()=>abaSazonal(p,a)][i]();
+  const H=evaluate(av.signs), R=registroDe(av), i=Math.max(0,Math.min(6,ui.avAba|0)), trava=a.status==='finalizado'&&ehBasal(p,av);
+  const corpo=[()=>abaLinguaPulso(R),()=>abaBaGang(av,R),...CATEGORIAS.map(([c,n])=>()=>abaLivre(av,c,n))][i]();
   return `<div class="notice" style="margin-bottom:16px">${ic('info')}<div><b>Apoio ao raciocínio clínico.</b> As hipóteses vêm dos sinais positivos e das classificações de pulso, e não são diagnóstico. Cabe ao profissional aceitar, descartar e decidir.</div></div>
   <div class="ab-bar" role="tablist" aria-label="Abas da avaliação">${ABAS_AVALIACAO.map((t,j)=>{ const n=contaAbaAt(j,R,a,av); return `<button role="tab" class="ab ${i===j?'on':''}" aria-selected="${i===j}" data-act="at-aba" data-i="${j}"><span class="ab-n">${j+1}</span>${t}${n?`<span class="ab-c">${n}</span>`:''}</button>`; }).join('')}</div>
-  <div class="grid g-side"><div class="grid" style="align-content:start">
+  ${trava?`<div class="notice crit trava" style="margin-bottom:12px">${ic('escudo')}<div><b>Avaliação basal bloqueada.</b> Ela é preservada como referência e não pode ser alterada. Para registrar mudanças, use uma reavaliação avulsa na aba "Versões da avaliação" do perfil.</div></div>`:''}
+  <fieldset class="trava-f" ${trava?'disabled':''}><div class="grid g-side"><div class="grid" style="align-content:start">
     ${a.status==='rascunho'&&p.avaliacoes.length&&i===0?'<p class="muted sm">Achados trazidos da última avaliação. Ajuste o que mudou.</p>':''}
     ${corpo}
-    <div class="ab-nav">${i?`<button class="btn" data-act="at-aba" data-i="${i-1}">${ic('esq')}${ABAS_AVALIACAO[i-1]}</button>`:'<span></span>'}${i<8?`<button class="btn" data-act="at-aba" data-i="${i+1}">${ABAS_AVALIACAO[i+1]}${ic('dir')}</button>`:''}</div>
+    <div class="ab-nav">${i?`<a href="#atendimento" class="btn" data-act="at-aba" data-i="${i-1}">${ic('esq')}${ABAS_AVALIACAO[i-1]}</a>`:'<span></span>'}${i<6?`<a href="#atendimento" class="btn" data-act="at-aba" data-i="${i+1}">${ABAS_AVALIACAO[i+1]}${ic('dir')}</a>`:''}</div>
   </div>
   <div class="grid" style="align-content:start">
     <div class="card"><div class="card-h"><h3>Hipóteses de padrão</h3><span class="muted sm">${av.signs.length} sinais · ${H.length} hipóteses</span></div>
@@ -144,7 +146,7 @@ function eAvaliacao(p,a){
         <details class="mais"><summary>Por que aparece ${ic('baixo')}</summary><p class="sm"><b>Presentes:</b> ${h.m.map(x=>SIGN[x]).join(', ')}</p>${h.falta.length?`<p class="sm muted"><b>Esperados, não observados:</b> ${h.falta.map(x=>SIGN[x]).join(', ')}</p>`:''}</details></div>`;}).join(''):vazio('yin','Sem hipóteses ainda','Marque ao menos dois sinais de língua, pulso ou sintomas.')}</div>
     ${cmpBasal(p,a,av)}
     <div class="card"><div class="field"><label class="lbl" for="at-avnota">Observações da avaliação</label><textarea id="at-avnota" data-atf="avnota">${esc(av.nota||'')}</textarea></div></div>
-  </div></div>`;
+  </div></div></fieldset>`;
 }
 
 const tipoElAt = s => s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';
@@ -156,13 +158,33 @@ function detalheEl(e, st, nome){
   <div class="rel"><span>Gera ${elTag(SHENG[e])}</span><span>Gerado por ${elTag(mae(e))}</span><span>Controla ${elTag(KE[e])}</span><span>Controlado por ${elTag(controlador(e))}</span></div>
   ${k?`<div class="notice" style="margin-top:12px">${ic('info')}<div>${k==='def'?`Na deficiência, a regra mãe-filho sugere avaliar a tonificação da mãe (${EL[mae(e)].nome}).`:`No excesso, a regra mãe-filho sugere avaliar a sedação do filho (${EL[SHENG[e]].nome}).`} Decisão do profissional${nome?` para ${esc(nome)}`:''}.</div></div>`:''}`;
 }
+const CAMADAS_PENTA = [['atual','Combinado (como antes)'],['hip','Hipóteses do sistema'],['conf','Só o confirmado']];
+const camadaTag = k => ({obs:`<span class="ly ly-obs">${ic('lista')}Identificado</span>`,hip:`<span class="ly ly-hip">${ic('info')}Hipótese do sistema</span>`,conf:`<span class="ly ly-conf">${ic('check')}Confirmado pelo profissional</span>`})[k];
+// Estado dos elementos por camada, sempre com elemState: "atual" é o cálculo de antes (aceito 1,
+// pendente 0,6, descartado 0); "hip" ignora as decisões do profissional; "conf" considera só os aceitos.
+function estadoPenta(sg,status,k){
+  if(k==='hip') return elemState(sg,{});
+  if(k==='conf') return elemState(sg,Object.fromEntries(evaluate(sg).map(h=>[h.p.id,status[h.p.id]==='aceito'?'aceito':'descartado'])));
+  return elemState(sg,status);
+}
 function ePentagrama(p,a){
-  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, st=elemState(av.signs,av.status);
-  const a0=p.avaliacoes.find(x=>x.atendimentoId!==a.id), b=a0?elemState(a0.signs,a0.status):null;
+  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, cam=CAMADAS_PENTA.some(x=>x[0]===ui.camada)?ui.camada:'atual', st=estadoPenta(av.signs,av.status,cam);
+  const a0=p.avaliacoes.find(x=>x.atendimentoId!==a.id), b=a0?elemState(a0.signs,a0.status):null, trava=a.status==='finalizado'&&ehBasal(p,av);
+  const porEl=Object.fromEntries(Object.keys(EL).map(e=>[e,{ident:new Set(),hip:[],conf:[]}]));
+  evaluate(av.signs).forEach(h=>{ const s=av.status[h.p.id]; h.m.forEach(x=>porEl[h.p.el].ident.add(x)); if(s==='aceito') porEl[h.p.el].conf.push(h.p.nome); else if(s!=='descartado') porEl[h.p.el].hip.push(h.p.nome); });
   return `<div class="grid g-side"><div class="card"><div class="card-h"><h3>Mapa dos cinco elementos</h3>${b?`<button class="chip ${ui.atCmp?'on':''}" data-act="at-cmp" aria-pressed="${!!ui.atCmp}">Comparar com o basal</button>`:'<span class="pill acc">basal</span>'}</div>
+    <div class="chips" role="radiogroup" aria-label="Camada exibida" style="margin-bottom:6px">${CAMADAS_PENTA.map(([k,l])=>`<button class="chip ${cam===k?'on':''}" role="radio" aria-checked="${cam===k}" data-act="at-camada" data-k="${k}">${l}</button>`).join('')}</div>
     ${ui.atCmp&&b?`<div class="cmp"><div><div class="lbl">Basal · ${fmt(a0.date)}</div>${pentagram(b,ui.el)}</div><div><div class="lbl">Hoje</div>${pentagram(st,ui.el)}</div></div>`:pentagram(st,ui.el)}
-    <p class="muted sm" style="text-align:center">Atualiza com os sinais e hipóteses deste atendimento. Anel tracejado: deficiência; anel espesso: excesso.</p></div>
-    <div class="grid" style="align-content:start"><div class="card">${barrasEl(st,b)}${b?'<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal.</p>':''}</div><div class="card">${detalheEl(ui.el,st,p.name.split(' ')[0])}</div></div></div>`;
+    <p class="muted sm" style="text-align:center">Mesmo cálculo de antes. "Combinado" é o mapa de sempre; "Hipóteses do sistema" ignora as decisões do profissional; "Só o confirmado" considera apenas os padrões aceitos. Anel tracejado: deficiência; anel espesso: excesso.</p></div>
+    <div class="grid" style="align-content:start"><div class="card">${barrasEl(st,b)}${b?'<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal.</p>':''}</div>
+      <div class="card"><div class="card-h"><h3>Por elemento</h3><span class="muted sm">camadas separadas</span></div>
+        ${Object.keys(EL).filter(k=>!ui.el||k===ui.el).map(k=>{ const x=porEl[k]; return `<div class="pe"><div class="pe-h">${elTag(k)}</div>
+          <div class="pe-l">${camadaTag('obs')}<span>${[...x.ident].map(s=>esc(SIGN[s])).join(', ')||'—'}</span></div>
+          <div class="pe-l">${camadaTag('hip')}<span>${x.hip.join(', ')||'—'}</span></div>
+          <div class="pe-l">${camadaTag('conf')}<span>${x.conf.join(', ')||'—'}</span></div></div>`; }).join('')}
+        <p class="muted sm" style="margin-top:8px">"Identificado" lista os sinais positivos que fazem parte dos padrões já cadastrados de cada elemento. Nenhuma associação nova foi criada.</p></div>
+      <div class="card">${detalheEl(ui.el,st,p.name.split(' ')[0])}</div>
+      <div class="card"><div class="field"><label class="lbl" for="at-interp">Interpretação do profissional</label><textarea id="at-interp" data-atr="interp" ${trava?'disabled':''} placeholder="Sua leitura dos cinco elementos para este paciente">${esc(av.interp||'')}</textarea></div><p class="muted sm" style="margin-top:6px">Registro do profissional. Não altera o cálculo.</p></div></div></div>`;
 }
 function resumoPulso(R){
   const PU=SIGNS['Pulso'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
@@ -172,17 +194,17 @@ function resumoPulso(R){
 }
 function eSintese(p,a){
   const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, ac=evaluate(av.signs).filter(h=>av.status[h.p.id]==='aceito'), bg=bagang(av.signs), st=elemState(av.signs,av.status);
-  const vs=Object.entries(a.vasos||{}).filter(([,v])=>v.considerar), R=registroDe(av), cats=encaminhados(av,'sintese');
+  const R=registroDe(av), cats=encaminhados(av,'sintese');
   return `<div class="grid g-side"><div class="grid" style="align-content:start">
     <div class="card"><h3>Resumo da avaliação</h3><div class="sx">
       <div><small>Padrões validados</small>${ac.length?ac.map(h=>`<div class="sx-p">${elTag(h.p.el)}<b>${h.p.nome}</b><span class="pill ${h.p.tipo==='exc'?'crit':'warn'}">${h.p.tipo==='exc'?'excesso':'deficiência'}</span></div>`).join(''):`<p class="muted sm">Nenhum padrão aceito. <a href="#atendimento" data-act="etapa" data-i="1">Voltar à avaliação</a></p>`}
-        ${vs.length?`<small style="margin-top:12px">Vasos extraordinários considerados</small><div class="chips">${vs.map(([v])=>`<span class="pill">${v}</span>`).join('')}</div>`:''}</div>
+</div>
       <div><small>Oito princípios</small><div class="grid" style="gap:10px;margin-top:6px">${eixoBg('Frio','Calor',bg.fc)}${eixoBg('Def.','Exc.',bg.de)}</div>${R.bgInterp?`<p class="sm" style="margin-top:8px">${esc(R.bgInterp)}</p>`:''}</div></div></div>
     <div class="card"><div class="card-h"><h3>Língua e pulso</h3><span class="muted sm">registro do profissional</span></div>${resumoPulso(R)}</div>
     ${cats.length?cats.map(([c,nome,L])=>`<div class="card sx-cat"><div class="card-h"><h3>${nome}</h3><span class="muted sm">levado pelo profissional</span></div>${L.map(it=>`<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${ORIG_NOME[it.orig]||'Origem não informada'} · ${SIT_NOME[it.sit]}</small></div>${levarAt(c,it)}</div>`).join('')}</div>`).join('')
       :`<div class="card">${vazio('camadas','Nenhum achado levado das categorias','Use o botão "Síntese" nos achados de Zang-Fu, Qi e Xue, Jin Ye, Jing e Shen e Fatores.')}</div>`}
     <div class="card"><div class="field"><label class="lbl" for="at-sintese">Síntese do profissional</label><textarea id="at-sintese" data-atf="sintese" placeholder="Raciocínio clínico, prioridades do tratamento...">${esc(a.sintese)}</textarea></div><p class="muted sm" style="margin-top:8px">A síntese é escrita e validada pelo profissional. O sistema não conclui diagnóstico.</p></div></div>
-    <div class="card"><h3>Elementos</h3>${barrasEl(st)}</div></div>`;
+    <div class="card"><h3>Elementos</h3>${barrasEl(st)}${av.interp?`<p class="sm" style="margin-top:10px"><b>Interpretação:</b> ${esc(av.interp)}</p>`:''}</div></div>`;
 }
 // Posições ilustrativas (frente: x até 200; costas: x de 210 a 410). O atlas completo é da etapa 4.
 const MAPA = {VG20:[310,16],VB20:[296,60],B13:[298,104],B15:[298,116],B17:[298,132],B23:[298,180],VG4:[310,182],
@@ -212,6 +234,7 @@ function ePlano(p,a){
       ${w.length?w.map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:8px">${ic(k==='crit'?'escudo':'alerta')}<div><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div></div>`).join(''):`<div class="vazio">${ic('okc')}Nenhuma contraindicação encontrada para os pontos e técnicas escolhidos.</div>`}</div></div>
     <div class="grid" style="align-content:start">${(()=>{ const L=encaminhados(av,'plano'); return `<div class="card"><div class="card-h"><h3>Trazido pelo profissional</h3><span class="muted sm">só o que foi marcado como "Plano"</span></div>
       ${L.length?L.map(([c,nome,I])=>I.map(it=>`<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${nome}</small></div><button class="btn sm ghost" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="plano">${ic('x')}Retirar</button></div>`).join('')).join(''):`<p class="muted sm">Nada encaminhado. Marque "Plano" num achado da avaliação para ele aparecer aqui.</p>`}</div>`; })()}
+    ${dicasTratamento(p,a)}
     <div class="card"><h3>Sugestões dos padrões validados</h3><p class="muted sm" style="margin-bottom:10px">Toque para incluir. A escolha é do profissional.</p>
       ${ac.length?ac.map(h=>`<div class="sug"><div class="sug-h">${elTag(h.p.el)}<b>${h.p.nome}</b></div><div class="chips">${h.p.pontos.map(([c,j])=>`<button class="chip mono ${P.includes(c)?'on':''}" data-act="at-pt" data-c="${c}" title="${esc(j)}${PT[c]?.cautela?' · '+esc(CAUT[PT[c].cautela]):''}">${c}${PT[c]?.cautela?' ⚠':''}</button>`).join('')}</div></div>`).join(''):`<div class="vazio">${ic('info')}Aceite hipóteses na avaliação para ver sugestões.</div>`}</div></div></div>`;
 }

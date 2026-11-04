@@ -14,7 +14,7 @@ import { SIGN } from '../conhecimento/sinais.js';
 import { db, patient } from '../dados/repositorio.js';
 import { alertasDe, melhoraPct } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
-import { rascunhoDe } from '../dados/atendimento.js';
+import { basalDe, rascunhoDe, versoesDe } from '../dados/atendimento.js';
 import { ui } from '../estado.js';
 import { elemState, evaluate } from '../raciocinio/avaliacao.js';
 import { TODAY, age, esc, fmt, initials } from '../util.js';
@@ -152,13 +152,38 @@ function abaNova(p){
     ${a?aceitos(a).map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${h.p.pontos.map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
 }
 
-const ABAS = { resumo:abaResumo, sessoes:abaProntuario, anamnese:abaAnamnese, nova:abaNova };
+// Versões da avaliação (etapa 3C): todas as avaliações registradas, da basal à mais recente.
+const horaV = t => t ? new Date(t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+function abaVersoes(p){
+  const L=versoesDe(p), B=basalDe(p), num=v=>L.indexOf(v)+1;
+  const ctx=v=>{ const at=v.atendimentoId&&p.atendimentos.find(x=>x.id===v.atendimentoId); return at?`Atendimento de ${fmt(at.data)}`:'Reavaliação avulsa (fora de atendimento)'; };
+  const A=L.find(v=>v.id===ui.vA)||B, Bv=L.find(v=>v.id===ui.vB)||L.at(-1);
+  const sA=new Set(A?.signs||[]), sB=new Set(Bv?.signs||[]), sai=A?A.signs.filter(x=>!sB.has(x)):[], entra=Bv?Bv.signs.filter(x=>!sA.has(x)):[];
+  const opt=sel=>L.map(v=>`<option value="${v.id}" ${v===sel?'selected':''}>Versão ${num(v)}${v===B?' · basal':''} · ${fmt(v.date)}</option>`).join('');
+  return `<div class="grid g-side"><div class="card"><div class="card-h"><h2>Versões da avaliação</h2><span class="pill acc">${L.length}</span></div>
+      <form id="f-reav" class="reav-f"><div class="field"><label class="lbl" for="rv-motivo">Nova reavaliação avulsa: motivo *</label><input id="rv-motivo" required maxlength="200" placeholder="Ex.: piora dos sintomas após viagem"></div>
+        <button class="btn sm pri">${ic('mais')}Iniciar reavaliação</button></form>
+      ${L.length?`<div class="vers">${[...L].reverse().map(v=>{ const h=v.historico||[], basal=v===B; return `<div class="ver ${basal?'basal':''}"><div class="ver-h"><span class="hi-n">${num(v)}</span><div class="grow"><b>Versão ${num(v)}${basal?' · avaliação basal':''}</b><small class="muted">${fmt(v.date)}${v.prof&&h[0]?.em?' às '+horaV(h[0].em):''} · ${v.prof?esc(v.prof):'profissional não registrado'}</small></div>
+          ${basal?`<span class="pill">${ic('escudo')}bloqueada</span>`:''}</div>
+        <div class="ver-m"><span>${ic(v.atendimentoId?'play':'yin')}${ctx(v)}</span><span>${ic('info')}Motivo: ${v.motivo?esc(v.motivo):v.atendimentoId?'avaliação do atendimento':'não informado'}</span><span>${ic('lista')}${v.signs.length} sinais</span></div>
+        ${h.length?`<details class="mais"><summary>Histórico desta versão (${h.length}) ${ic('baixo')}</summary><div class="hist-alt">${h.map(x=>`<div><span class="mono muted">${x.em?fmt(x.em.slice(0,10))+' '+horaV(x.em):''}</span><span>${esc(x.acao)}${x.anterior?`<small class="muted" style="display:block">Antes: ${x.anterior.signs.map(k=>esc(SIGN[k]||k)).join(', ')||'nenhum sinal'}</small>`:''}</span></div>`).join('')}</div></details>`:''}</div>`; }).join('')}</div>`
+        :vazio('yin','Nenhuma avaliação registrada','A primeira avaliação vira a basal.')}
+      <p class="muted sm" style="margin-top:10px">A basal nunca é sobrescrita: cada avaliação nova cria outra versão. Correções feitas depois de finalizar um atendimento ficam no histórico da versão, com os valores anteriores.</p></div>
+    <div class="card" style="align-self:start"><div class="card-h"><h2>Comparar duas versões</h2></div>
+      ${L.length>1?`<div class="form"><div class="field"><label class="lbl" for="v-a">De</label><select id="v-a" data-vcmp="vA">${opt(A)}</select></div><div class="field"><label class="lbl" for="v-b">Para</label><select id="v-b" data-vcmp="vB">${opt(Bv)}</select></div></div>
+      <div class="cmp" style="margin-top:10px"><div><div class="lbl">Versão ${num(A)}</div>${pentagram(elemState(A.signs,A.status),null)}</div><div><div class="lbl">Versão ${num(Bv)}</div>${pentagram(elemState(Bv.signs,Bv.status),null)}</div></div>
+      ${barrasEl(elemState(Bv.signs,Bv.status),elemState(A.signs,A.status))}<p class="muted sm" style="margin-top:6px">Marca vertical: versão ${num(A)}.</p>
+      <div class="sinais-cmp" style="margin-top:12px"><div><span class="pill ok">${sai.length} não aparecem mais</span><p class="muted sm">${sai.map(x=>esc(SIGN[x]||x)).join(', ')||'—'}</p></div><div><span class="pill warn">${entra.length} novos</span><p class="muted sm">${entra.map(x=>esc(SIGN[x]||x)).join(', ')||'—'}</p></div></div>`
+      :'<p class="muted sm">A comparação aparece quando houver duas versões.</p>'}</div></div>`;
+}
+
+const ABAS = { resumo:abaResumo, sessoes:abaProntuario, anamnese:abaAnamnese, nova:abaNova, versoes:abaVersoes };
 export function vProntuario(){
   const p=patient(ui.pid)||db.patients[0];
   if(!p) return `<div class="head"><div><h1>Prontuário</h1></div></div>${vazio('pacientes','Nenhum paciente cadastrado','Cadastre um paciente para abrir o prontuário.',`<button class="btn pri sm" data-act="novo-paciente">${ic('novo')}Cadastrar paciente</button>`)}`;
   ui.pid=p.id; if(!ABAS[ui.tab]) ui.tab='resumo';
   const alerts=alertasDe(p);
-  const tabs=[['resumo','Resumo','painel'],['sessoes','Prontuário','historico'],['anamnese','Anamnese e alertas','folha'],['nova','Registro rápido','mais']];
+  const tabs=[['resumo','Resumo','painel'],['sessoes','Prontuário','historico'],['anamnese','Anamnese e alertas','folha'],['nova','Registro rápido','mais'],['versoes','Versões da avaliação','historico']];
   ui.crumbs=[['#pacientes','Pacientes'],[null,p.name]];
   return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>

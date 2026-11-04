@@ -862,6 +862,42 @@ input[type=checkbox]{accent-color:var(--brand)}
 .sx-i .grow{display:grid;gap:2px;min-width:0;flex:1 1 200px}
 .sx-i b{overflow-wrap:anywhere}
 @media (max-width:820px){ .livre-f{grid-template-columns:minmax(0,1fr)} }
+
+/* Etapa 3C: vasos com pares, camadas do pentagrama, versões da avaliação e basal bloqueada */
+.vt{display:grid;gap:8px}
+.vt-r{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px);gap:8px 10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.vt-r.tem{border-color:var(--accent-line);background:var(--accent-soft)}
+.vt-r>.vt-a,.vt-r>.levar,.vt-r>span.muted{grid-column:1/-1}
+.vt-n{display:grid;gap:2px;min-width:0}
+.vt-n small{color:var(--muted);font-size:.74rem}
+.vt-a{border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:6px 9px;font-size:.84rem;min-width:0;width:100%}
+.vt-a:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--accent-soft)}
+.ly{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+.ly .ic{width:12px;height:12px}
+.ly-obs{background:var(--surface-2);color:var(--muted);border-color:var(--line)}
+.ly-hip{background:var(--warn-soft);color:var(--warn);border-style:dashed;border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+.ly-conf{background:var(--ok-soft);color:var(--ok)}
+.pe{border-top:1px solid var(--line);padding:10px 0;display:grid;gap:6px}
+.card-h+.pe{border-top:0;padding-top:0}
+.pe-h{display:flex;align-items:center;gap:8px}
+.pe-l{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;font-size:.84rem}
+.pe-l>span:last-child{padding-top:2px}
+.vers{display:grid;gap:10px;margin-top:12px}
+.ver{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:8px}
+.ver.basal{border-color:var(--accent-line);background:var(--accent-soft)}
+.ver-h{display:flex;align-items:center;gap:10px}
+.ver-h .grow{display:grid;gap:2px;min-width:0}
+.ver-m{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.82rem;color:var(--muted)}
+.ver-m span{display:inline-flex;align-items:center;gap:5px}
+.ver-m .ic{width:13px;height:13px}
+.reav-f{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;border:1px dashed var(--accent-line);border-radius:12px;padding:12px;background:var(--surface)}
+.trava-f{border:0;margin:0;padding:0;min-width:0}
+.trava-f:disabled .card{opacity:.85}
+@media (max-width:820px){ .vt-r{grid-template-columns:minmax(0,1fr)} .reav-f{grid-template-columns:minmax(0,1fr)} }
+.dica-est{display:grid;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.dica-est b{display:inline-flex;align-items:center;gap:6px}
+.dicas .vt-n{grid-template-columns:auto 1fr;align-items:baseline;gap:8px}
+.dica-v{margin-top:12px}
 </style>
 
 
@@ -1592,7 +1628,7 @@ function registroInicial(ult){
   const lado = l => ({ ...ladoVazio(), cls: [...ult.pulso[l].cls] });
   return { achados: JSON.parse(JSON.stringify(ult.achados)), pulso: { esq: lado('esq'), dir: lado('dir'), semLado: [...(ult.pulso.semLado || [])] } };
 }
-const CAMPOS_REGISTRO = ['achados','pulso','linguaObs','bgInterp','categorias'];
+const CAMPOS_REGISTRO = ['achados','pulso','linguaObs','bgInterp','categorias','interp'];
 const camposRegistro = av => Object.fromEntries(CAMPOS_REGISTRO.filter(k => av[k] !== undefined).map(k => [k, JSON.parse(JSON.stringify(av[k]))]));
 
 /* ---------- Etapa 3B: achados livres por categoria ----------
@@ -1622,6 +1658,33 @@ function removerAchadoLivre(av, c, id){
 function notaCategoria(av, c, texto){ garantirCat(av, c).nota = texto; }
 // Itens que o profissional levou para a Síntese ou para o Plano, por categoria.
 const encaminhados = (av, destino) => CATEGORIAS.map(([c, nome]) => [c, nome, categoriaDe(av, c).itens.filter(x => x[destino])]).filter(x => x[2].length);
+
+/* ---------- Etapa 3C: vasos extraordinários ----------
+   Decisão de 04/11: os vasos não são achado de avaliação; são opções de tratamento, mostradas no Plano
+   como dicas, com os pares de abertura e acoplado conferidos pela profissional.
+   a.vasos:{[vaso]:{considerar (par incluído no plano pelo profissional), nota}}. A indicação automática
+   depende dos critérios clínicos da profissional; até lá nada é sugerido. */
+const PARES_VASOS = [['Du Mai','ID3','B62'],['Ren Mai','P7','R6'],['Chong Mai','BP4','CS6'],['Dai Mai','VB41','TA5'],
+  ['Yin Qiao Mai','R6','P7'],['Yang Qiao Mai','B62','ID3'],['Yin Wei Mai','CS6','BP4'],['Yang Wei Mai','TA5','VB41']];
+const vasoDe = (a, v) => ({ nota: '', considerar: false, ...(a.vasos?.[v] || {}) });
+function definirVaso(a, v, campo, valor){
+  const x = ((a.vasos ||= {})[v] ||= { considerar: false, nota: '' });
+  x[campo] = campo === 'considerar' ? !!valor : valor;
+  return x;
+}
+
+/* ---------- Etapa 3C: versões da avaliação ----------
+   Cada registro em p.avaliacoes é uma versão; nenhuma é sobrescrita por uma nova avaliação.
+   A basal (a primeira por data) fica bloqueada. Uma versão ligada a um atendimento finalizado pode
+   ser corrigida: antes da primeira alteração, os valores anteriores ficam guardados no histórico. */
+const versoesDe = p => p.avaliacoes.map((v, i) => [v, i]).sort((x, y) => x[0].date.localeCompare(y[0].date) || x[1] - y[1]).map(x => x[0]);
+const basalDe = p => versoesDe(p)[0] || null;
+const ehBasal = (p, av) => !!av && basalDe(p) === av;
+const CAMPOS_VERSAO = ['signs','status','nota','achados','pulso','linguaObs','bgInterp','categorias','interp'];
+const fotoVersao = av => JSON.parse(JSON.stringify(Object.fromEntries(CAMPOS_VERSAO.filter(k => av[k] !== undefined).map(k => [k, av[k]]))));
+function registrarCorrecao(av, anterior, em, motivo = ''){
+  (av.historico ||= []).push({ em, acao: `correção registrada${motivo ? '. Motivo: ' + motivo : ''}; valores anteriores preservados`, anterior });
+}
 // Não cria números: se um dado não existe, o indicador não aparece.
 
 const ALERTA_NOME = {gestante:'Gestante',anticoagulante:'Anticoagulante',marcapasso:'Marcapasso'};
@@ -1788,13 +1851,38 @@ function abaNova(p){
     ${a?aceitos(a).map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${h.p.pontos.map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
 }
 
-const ABAS = { resumo:abaResumo, sessoes:abaProntuario, anamnese:abaAnamnese, nova:abaNova };
+// Versões da avaliação (etapa 3C): todas as avaliações registradas, da basal à mais recente.
+const horaV = t => t ? new Date(t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+function abaVersoes(p){
+  const L=versoesDe(p), B=basalDe(p), num=v=>L.indexOf(v)+1;
+  const ctx=v=>{ const at=v.atendimentoId&&p.atendimentos.find(x=>x.id===v.atendimentoId); return at?`Atendimento de ${fmt(at.data)}`:'Reavaliação avulsa (fora de atendimento)'; };
+  const A=L.find(v=>v.id===ui.vA)||B, Bv=L.find(v=>v.id===ui.vB)||L.at(-1);
+  const sA=new Set(A?.signs||[]), sB=new Set(Bv?.signs||[]), sai=A?A.signs.filter(x=>!sB.has(x)):[], entra=Bv?Bv.signs.filter(x=>!sA.has(x)):[];
+  const opt=sel=>L.map(v=>`<option value="${v.id}" ${v===sel?'selected':''}>Versão ${num(v)}${v===B?' · basal':''} · ${fmt(v.date)}</option>`).join('');
+  return `<div class="grid g-side"><div class="card"><div class="card-h"><h2>Versões da avaliação</h2><span class="pill acc">${L.length}</span></div>
+      <form id="f-reav" class="reav-f"><div class="field"><label class="lbl" for="rv-motivo">Nova reavaliação avulsa: motivo *</label><input id="rv-motivo" required maxlength="200" placeholder="Ex.: piora dos sintomas após viagem"></div>
+        <button class="btn sm pri">${ic('mais')}Iniciar reavaliação</button></form>
+      ${L.length?`<div class="vers">${[...L].reverse().map(v=>{ const h=v.historico||[], basal=v===B; return `<div class="ver ${basal?'basal':''}"><div class="ver-h"><span class="hi-n">${num(v)}</span><div class="grow"><b>Versão ${num(v)}${basal?' · avaliação basal':''}</b><small class="muted">${fmt(v.date)}${v.prof&&h[0]?.em?' às '+horaV(h[0].em):''} · ${v.prof?esc(v.prof):'profissional não registrado'}</small></div>
+          ${basal?`<span class="pill">${ic('escudo')}bloqueada</span>`:''}</div>
+        <div class="ver-m"><span>${ic(v.atendimentoId?'play':'yin')}${ctx(v)}</span><span>${ic('info')}Motivo: ${v.motivo?esc(v.motivo):v.atendimentoId?'avaliação do atendimento':'não informado'}</span><span>${ic('lista')}${v.signs.length} sinais</span></div>
+        ${h.length?`<details class="mais"><summary>Histórico desta versão (${h.length}) ${ic('baixo')}</summary><div class="hist-alt">${h.map(x=>`<div><span class="mono muted">${x.em?fmt(x.em.slice(0,10))+' '+horaV(x.em):''}</span><span>${esc(x.acao)}${x.anterior?`<small class="muted" style="display:block">Antes: ${x.anterior.signs.map(k=>esc(SIGN[k]||k)).join(', ')||'nenhum sinal'}</small>`:''}</span></div>`).join('')}</div></details>`:''}</div>`; }).join('')}</div>`
+        :vazio('yin','Nenhuma avaliação registrada','A primeira avaliação vira a basal.')}
+      <p class="muted sm" style="margin-top:10px">A basal nunca é sobrescrita: cada avaliação nova cria outra versão. Correções feitas depois de finalizar um atendimento ficam no histórico da versão, com os valores anteriores.</p></div>
+    <div class="card" style="align-self:start"><div class="card-h"><h2>Comparar duas versões</h2></div>
+      ${L.length>1?`<div class="form"><div class="field"><label class="lbl" for="v-a">De</label><select id="v-a" data-vcmp="vA">${opt(A)}</select></div><div class="field"><label class="lbl" for="v-b">Para</label><select id="v-b" data-vcmp="vB">${opt(Bv)}</select></div></div>
+      <div class="cmp" style="margin-top:10px"><div><div class="lbl">Versão ${num(A)}</div>${pentagram(elemState(A.signs,A.status),null)}</div><div><div class="lbl">Versão ${num(Bv)}</div>${pentagram(elemState(Bv.signs,Bv.status),null)}</div></div>
+      ${barrasEl(elemState(Bv.signs,Bv.status),elemState(A.signs,A.status))}<p class="muted sm" style="margin-top:6px">Marca vertical: versão ${num(A)}.</p>
+      <div class="sinais-cmp" style="margin-top:12px"><div><span class="pill ok">${sai.length} não aparecem mais</span><p class="muted sm">${sai.map(x=>esc(SIGN[x]||x)).join(', ')||'—'}</p></div><div><span class="pill warn">${entra.length} novos</span><p class="muted sm">${entra.map(x=>esc(SIGN[x]||x)).join(', ')||'—'}</p></div></div>`
+      :'<p class="muted sm">A comparação aparece quando houver duas versões.</p>'}</div></div>`;
+}
+
+const ABAS = { resumo:abaResumo, sessoes:abaProntuario, anamnese:abaAnamnese, nova:abaNova, versoes:abaVersoes };
 function vProntuario(){
   const p=patient(ui.pid)||db.patients[0];
   if(!p) return `<div class="head"><div><h1>Prontuário</h1></div></div>${vazio('pacientes','Nenhum paciente cadastrado','Cadastre um paciente para abrir o prontuário.',`<button class="btn pri sm" data-act="novo-paciente">${ic('novo')}Cadastrar paciente</button>`)}`;
   ui.pid=p.id; if(!ABAS[ui.tab]) ui.tab='resumo';
   const alerts=alertasDe(p);
-  const tabs=[['resumo','Resumo','painel'],['sessoes','Prontuário','historico'],['anamnese','Anamnese e alertas','folha'],['nova','Registro rápido','mais']];
+  const tabs=[['resumo','Resumo','painel'],['sessoes','Prontuário','historico'],['anamnese','Anamnese e alertas','folha'],['nova','Registro rápido','mais'],['versoes','Versões da avaliação','historico']];
   ui.crumbs=[['#pacientes','Pacientes'],[null,p.name]];
   return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
@@ -1837,7 +1925,7 @@ function cmpBasal(p,a,av){
     <div class="cmp3"><div class="ok"><b>${res.length}</b><small>não aparecem mais</small></div><div><b>${man.length}</b><small>mantidos</small></div><div class="warn"><b>${nov.length}</b><small>novos</small></div></div>
     <details class="mais"><summary>Ver sinais ${ic('baixo')}</summary>${[['Não aparecem mais',res,'ok'],['Novos',nov,'warn'],['Mantidos',man,'']].filter(x=>x[1].length).map(([t,L,k])=>`<div class="lbl" style="margin:10px 0 6px">${t}</div><div class="chips">${L.map(x=>`<span class="pill ${k}">${esc(SIGN[x]||x)}</span>`).join('')}</div>`).join('')}</details></div>`;
 }
-const ABAS_AVALIACAO = ['Língua e pulso','Ba Gang','Zang-Fu','Qi e Xue','Jin Ye','Jing e Shen','Fatores patogênicos','Vasos extraordinários','Contexto sazonal'];
+const ABAS_AVALIACAO = ['Língua e pulso','Ba Gang','Zang-Fu','Qi e Xue','Jin Ye','Jing e Shen','Fatores patogênicos'];
 const SIT_NOME = Object.fromEntries(SITUACOES_ACHADO);
 const optsAt = (L,v) => L.map(([k,l])=>`<option value="${k}" ${k===v?'selected':''}>${l}</option>`).join('');
 function chipAchadoAt(R,k,l,orig){
@@ -1878,16 +1966,18 @@ function abaBaGang(av,R){
       <p class="muted sm" style="margin-top:10px">Mesma lógica de antes, a partir de ${bg.n} sinais.</p></div>
     <div class="card"><div class="field"><label class="lbl" for="at-bgint">Interpretação do profissional</label><textarea id="at-bgint" data-atr="bgInterp" placeholder="Interior/exterior, frio/calor, deficiência/excesso, Yin/Yang segundo a sua avaliação">${esc(R.bgInterp)}</textarea></div></div>`;
 }
-function abaVasos(a){
-  return `<div class="card"><div class="card-h"><h3>Oito vasos extraordinários</h3><span class="pill">pares e encaminhamento na etapa 3C</span></div>
-      <p class="muted sm" style="margin-bottom:10px">Marque os vasos que o profissional considerou e anote o raciocínio. Nada é sugerido automaticamente.</p>
-      <div class="vasos">${VASOS.map(v=>{ const x=a.vasos?.[v]||{}; return `<div class="vaso"><label class="chip ${x.considerar?'on':''}"><input type="checkbox" data-vaso="${v}" ${x.considerar?'checked':''}>${v}</label><input class="vaso-n" data-vnota="${v}" placeholder="Anotação" value="${esc(x.nota||'')}" aria-label="Anotação sobre ${v}"></div>`; }).join('')}</div></div>`;
-}
-function abaSazonal(p,a){
-  const c=p.cadastro||{}, hem=c.hemisferio||'Sul', est=estacao(Number(a.data.slice(5,7))-1,hem);
-  return `<div class="card sazonal"><div class="card-h"><h3>${ic('sol')} Contexto sazonal</h3><span class="pill">complementar</span></div>
-      <p class="sm">${c.cidade?esc(c.cidade)+' · ':''}hemisfério ${hem} · <b>${est}</b>, estação ligada a ${elTag(ELEMENTO_ESTACAO[est])}.</p>
-      <p class="muted sm" style="margin-top:6px">Informação de contexto pela data do atendimento${c.cidade?'':' (cidade não cadastrada; hemisfério Sul por padrão)'}. Não indica pontos nem conduta.</p></div>`;
+// Dicas para o tratamento (decisão de 04/11): vasos extraordinários e estação do ano ficam no Plano,
+// como opções. A indicação automática depende dos critérios da profissional; até lá nada é sugerido.
+function dicasTratamento(p,a){
+  const c=p.cadastro||{}, hem=c.hemisferio||'Sul', est=estacao(Number(a.data.slice(5,7))-1,hem), P=a.plano.pontos;
+  return `<div class="card dicas"><div class="card-h"><h3>${ic('info')} Dicas para o tratamento</h3><span class="pill">opções</span></div>
+    <div class="sazonal dica-est"><b>${ic('sol')} Estação: ${est}</b><span class="sm">${c.cidade?esc(c.cidade)+' · ':''}hemisfério ${hem} · estação ligada a ${elTag(ELEMENTO_ESTACAO[est])}</span></div>
+    <details class="mais dica-v" ${PARES_VASOS.some(([v,ab,ac])=>vasoDe(a,v).nota||[ab,ac].every(k=>P.includes(k)))?'open':''}><summary>Vasos extraordinários · 8 pares de abertura e acoplado ${ic('baixo')}</summary>
+    <div class="vt" style="margin-top:10px">${PARES_VASOS.map(([v,ab,ac])=>{ const x=vasoDe(a,v), no=[ab,ac].every(k=>P.includes(k)); return `<div class="vt-r ${no?'tem':''}">
+      <div class="vt-n"><b>${v}</b><small class="mono">${ab} + ${ac}</small></div>
+      ${no?'<span class="pill ok">par no plano</span>':`<button class="btn sm" data-act="at-par" data-v="${v}">${ic('mais')}Incluir ${ab} e ${ac}</button>`}
+      <input class="vt-a" data-vnota="${v}" value="${esc(x.nota||'')}" placeholder="Anotação" aria-label="Anotação sobre ${v}"></div>`; }).join('')}</div></details>
+    <p class="muted sm" style="margin-top:10px">O sistema ainda não indica vasos nem condutas pela estação: isso entra quando os critérios clínicos forem definidos pela profissional. A escolha é sempre do profissional.</p></div>`;
 }
 const ORIG_NOME = Object.fromEntries(ORIGENS_ACHADO);
 const levarAt = (c,it) => `<div class="levar">${[['sintese','Síntese','camadas'],['plano','Plano','plano']].map(([d,l,i])=>`<button class="chip ${it[d]?'on':''}" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="${d}" aria-pressed="${!!it[d]}" data-tip="${it[d]?'Retirar da '+l:'Levar para '+(d==='plano'?'o ':'a ')+l}">${ic(i)}${l}</button>`).join('')}</div>`;
@@ -1909,20 +1999,20 @@ function abaLivre(av,c,nome){
 function contaAbaAt(i,R,a,av){
   if(i>=2&&i<=6) return categoriaDe(av,CATEGORIAS[i-2][0]).itens.length;
   if(i===0) return Object.keys(R.achados).length+R.pulso.esq.cls.length+R.pulso.dir.cls.length+R.pulso.semLado.length;
-  if(i===7) return Object.values(a.vasos||{}).filter(v=>v.considerar).length;
   return 0;
 }
 function eAvaliacao(p,a){
   const av=avaliacaoEditavel(p,a);
   if(!av) return vazio('yin','Atendimento finalizado sem avaliação energética','A avaliação deste dia pode ser feita como reavaliação avulsa no perfil do paciente.');
-  const H=evaluate(av.signs), R=registroDe(av), i=Math.max(0,Math.min(8,ui.avAba|0));
-  const corpo=[()=>abaLinguaPulso(R),()=>abaBaGang(av,R),...CATEGORIAS.map(([c,n])=>()=>abaLivre(av,c,n)),()=>abaVasos(a),()=>abaSazonal(p,a)][i]();
+  const H=evaluate(av.signs), R=registroDe(av), i=Math.max(0,Math.min(6,ui.avAba|0)), trava=a.status==='finalizado'&&ehBasal(p,av);
+  const corpo=[()=>abaLinguaPulso(R),()=>abaBaGang(av,R),...CATEGORIAS.map(([c,n])=>()=>abaLivre(av,c,n))][i]();
   return `<div class="notice" style="margin-bottom:16px">${ic('info')}<div><b>Apoio ao raciocínio clínico.</b> As hipóteses vêm dos sinais positivos e das classificações de pulso, e não são diagnóstico. Cabe ao profissional aceitar, descartar e decidir.</div></div>
   <div class="ab-bar" role="tablist" aria-label="Abas da avaliação">${ABAS_AVALIACAO.map((t,j)=>{ const n=contaAbaAt(j,R,a,av); return `<button role="tab" class="ab ${i===j?'on':''}" aria-selected="${i===j}" data-act="at-aba" data-i="${j}"><span class="ab-n">${j+1}</span>${t}${n?`<span class="ab-c">${n}</span>`:''}</button>`; }).join('')}</div>
-  <div class="grid g-side"><div class="grid" style="align-content:start">
+  ${trava?`<div class="notice crit trava" style="margin-bottom:12px">${ic('escudo')}<div><b>Avaliação basal bloqueada.</b> Ela é preservada como referência e não pode ser alterada. Para registrar mudanças, use uma reavaliação avulsa na aba "Versões da avaliação" do perfil.</div></div>`:''}
+  <fieldset class="trava-f" ${trava?'disabled':''}><div class="grid g-side"><div class="grid" style="align-content:start">
     ${a.status==='rascunho'&&p.avaliacoes.length&&i===0?'<p class="muted sm">Achados trazidos da última avaliação. Ajuste o que mudou.</p>':''}
     ${corpo}
-    <div class="ab-nav">${i?`<button class="btn" data-act="at-aba" data-i="${i-1}">${ic('esq')}${ABAS_AVALIACAO[i-1]}</button>`:'<span></span>'}${i<8?`<button class="btn" data-act="at-aba" data-i="${i+1}">${ABAS_AVALIACAO[i+1]}${ic('dir')}</button>`:''}</div>
+    <div class="ab-nav">${i?`<a href="#atendimento" class="btn" data-act="at-aba" data-i="${i-1}">${ic('esq')}${ABAS_AVALIACAO[i-1]}</a>`:'<span></span>'}${i<6?`<a href="#atendimento" class="btn" data-act="at-aba" data-i="${i+1}">${ABAS_AVALIACAO[i+1]}${ic('dir')}</a>`:''}</div>
   </div>
   <div class="grid" style="align-content:start">
     <div class="card"><div class="card-h"><h3>Hipóteses de padrão</h3><span class="muted sm">${av.signs.length} sinais · ${H.length} hipóteses</span></div>
@@ -1931,7 +2021,7 @@ function eAvaliacao(p,a){
         <details class="mais"><summary>Por que aparece ${ic('baixo')}</summary><p class="sm"><b>Presentes:</b> ${h.m.map(x=>SIGN[x]).join(', ')}</p>${h.falta.length?`<p class="sm muted"><b>Esperados, não observados:</b> ${h.falta.map(x=>SIGN[x]).join(', ')}</p>`:''}</details></div>`;}).join(''):vazio('yin','Sem hipóteses ainda','Marque ao menos dois sinais de língua, pulso ou sintomas.')}</div>
     ${cmpBasal(p,a,av)}
     <div class="card"><div class="field"><label class="lbl" for="at-avnota">Observações da avaliação</label><textarea id="at-avnota" data-atf="avnota">${esc(av.nota||'')}</textarea></div></div>
-  </div></div>`;
+  </div></div></fieldset>`;
 }
 
 const tipoElAt = s => s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';
@@ -1943,13 +2033,33 @@ function detalheEl(e, st, nome){
   <div class="rel"><span>Gera ${elTag(SHENG[e])}</span><span>Gerado por ${elTag(mae(e))}</span><span>Controla ${elTag(KE[e])}</span><span>Controlado por ${elTag(controlador(e))}</span></div>
   ${k?`<div class="notice" style="margin-top:12px">${ic('info')}<div>${k==='def'?`Na deficiência, a regra mãe-filho sugere avaliar a tonificação da mãe (${EL[mae(e)].nome}).`:`No excesso, a regra mãe-filho sugere avaliar a sedação do filho (${EL[SHENG[e]].nome}).`} Decisão do profissional${nome?` para ${esc(nome)}`:''}.</div></div>`:''}`;
 }
+const CAMADAS_PENTA = [['atual','Combinado (como antes)'],['hip','Hipóteses do sistema'],['conf','Só o confirmado']];
+const camadaTag = k => ({obs:`<span class="ly ly-obs">${ic('lista')}Identificado</span>`,hip:`<span class="ly ly-hip">${ic('info')}Hipótese do sistema</span>`,conf:`<span class="ly ly-conf">${ic('check')}Confirmado pelo profissional</span>`})[k];
+// Estado dos elementos por camada, sempre com elemState: "atual" é o cálculo de antes (aceito 1,
+// pendente 0,6, descartado 0); "hip" ignora as decisões do profissional; "conf" considera só os aceitos.
+function estadoPenta(sg,status,k){
+  if(k==='hip') return elemState(sg,{});
+  if(k==='conf') return elemState(sg,Object.fromEntries(evaluate(sg).map(h=>[h.p.id,status[h.p.id]==='aceito'?'aceito':'descartado'])));
+  return elemState(sg,status);
+}
 function ePentagrama(p,a){
-  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, st=elemState(av.signs,av.status);
-  const a0=p.avaliacoes.find(x=>x.atendimentoId!==a.id), b=a0?elemState(a0.signs,a0.status):null;
+  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, cam=CAMADAS_PENTA.some(x=>x[0]===ui.camada)?ui.camada:'atual', st=estadoPenta(av.signs,av.status,cam);
+  const a0=p.avaliacoes.find(x=>x.atendimentoId!==a.id), b=a0?elemState(a0.signs,a0.status):null, trava=a.status==='finalizado'&&ehBasal(p,av);
+  const porEl=Object.fromEntries(Object.keys(EL).map(e=>[e,{ident:new Set(),hip:[],conf:[]}]));
+  evaluate(av.signs).forEach(h=>{ const s=av.status[h.p.id]; h.m.forEach(x=>porEl[h.p.el].ident.add(x)); if(s==='aceito') porEl[h.p.el].conf.push(h.p.nome); else if(s!=='descartado') porEl[h.p.el].hip.push(h.p.nome); });
   return `<div class="grid g-side"><div class="card"><div class="card-h"><h3>Mapa dos cinco elementos</h3>${b?`<button class="chip ${ui.atCmp?'on':''}" data-act="at-cmp" aria-pressed="${!!ui.atCmp}">Comparar com o basal</button>`:'<span class="pill acc">basal</span>'}</div>
+    <div class="chips" role="radiogroup" aria-label="Camada exibida" style="margin-bottom:6px">${CAMADAS_PENTA.map(([k,l])=>`<button class="chip ${cam===k?'on':''}" role="radio" aria-checked="${cam===k}" data-act="at-camada" data-k="${k}">${l}</button>`).join('')}</div>
     ${ui.atCmp&&b?`<div class="cmp"><div><div class="lbl">Basal · ${fmt(a0.date)}</div>${pentagram(b,ui.el)}</div><div><div class="lbl">Hoje</div>${pentagram(st,ui.el)}</div></div>`:pentagram(st,ui.el)}
-    <p class="muted sm" style="text-align:center">Atualiza com os sinais e hipóteses deste atendimento. Anel tracejado: deficiência; anel espesso: excesso.</p></div>
-    <div class="grid" style="align-content:start"><div class="card">${barrasEl(st,b)}${b?'<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal.</p>':''}</div><div class="card">${detalheEl(ui.el,st,p.name.split(' ')[0])}</div></div></div>`;
+    <p class="muted sm" style="text-align:center">Mesmo cálculo de antes. "Combinado" é o mapa de sempre; "Hipóteses do sistema" ignora as decisões do profissional; "Só o confirmado" considera apenas os padrões aceitos. Anel tracejado: deficiência; anel espesso: excesso.</p></div>
+    <div class="grid" style="align-content:start"><div class="card">${barrasEl(st,b)}${b?'<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal.</p>':''}</div>
+      <div class="card"><div class="card-h"><h3>Por elemento</h3><span class="muted sm">camadas separadas</span></div>
+        ${Object.keys(EL).filter(k=>!ui.el||k===ui.el).map(k=>{ const x=porEl[k]; return `<div class="pe"><div class="pe-h">${elTag(k)}</div>
+          <div class="pe-l">${camadaTag('obs')}<span>${[...x.ident].map(s=>esc(SIGN[s])).join(', ')||'—'}</span></div>
+          <div class="pe-l">${camadaTag('hip')}<span>${x.hip.join(', ')||'—'}</span></div>
+          <div class="pe-l">${camadaTag('conf')}<span>${x.conf.join(', ')||'—'}</span></div></div>`; }).join('')}
+        <p class="muted sm" style="margin-top:8px">"Identificado" lista os sinais positivos que fazem parte dos padrões já cadastrados de cada elemento. Nenhuma associação nova foi criada.</p></div>
+      <div class="card">${detalheEl(ui.el,st,p.name.split(' ')[0])}</div>
+      <div class="card"><div class="field"><label class="lbl" for="at-interp">Interpretação do profissional</label><textarea id="at-interp" data-atr="interp" ${trava?'disabled':''} placeholder="Sua leitura dos cinco elementos para este paciente">${esc(av.interp||'')}</textarea></div><p class="muted sm" style="margin-top:6px">Registro do profissional. Não altera o cálculo.</p></div></div></div>`;
 }
 function resumoPulso(R){
   const PU=SIGNS['Pulso'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
@@ -1959,17 +2069,17 @@ function resumoPulso(R){
 }
 function eSintese(p,a){
   const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, ac=evaluate(av.signs).filter(h=>av.status[h.p.id]==='aceito'), bg=bagang(av.signs), st=elemState(av.signs,av.status);
-  const vs=Object.entries(a.vasos||{}).filter(([,v])=>v.considerar), R=registroDe(av), cats=encaminhados(av,'sintese');
+  const R=registroDe(av), cats=encaminhados(av,'sintese');
   return `<div class="grid g-side"><div class="grid" style="align-content:start">
     <div class="card"><h3>Resumo da avaliação</h3><div class="sx">
       <div><small>Padrões validados</small>${ac.length?ac.map(h=>`<div class="sx-p">${elTag(h.p.el)}<b>${h.p.nome}</b><span class="pill ${h.p.tipo==='exc'?'crit':'warn'}">${h.p.tipo==='exc'?'excesso':'deficiência'}</span></div>`).join(''):`<p class="muted sm">Nenhum padrão aceito. <a href="#atendimento" data-act="etapa" data-i="1">Voltar à avaliação</a></p>`}
-        ${vs.length?`<small style="margin-top:12px">Vasos extraordinários considerados</small><div class="chips">${vs.map(([v])=>`<span class="pill">${v}</span>`).join('')}</div>`:''}</div>
+</div>
       <div><small>Oito princípios</small><div class="grid" style="gap:10px;margin-top:6px">${eixoBg('Frio','Calor',bg.fc)}${eixoBg('Def.','Exc.',bg.de)}</div>${R.bgInterp?`<p class="sm" style="margin-top:8px">${esc(R.bgInterp)}</p>`:''}</div></div></div>
     <div class="card"><div class="card-h"><h3>Língua e pulso</h3><span class="muted sm">registro do profissional</span></div>${resumoPulso(R)}</div>
     ${cats.length?cats.map(([c,nome,L])=>`<div class="card sx-cat"><div class="card-h"><h3>${nome}</h3><span class="muted sm">levado pelo profissional</span></div>${L.map(it=>`<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${ORIG_NOME[it.orig]||'Origem não informada'} · ${SIT_NOME[it.sit]}</small></div>${levarAt(c,it)}</div>`).join('')}</div>`).join('')
       :`<div class="card">${vazio('camadas','Nenhum achado levado das categorias','Use o botão "Síntese" nos achados de Zang-Fu, Qi e Xue, Jin Ye, Jing e Shen e Fatores.')}</div>`}
     <div class="card"><div class="field"><label class="lbl" for="at-sintese">Síntese do profissional</label><textarea id="at-sintese" data-atf="sintese" placeholder="Raciocínio clínico, prioridades do tratamento...">${esc(a.sintese)}</textarea></div><p class="muted sm" style="margin-top:8px">A síntese é escrita e validada pelo profissional. O sistema não conclui diagnóstico.</p></div></div>
-    <div class="card"><h3>Elementos</h3>${barrasEl(st)}</div></div>`;
+    <div class="card"><h3>Elementos</h3>${barrasEl(st)}${av.interp?`<p class="sm" style="margin-top:10px"><b>Interpretação:</b> ${esc(av.interp)}</p>`:''}</div></div>`;
 }
 // Posições ilustrativas (frente: x até 200; costas: x de 210 a 410). O atlas completo é da etapa 4.
 const MAPA = {VG20:[310,16],VB20:[296,60],B13:[298,104],B15:[298,116],B17:[298,132],B23:[298,180],VG4:[310,182],
@@ -1999,6 +2109,7 @@ function ePlano(p,a){
       ${w.length?w.map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:8px">${ic(k==='crit'?'escudo':'alerta')}<div><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div></div>`).join(''):`<div class="vazio">${ic('okc')}Nenhuma contraindicação encontrada para os pontos e técnicas escolhidos.</div>`}</div></div>
     <div class="grid" style="align-content:start">${(()=>{ const L=encaminhados(av,'plano'); return `<div class="card"><div class="card-h"><h3>Trazido pelo profissional</h3><span class="muted sm">só o que foi marcado como "Plano"</span></div>
       ${L.length?L.map(([c,nome,I])=>I.map(it=>`<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${nome}</small></div><button class="btn sm ghost" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="plano">${ic('x')}Retirar</button></div>`).join('')).join(''):`<p class="muted sm">Nada encaminhado. Marque "Plano" num achado da avaliação para ele aparecer aqui.</p>`}</div>`; })()}
+    ${dicasTratamento(p,a)}
     <div class="card"><h3>Sugestões dos padrões validados</h3><p class="muted sm" style="margin-bottom:10px">Toque para incluir. A escolha é do profissional.</p>
       ${ac.length?ac.map(h=>`<div class="sug"><div class="sug-h">${elTag(h.p.el)}<b>${h.p.nome}</b></div><div class="chips">${h.p.pontos.map(([c,j])=>`<button class="chip mono ${P.includes(c)?'on':''}" data-act="at-pt" data-c="${c}" title="${esc(j)}${PT[c]?.cautela?' · '+esc(CAUT[PT[c].cautela]):''}">${c}${PT[c]?.cautela?' ⚠':''}</button>`).join('')}</div></div>`).join(''):`<div class="vazio">${ic('info')}Aceite hipóteses na avaliação para ver sugestões.</div>`}</div></div></div>`;
 }
@@ -2396,7 +2507,7 @@ document.addEventListener('click',ev=>{
   else if(a==='novo-atendimento'){ const p=patient(t.dataset.pid||ui.pid); let x=rascunhoDe(p);
     if(!x){ x=iniciarAtendimento(p,{id:uid(),data:TODAY},new Date().toISOString()); save(); }
     ui.pid=p.id; ui.atId=x.id; ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; irPara('atendimento'); scrollTo(0,0); }
-  else if(a==='abrir-atendimento'){ ui.pid=t.dataset.pid; ui.atId=t.dataset.id; ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; irPara('atendimento'); scrollTo(0,0); }
+  else if(a==='abrir-atendimento'){ ui.pid=t.dataset.pid; ui.atId=t.dataset.id; fotografarAvaliacao(); ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; irPara('atendimento'); scrollTo(0,0); }
   else if(a==='etapa'){ ev.preventDefault(); irEtapa(Number(t.dataset.i)); }
   else if(a.startsWith('at-')){ acaoAtendimento(a,t); }
   else if(a==='novo-paciente'){ ui.editPid=null; irPara('cadastro'); }
@@ -2415,7 +2526,7 @@ document.addEventListener('click',ev=>{
   else if(a==='tab'){ ui.tab=t.dataset.t; render(true); }
   else if(a==='sign'){ const s=t.dataset.s, L=ui.assess.signs; const i=L.indexOf(s); i<0?L.push(s):L.splice(i,1); render(true); }
   else if(a==='hyp'){ const id=t.dataset.p; ui.assess.status[id] = ui.assess.status[id]===t.dataset.st ? '' : t.dataset.st; render(true); }
-  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); registrarAvaliacao(p,{id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota},new Date().toISOString()); save(); ui.pid=p.id; ui.tab='resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
+  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); const nv=registrarAvaliacao(p,{id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota},new Date().toISOString()); nv.prof=PROF.nome; const rm=ui.reavMotivo?.pid===p.id; if(rm) nv.motivo=ui.reavMotivo.motivo; ui.reavMotivo=null; save(); ui.pid=p.id; ui.tab=rm?'versoes':'resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
   else if(a==='el'){ ui.el = t.dataset.e && ui.el!==t.dataset.e ? t.dataset.e : null; render(true); }
   else if(a==='mer'){ ui.ptMer=t.dataset.m; render(true); }
   else if(a==='week'){ ui.week = t.dataset.d==='0'?0:ui.week+Number(t.dataset.d); render(true); }
@@ -2442,16 +2553,16 @@ document.addEventListener('input',ev=>{
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
   // Ambiente de atendimento: salva a cada alteração, sem redesenhar a tela enquanto se digita.
   const x=(t.dataset.atq||t.dataset.atan||t.dataset.atf||t.dataset.vnota||t.dataset.atp||t.dataset.atr||t.dataset.atln)&&atendimentoAberto(); if(!x) return;
-  if(t.dataset.atln){ const av=avaliacaoEditavel(x.p,x.a); if(!av) return; notaCategoria(av,t.dataset.atln,t.value); mudou(`avaliação energética: ${catNome(t.dataset.atln)}: anotações`,false); return; }
-  if(t.dataset.atp||t.dataset.atr){ const av=avaliacaoEditavel(x.p,x.a); if(!av) return;
+  if(t.dataset.atln){ const av=avaliacaoEditavel(x.p,x.a); if(!av||travada(x.p,x.a,av)) return; notaCategoria(av,t.dataset.atln,t.value); mudou(`avaliação energética: ${catNome(t.dataset.atln)}: anotações`,false); return; }
+  if(t.dataset.atp||t.dataset.atr){ const av=avaliacaoEditavel(x.p,x.a); if(!av||travada(x.p,x.a,av)) return;
     if(t.dataset.atp) definirPulso(av,t.dataset.atp,t.value); else av[t.dataset.atr]=t.value;
-    mudou(t.dataset.atp?'avaliação energética: pulso':t.dataset.atr==='linguaObs'?'avaliação energética: língua':'avaliação energética: Ba Gang',false); return; }
+    mudou(t.dataset.atp?'avaliação energética: pulso':({linguaObs:'avaliação energética: língua',bgInterp:'avaliação energética: Ba Gang',interp:'avaliação energética: interpretação do pentagrama'})[t.dataset.atr],false); return; }
   if(t.dataset.atq){ x.a.evolucao.intensidades[t.dataset.atq]=Number(t.value); document.getElementById('qv-'+t.dataset.atq).textContent=t.value; mudou('intensidade das queixas',false); }
   else if(t.dataset.atan){ x.p.anam[t.dataset.atan]=t.value; mudou('anamnese',false); }
-  else if(t.dataset.vnota){ const v=(x.a.vasos||={})[t.dataset.vnota]||={considerar:false,nota:''}; v.nota=t.value; mudou('avaliação energética: vasos extraordinários',false); }
+  else if(t.dataset.vnota){ const v=(x.a.vasos||={})[t.dataset.vnota]||={considerar:false,nota:''}; v.nota=t.value; mudou('plano terapêutico: vasos extraordinários',false); }
   else { const f=t.dataset.atf;
     if(f==='sintese') x.a.sintese=t.value; else if(f==='nota') x.a.evolucao.nota=t.value; else if(f==='mapa') (x.a.mapa||={nota:''}).nota=t.value;
-    else if(f==='avnota'){ const av=avaliacaoEditavel(x.p,x.a); if(av) av.nota=t.value; }
+    else if(f==='avnota'){ const av=avaliacaoEditavel(x.p,x.a); if(!av||travada(x.p,x.a,av)) return; av.nota=t.value; }
     mudou({sintese:'síntese clínica',nota:'evolução',mapa:'mapa corporal',avnota:'avaliação energética: observações'}[f],false); }
 });
 function sessionWarn(){
@@ -2463,13 +2574,17 @@ function sessionWarn(){
 function irEtapa(i){ const x=atendimentoAberto(); if(!x) return; ui.etapa=Math.max(0,Math.min(7,i));
   if(x.a.status==='rascunho'&&!x.a.etapas.includes(ui.etapa)){ x.a.etapas.push(ui.etapa); save(); }
   render(); scrollTo(0,0); }
+// Correção de uma versão já registrada: guarda os valores de antes, uma vez por abertura do atendimento.
+function fotografarAvaliacao(){ const x=atendimentoAberto(), av=x&&x.a.status==='finalizado'&&avaliacaoEditavel(x.p,x.a); ui.avFoto=av?{id:av.id,foto:fotoVersao(av)}:null; }
+const travada = (p,a,av) => !!av && a.status==='finalizado' && ehBasal(p,av);
 function mudou(acao, redesenhar=true){ const x=atendimentoAberto(); if(!x) return; const em=new Date().toISOString();
   registrarAlteracao(x.a,acao,em);
+  if(x.a.status==='finalizado'&&ui.avFoto){ const av=avaliacaoEditavel(x.p,x.a); if(av&&av.id===ui.avFoto.id&&JSON.stringify(fotoVersao(av))!==JSON.stringify(ui.avFoto.foto)){ registrarCorrecao(av,ui.avFoto.foto,em); ui.avFoto=null; } }
   if(x.a.status==='finalizado'&&/avalia/.test(acao)){ const av=avaliacaoEditavel(x.p,x.a); if(av) registrarAlteracao(av,'avaliação alterada após finalizar o atendimento',em); }
   save(); if(redesenhar) render(true); else { const e=document.getElementById('autosave'); if(e) e.innerHTML=textoSalvo(x.a); } }
 const catNome = c => CATEGORIAS.find(x=>x[0]===c)?.[1]||c;
 function acaoAtendimento(a,t){
-  const x=atendimentoAberto(); if(!x) return; const {p}=x, A=x.a, av=avaliacaoEditavel(p,A);
+  const x=atendimentoAberto(); if(!x) return; const {p}=x, A=x.a, av0=avaliacaoEditavel(p,A), av=travada(p,A,av0)?null:av0;
   const alterna=(L,v)=>{ const i=L.indexOf(v); i<0?L.push(v):L.splice(i,1); };
   if(a==='at-sinal'&&av){ alternarAchado(av,t.dataset.s,t.dataset.o||''); mudou('avaliação energética: sinais'); }
   else if(a==='at-pulso'&&av){ alternarPulso(av,t.dataset.l,t.dataset.k); mudou('avaliação energética: pulso'); }
@@ -2478,6 +2593,8 @@ function acaoAtendimento(a,t){
     mudou(`avaliação energética: ${catNome(c)}: "${it.texto}" ${it[d]?'levado para':'retirado'} ${it[d]?(d==='plano'?'o ':'a ')+l:'d'+(d==='plano'?'o ':'a ')+l}`); toast(it[d]?`Levado para ${d==='plano'?'o':'a'} ${l}`:`Retirado d${d==='plano'?'o':'a'} ${l}`,'info'); }
   else if(a==='at-livre-rm'&&av){ const c=t.dataset.cat, it=av.categorias?.[c]?.itens.find(x=>x.id===t.dataset.id); if(!it||!confirm(`Remover o achado "${it.texto}"? A remoção fica registrada no histórico do atendimento.`)) return;
     removerAchadoLivre(av,c,it.id); mudou(`avaliação energética: ${catNome(c)}: achado removido ("${it.texto}")`); }
+  else if(a==='at-par'){ const par=PARES_VASOS.find(y=>y[0]===t.dataset.v); if(!par) return; par.slice(1).forEach(c=>{ if(!A.plano.pontos.includes(c)) A.plano.pontos.push(c); }); definirVaso(A,par[0],'considerar',true); mudou(`plano terapêutico: pontos (par de ${par[0]} incluído pelo profissional)`); toast(`${par[1]} e ${par[2]} incluídos`); }
+  else if(a==='at-camada'){ ui.camada=t.dataset.k; render(true); }
   else if(a==='at-aba'){ ui.avAba=Number(t.dataset.i); render(true); document.querySelector('.ab-bar')?.scrollIntoView({block:'nearest'}); }
   else if(a==='at-hip'&&av){ const id=t.dataset.p; av.status[id]=av.status[id]===t.dataset.st?'':t.dataset.st; mudou('avaliação energética: hipóteses'); }
   else if(a==='at-pt'){ alterna(A.plano.pontos,t.dataset.c); mudou('plano terapêutico: pontos'); }
@@ -2485,7 +2602,7 @@ function acaoAtendimento(a,t){
   else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
   else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
   else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; irPara('agenda'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
-  else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
+  else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); const nv=p.avaliacoes.find(v=>v.id===A.avaliacaoId); if(nv) nv.prof=PROF.nome; save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
   else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
     descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
 }
@@ -2496,8 +2613,9 @@ document.addEventListener('change',ev=>{
   if(t.id==='imp-arq' && t.files[0]){ const f=t.files[0]; t.value='';
     if(!confirm(`Importar “${f.name}”? Os dados atuais deste navegador serão substituídos. Exporte antes se quiser guardá-los.`)) return;
     f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
-  if(t.dataset.atlsit||t.dataset.atlorig){ const x=atendimentoAberto(), av=x&&avaliacaoEditavel(x.p,x.a); if(av){ const [c,id]=(t.dataset.atlsit||t.dataset.atlorig).split('.'); definirAchadoLivre(av,c,id,t.dataset.atlsit?'sit':'orig',t.value); mudou(`avaliação energética: ${catNome(c)}: ${t.dataset.atlsit?'situação':'origem'} do achado`); } return; }
-  if(t.dataset.atsit||t.dataset.atorig){ const x=atendimentoAberto(), av=x&&avaliacaoEditavel(x.p,x.a); if(av){ definirAchado(av,t.dataset.atsit||t.dataset.atorig,t.dataset.atsit?'sit':'orig',t.value); mudou('avaliação energética: '+(t.dataset.atsit?'situação':'origem')+' dos achados'); } return; }
+  if(t.dataset.vcmp){ ui[t.dataset.vcmp]=t.value; render(true); return; }
+  if(t.dataset.atlsit||t.dataset.atlorig){ const x=atendimentoAberto(), av=x&&avaliacaoEditavel(x.p,x.a); if(av&&!travada(x.p,x.a,av)){ const [c,id]=(t.dataset.atlsit||t.dataset.atlorig).split('.'); definirAchadoLivre(av,c,id,t.dataset.atlsit?'sit':'orig',t.value); mudou(`avaliação energética: ${catNome(c)}: ${t.dataset.atlsit?'situação':'origem'} do achado`); } return; }
+  if(t.dataset.atsit||t.dataset.atorig){ const x=atendimentoAberto(), av=x&&avaliacaoEditavel(x.p,x.a); if(av&&!travada(x.p,x.a,av)){ definirAchado(av,t.dataset.atsit||t.dataset.atorig,t.dataset.atsit?'sit':'orig',t.value); mudou('avaliação energética: '+(t.dataset.atsit?'situação':'origem')+' dos achados'); } return; }
   if(t.dataset.vaso){ const x=atendimentoAberto(); if(x){ const v=(x.a.vasos||={})[t.dataset.vaso]||={considerar:false,nota:''}; v.considerar=t.checked; mudou('avaliação energética: vasos extraordinários'); } return; }
   if(t.id==='pr-patient'){ ui.pid=t.value; render(true); }
   else if(t.id==='as-patient'){ ui.pid=t.value; ui.assess={pid:t.value,signs:[],status:{},nota:''}; render(true); }
@@ -2524,8 +2642,10 @@ document.addEventListener('submit',ev=>{
     const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),consentimento:TODAY,em}));
     Object.assign(p.alerts,alerts); p.cadastro=cadastro;
     db.patients.push(p); save(); ui.pid=p.id; ui.tab='anamnese'; toast('Paciente cadastrado'); location.hash='prontuario';
+  } else if(f.id==='f-reav'){
+    const m=v('rv-motivo').trim(); if(!m) return; ui.reavMotivo={pid:ui.pid,motivo:m}; ui.assess=null; irPara('avaliacao'); toast('Registre a reavaliação; ela vira uma nova versão','info');
   } else if(f.classList.contains('livre-f')){
-    const x=atendimentoAberto(), av=x&&avaliacaoEditavel(x.p,x.a); if(!av) return; const c=f.dataset.cat, texto=v('lv-'+c).trim(); if(!texto) return;
+    const x=atendimentoAberto(), av=x&&avaliacaoEditavel(x.p,x.a); if(!av||travada(x.p,x.a,av)) return; const c=f.dataset.cat, texto=v('lv-'+c).trim(); if(!texto) return;
     adicionarAchadoLivre(av,c,{id:uid(),texto,orig:v(`lv-${c}-o`),sit:v(`lv-${c}-s`)},new Date().toISOString()); mudou(`avaliação energética: ${catNome(c)}: achado registrado`); toast('Achado registrado');
   } else if(f.id==='f-at-queixa'||f.id==='f-at-pt'){
     const x=atendimentoAberto(); if(!x) return;
