@@ -182,7 +182,7 @@ function acaoMapa(a,t,A){
   const M=ui.mapa, m=marcasDe(A).find(x=>x.id===M.sel), ZM=[1,1.5,2,3];
   if(a==='at-mv-vista'){ M.vista=t.dataset.v; M.rad=null; render(true); }
   else if(a==='at-mv-face'){ M.face[M.vista]=t.dataset.f; render(true); }
-  else if(a==='at-mv-ferr'){ M.ferr=t.dataset.t; M.rad=null; render(true); }
+  else if(a==='at-mv-ferr'){ const k=t.dataset.t; M.ferr=(k===M.ferr&&k!=='sel')?'sel':k; M.rad=null; if(M.ferr!=='sel') M.rm=false; render(true); }
   else if(a==='at-mv-zoom'){ M.zoom=ZM[Math.max(0,Math.min(ZM.length-1,ZM.indexOf(M.zoom)+Number(t.dataset.d)))]; render(true); }
   else if(a==='at-mv-ant'){ M.ant=!M.ant; render(true); }
   else if(a==='at-mv-plano'){ M.plano=!M.plano; render(true); }
@@ -203,10 +203,15 @@ function toqueMapa(ev,svg){
   const mk=ev.target.closest('.mk'), sobre=ev.target.closest('.corpo, .mk, .ptp');
   if(rasc&&M.rad){ if(!sobre){ toast('Toque sobre o corpo para marcar o destino','info'); return; }
     const m=editarMarca(A,M.rad,'destino',[q.x/w,q.y/h]); M.rad=null; if(m){ M.sel=m.id; mudou('mapa corporal: trajeto da irradiação'); toast('Trajeto da irradiação marcado'); } else render(true); return; }
+  if(rasc&&M.ferr==='ponto'){ const p=ev.target.closest('.ptp');
+    if(!p){ if(mk){ M.sel=mk.dataset.id; M.rm=false; render(true); } else toast('Toque num dos pontos do mapa para incluir ou tirar do plano','info'); return; }
+    const c=p.dataset.pt, tinha=A.plano.pontos.includes(c); const L=A.plano.pontos; tinha?L.splice(L.indexOf(c),1):L.push(c);
+    if(tinha) toast(`${c} retirado do plano`,'info'); else toast(`${c} incluído no plano`);
+    mudou(`plano terapêutico: pontos (${c} ${tinha?'retirado':'indicado'} no mapa corporal)`); return; }
   if(!rasc||M.ferr==='sel'){ if(mk){ M.sel=mk.dataset.id; M.rm=false; render(true); } else { const p=ev.target.closest('.ptp'); if(p) toast(`Ponto do plano ${p.dataset.pt} · posição aproximada`,'info'); } return; }
   if(!sobre){ toast('Toque sobre o corpo para marcar','info'); return; }
   const tipo=M.ferr, m=adicionarMarca(A,{id:uid(),tipo,vista:v,face:f,x:q.x/w,y:q.y/h,lado:ladoDe(v,f,q.x)},new Date().toISOString()); if(!m) return;
-  M.sel=m.id; M.rm=false; M.ferr='sel';
+  M.sel=m.id; M.rm=false;
   if(tipo==='irradiacao'){ M.rad=m.id; toast('Origem marcada. Agora toque no destino','info'); }
   else toast(`${nomeTipo(tipo)} marcada · ${nomeLadoMarca(m.lado).toLowerCase()}`);
   mudou(`mapa corporal: marcação de ${nomeTipo(tipo).toLowerCase()} adicionada`);
