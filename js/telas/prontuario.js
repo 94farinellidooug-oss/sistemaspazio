@@ -11,6 +11,7 @@ import { ic, vazio } from '../componentes/icones.js';
 import { pentagram } from '../componentes/pentagrama.js';
 import { PT } from '../conhecimento/pontos.js';
 import { SIGN } from '../conhecimento/sinais.js';
+import { ativo } from '../dados/agenda.js';
 import { db, patient } from '../dados/repositorio.js';
 import { alertasDe, melhoraPct } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
@@ -85,7 +86,7 @@ function rascunho(p){
 function abaResumo(p){
   const a=p.assess.at(-1), a0=p.assess[0], st=a?elemState(a.signs,a.status):null, ac=aceitos(a);
   const ss=p.sessions, s=ss.map(x=>x.eva), m=melhoraPct(s);
-  const prox=db.appts.filter(x=>x.pid===p.id&&x.date>=TODAY&&!x.done).sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time))[0];
+  const prox=db.appts.filter(ativo).filter(x=>x.pid===p.id&&x.date>=TODAY&&!x.done).sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time))[0];
   const E=eventos(p);
   return `<div class="tiles">
     <div class="tile"><span class="tico acc">${ic('lista')}</span><div><b class="num">${p.sessions.length}</b><small>atendimento${p.sessions.length===1?'':'s'}${p.sessions[0]?` desde ${fmt(p.sessions[0].date)}`:''}</small></div></div>

@@ -2,6 +2,7 @@
 // gráficos e acompanhamento. Todos os números vêm dos dados gravados (sessões, avaliações e agenda).
 import { anel, barrasV, linhas } from '../componentes/graficos.js';
 import { ic, vazio } from '../componentes/icones.js';
+import { ativo } from '../dados/agenda.js';
 import { db, patient } from '../dados/repositorio.js';
 import { acompanhamento, alertasDe, diasDesde, melhoraPct } from '../dados/indicadores.js';
 import { ui } from '../estado.js';
@@ -12,9 +13,9 @@ import { TODAY, addDays, brl, esc, fmt, initials } from '../util.js';
 function calMini(){
   const base=new Date(TODAY+'T12:00'), ano=base.getFullYear(), mes=base.getMonth(), ini=(new Date(ano,mes,1).getDay()+6)%7, nd=new Date(ano,mes+1,0).getDate();
   const dia=d=>`${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, sel=ui.dia||TODAY;
-  const cel=[...Array(ini)].map(()=>'<span></span>').join('')+[...Array(nd)].map((_,i)=>{ const d=dia(i+1), n=db.appts.filter(a=>a.date===d).length;
+  const cel=[...Array(ini)].map(()=>'<span></span>').join('')+[...Array(nd)].map((_,i)=>{ const d=dia(i+1), n=db.appts.filter(ativo).filter(a=>a.date===d).length;
     return `<button class="cm-d ${d===TODAY?'hoje':''} ${d===sel?'sel':''} ${d<TODAY?'pass':''}" data-act="dia" data-d="${d}" aria-label="${fmt(d)}: ${n} agendamento${n===1?'':'s'}" ${n?`data-tip="${n} agendamento${n===1?'':'s'}"`:''}>${i+1}${n?`<i>${'<b></b>'.repeat(Math.min(n,3))}</i>`:''}</button>`; }).join('');
-  const L=db.appts.filter(a=>a.date===sel).sort((a,b)=>a.time.localeCompare(b.time));
+  const L=db.appts.filter(ativo).filter(a=>a.date===sel).sort((a,b)=>a.time.localeCompare(b.time));
   return `<div class="card cm"><div class="card-h"><h3>${base.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h3><a class="btn ghost sm" href="#agenda">Agenda ${ic('dir')}</a></div>
     <div class="cm-g">${['S','T','Q','Q','S','S','D'].map(x=>`<small>${x}</small>`).join('')}${cel}</div>
     <div class="cm-l"><div class="lbl">${sel===TODAY?'Hoje':fmt(sel)}</div>${L.length?L.map(a=>{const p=patient(a.pid);return `<button class="cm-i ${a.done?'feito':''}" data-act="open" data-pid="${a.pid}"><span class="mono">${a.time}</span><span class="trunc">${esc(p?.name||'')}</span>${a.done?ic('okc'):''}</button>`;}).join(''):'<p class="muted sm">Nenhum agendamento neste dia.</p>'}</div></div>`;
@@ -22,10 +23,10 @@ function calMini(){
 
 export function vPainel(){
   const agora=new Date(), h=agora.getHours(), hhmm=`${String(h).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
-  const hoje=db.appts.filter(a=>a.date===TODAY).sort((a,b)=>a.time.localeCompare(b.time)), feitos=hoje.filter(a=>a.done).length;
+  const hoje=db.appts.filter(ativo).filter(a=>a.date===TODAY).sort((a,b)=>a.time.localeCompare(b.time)), feitos=hoje.filter(a=>a.done).length;
   const prox=hoje.find(a=>!a.done && a.time>=hhmm) || hoje.find(a=>!a.done), pp=prox&&patient(prox.pid);
   const al=[...new Set(hoje.map(a=>a.pid))].map(patient).filter(p=>p && alertasDe(p).length);
-  const ac=acompanhamento(), atrasados=db.appts.filter(a=>a.date<TODAY && !a.done);
+  const ac=acompanhamento(), atrasados=db.appts.filter(ativo).filter(a=>a.date<TODAY && !a.done && a.st!=='faltou');
   const comS=db.patients.filter(p=>p.sessions.length>1), melh=comS.filter(p=>melhoraPct(p.sessions.map(s=>s.eva))>0);
   // Sessões registradas por semana, nas últimas 8 semanas.
   const sem=[...Array(8)].map((_,i)=>{ const ini=weekStart(i-7), fim=addDays(6,ini);
@@ -34,11 +35,11 @@ export function vPainel(){
   const maxN=Math.max(0,...db.patients.map(p=>p.sessions.length));
   const med=[...Array(maxN)].map((_,k)=>{ const v=db.patients.map(p=>p.sessions[k]?.eva).filter(x=>x!=null); return [Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10, v.length]; });
   // Financeiro da semana a partir dos agendamentos e seus valores.
-  const ws=weekStart(0), we=addDays(6,ws), ag=db.appts.filter(a=>a.date>=ws&&a.date<=we);
+  const ws=weekStart(0), we=addDays(6,ws), ag=db.appts.filter(ativo).filter(a=>a.date>=ws&&a.date<=we);
   const prev=ag.reduce((n,a)=>n+a.valor,0), real=ag.filter(a=>a.done).reduce((n,a)=>n+a.valor,0), pr=prev?Math.round(real/prev*100):0;
   const atv=[...db.patients.flatMap(p=>[...p.sessions.map((s,i)=>({d:s.date,i:'estet',t:i===0?'Primeira sessão':`${i+1}ª sessão`,p,x:s.tec.join(', ')||'sessão registrada'})),
       ...p.assess.map((a,i)=>({d:a.date,i:'yin',t:i===0?'Avaliação energética':'Reavaliação energética',p,x:`${a.signs.length} sinais`}))]),
-    ...db.appts.filter(a=>a.done&&a.date<=TODAY).map(a=>({d:a.date,i:'okc',t:'Agendamento concluído',p:patient(a.pid),x:a.tipo}))].filter(a=>a.p && a.d<=TODAY).sort((a,b)=>b.d.localeCompare(a.d)).slice(0,6);
+    ...db.appts.filter(ativo).filter(a=>a.done&&a.date<=TODAY).map(a=>({d:a.date,i:'okc',t:'Agendamento concluído',p:patient(a.pid),x:a.tipo}))].filter(a=>a.p && a.d<=TODAY).sort((a,b)=>b.d.localeCompare(a.d)).slice(0,6);
   const quando = d => { const n=diasDesde(d); return n===0?'hoje':n===1?'ontem':`há ${n} dias`; };
 
   return `<div class="head"><div><h1>${h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'}, ${PROF.nome.split(' ')[0]}</h1><p>${agora.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})} · ${hoje.length} agendamento${hoje.length===1?'':'s'} hoje</p></div></div>

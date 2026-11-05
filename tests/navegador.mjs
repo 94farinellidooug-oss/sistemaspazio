@@ -14,8 +14,13 @@ import { paraV1 } from '../js/dados/migracao.js';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
-// Telas redesenhadas por completo (Painel), verificadas em tests/interface.mjs.
+// Telas redesenhadas por completo: Painel (verificado em tests/interface.mjs) e Agenda (etapa 6A,
+// verificada em tests/agenda-ui.mjs). Na Agenda o roteiro faz o mesmo uso pelos controles novos e
+// os dados salvos continuam comparados byte a byte.
 const REDESENHADAS = new Set(['abertura', 'tela painel']);
+// Passos feitos na Agenda: compara tudo menos o que é da própria Agenda.
+const NA_AGENDA = new Set(['tela agenda', 'próxima semana', 'agendamento criado', 'agendamento concluído', 'restaurar exemplos']);
+const semAgenda = (etapa, html) => { if (!NA_AGENDA.has(etapa)) return html; const o = JSON.parse(html); delete o.agenda; delete o.semana; o.selecionado = o.selecionado.slice(0, 2); return JSON.stringify(o); };
 const ALVOS = { 'original (legacy)': 'legacy/prototipo-v1.html', 'modular': 'index.html', 'arquivo único (dist)': 'dist/spazio.html' };
 // Math.random previsível, para que os ids gerados sejam iguais nas três versões.
 const SEMENTE = () => { let s = 42; Math.random = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648; };
@@ -86,8 +91,24 @@ async function roteiro(browser, url) {
   await p.click('[data-act="mer"][data-m="R"]'); await foto('filtro meridiano R');
 
   await ir('agenda'); await p.click('[data-act="week"][data-d="1"]'); await foto('próxima semana');
-  await p.fill('#na-t', '14:30'); await p.click('#f-appt button'); await p.waitForTimeout(60); await foto('agendamento criado');
-  await p.click('[data-act="week"][data-d="0"]'); await p.click('.appt'); await foto('agendamento concluído');
+  if (!(await p.$('.ag-sem'))) {
+    await p.fill('#na-t', '14:30'); await p.click('#f-appt button'); await p.waitForTimeout(60); await foto('agendamento criado');
+    await p.click('[data-act="week"][data-d="0"]'); await p.click('.appt'); await foto('agendamento concluído');
+  } else {
+    // Agenda nova: no original o dia do agendamento fica em hoje mesmo vendo a próxima semana.
+    const hoje = await p.evaluate(() => { const d = new Date(), z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; });
+    await p.fill('#na-d', hoje); await p.waitForTimeout(40);
+    await p.fill('#na-t', '14:30'); await p.click('#f-appt button.pri'); await p.waitForTimeout(60); await foto('agendamento criado');
+    await p.click('[data-act="week"][data-d="0"]'); await p.waitForTimeout(40);
+    // O original conclui (ou reabre) o primeiro agendamento da semana: o mesmo aqui, pela situação do horário.
+    const alvo = await p.evaluate(() => { const L = JSON.parse(localStorage.getItem('musubi-v2')).appts, d = new Date(); d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+      const iso = x => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`, ini = iso(d); d.setDate(d.getDate() + 6); const fim = iso(d);
+      const S = [...Array(7)].flatMap((_, i) => { const x = new Date(ini + 'T12:00:00'); x.setDate(x.getDate() + i); return L.filter(a => a.date === iso(x)).sort((a, b) => a.time.localeCompare(b.time)); });
+      return S[0] && fim && { id: S[0].id, date: S[0].date, done: S[0].done }; });
+    if (alvo) { await p.click(`[data-act="ag-dia"][data-d="${alvo.date}"]`); await p.waitForTimeout(40);
+      await p.click(`[data-act="ag-st"][data-id="${alvo.id}"][data-s="${alvo.done ? 'agendado' : 'atendido'}"]`); await p.waitForTimeout(40); }
+    await foto('agendamento concluído');
+  }
 
   const chaves = await p.evaluate(() => ({ v1: localStorage.getItem('spazio-v1'), v2: localStorage.getItem('musubi-v2') }));
   const dados = chaves.v2 ? JSON.stringify(paraV1(JSON.parse(chaves.v2))) : chaves.v1;
@@ -111,14 +132,14 @@ for (const [nome, r] of Object.entries(res)) {
   if (r === ref) continue;
   r.fotos.forEach(([etapa, html], i) => {
     if (REDESENHADAS.has(etapa)) return;
-    const ok = html === ref.fotos[i][1];
+    const ok = semAgenda(etapa, html) === semAgenda(etapa, ref.fotos[i][1]);
     if (!ok) falhas++;
     if (!ok) { const A = JSON.parse(html), B = JSON.parse(ref.fotos[i][1]); console.log(`FALHA ${nome} · ${etapa}: difere em ${Object.keys(A).filter(k => JSON.stringify(A[k]) !== JSON.stringify(B[k])).join(', ')}`); }
   });
   const okDados = r.dados === ref.dados;
   if (!okDados) { falhas++; console.log(`FALHA ${nome} · dados salvos diferentes`); }
   const comparadas = r.fotos.filter(([e]) => !REDESENHADAS.has(e));
-  console.log(`${nome}: ${comparadas.filter(([e, h]) => h === ref.fotos.find(([e2]) => e2 === e)[1]).length} de ${comparadas.length} telas com conteúdo idêntico ao original (conteúdo funcional; Painel redesenhado fica fora); dados salvos ${okDados ? 'idênticos' : 'diferentes'}.`);
+  console.log(`${nome}: ${comparadas.filter(([e, h]) => semAgenda(e, h) === semAgenda(e, ref.fotos.find(([e2]) => e2 === e)[1])).length} de ${comparadas.length} telas com conteúdo idêntico ao original (conteúdo funcional; Painel e Agenda redesenhados ficam fora); dados salvos ${okDados ? 'idênticos' : 'diferentes'}.`);
 }
 console.log(falhas ? `\n${falhas} diferença(s) encontrada(s).` : '\nRoteiro completo sem erros e com resultado idêntico ao original.');
 process.exit(falhas ? 1 : 0);

@@ -78,14 +78,15 @@ export function hidratarPaciente(p){
   return p;
 }
 
-// Converte o v2 de volta para o v1 (para voltar ao protótipo ou conferir a migração).
+// Converte o v2 de volta para o v1 (para voltar ao protótipo ou conferir a migração). Horários
+// desmarcados (etapa 6A) não existem no protótipo e ficam de fora.
 export function paraV1(v2){
   return { patients: v2.patients.map(p => {
     const v = { id: p.id, name: p.name, birth: p.birth, phone: p.phone, exemplo: p.exemplo, queixa: p.queixas.find(q => q.id === QP)?.descricao ?? '',
       consentimento: p.consentimento, anam: p.anam, alerts: p.alerts, sessions: sessoesDe(p), assess: avaliacoesDe(p), ...(p.v1?.extras || {}) };
     const campos = p.v1?.campos || ['id','name','birth','phone','exemplo','queixa','anam','alerts','sessions','assess'].concat('consentimento' in p ? ['consentimento'] : []);
     return Object.fromEntries(campos.filter(k => k in v && v[k] !== undefined).map(k => [k, v[k]]));
-  }), appts: v2.appts };
+  }), appts: v2.appts.filter(a => a.st !== 'desmarcado') };
 }
 
 // Confere se um objeto tem o formato v2 mínimo.

@@ -1193,6 +1193,51 @@ input[type=checkbox]{accent-color:var(--brand)}
   .imp-t{line-height:1.6}
   .imp-a{margin-top:28px;color:#444}
 }
+
+/* Etapa 6A · Agenda */
+.ag-sem{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:16px}
+.ag-sem button{display:grid;justify-items:center;gap:2px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 2px;font:inherit;color:var(--ink);cursor:pointer;min-width:0}
+.ag-sem button span{font-size:.72rem;color:var(--muted);text-transform:capitalize}
+.ag-sem button b{font-size:1.05rem}
+.ag-sem button small{font-size:.68rem;color:var(--muted);white-space:nowrap}
+.ag-sem button.hoje{border-color:var(--accent-line)}
+.ag-sem button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.ag-sem button.on span,.ag-sem button.on small{color:inherit;opacity:.85}
+.ag-cols{align-items:start}
+#ag-dia .card-h h2::first-letter{text-transform:uppercase}
+.hor-l{display:grid;gap:6px}
+.hor{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:8px 8px 8px 10px;border:1px solid var(--line);border-left:4px solid var(--line-2);border-radius:10px;background:var(--surface);min-width:0}
+.hor.confirmado{border-left-color:var(--accent)}
+.hor.atendido{border-left-color:var(--ok)}
+.hor.faltou{border-left-color:var(--crit)}
+.hor.desmarcado{opacity:.6;border-left-style:dashed}
+.hor-h{display:grid;line-height:1.15}
+.hor-h small{font-size:.72rem;color:var(--muted)}
+.hor-p{display:grid;min-width:0;justify-items:start}
+.hor-p .lk{border:0;background:none;padding:0;font:inherit;font-weight:600;color:var(--ink);cursor:pointer;text-align:left;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hor-p .lk:hover{color:var(--accent);text-decoration:underline}
+.hor-p small{font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.hor-hi{color:var(--warn)}
+.hor-a{display:flex;gap:4px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.hor-a .btn.ghost{padding:4px 7px}
+.rx-seg.st button.on.agendado{background:var(--surface-2);color:var(--ink)}
+.rx-seg.st button.on.confirmado{background:var(--accent);color:var(--accent-ink)}
+.rx-seg.st button.on.atendido{background:var(--ok);color:#fff}
+.rx-seg.st button.on.faltou{background:var(--crit);color:#fff}
+.ag-fora{margin-top:10px}
+.ag-fora summary{cursor:pointer;font-size:.84rem;color:var(--muted);margin-bottom:6px}
+.ag-f{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ag-f .full{grid-column:1/-1}
+#ag-livres .chip{font-family:var(--f-mono);font-size:.8rem;padding:5px 10px}
+@media (max-width:560px){
+  .hor{display:flex;flex-wrap:wrap;row-gap:6px}
+  .hor-p{flex:1 1 calc(100% - 70px)}
+  .hor .rx-seg{order:1}
+  .hor-a{margin-left:auto;order:2}
+  .ag-sem{gap:3px}
+  .ag-sem button{padding:6px 0}
+  .ag-sem button small{font-size:.6rem}
+}
 </style>
 
 
@@ -1335,14 +1380,15 @@ function hidratarPaciente(p){
   return p;
 }
 
-// Converte o v2 de volta para o v1 (para voltar ao protótipo ou conferir a migração).
+// Converte o v2 de volta para o v1 (para voltar ao protótipo ou conferir a migração). Horários
+// desmarcados (etapa 6A) não existem no protótipo e ficam de fora.
 function paraV1(v2){
   return { patients: v2.patients.map(p => {
     const v = { id: p.id, name: p.name, birth: p.birth, phone: p.phone, exemplo: p.exemplo, queixa: p.queixas.find(q => q.id === QP)?.descricao ?? '',
       consentimento: p.consentimento, anam: p.anam, alerts: p.alerts, sessions: sessoesDe(p), assess: avaliacoesDe(p), ...(p.v1?.extras || {}) };
     const campos = p.v1?.campos || ['id','name','birth','phone','exemplo','queixa','anam','alerts','sessions','assess'].concat('consentimento' in p ? ['consentimento'] : []);
     return Object.fromEntries(campos.filter(k => k in v && v[k] !== undefined).map(k => [k, v[k]]));
-  }), appts: v2.appts };
+  }), appts: v2.appts.filter(a => a.st !== 'desmarcado') };
 }
 
 // Confere se um objeto tem o formato v2 mínimo.
@@ -1446,7 +1492,7 @@ function importar(texto){
 }
 // ov: camada aberta (busca, notif, perfil, atalhos); q/bi: texto e item escolhido na busca global;
 // lidas: notificações já vistas nesta sessão; dia: dia escolhido no calendário do Painel; crumbs: migalhas.
-const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', week:0, pq:'', menuMini:false, menuAberto:false,
+const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, pq:'', menuMini:false, menuAberto:false,
   ov:null, q:'', bi:0, lidas:new Set(), dia:null, crumbs:[],
   // Mapa corporal do atendimento (etapa 4A): vista, face, ampliação, ferramenta, marcação selecionada e camadas de comparação.
   // Biblioteca clínica (etapa 4B): área (central, particular, atlas), ficha aberta e estado do Atlas.
@@ -1504,20 +1550,67 @@ function pointWarnings(codes, p, tec){
   if(p.alerts.marcapasso && tec.includes('Eletroacupuntura')) w.push(['crit','Portador de marcapasso: eletroacupuntura contraindicada.']);
   return w;
 }
-const EL = {
-  madeira:{nome:'Madeira',han:'木',cor:'var(--wood)',ang:198,zang:'Fígado',fu:'Vesícula Biliar',emocao:'Raiva',estacao:'Primavera',clima:'Vento',sentido:'Olhos',tecido:'Tendões',sabor:'Ácido',som:'Grito',espirito:'Hun',funcoes:['Armazena o Xue','Garante o livre fluxo do Qi','Nutre tendões e olhos']},
-  fogo:{nome:'Fogo',han:'火',cor:'var(--fire)',ang:-90,zang:'Coração · Pericárdio',fu:'Intestino Delgado · Triplo Aquecedor',emocao:'Alegria (em excesso, agitação)',estacao:'Verão',clima:'Calor',sentido:'Língua',tecido:'Vasos',sabor:'Amargo',som:'Riso',espirito:'Shen',funcoes:['Governa o Xue e os vasos','Abriga o Shen','Manifesta-se na face']},
-  terra:{nome:'Terra',han:'土',cor:'var(--earth)',ang:-18,zang:'Baço',fu:'Estômago',emocao:'Preocupação',estacao:'Fim do verão',clima:'Umidade',sentido:'Boca',tecido:'Músculos',sabor:'Doce',som:'Canto',espirito:'Yi',funcoes:['Transforma e transporta','Produz Qi e Xue a partir dos alimentos','Mantém o Xue nos vasos']},
-  metal:{nome:'Metal',han:'金',cor:'var(--metal)',ang:54,zang:'Pulmão',fu:'Intestino Grosso',emocao:'Tristeza',estacao:'Outono',clima:'Secura',sentido:'Nariz',tecido:'Pele e pelos',sabor:'Picante',som:'Choro',espirito:'Po',funcoes:['Governa o Qi e a respiração','Difunde o Wei Qi','Regula as vias das águas']},
-  agua:{nome:'Água',han:'水',cor:'var(--water)',ang:126,zang:'Rim',fu:'Bexiga',emocao:'Medo',estacao:'Inverno',clima:'Frio',sentido:'Ouvidos',tecido:'Ossos',sabor:'Salgado',som:'Gemido',espirito:'Zhi',funcoes:['Armazena o Jing','Governa a água','Raiz do Yin e do Yang do corpo']}
-};
-const ORDER = ['fogo','terra','metal','agua','madeira'];
-const SHENG = {madeira:'fogo',fogo:'terra',terra:'metal',metal:'agua',agua:'madeira'};
-const KE = {madeira:'terra',terra:'agua',agua:'fogo',fogo:'metal',metal:'madeira'};
-const mae = e => Object.keys(SHENG).find(k=>SHENG[k]===e);
-const controlador = e => Object.keys(KE).find(k=>KE[k]===e);
-const elTag = e => e ? `<span class="el-tag"><i style="background:${EL[e].cor}"></i>${EL[e].nome}</span>` : '';
-const patientSelect = (id,cur) => `<select id="${id}">${db.patients.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`;
+//
+// O agendamento continua no formato do protótipo: {id, pid, date, time, tipo, valor, done}. done é
+// "atendido". Os campos novos só aparecem quando usados:
+//   st: 'confirmado' | 'faltou' | 'desmarcado' (sem st e sem done = agendado)
+//   hist: ['remarcado de 05/11/2026 16:00', 'desmarcado em 05/11/2026', ...] (mais recente primeiro)
+// Desmarcado não é apagado: some das contagens e da agenda do dia, e fica na lista de desmarcados.
+// Duração e valor de cada serviço são padrões da clínica (mudam em Configurações, etapa 10).
+
+// [serviço, minutos, valor]
+const SERVICOS = [['Acupuntura', 60, 180], ['Acupuntura e moxabustão', 60, 200], ['Auriculoterapia', 30, 90], ['Ventosaterapia', 45, 150], ['Massoterapia', 60, 160], ['Avaliação inicial', 90, 220]];
+const servicoDe = tipo => SERVICOS.find(s => s[0] === tipo) || [tipo, 60, 0];
+const SITUACOES_HORARIO = [['agendado', 'Agendado', 'relogio'], ['confirmado', 'Confirmado', 'check'], ['atendido', 'Atendido', 'okc'], ['faltou', 'Faltou', 'x']];
+const INICIO_DIA = 8 * 60, FIM_DIA = 19 * 60;
+
+const ativo = a => a.st !== 'desmarcado';
+const situacaoHorario = a => a.done ? 'atendido' : a.st || 'agendado';
+const minutosAg = h => { const [a, b] = String(h).split(':').map(Number); return a * 60 + (b || 0); };
+const hhmmAg = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const fimHorario = a => hhmmAg(minutosAg(a.time) + servicoDe(a.tipo)[1]);
+const horariosDoDia = (L, d) => L.filter(a => a.date === d && ativo(a)).sort((a, b) => a.time.localeCompare(b.time));
+const inicioSemana = d => addDays(-((new Date(d + 'T12:00:00').getDay() + 6) % 7), d);
+
+// Mesmos campos e na mesma ordem do protótipo, para a exportação v1 continuar idêntica.
+const novoHorario = (id, pid, date, time, tipo) => ({ id, pid, date, time, tipo, valor: servicoDe(tipo)[2], done: false });
+
+// Muda a situação (agendado, confirmado, atendido ou faltou). Agendado e atendido não guardam st.
+function marcarHorario(a, st){
+  if (!SITUACOES_HORARIO.some(s => s[0] === st)) return null;
+  a.done = st === 'atendido';
+  if (st === 'confirmado' || st === 'faltou') a.st = st; else delete a.st;
+  return situacaoHorario(a);
+}
+function desmarcar(a, hoje){
+  a.done = false; a.st = 'desmarcado';
+  (a.hist ||= []).unshift(`desmarcado em ${fmt(hoje)}`);
+}
+// Novo dia e horário; o anterior fica no histórico e o horário volta a agendado.
+function remarcar(a, date, time, tipo){
+  if (a.st !== 'desmarcado' && a.date === date && a.time === time && a.tipo === tipo) return false;
+  (a.hist ||= []).unshift(`remarcado de ${fmt(a.date)} ${a.time}`);
+  a.date = date; a.time = time; if (tipo && tipo !== a.tipo) { a.tipo = tipo; a.valor = servicoDe(tipo)[2]; }
+  a.done = false; delete a.st;
+  return true;
+}
+// Horários livres do dia, de hora em hora, onde cabe o serviço sem encostar em outro.
+function horariosLivres(L, d, tipo, ignorar){
+  const dur = servicoDe(tipo)[1], oc = horariosDoDia(L, d).filter(a => a.id !== ignorar).map(a => [minutosAg(a.time), minutosAg(a.time) + servicoDe(a.tipo)[1]]), R = [];
+  for (let m = INICIO_DIA; m + dur <= FIM_DIA; m += 60) if (!oc.some(([i, f]) => m < f && m + dur > i)) R.push(hhmmAg(m));
+  return R;
+}
+// Horário que encosta em outro já marcado no mesmo dia (para avisar, sem impedir).
+function conflito(L, d, time, tipo, ignorar){
+  const i = minutosAg(time), f = i + servicoDe(tipo)[1];
+  return horariosDoDia(L, d).find(a => a.id !== ignorar && i < minutosAg(a.time) + servicoDe(a.tipo)[1] && f > minutosAg(a.time)) || null;
+}
+// Ao finalizar um atendimento, o horário do paciente naquele dia fica como atendido.
+function concluirHorario(L, pid, d){
+  const a = horariosDoDia(L, d).find(x => x.pid === pid && !x.done && x.st !== 'faltou');
+  if (a) marcarHorario(a, 'atendido');
+  return a || null;
+}
 // Ícones Lucide (lucide-static 0.469.0, licença ISC: https://lucide.dev/license).
 // Gerado a partir dos SVGs oficiais; só o conteúdo interno de cada ícone, traço 24px.
 const ICONES = {
@@ -1595,24 +1688,73 @@ const ic = (k, c='') => `<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" st
 const LOGO = `<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" style="fill:var(--brand)"/><circle cx="11.2" cy="14" r="5.4" style="fill:none;stroke:#fff;stroke-width:2"/><circle cx="16.8" cy="14" r="5.4" style="fill:none;stroke:#fff;stroke-width:2;opacity:.75"/></svg>`;
 // Estado vazio com ícone, título, explicação e ação opcional.
 const vazio = (i, t, txt, acao='') => `<div class="empty"><span class="empty-i">${ic(i)}</span><b>${t}</b><p>${txt}</p>${acao}</div>`;
+// horários livres conforme o serviço e agendar com paciente, serviço, dia e horário.
+
+// Usado pelo Painel: início da semana atual (off = 0), anterior (-1) etc.
 function weekStart(off){ const d=new Date(); const wd=(d.getDay()+6)%7; return addDays(-wd+off*7); }
-function vAgenda(){
-  const ws=weekStart(ui.week), days=[...Array(7)].map((_,i)=>addDays(i,ws));
-  const tot=db.appts.filter(a=>a.date>=days[0]&&a.date<=days[6]);
-  return `<div class="head"><div><h1>Agenda</h1><p>Semana de ${fmt(days[0])} a ${fmt(days[6])} · ${tot.length} atendimentos · ${brl(tot.reduce((n,a)=>n+a.valor,0))}</p></div>
-    <div class="quick"><button class="btn" data-act="week" data-d="-1" aria-label="Semana anterior" data-tip="Semana anterior">${ic('esq')}</button><button class="btn" data-act="week" data-d="0">Hoje</button><button class="btn" data-act="week" data-d="1" aria-label="Próxima semana" data-tip="Próxima semana">${ic('dir')}</button><button class="btn pri" data-act="rolar" data-to="f-appt">${ic('mais')}Agendar</button></div></div>
-  <div class="wscroll"><div class="week">${days.map(d=>{const l=db.appts.filter(a=>a.date===d).sort((a,b)=>a.time.localeCompare(b.time));const dt=new Date(d+'T12:00:00');
-    return `<div class="day ${d===TODAY?'today':''}"><h3>${dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}</h3>${l.map(a=>{const p=patient(a.pid);return `<div class="appt ${a.done?'done':''}" data-act="appt" data-id="${a.id}" title="Clique para marcar como ${a.done?'pendente':'concluído'}"><b>${a.time}</b> ${esc(p?.name.split(' ')[0]||'')}<div class="muted">${esc(a.tipo)}</div></div>`}).join('')||'<span class="muted" style="font-size:.8rem">Livre</span>'}</div>`}).join('')}</div></div>
-  <div class="card" style="margin-top:20px;max-width:760px"><div class="card-h"><h2>Novo agendamento</h2><span class="tico sm acc">${ic('agendado')}</span></div>
-    <form id="f-appt" class="form">
-      <div class="field"><label class="lbl" for="na-p">Paciente</label>${patientSelect('na-p',ui.bookPid||ui.pid)}</div>
-      <div class="field"><label class="lbl" for="na-d">Data</label><input id="na-d" type="date" value="${TODAY}" required></div>
-      <div class="field"><label class="lbl" for="na-t">Horário</label><input id="na-t" type="time" value="09:00" required></div>
-      <div class="field"><label class="lbl" for="na-tipo">Atendimento</label><select id="na-tipo"><option>Acupuntura</option><option>Auriculoterapia</option><option>Ventosaterapia</option><option>Massoterapia</option><option>Avaliação inicial</option></select></div>
-      <div class="field"><label class="lbl" for="na-v">Valor (R$)</label><input id="na-v" type="number" min="0" step="10" value="180"></div>
-      <div class="full"><button class="btn pri">${ic('check')}Agendar</button></div>
-    </form></div>`;
+const diaSem = (d, o={weekday:'short'}) => new Date(d+'T12:00:00').toLocaleDateString('pt-BR',o).replace('.','');
+// Formulário de agendar: paciente, serviço, dia e horário. Começa no paciente escolhido e no dia aberto.
+function formAgenda(){
+  const F = ui.agForm ||= { pid:null, date:null, time:'', tipo:SERVICOS[0][0] };
+  F.pid ||= ui.bookPid || ui.pid; F.date ||= ui.agDia || TODAY;
+  return F;
 }
+const proximoDe = pid => db.appts.filter(a=>a.pid===pid && a.date>=TODAY && !a.done && a.st!=='desmarcado' && a.st!=='faltou').sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
+
+function linhaHorario(a){
+  const p = patient(a.pid), st = situacaoHorario(a), fora = a.st === 'desmarcado', [, dur] = servicoDe(a.tipo);
+  return `<div class="hor ${fora ? 'desmarcado' : st}" data-hor="${a.id}">
+    <div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div>
+    <div class="hor-p"><button class="lk" data-act="open" data-pid="${a.pid}">${esc(p?.name||'Paciente removido')}</button><small>${esc(a.tipo)} · ${dur} min${a.hist?.length ? ` · <span class="hor-hi">${esc(a.hist[0])}</span>` : ''}</small></div>
+    ${fora ? '<span class="pill">Desmarcado</span>' : `<div class="rx-seg st" role="group" aria-label="Situação">${SITUACOES_HORARIO.map(([k,n,i])=>`<button class="${k}${st===k?' on':''}" data-act="ag-st" data-id="${a.id}" data-s="${k}" aria-pressed="${st===k}" aria-label="${n}" data-tip="${n}">${ic(i)}</button>`).join('')}</div>`}
+    <div class="hor-a">${fora ? `<button class="btn sm" data-act="ag-rem" data-id="${a.id}">${ic('agenda')}Reagendar</button>`
+      : `${a.date===TODAY && st!=='atendido' && st!=='faltou' && p ? `<button class="btn sm pri" data-act="novo-atendimento" data-pid="${a.pid}">${ic('play')}Atender</button>` : ''}<button class="btn sm ghost" data-act="ag-rem" data-id="${a.id}" aria-label="Remarcar" data-tip="Remarcar">${ic('agenda')}</button><button class="btn sm ghost" data-act="ag-desm" data-id="${a.id}" aria-label="Desmarcar" data-tip="Desmarcar">${ic('x')}</button>`}</div></div>`;
+}
+
+function vAgenda(){
+  const dia = ui.agDia ||= TODAY, ws = inicioSemana(dia), dias = [...Array(7)].map((_,i)=>addDays(i,ws));
+  const L = horariosDoDia(db.appts, dia), fora = db.appts.filter(a=>a.date===dia && a.st==='desmarcado');
+  const conta = k => L.filter(a=>situacaoHorario(a)===k).length;
+  const sem = db.appts.filter(a=>a.date>=dias[0] && a.date<=dias[6] && a.st!=='desmarcado');
+  const R = ui.remarcar && db.appts.find(a=>a.id===ui.remarcar), F = formAgenda(), sv = servicoDe(F.tipo), pid = R ? R.pid : F.pid;
+  const livres = horariosLivres(db.appts, F.date, F.tipo, R?.id), prox = !R && proximoDe(pid);
+  return `<div class="head"><div><h1>Agenda</h1><p>Semana de ${fmt(dias[0])} a ${fmt(dias[6])} · ${sem.length} horário${sem.length===1?'':'s'} · ${brl(sem.reduce((n,a)=>n+a.valor,0))}</p></div>
+    <div class="quick"><button class="btn" data-act="week" data-d="-1" aria-label="Semana anterior" data-tip="Semana anterior">${ic('esq')}</button><button class="btn" data-act="week" data-d="0">Hoje</button><button class="btn" data-act="week" data-d="1" aria-label="Próxima semana" data-tip="Próxima semana">${ic('dir')}</button><button class="btn pri" data-act="rolar" data-to="f-appt">${ic('mais')}Agendar</button></div></div>
+  <div class="ag-sem" role="tablist" aria-label="Dias da semana">${dias.map(d=>{ const n=horariosDoDia(db.appts,d).length;
+    return `<button role="tab" class="${d===dia?'on':''} ${d===TODAY?'hoje':''}" data-act="ag-dia" data-d="${d}" aria-selected="${d===dia}"><span>${diaSem(d)}</span><b>${d.slice(8)}</b><small>${n?`${n} hor.`:'livre'}</small></button>`; }).join('')}</div>
+  <div class="grid g-side ag-cols"><div class="card" id="ag-dia"><div class="card-h"><h2>${diaSem(dia,{weekday:'long',day:'2-digit',month:'2-digit'})}${dia===TODAY?' · hoje':''}<small>${L.length} horário${L.length===1?'':'s'} · ${brl(L.reduce((n,a)=>n+a.valor,0))}</small></h2>
+      <div class="rx-res"><span class="pill ok" data-cont="confirmado">Confirmados ${conta('confirmado')}</span><span class="pill" data-cont="agendado">A confirmar ${conta('agendado')}</span>${conta('atendido')?`<span class="pill acc" data-cont="atendido">Atendidos ${conta('atendido')}</span>`:''}${conta('faltou')?`<span class="pill crit" data-cont="faltou">Faltas ${conta('faltou')}</span>`:''}</div></div>
+    <div class="rx-leg" aria-hidden="true">${SITUACOES_HORARIO.map(([,n,i])=>`<span>${ic(i)}${n}</span>`).join('')}</div>
+    <div class="hor-l" id="ag-l">${L.map(linhaHorario).join('') || `<div class="vazio">${ic('agenda')}Nenhum horário neste dia.</div>`}</div>
+    ${fora.length?`<details class="ag-fora"><summary>${fora.length} desmarcado${fora.length>1?'s':''}</summary><div class="hor-l">${fora.map(linhaHorario).join('')}</div></details>`:''}
+    <div class="lbl" style="margin:14px 0 8px">Horários livres para ${esc(F.tipo.toLowerCase())}${F.date===dia?'':` em ${fmt(F.date)}`}</div>
+    <div class="chips" id="ag-livres">${livres.map(h=>`<button class="chip ${F.time===h?'on':''}" data-act="ag-livre" data-h="${h}">${h}</button>`).join('') || '<span class="muted sm">Dia cheio.</span>'}</div></div>
+  <div class="grid" style="align-content:start"><form class="card" id="f-appt"><div class="card-h"><h2>${R?'Remarcar':'Agendar'}<small>${R?`${esc(patient(R.pid)?.name||'')} · era ${fmt(R.date)} às ${R.time}`:'paciente, serviço e horário'}</small></h2>${R?'<button type="button" class="btn sm ghost" data-act="ag-rem-x">Cancelar</button>':''}</div>
+      <div class="ag-f">
+        <label class="rx-f full"><span class="lbl">Paciente</span><select id="na-p" data-agf="pid" ${R?'disabled':''}>${db.patients.map(p=>`<option value="${p.id}" ${p.id===pid?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>
+        <label class="rx-f full"><span class="lbl">Serviço</span><select id="na-tipo" data-agf="tipo">${[...SERVICOS, ...(SERVICOS.some(s=>s[0]===F.tipo)?[]:[servicoDe(F.tipo)])].map(([n,m])=>`<option value="${esc(n)}" ${n===F.tipo?'selected':''}>${esc(n)} · ${m} min</option>`).join('')}</select></label>
+        <label class="rx-f"><span class="lbl">Dia</span><input id="na-d" type="date" data-agf="date" value="${F.date}" required></label>
+        <label class="rx-f"><span class="lbl">Horário</span><input id="na-t" type="time" data-agf="time" value="${F.time}" required></label>
+      </div>
+      <p class="muted sm" style="margin:10px 0">${sv[1]} min · ${brl(sv[2])} (valor do serviço).${prox?` Próximo horário: ${fmt(prox.date)} às ${prox.time}.`:''}</p>
+      <button class="btn pri">${ic('check')}${R?'Salvar novo horário':'Agendar'}</button></form>
+    <div class="card"><h2>Como funciona</h2><p class="muted sm">Toque num dia da semana para ver os horários. Ao lado de cada horário, marque confirmado, atendido ou faltou. <b>Atender</b> abre o atendimento; ao finalizar, o horário fica como atendido. Remarcar guarda de onde veio e desmarcar não apaga.</p>
+      <p class="muted sm" style="margin-top:8px">Confirmação e lembrete pelo WhatsApp entram na etapa 7.</p></div></div></div>`;
+}
+const EL = {
+  madeira:{nome:'Madeira',han:'木',cor:'var(--wood)',ang:198,zang:'Fígado',fu:'Vesícula Biliar',emocao:'Raiva',estacao:'Primavera',clima:'Vento',sentido:'Olhos',tecido:'Tendões',sabor:'Ácido',som:'Grito',espirito:'Hun',funcoes:['Armazena o Xue','Garante o livre fluxo do Qi','Nutre tendões e olhos']},
+  fogo:{nome:'Fogo',han:'火',cor:'var(--fire)',ang:-90,zang:'Coração · Pericárdio',fu:'Intestino Delgado · Triplo Aquecedor',emocao:'Alegria (em excesso, agitação)',estacao:'Verão',clima:'Calor',sentido:'Língua',tecido:'Vasos',sabor:'Amargo',som:'Riso',espirito:'Shen',funcoes:['Governa o Xue e os vasos','Abriga o Shen','Manifesta-se na face']},
+  terra:{nome:'Terra',han:'土',cor:'var(--earth)',ang:-18,zang:'Baço',fu:'Estômago',emocao:'Preocupação',estacao:'Fim do verão',clima:'Umidade',sentido:'Boca',tecido:'Músculos',sabor:'Doce',som:'Canto',espirito:'Yi',funcoes:['Transforma e transporta','Produz Qi e Xue a partir dos alimentos','Mantém o Xue nos vasos']},
+  metal:{nome:'Metal',han:'金',cor:'var(--metal)',ang:54,zang:'Pulmão',fu:'Intestino Grosso',emocao:'Tristeza',estacao:'Outono',clima:'Secura',sentido:'Nariz',tecido:'Pele e pelos',sabor:'Picante',som:'Choro',espirito:'Po',funcoes:['Governa o Qi e a respiração','Difunde o Wei Qi','Regula as vias das águas']},
+  agua:{nome:'Água',han:'水',cor:'var(--water)',ang:126,zang:'Rim',fu:'Bexiga',emocao:'Medo',estacao:'Inverno',clima:'Frio',sentido:'Ouvidos',tecido:'Ossos',sabor:'Salgado',som:'Gemido',espirito:'Zhi',funcoes:['Armazena o Jing','Governa a água','Raiz do Yin e do Yang do corpo']}
+};
+const ORDER = ['fogo','terra','metal','agua','madeira'];
+const SHENG = {madeira:'fogo',fogo:'terra',terra:'metal',metal:'agua',agua:'madeira'};
+const KE = {madeira:'terra',terra:'agua',agua:'fogo',fogo:'metal',metal:'madeira'};
+const mae = e => Object.keys(SHENG).find(k=>SHENG[k]===e);
+const controlador = e => Object.keys(KE).find(k=>KE[k]===e);
+const elTag = e => e ? `<span class="el-tag"><i style="background:${EL[e].cor}"></i>${EL[e].nome}</span>` : '';
+const patientSelect = (id,cur) => `<select id="${id}">${db.patients.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`;
 function pentagram(state, sel, o={}){
   const C=250,R=160,r=46, rad=a=>a*Math.PI/180;
   const pos=e=>[C+R*Math.cos(rad(EL[e].ang)), C+R*Math.sin(rad(EL[e].ang))];
@@ -2445,17 +2587,17 @@ const melhoraPct = s => s.length>1 && s[0] ? Math.round((s[0]-s.at(-1))/s[0]*100
 // Retorno: última sessão há mais de 21 dias e nenhum agendamento futuro (mesmo critério das pendências da etapa 1B).
 function acompanhamento(){
   return db.patients.map(p=>{ const m=[], l=p.sessions.at(-1), s=p.sessions.map(x=>x.eva);
-    if(l && l.date<TODAY && diasDesde(l.date)>21 && !db.appts.some(a=>a.pid===p.id && a.date>=TODAY)) m.push(['retorno','warn',`sem retorno há ${diasDesde(l.date)} dias`]);
+    if(l && l.date<TODAY && diasDesde(l.date)>21 && !db.appts.some(a=>ativo(a)&&a.pid===p.id && a.date>=TODAY)) m.push(['retorno','warn',`sem retorno há ${diasDesde(l.date)} dias`]);
     if(!p.assess.length) m.push(['yin','acc','sem avaliação energética']);
     if(s.length>=2 && s.at(-1)>=s[0]) m.push(['queda','crit','sem melhora desde a 1ª sessão']);
     return {p,m}; }).filter(x=>x.m.length);
 }
 // Notificações: alertas de segurança de pacientes de hoje, agendamentos passados sem conclusão e acompanhamento.
 function notificacoes(){
-  const N=[], hoje=db.appts.filter(a=>a.date===TODAY);
+  const N=[], hoje=db.appts.filter(ativo).filter(a=>a.date===TODAY);
   [...new Set(hoje.map(a=>a.pid))].map(patient).filter(p=>p && alertasDe(p).length)
     .forEach(p=>N.push({k:'al-'+p.id,i:'escudo',t:'crit',titulo:`Alerta de segurança: ${p.name}`,txt:alertasDe(p).join(', ')+' · atendimento hoje',pid:p.id}));
-  db.appts.filter(a=>a.date<TODAY && !a.done).forEach(a=>N.push({k:'at-'+a.id,i:'relogio',t:'warn',titulo:'Agendamento sem conclusão',txt:`${patient(a.pid)?.name||''} · ${fmt(a.date)} ${a.time}`,href:'#agenda'}));
+  db.appts.filter(ativo).filter(a=>a.date<TODAY && !a.done && a.st!=='faltou').forEach(a=>N.push({k:'at-'+a.id,i:'relogio',t:'warn',titulo:'Agendamento sem conclusão',txt:`${patient(a.pid)?.name||''} · ${fmt(a.date)} ${a.time}`,href:'#agenda'}));
   acompanhamento().forEach(({p,m})=>N.push({k:'ac-'+p.id,i:m[0][0],t:m[0][1],titulo:p.name,txt:m.map(x=>x[2]).join(' · '),pid:p.id}));
   return N;
 }
@@ -2531,7 +2673,7 @@ function rascunho(p){
 function abaResumo(p){
   const a=p.assess.at(-1), a0=p.assess[0], st=a?elemState(a.signs,a.status):null, ac=aceitos(a);
   const ss=p.sessions, s=ss.map(x=>x.eva), m=melhoraPct(s);
-  const prox=db.appts.filter(x=>x.pid===p.id&&x.date>=TODAY&&!x.done).sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time))[0];
+  const prox=db.appts.filter(ativo).filter(x=>x.pid===p.id&&x.date>=TODAY&&!x.done).sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time))[0];
   const E=eventos(p);
   return `<div class="tiles">
     <div class="tile"><span class="tico acc">${ic('lista')}</span><div><b class="num">${p.sessions.length}</b><small>atendimento${p.sessions.length===1?'':'s'}${p.sessions[0]?` desde ${fmt(p.sessions[0].date)}`:''}</small></div></div>
@@ -3238,7 +3380,7 @@ function patientRows(){
   const list=db.patients.filter(p=>!q || [p.name,p.phone,...p.queixas.map(x=>x.descricao)].join(' ').toLowerCase().includes(q));
   if(!list.length) return vazio('busca','Nenhum paciente encontrado','Confira a grafia ou cadastre um novo paciente.',`<button class="btn sm" data-act="novo-paciente">${ic('novo')}Novo paciente</button>`);
   return list.map(p=>{ const s=p.sessions.map(x=>x.eva), m=melhoraPct(s), al=alertasDe(p);
-    const prox=db.appts.filter(a=>a.pid===p.id&&a.date>=TODAY&&!a.done).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
+    const prox=db.appts.filter(ativo).filter(a=>a.pid===p.id&&a.date>=TODAY&&!a.done).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
     return `<button class="pc" data-act="open" data-pid="${p.id}"><div class="pc-h"><span class="avatar lg">${initials(p.name)}</span><span class="grow"><b>${esc(p.name)}</b><small>${age(p.birth)} anos · ${p.sessions.length} sess${p.sessions.length===1?'ão':'ões'}</small></span>${p.exemplo?'<span class="pill ex">exemplo</span>':''}${al.length?`<span class="pill crit" data-tip="${al.join(', ')}">${ic('escudo')}</span>`:''}</div>
       <div class="pc-q"><span class="trunc">${esc(p.queixa)}${outras(p)}</span>${s.length>1?linhas([{cor:'var(--brand)',vals:s}],[],{w:110,h:36,mini:1}):''}</div>
       <div class="pc-f">${m!==null?`<span class="pill ${m>0?'ok':'warn'}">${m>0?'▼ '+m+'%':'sem melhora'}</span>`:!p.assess.length?'<span class="pill acc">sem avaliação</span>':'<span class="pill">em início</span>'}<span class="muted">${prox?`${ic('agenda')} ${fmt(prox.date)} ${prox.time}`:'sem agendamento'}</span></div></button>`; }).join('');
@@ -3248,9 +3390,9 @@ function patientRows(){
 function calMini(){
   const base=new Date(TODAY+'T12:00'), ano=base.getFullYear(), mes=base.getMonth(), ini=(new Date(ano,mes,1).getDay()+6)%7, nd=new Date(ano,mes+1,0).getDate();
   const dia=d=>`${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, sel=ui.dia||TODAY;
-  const cel=[...Array(ini)].map(()=>'<span></span>').join('')+[...Array(nd)].map((_,i)=>{ const d=dia(i+1), n=db.appts.filter(a=>a.date===d).length;
+  const cel=[...Array(ini)].map(()=>'<span></span>').join('')+[...Array(nd)].map((_,i)=>{ const d=dia(i+1), n=db.appts.filter(ativo).filter(a=>a.date===d).length;
     return `<button class="cm-d ${d===TODAY?'hoje':''} ${d===sel?'sel':''} ${d<TODAY?'pass':''}" data-act="dia" data-d="${d}" aria-label="${fmt(d)}: ${n} agendamento${n===1?'':'s'}" ${n?`data-tip="${n} agendamento${n===1?'':'s'}"`:''}>${i+1}${n?`<i>${'<b></b>'.repeat(Math.min(n,3))}</i>`:''}</button>`; }).join('');
-  const L=db.appts.filter(a=>a.date===sel).sort((a,b)=>a.time.localeCompare(b.time));
+  const L=db.appts.filter(ativo).filter(a=>a.date===sel).sort((a,b)=>a.time.localeCompare(b.time));
   return `<div class="card cm"><div class="card-h"><h3>${base.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h3><a class="btn ghost sm" href="#agenda">Agenda ${ic('dir')}</a></div>
     <div class="cm-g">${['S','T','Q','Q','S','S','D'].map(x=>`<small>${x}</small>`).join('')}${cel}</div>
     <div class="cm-l"><div class="lbl">${sel===TODAY?'Hoje':fmt(sel)}</div>${L.length?L.map(a=>{const p=patient(a.pid);return `<button class="cm-i ${a.done?'feito':''}" data-act="open" data-pid="${a.pid}"><span class="mono">${a.time}</span><span class="trunc">${esc(p?.name||'')}</span>${a.done?ic('okc'):''}</button>`;}).join(''):'<p class="muted sm">Nenhum agendamento neste dia.</p>'}</div></div>`;
@@ -3258,10 +3400,10 @@ function calMini(){
 
 function vPainel(){
   const agora=new Date(), h=agora.getHours(), hhmm=`${String(h).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
-  const hoje=db.appts.filter(a=>a.date===TODAY).sort((a,b)=>a.time.localeCompare(b.time)), feitos=hoje.filter(a=>a.done).length;
+  const hoje=db.appts.filter(ativo).filter(a=>a.date===TODAY).sort((a,b)=>a.time.localeCompare(b.time)), feitos=hoje.filter(a=>a.done).length;
   const prox=hoje.find(a=>!a.done && a.time>=hhmm) || hoje.find(a=>!a.done), pp=prox&&patient(prox.pid);
   const al=[...new Set(hoje.map(a=>a.pid))].map(patient).filter(p=>p && alertasDe(p).length);
-  const ac=acompanhamento(), atrasados=db.appts.filter(a=>a.date<TODAY && !a.done);
+  const ac=acompanhamento(), atrasados=db.appts.filter(ativo).filter(a=>a.date<TODAY && !a.done && a.st!=='faltou');
   const comS=db.patients.filter(p=>p.sessions.length>1), melh=comS.filter(p=>melhoraPct(p.sessions.map(s=>s.eva))>0);
   // Sessões registradas por semana, nas últimas 8 semanas.
   const sem=[...Array(8)].map((_,i)=>{ const ini=weekStart(i-7), fim=addDays(6,ini);
@@ -3270,11 +3412,11 @@ function vPainel(){
   const maxN=Math.max(0,...db.patients.map(p=>p.sessions.length));
   const med=[...Array(maxN)].map((_,k)=>{ const v=db.patients.map(p=>p.sessions[k]?.eva).filter(x=>x!=null); return [Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10, v.length]; });
   // Financeiro da semana a partir dos agendamentos e seus valores.
-  const ws=weekStart(0), we=addDays(6,ws), ag=db.appts.filter(a=>a.date>=ws&&a.date<=we);
+  const ws=weekStart(0), we=addDays(6,ws), ag=db.appts.filter(ativo).filter(a=>a.date>=ws&&a.date<=we);
   const prev=ag.reduce((n,a)=>n+a.valor,0), real=ag.filter(a=>a.done).reduce((n,a)=>n+a.valor,0), pr=prev?Math.round(real/prev*100):0;
   const atv=[...db.patients.flatMap(p=>[...p.sessions.map((s,i)=>({d:s.date,i:'estet',t:i===0?'Primeira sessão':`${i+1}ª sessão`,p,x:s.tec.join(', ')||'sessão registrada'})),
       ...p.assess.map((a,i)=>({d:a.date,i:'yin',t:i===0?'Avaliação energética':'Reavaliação energética',p,x:`${a.signs.length} sinais`}))]),
-    ...db.appts.filter(a=>a.done&&a.date<=TODAY).map(a=>({d:a.date,i:'okc',t:'Agendamento concluído',p:patient(a.pid),x:a.tipo}))].filter(a=>a.p && a.d<=TODAY).sort((a,b)=>b.d.localeCompare(a.d)).slice(0,6);
+    ...db.appts.filter(ativo).filter(a=>a.done&&a.date<=TODAY).map(a=>({d:a.date,i:'okc',t:'Agendamento concluído',p:patient(a.pid),x:a.tipo}))].filter(a=>a.p && a.d<=TODAY).sort((a,b)=>b.d.localeCompare(a.d)).slice(0,6);
   const quando = d => { const n=diasDesde(d); return n===0?'hoje':n===1?'ontem':`há ${n} dias`; };
 
   return `<div class="head"><div><h1>${h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'}, ${PROF.nome.split(' ')[0]}</h1><p>${agora.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})} · ${hoje.length} agendamento${hoje.length===1?'':'s'} hoje</p></div></div>
@@ -3565,15 +3707,20 @@ document.addEventListener('click',ev=>{
   else if(a==='dia'){ ui.dia=t.dataset.d; render(true); }
   else if(a==='rolar'){ const d=document.getElementById(t.dataset.to); d?.scrollIntoView({behavior:'smooth',block:'start'}); d?.querySelector('input')?.focus({preventScroll:true}); }
   else if(a==='serie'){ const on=t.getAttribute('aria-pressed')!=='false'; t.setAttribute('aria-pressed',String(!on)); t.closest('.card').querySelectorAll(`.chart .se[data-s="${t.dataset.s}"]`).forEach(g=>g.classList.toggle('oculta',on)); }
-  else if(a==='book'){ ui.bookPid=t.dataset.pid; }
+  else if(a==='book'){ ui.bookPid=t.dataset.pid; ui.agForm=null; ui.remarcar=null; }
   else if(a==='tab'){ ui.tab=t.dataset.t; render(true); }
   else if(a==='sign'){ const s=t.dataset.s, L=ui.assess.signs; const i=L.indexOf(s); i<0?L.push(s):L.splice(i,1); render(true); }
   else if(a==='hyp'){ const id=t.dataset.p; ui.assess.status[id] = ui.assess.status[id]===t.dataset.st ? '' : t.dataset.st; render(true); }
   else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); const nv=registrarAvaliacao(p,{id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota},new Date().toISOString()); nv.prof=PROF.nome; const rm=ui.reavMotivo?.pid===p.id; if(rm) nv.motivo=ui.reavMotivo.motivo; ui.reavMotivo=null; save(); ui.pid=p.id; ui.tab=rm?'versoes':'resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
   else if(a==='el'){ ui.el = t.dataset.e && ui.el!==t.dataset.e ? t.dataset.e : null; render(true); }
   else if(a==='mer'){ ui.ptMer=t.dataset.m; render(true); }
-  else if(a==='week'){ ui.week = t.dataset.d==='0'?0:ui.week+Number(t.dataset.d); render(true); }
-  else if(a==='appt'){ const x=db.appts.find(z=>z.id===t.dataset.id); x.done=!x.done; save(); render(true); toast(x.done?'Atendimento concluído':'Atendimento reaberto'); }
+  else if(a==='week'||a==='ag-dia'){ ui.agDia = a==='ag-dia'?t.dataset.d:t.dataset.d==='0'?TODAY:addDays(7*Number(t.dataset.d),ui.agDia||TODAY);
+    if(!ui.remarcar){ const F=formAgenda(); F.date=ui.agDia; F.time=''; } render(true); }
+  else if(a==='ag-livre'){ formAgenda().time=t.dataset.h; render(true); document.getElementById('na-t')?.focus({preventScroll:true}); }
+  else if(a==='ag-st'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(x && marcarHorario(x,t.dataset.s)){ save(); render(true); } }
+  else if(a==='ag-desm'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; desmarcar(x,TODAY); if(ui.remarcar===x.id){ ui.remarcar=null; ui.agForm=null; } save(); render(true); toast(`Horário de ${patient(x.pid)?.name.split(' ')[0]||''} desmarcado; ele fica na lista de desmarcados`,'info'); }
+  else if(a==='ag-rem'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; ui.remarcar=x.id; ui.agForm={pid:x.pid,date:x.date,time:'',tipo:x.tipo}; ui.agDia=x.date; render(true); document.getElementById('f-appt')?.scrollIntoView({block:'nearest'}); }
+  else if(a==='ag-rem-x'){ ui.remarcar=null; ui.agForm=null; render(true); }
   else if(a==='addpt'){ const i=document.getElementById('ns-pts'); const L=i.value.split(',').map(s=>s.trim()).filter(Boolean); if(!L.includes(t.dataset.c)) L.push(t.dataset.c); i.value=L.join(', '); i.dispatchEvent(new Event('input',{bubbles:true})); }
   else if(a==='menu-mini'){ ui.menuMini=!ui.menuMini; render(true); }
   else if(a==='menu-abrir'){ ui.menuAberto=!ui.menuAberto; render(true); }
@@ -3585,6 +3732,7 @@ document.addEventListener('click',ev=>{
 document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
 document.addEventListener('input',ev=>{
   const t=ev.target;
+  if(t.dataset.agf==='time'){ formAgenda().time=t.value; return; }
   if(t.id==='pal-q'){ ui.q=t.value; ui.bi=0; document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(t.id==='pq'){ ui.pq=t.value; document.getElementById('plist').innerHTML=patientRows(); }
   else if(t.id==='pt-q'){ ui.ptQ=t.value; document.getElementById('ptlist').innerHTML=pointCards(); const ct=document.getElementById('c-todos'); if(ct) ct.innerHTML=listaTodos(); }
@@ -3664,8 +3812,8 @@ function acaoAtendimento(a,t){
   else if(a==='at-tec'){ alterna(A.plano.tec,t.dataset.t); mudou('plano terapêutico: técnicas'); }
   else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
   else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
-  else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; irPara('agenda'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
-  else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); const nv=p.avaliacoes.find(v=>v.id===A.avaliacaoId); if(nv) nv.prof=PROF.nome; save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
+  else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; ui.agForm=null; ui.remarcar=null; irPara('agenda'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
+  else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); concluirHorario(db.appts,p.id,A.data); const nv=p.avaliacoes.find(v=>v.id===A.avaliacaoId); if(nv) nv.prof=PROF.nome; save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
   else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
     descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
 }
@@ -3743,6 +3891,7 @@ document.addEventListener('change',ev=>{
     if(!confirm(`Importar “${f.name}”? Os dados atuais deste navegador serão substituídos. Exporte antes se quiser guardá-los.`)) return;
     f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
   if(t.dataset.vcmp){ ui[t.dataset.vcmp]=t.value; render(true); return; }
+  if(t.dataset.agf){ const F=formAgenda(); F[t.dataset.agf]=t.value; if(t.dataset.agf==='date'&&t.value) ui.agDia=t.value; if(t.dataset.agf!=='time') render(true); return; }
   if(t.hasAttribute('data-mvhist')){ ui.mapa.hist=t.value; render(true); return; }
   if(t.dataset.mk&&t.tagName==='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)){ if(t.dataset.mk==='tipo'&&t.value==='irradiacao'&&marcasDe(x.a).find(m=>m.id===ui.mapa.sel)?.x2==null) ui.mapa.rad=ui.mapa.sel; mudou(`mapa corporal: ${t.dataset.mk==='tipo'?'tipo':'lado'} da marcação`); } return; }
   if(t.dataset.atlsit||t.dataset.atlorig){ const x=atendimentoAberto(), av=x&&avaliacaoEditavel(x.p,x.a); if(av&&!travada(x.p,x.a,av)){ const [c,id]=(t.dataset.atlsit||t.dataset.atlorig).split('.'); definirAchadoLivre(av,c,id,t.dataset.atlsit?'sit':'orig',t.value); mudou(`avaliação energética: ${catNome(c)}: ${t.dataset.atlsit?'situação':'origem'} do achado`); } return; }
@@ -3794,7 +3943,12 @@ document.addEventListener('submit',ev=>{
     registrarSessao(p,{id:uid(),date:v('ns-date'),eva:Number(v('ns-eva')),intensidades:Object.fromEntries([...f.querySelectorAll('input[data-q]')].map(x=>[x.dataset.q,Number(x.value)])),pontos:v('ns-pts').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),tec:[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value),nota:v('ns-nota')},new Date().toISOString());
     save(); ui.tab='sessoes'; toast('Sessão registrada'); render();
   } else if(f.id==='f-appt'){
-    db.appts.push({id:uid(),pid:v('na-p'),date:v('na-d'),time:v('na-t'),tipo:v('na-tipo'),valor:Number(v('na-v'))||0,done:false}); save(); ui.bookPid=null; toast('Agendamento criado'); render(true);
+    const date=v('na-d'), time=v('na-t'), tipo=v('na-tipo'), R=ui.remarcar&&db.appts.find(a=>a.id===ui.remarcar);
+    if(!date||!time){ toast('Escolha o dia e o horário','info'); return; }
+    const c=conflito(db.appts,date,time,tipo,R?.id), nome=pid=>patient(pid)?.name.split(' ')[0]||'';
+    if(R){ remarcar(R,date,time,tipo); toast(`${nome(R.pid)} remarcado para ${fmt(date)} às ${time}`); }
+    else { db.appts.push(novoHorario(uid(),v('na-p'),date,time,tipo)); toast(`Agendamento criado${c?`; atenção: encosta no horário de ${nome(c.pid)} às ${c.time}`:''}`, c?'info':'ok'); }
+    save(); ui.bookPid=null; ui.remarcar=null; ui.agForm=null; ui.agDia=date; render(true);
   }
 });
 render();
