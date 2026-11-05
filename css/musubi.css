@@ -1075,3 +1075,32 @@ input[type=checkbox]{accent-color:var(--brand)}
 #ass-c{display:block;width:100%;height:auto;aspect-ratio:640/220;border:1px dashed var(--line-2);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;margin-top:10px}
 .dp-as .ass-img{display:block;width:220px;max-width:100%;height:auto;margin:0 auto -8px}
 @media print{#imp .dp-as .ass-img{width:200px}}
+
+/* Etapa 8 · Financeiro */
+.fin-t .tile{display:block;cursor:default}
+.fin-t .tile small{display:block;color:var(--muted);font-size:.78rem}
+.fin-t .tile b.num{display:block;font-size:1.45rem;margin:4px 0 2px}
+.fin-t .tile.t-ok b.num{color:var(--ok)}
+.fin-t .tile.t-warn b.num{color:var(--warn)}
+.fin-t .tile.t-crit b.num{color:var(--crit)}
+.fin-l{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:8px 8px 8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+.fin-l .hor-h b{font-family:var(--f-mono);font-size:.86rem}
+.fin-v{font-variant-numeric:tabular-nums;white-space:nowrap}
+.fin-v.neg{color:var(--crit)}
+.fin-l .pill.sm{font-size:.7rem;padding:1px 7px}
+.fin-rec{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:end;gap:10px;padding-top:8px;border-top:1px dashed var(--line-2)}
+.fin-val{width:140px}
+.pac{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:10px}
+.pac small{display:block;color:var(--muted);font-size:.8rem}
+.pac-b{height:6px;border-radius:4px;background:var(--surface-2);margin-top:6px;overflow:hidden}
+.pac-b span{display:block;height:100%;background:var(--accent)}
+.pac-n{font-family:var(--f-mono);font-size:.9rem}
+.fin-l.rec .hor-a .btn.ghost{padding:4px 7px}
+@media (max-width:560px){
+  .fin-l{grid-template-columns:auto minmax(0,1fr) auto}
+  .fin-l > .hor-a{grid-column:1/-1;justify-content:flex-end}
+  .fin-t .tile b.num{font-size:1.15rem}
+}
+.fin-l .hor-p .lk{max-width:100%}
+.pac.fim{opacity:.6}
+#np-serv{align-self:center}
