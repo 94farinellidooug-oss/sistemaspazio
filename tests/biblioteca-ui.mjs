@@ -61,6 +61,19 @@ async function verificar(browser, url, nome) {
   let d = await dados();
   ok(d.biblioteca?.notas?.E36 === 'Nota da clínica para teste', `${nome}: anotação particular gravada à parte`);
   { const { biblioteca, ...resto } = d; ok(JSON.stringify(paraV1(d)) === JSON.stringify(paraV1(resto)) && !JSON.stringify(paraV1(d)).includes('Nota da clínica'), `${nome}: exportação v1 não muda`); }
+  // Etapa 4C: revisão da posição no mapa, com quem e quando
+  ok(await tem('#fx-pos', 'posição não revisada') && await p.locator('#fx-pos [data-act="bib-rev"][data-ok="1"]').count() === 1, `${nome}: posição começa como não revisada`);
+  await p.click('#fx-pos [data-act="bib-rev"][data-ok="1"]'); await espera();
+  d = await dados();
+  ok(d.biblioteca?.revisoes?.E36?.ok === true && d.biblioteca.revisoes.E36.por === 'Mauren Turcatti' && /^\d{4}-\d{2}-\d{2}T/.test(d.biblioteca.revisoes.E36.em) && await tem('#rev-ok', 'posição revisada') && await tem('#fx-pos', 'Revisada por Mauren Turcatti'), `${nome}: marcar posição como revisada grava quem e quando`);
+  await p.click('#fx-pos [data-act="bib-rev"][data-ok="0"]'); await espera();
+  d = await dados();
+  ok(d.biblioteca.revisoes.E36.ok === false && d.biblioteca.revisoes.E36.hist.length === 2 && d.biblioteca.revisoes.E36.hist[0].acao === 'Revisão retirada' && await tem('#fx-pos', 'Histórico da revisão (2)'), `${nome}: retirar a revisão fica no histórico`);
+  { const { biblioteca, ...resto } = d; ok(JSON.stringify(paraV1(d)) === JSON.stringify(paraV1(resto)), `${nome}: revisão não muda a exportação v1`); }
+  await p.click('[data-act="bib-pt"][data-c="E37"]'); await espera();
+  ok(await p.locator('#fx-pos [data-act="bib-rev"]').count() === 0, `${nome}: ponto sem posição não tem revisão`);
+  await p.click('[data-act="bib-pt"][data-c="E36"]'); await espera();
+  await p.click('#fx-pos [data-act="bib-rev"][data-ok="1"]'); await espera();
   await p.click('.fx-panel [data-act="bib-fx-x"]'); await espera();
   ok(!(await tem('.fx-panel .ficha')), `${nome}: fechar a ficha`);
 

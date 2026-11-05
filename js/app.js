@@ -17,7 +17,7 @@ import { patientRows, vPacientes } from './telas/pacientes.js';
 import { vPainel } from './telas/painel.js';
 import { vPentagrama } from './telas/pentagrama.js';
 import { listaTodos, pointCards, vPontos } from './telas/pontos.js';
-import { adicionarFichaParticular, definirNotaPonto, removerFichaParticular } from './dados/biblioteca.js';
+import { adicionarFichaParticular, definirNotaPonto, removerFichaParticular, revisarPosicao } from './dados/biblioteca.js';
 import { CODIGOS } from './conhecimento/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
 import { TODAY, esc, uid } from './util.js';
@@ -188,6 +188,7 @@ function acaoBiblioteca(a,t){
   else if(a==='bib-pt'){ ui.bibSel=ui.bibSel===c?null:c; render(true); }
   else if(a==='bib-fx-x'){ ui.bibSel=null; render(true); }
   else if(a==='bib-pa-pt'){ if(!CODIGOS.includes(c)){ toast(`${c}: ponto não encontrado na Central`,'info'); return; } ui.bib='central'; ui.bibSel=c; ui.ptQ=''; ui.ptMer=''; render(true); }
+  else if(a==='bib-rev'){ const c=t.dataset.c, ok=t.dataset.ok==='1'; if(revisarPosicao(db,c,ok,PROF.nome,new Date().toISOString())){ save(); render(true); toast(ok?`Posição de ${c} revisada`:'Revisão retirada',ok?'ok':'info'); } }
   else if(a==='bib-pa-rm'){ if(!confirm('Apagar esta ficha particular?')) return; if(removerFichaParticular(db,t.dataset.id)){ save(); render(true); toast('Ficha particular apagada','info'); } }
   else if(a==='atl-tj'){ const k=t.dataset.k, i=A.ativos.indexOf(k); i<0?A.ativos.push(k):A.ativos.splice(i,1); if(i>=0&&A.traj===k) A.traj=null; render(true); }
   else if(a==='atl-todos'||a==='atl-nenhum'){ const L=t.dataset.g==='m'?MERIDIANOS:VASOS_ATLAS; A.ativos=a==='atl-todos'?[...new Set([...A.ativos,...L])]:A.ativos.filter(k=>!L.includes(k)); if(A.traj&&!A.ativos.includes(A.traj)) A.traj=null; render(true); }
