@@ -1069,3 +1069,9 @@ input[type=checkbox]{accent-color:var(--brand)}
 .f-msg .mod-raw{margin-top:8px;font-size:.84rem}
 @media (max-width:560px){.wa-p{top:auto;bottom:0;border-radius:16px 16px 0 0;width:100vw;max-height:88vh}}
 .f-msg textarea{min-height:96px}
+
+/* Etapa 7B · Assinatura na tela */
+.ass-p{width:min(720px,calc(100vw - 24px))}
+#ass-c{display:block;width:100%;height:auto;aspect-ratio:640/220;border:1px dashed var(--line-2);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;margin-top:10px}
+.dp-as .ass-img{display:block;width:220px;max-width:100%;height:auto;margin:0 auto -8px}
+@media print{#imp .dp-as .ass-img{width:200px}}

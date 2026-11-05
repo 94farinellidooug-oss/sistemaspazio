@@ -1317,6 +1317,12 @@ input[type=checkbox]{accent-color:var(--brand)}
 .f-msg .mod-raw{margin-top:8px;font-size:.84rem}
 @media (max-width:560px){.wa-p{top:auto;bottom:0;border-radius:16px 16px 0 0;width:100vw;max-height:88vh}}
 .f-msg textarea{min-height:96px}
+
+/* Etapa 7B · Assinatura na tela */
+.ass-p{width:min(720px,calc(100vw - 24px))}
+#ass-c{display:block;width:100%;height:auto;aspect-ratio:640/220;border:1px dashed var(--line-2);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;margin-top:10px}
+.dp-as .ass-img{display:block;width:220px;max-width:100%;height:auto;margin:0 auto -8px}
+@media print{#imp .dp-as .ass-img{width:200px}}
 </style>
 
 
@@ -1341,6 +1347,7 @@ const TODAY = addDays(0);
 const fmt = s => s.split('-').reverse().join('/');
 // Hora local (hh:mm) de um instante ISO, como ficou registrado.
 const horaLocal = iso => new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+const dataLocal = iso => new Date(iso).toLocaleDateString('pt-BR');
 const uid = () => Math.random().toString(36).slice(2,9);
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -1573,7 +1580,7 @@ function importar(texto){
 }
 // ov: camada aberta (busca, notif, perfil, atalhos); q/bi: texto e item escolhido na busca global;
 // lidas: notificações já vistas nesta sessão; dia: dia escolhido no calendário do Painel; crumbs: migalhas.
-const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, docPid:null, docMod:null, docEd:null, wa:null, relOcultos:false, novoInt:null, cadPrevio:null, pq:'', menuMini:false, menuAberto:false,
+const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, docPid:null, docMod:null, docEd:null, docAss:null, wa:null, relOcultos:false, novoInt:null, cadPrevio:null, pq:'', menuMini:false, menuAberto:false,
   ov:null, q:'', bi:0, lidas:new Set(), dia:null, crumbs:[],
   // Mapa corporal do atendimento (etapa 4A): vista, face, ampliação, ferramenta, marcação selecionada e camadas de comparação.
   // Biblioteca clínica (etapa 4B): área (central, particular, atlas), ficha aberta e estado do Atlas.
@@ -2254,6 +2261,16 @@ function guardarDocumento(p, { id, modelo, texto, em, por }, M){
   (p.documentos ||= []).unshift(d);
   return d;
 }
+// Assinatura na tela (etapa 7B, aprovada pelo Maicon em 05/11, proposta/etapa-7): o paciente assina com o
+// dedo e a imagem fica no documento guardado, com quando e quem conduziu. É uma assinatura eletrônica
+// simples; o papel continua valendo (marcarAssinado).
+const ASSINATURA_IMG = /^data:image\/png;base64,[A-Za-z0-9+/=]+$/;
+function assinarNaTela(p, id, { img, em, por }){
+  const d = (p.documentos || []).find(x => x.id === id);
+  if (!d || d.assinado || !(d.assina ?? modeloDoc(d.modelo)?.[3]) || !ASSINATURA_IMG.test(String(img || ''))) return null;
+  Object.assign(d, { assinado: true, assinadoEm: em, assinadoPor: por, naTela: true, assinatura: img });
+  return d;
+}
 // Termo assinado no papel: fica registrado quem marcou e quando.
 function marcarAssinado(p, id, em, por){
   const d = (p.documentos || []).find(x => x.id === id);
@@ -2469,21 +2486,23 @@ function docAtual(){
   const m = modeloDoc(ui.docMod, db.modelosDoc) || modelosDoc(db.modelosDoc)[0], E = ui.docEd;
   const nome = E ? E.nome.trim() || 'Sem nome' : m[1], assina = E ? E.assina : m[3];
   const texto = p ? preencherDoc(E ? E.texto : m[4], valoresDoc(p, ctxDoc())) : '';
-  return { p, k:m[0], m, nome, assina, texto };
+  const A = ui.docAss, ass = !E && assina && A && p && A.pid === p.id && A.k === m[0] ? A : null;
+  return { p, k:m[0], m, nome, assina, texto, ass };
 }
 const paragrafos = t => esc(t).split(/\n{2,}/).map(x => `<p>${x.replace(/\n/g, '<br>')}</p>`).join('');
 // O texto do modelo com os dados do sistema destacados.
 const comCampos = t => paragrafos(t).replace(/\{(\w+)\}/g, (s, k) => { const c = CAMPOS_DOC.find(x => x[0] === k); return c ? `<span class="cp">${c[1]}</span>` : s; });
-const assinatura = (assina, p) => assina ? `<div class="dp-as"><span></span><small>${esc(p.name)}</small></div>` : '';
+// Linha de assinatura do paciente; assinada na tela, leva a imagem e quando foi assinada.
+const assinatura = (assina, p, ass) => assina ? `<div class="dp-as">${ass ? `<img class="ass-img" src="${ass.img}" alt="Assinatura de ${esc(p.name)}">` : ''}<span></span><small>${esc(p.name)}${ass ? ` · assinado na tela em ${dataLocal(ass.em)} às ${horaLocal(ass.em)}` : ''}</small></div>` : '';
 // Folha impressa: cabeçalho, texto, linha de assinatura do paciente (quando o modelo pede) e o profissional.
-function folhaDoc(nome, assina, p, texto, data = TODAY, por = PROF.nome){
-  return `<div class="imp-h">${LOGO}<div><b>${esc(nome)}</b><small>${CLINICA} · ${fmt(data)}</small></div></div><div class="imp-t">${paragrafos(texto)}</div>${assinatura(assina, p)}<div class="imp-a">${esc(por)}</div>`;
+function folhaDoc(nome, assina, p, texto, data = TODAY, por = PROF.nome, ass = null){
+  return `<div class="imp-h">${LOGO}<div><b>${esc(nome)}</b><small>${CLINICA} · ${fmt(data)}</small></div></div><div class="imp-t">${paragrafos(texto)}</div>${assinatura(assina, p, ass)}<div class="imp-a">${esc(por)}</div>`;
 }
 // Prévia (só para conferir) e o texto do modelo com os dados destacados: atualizadas enquanto se digita.
 function previaDoc(){
-  const { p, nome, assina, texto } = docAtual();
+  const { p, nome, assina, texto, ass } = docAtual();
   return `<div class="dp-h">${LOGO}<div><b>${esc(nome)}</b><small>${CLINICA} · ${fmt(TODAY)}</small></div></div>
-    <div class="dp-t" id="doc-t">${paragrafos(texto)}</div>${assinatura(assina, p)}<div class="dp-p">${esc(PROF.nome)}</div>`;
+    <div class="dp-t" id="doc-t">${paragrafos(texto)}</div>${assinatura(assina, p, ass)}<div class="dp-p">${esc(PROF.nome)}</div>`;
 }
 const textoComCampos = () => comCampos(ui.docEd?.texto || '');
 
@@ -2503,7 +2522,7 @@ function formModelo(){
 
 function vDocumentos(){
   if (!db.patients.length) return `<div class="head"><div><h1>Documentos</h1><p>Cadastre um paciente para gerar documentos.</p></div></div>`;
-  const { p, k, m, texto } = docAtual(), E = ui.docEd, L = modelosDoc(db.modelosDoc), meus = p.documentos || [];
+  const { p, k, m, texto, assina, ass } = docAtual(), E = ui.docEd, L = modelosDoc(db.modelosDoc), meus = p.documentos || [];
   const falta = !E && !texto && (faltaModelo(k) || 'O modelo ficou sem texto.');
   const situacao = s => s === 'proprio' ? '<span class="pill acc">criado por você</span>' : s === 'editado' ? '<span class="pill acc">editado</span>' : '<span class="pill">original</span>';
   return `<div class="head"><div><h1>Documentos</h1><p>Escolha o paciente e o modelo; o resto vem preenchido</p></div></div>
@@ -2513,18 +2532,37 @@ function vDocumentos(){
       <div class="doc-m" role="group" aria-label="Modelo">${L.map(([c,n,i,,,s])=>`<button class="${c===k?'on':''}" data-act="doc-mod" data-m="${c}" aria-pressed="${c===k}">${ic(i)}<span>${esc(n)}</span>${s!=='original'?'<i class="pill acc">seu</i>':''}</button>`).join('')}
         <button class="novo" data-act="doc-novo-mod">${ic('mais')}<span>Novo modelo</span></button></div>
       ${falta ? `<div class="notice">${ic('info')}<div>${falta}</div></div>` : ''}
-      <div class="rx-a"><div class="chips"><button class="btn pri" data-act="doc-imp">${ic('doc')}Imprimir</button><button class="btn" data-act="doc-guardar">${ic('check')}Guardar no prontuário</button>${k==='orientacoes' && texto ? btnWa('orientacoes', p.id) : ''}</div>
+      <div class="rx-a"><div class="chips">${assina ? `<button class="btn pri" data-act="doc-assinar" ${ass ? 'disabled' : ''}>${ic('assinatura')}${ass ? 'Assinado na tela' : 'Assinar na tela'}</button>` : ''}<button class="btn ${assina ? '' : 'pri'}" data-act="doc-imp">${ic('doc')}Imprimir</button><button class="btn" data-act="doc-guardar">${ic('check')}Guardar no prontuário</button>${k==='orientacoes' && texto ? btnWa('orientacoes', p.id) : ''}</div>
         <button class="btn ghost" data-act="doc-editar">${ic('editar')}Editar este modelo</button></div></div>`}
     <div class="card" id="doc-pv-card"><div class="card-h"><h2>Prévia<small>${esc(p.name)} · só para conferir; o texto se muda no modelo</small></h2></div>
       <div class="doc-pv" id="doc-pv">${previaDoc()}</div></div>
   </div><div class="grid" style="align-content:start">
     ${E ? `<div class="card"><h2>Como fica o texto</h2><div class="mod-raw" id="mod-raw">${textoComCampos()}</div><p class="muted sm">Os quadros verdes são preenchidos pelo sistema.</p></div>` : ''}
     <div class="card" id="doc-lista"><div class="card-h"><h2>Documentos de ${esc(p.name.split(' ')[0])}<small>ficam no prontuário</small></h2><span class="pill">${meus.length}</span></div>
-      ${meus.length ? `<div class="doc-l">${meus.map(d=>{ const md=modeloDoc(d.modelo, db.modelosDoc), nome=d.nome||md?.[1]||'Documento', assina=d.assina??md?.[3]; return `<div class="doc-li" data-doc="${d.id}"><span class="tico sm">${ic(md?.[2]||'doc')}</span><div class="grow"><b>${esc(nome)}</b><small>${fmt(d.em.slice(0,10))} · ${esc(d.por)}${d.assinado?` · assinado, marcado em ${fmt(d.assinadoEm.slice(0,10))}`:''}</small></div>
-        ${assina ? (d.assinado ? `<span class="pill ok">${ic('check')}assinado</span>` : `<button class="btn sm" data-act="doc-ass" data-id="${d.id}">${ic('assinatura')}Marcar assinado</button>`) : ''}<button class="btn sm ghost" data-act="doc-reimp" data-id="${d.id}" aria-label="Imprimir de novo" data-tip="Imprimir de novo">${ic('doc')}</button></div>`; }).join('')}</div>` : '<p class="muted sm">Nenhum documento guardado ainda.</p>'}</div>
+      ${meus.length ? `<div class="doc-l">${meus.map(d=>{ const md=modeloDoc(d.modelo, db.modelosDoc), nome=d.nome||md?.[1]||'Documento', assina=d.assina??md?.[3]; return `<div class="doc-li" data-doc="${d.id}"><span class="tico sm">${ic(md?.[2]||'doc')}</span><div class="grow"><b>${esc(nome)}</b><small>${fmt(d.em.slice(0,10))} · ${esc(d.por)}${d.assinado?(d.naTela?` · assinado na tela em ${dataLocal(d.assinadoEm)} às ${horaLocal(d.assinadoEm)}`:` · assinado, marcado em ${fmt(d.assinadoEm.slice(0,10))}`):''}</small></div>
+        ${assina ? (d.assinado ? `<span class="pill ok">${ic('check')}${d.naTela?'assinado na tela':'assinado'}</span>` : `<button class="btn sm" data-act="doc-ass" data-id="${d.id}">${ic('assinatura')}Marcar assinado</button>`) : ''}<button class="btn sm ghost" data-act="doc-reimp" data-id="${d.id}" aria-label="Imprimir de novo" data-tip="Imprimir de novo">${ic('doc')}</button></div>`; }).join('')}</div>` : '<p class="muted sm">Nenhum documento guardado ainda.</p>'}</div>
     <div class="card" id="doc-modelos"><h2>Seus modelos</h2><p class="muted sm">Os textos são editados aqui na página e ficam salvos como <b>seus</b>. Cada profissional terá os próprios modelos quando o sistema tiver login (etapa 10).</p>
       <ul class="ev-l mod-l">${L.map(([,n,i,,,s])=>`<li>${ic(i)}<span class="grow">${esc(n)}</span>${situacao(s)}</li>`).join('')}</ul></div>
-    <div class="card"><h2>Assinatura</h2><p class="muted sm">Por enquanto o termo é impresso, assinado no papel e marcado aqui como assinado. A assinatura pelo celular, por um serviço externo, vamos escolher juntos na etapa 7.</p></div></div></div>`;
+    <div class="card"><h2>Assinatura</h2><p class="muted sm">Em <b>Assinar na tela</b>, o paciente assina com o dedo no celular ou tablet; ao guardar, a assinatura fica no documento com a data, a hora e quem conduziu. É uma assinatura eletrônica simples. Se preferir, continue imprimindo, assinando no papel e marcando aqui como assinado.</p></div></div></div>`;
+}
+
+// Quadro de assinatura sobre a tela: o paciente assina com o dedo (ou o mouse).
+function painelAss(){
+  const { p, nome } = docAtual(); if (!p) return '';
+  return `<div class="veu"></div><div class="pal wa-p ass-p" role="dialog" aria-modal="true" aria-label="Assinatura na tela">
+    <div class="card-h"><h3>${ic('assinatura')}Assinatura de ${esc(p.name)}<small>${esc(nome)} · ${fmt(TODAY)}</small></h3></div>
+    <p class="muted sm">Entregue o aparelho ao paciente. Ele assina com o dedo no quadro abaixo.</p>
+    <canvas id="ass-c" width="640" height="220" aria-label="Quadro de assinatura"></canvas>
+    <div class="rx-a"><button class="btn pri" data-act="ass-ok" disabled>${ic('check')}Confirmar assinatura</button><div class="chips"><button class="btn" data-act="ass-limpar">Limpar</button><button class="btn ghost" data-act="fechar">Cancelar</button></div></div></div>`;
+}
+function ligarPad(){
+  const c = document.getElementById('ass-c'); if (!c) return;
+  const g = c.getContext('2d'); let des = false;
+  g.lineWidth = 2.6; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#1d1d1b';
+  const pt = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
+  c.addEventListener('pointerdown', e => { des = true; c.setPointerCapture?.(e.pointerId); g.beginPath(); g.moveTo(...pt(e)); e.preventDefault(); });
+  c.addEventListener('pointermove', e => { if (!des) return; g.lineTo(...pt(e)); g.stroke(); document.querySelector('[data-act="ass-ok"]').disabled = false; });
+  const fim = () => { des = false; }; c.addEventListener('pointerup', fim); c.addEventListener('pointercancel', fim);
 }
 //
 // Retomar contato: pacientes com o último atendimento há mais de 21 dias e nada agendado (o mesmo
@@ -4056,6 +4094,7 @@ function render(keepScroll){
   const r=route(), y=scrollY, v=document.getElementById('view');
   ui.crumbs=[]; const html=VIEWS[r](); renderNav(r);
   v.innerHTML=html;
+  if(ui.ov==='ass'){ document.getElementById('camada').innerHTML=painelAss(); ligarPad(); }
   if(ui.ov==='wa'){ const c=document.getElementById('camada'); c.innerHTML=painelWa(); if(!c.innerHTML) ui.ov=null; }
   // Transição suave só quando a tela muda (não a cada clique dentro dela).
   if(r!==ultimaRota){ v.classList.remove('entra'); void v.offsetWidth; v.classList.add('entra'); ultimaRota=r; }
@@ -4152,14 +4191,16 @@ document.addEventListener('click',ev=>{
     if(situacaoInteressado(i,t.dataset.s)){ save(); render(true); } }
   else if(a==='doc-abrir'){ ui.docPid=t.dataset.pid; ui.docMod=t.dataset.m||null; ui.docEd=null; irPara('documentos'); }
   else if(a==='doc-mod'){ ui.docMod=t.dataset.m; render(true); }
-  else if(a==='doc-imp'||a==='doc-guardar'){ const {p,k,nome,assina,texto}=docAtual();
+  else if(a==='doc-assinar'||a==='ass-limpar'){ ui.ov='ass'; render(true); }
+  else if(a==='ass-ok'){ const c=document.getElementById('ass-c'), {p,k}=docAtual(); if(!c||!p) return; ui.docAss={pid:p.id,k,img:c.toDataURL('image/png'),em:new Date().toISOString()}; ui.ov=null; render(true); toast('Assinatura registrada; guarde no prontuário para salvar'); }
+  else if(a==='doc-imp'||a==='doc-guardar'){ const {p,k,nome,assina,texto,ass}=docAtual();
     if(!texto){ toast('O documento está sem texto; edite o modelo antes','info'); return; }
-    if(a==='doc-imp'){ document.getElementById('imp').innerHTML=folhaDoc(nome,assina,p,texto); window.print(); return; }
-    guardarDocumento(p,{id:uid(),modelo:k,texto,em:new Date().toISOString(),por:PROF.nome},db.modelosDoc); save(); render(true); toast(`${nome} guardado no prontuário de ${p.name.split(' ')[0]}`); }
+    if(a==='doc-imp'){ document.getElementById('imp').innerHTML=folhaDoc(nome,assina,p,texto,TODAY,PROF.nome,ass); window.print(); return; }
+    const d=guardarDocumento(p,{id:uid(),modelo:k,texto,em:new Date().toISOString(),por:PROF.nome},db.modelosDoc); if(d&&ass) assinarNaTela(p,d.id,{img:ass.img,em:ass.em,por:PROF.nome}); ui.docAss=null; save(); render(true); toast(`${nome} guardado no prontuário de ${p.name.split(' ')[0]}${ass?', com a assinatura':''}`); }
   else if(a==='doc-ass'){ const {p}=docAtual(); if(marcarAssinado(p,t.dataset.id,new Date().toISOString(),PROF.nome)){ save(); render(true); toast('Termo marcado como assinado'); } }
   else if(a==='doc-reimp'){ const {p}=docAtual(), d=(p.documentos||[]).find(x=>x.id===t.dataset.id); if(!d) return; const md=modeloDoc(d.modelo,db.modelosDoc);
-    document.getElementById('imp').innerHTML=folhaDoc(d.nome||md?.[1]||'Documento',d.assina??md?.[3],p,d.texto,d.em.slice(0,10),d.por); window.print(); }
-  else if(a==='doc-editar'){ const {m}=docAtual(); ui.docMod=m[0]; ui.docEd={nome:m[1],texto:m[4],assina:m[3]}; render(true); document.getElementById('m-texto')?.focus(); }
+    document.getElementById('imp').innerHTML=folhaDoc(d.nome||md?.[1]||'Documento',d.assina??md?.[3],p,d.texto,d.em.slice(0,10),d.por,d.naTela?{img:d.assinatura,em:d.assinadoEm}:null); window.print(); }
+  else if(a==='doc-editar'){ const {m}=docAtual(); ui.docAss=null; ui.docMod=m[0]; ui.docEd={nome:m[1],texto:m[4],assina:m[3]}; render(true); document.getElementById('m-texto')?.focus(); }
   else if(a==='doc-novo-mod'){ ui.docEd={novo:true,nome:'',texto:'Eu, {paciente}, ',assina:true}; render(true); document.getElementById('m-nome')?.focus(); }
   else if(a==='doc-ed-x'){ ui.docEd=null; render(true); }
   else if(a==='doc-ed-orig'){ const o=MODELOS_DOC.find(x=>x[0]===ui.docMod); if(!o) return; if(!confirm('Voltar este modelo ao texto original? A sua versão será descartada.')) return;

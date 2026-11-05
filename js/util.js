@@ -7,6 +7,7 @@ export const TODAY = addDays(0);
 export const fmt = s => s.split('-').reverse().join('/');
 // Hora local (hh:mm) de um instante ISO, como ficou registrado.
 export const horaLocal = iso => new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+export const dataLocal = iso => new Date(iso).toLocaleDateString('pt-BR');
 export const uid = () => Math.random().toString(36).slice(2,9);
 export const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 export const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});

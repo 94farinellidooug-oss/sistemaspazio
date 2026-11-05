@@ -4,12 +4,12 @@ import { adicionarQueixa, alternarQueixa, hidratarPaciente, novoPaciente, regist
 import { ui } from './estado.js';
 import { pointWarnings } from './raciocinio/seguranca.js';
 import { formAgenda, vAgenda } from './telas/agenda.js';
-import { docAtual, folhaDoc, previaDoc, textoComCampos, vDocumentos } from './telas/documentos.js';
+import { docAtual, folhaDoc, ligarPad, painelAss, previaDoc, textoComCampos, vDocumentos } from './telas/documentos.js';
 import { vRelacionamento } from './telas/relacionamento.js';
 import { abrirPainelWa, painelWa, textoComCamposWa, vMensagens } from './telas/whatsapp.js';
 import { linkWa, registrarMensagem, salvarMensagemWa, voltarMensagemWa } from './dados/whatsapp.js';
 import { naoRetomar, novoInteressado, registrarContato, situacaoInteressado, virouPaciente } from './dados/relacionamento.js';
-import { MODELOS_DOC, apagarModelo, guardarDocumento, marcarAssinado, modeloDoc, salvarModelo, voltarOriginal } from './dados/documentos.js';
+import { MODELOS_DOC, apagarModelo, assinarNaTela, guardarDocumento, marcarAssinado, modeloDoc, salvarModelo, voltarOriginal } from './dados/documentos.js';
 import { concluirHorario, conflito, desmarcar, marcarHorario, novoHorario, remarcar } from './dados/agenda.js';
 import { vAvaliacao } from './telas/avaliacao.js';
 import { atendimentoAberto, indicadosMarca, textoSalvo, vAtendimento } from './telas/atendimento.js';
@@ -38,6 +38,7 @@ export function render(keepScroll){
   const r=route(), y=scrollY, v=document.getElementById('view');
   ui.crumbs=[]; const html=VIEWS[r](); renderNav(r);
   v.innerHTML=html;
+  if(ui.ov==='ass'){ document.getElementById('camada').innerHTML=painelAss(); ligarPad(); }
   if(ui.ov==='wa'){ const c=document.getElementById('camada'); c.innerHTML=painelWa(); if(!c.innerHTML) ui.ov=null; }
   // Transição suave só quando a tela muda (não a cada clique dentro dela).
   if(r!==ultimaRota){ v.classList.remove('entra'); void v.offsetWidth; v.classList.add('entra'); ultimaRota=r; }
@@ -134,14 +135,16 @@ document.addEventListener('click',ev=>{
     if(situacaoInteressado(i,t.dataset.s)){ save(); render(true); } }
   else if(a==='doc-abrir'){ ui.docPid=t.dataset.pid; ui.docMod=t.dataset.m||null; ui.docEd=null; irPara('documentos'); }
   else if(a==='doc-mod'){ ui.docMod=t.dataset.m; render(true); }
-  else if(a==='doc-imp'||a==='doc-guardar'){ const {p,k,nome,assina,texto}=docAtual();
+  else if(a==='doc-assinar'||a==='ass-limpar'){ ui.ov='ass'; render(true); }
+  else if(a==='ass-ok'){ const c=document.getElementById('ass-c'), {p,k}=docAtual(); if(!c||!p) return; ui.docAss={pid:p.id,k,img:c.toDataURL('image/png'),em:new Date().toISOString()}; ui.ov=null; render(true); toast('Assinatura registrada; guarde no prontuário para salvar'); }
+  else if(a==='doc-imp'||a==='doc-guardar'){ const {p,k,nome,assina,texto,ass}=docAtual();
     if(!texto){ toast('O documento está sem texto; edite o modelo antes','info'); return; }
-    if(a==='doc-imp'){ document.getElementById('imp').innerHTML=folhaDoc(nome,assina,p,texto); window.print(); return; }
-    guardarDocumento(p,{id:uid(),modelo:k,texto,em:new Date().toISOString(),por:PROF.nome},db.modelosDoc); save(); render(true); toast(`${nome} guardado no prontuário de ${p.name.split(' ')[0]}`); }
+    if(a==='doc-imp'){ document.getElementById('imp').innerHTML=folhaDoc(nome,assina,p,texto,TODAY,PROF.nome,ass); window.print(); return; }
+    const d=guardarDocumento(p,{id:uid(),modelo:k,texto,em:new Date().toISOString(),por:PROF.nome},db.modelosDoc); if(d&&ass) assinarNaTela(p,d.id,{img:ass.img,em:ass.em,por:PROF.nome}); ui.docAss=null; save(); render(true); toast(`${nome} guardado no prontuário de ${p.name.split(' ')[0]}${ass?', com a assinatura':''}`); }
   else if(a==='doc-ass'){ const {p}=docAtual(); if(marcarAssinado(p,t.dataset.id,new Date().toISOString(),PROF.nome)){ save(); render(true); toast('Termo marcado como assinado'); } }
   else if(a==='doc-reimp'){ const {p}=docAtual(), d=(p.documentos||[]).find(x=>x.id===t.dataset.id); if(!d) return; const md=modeloDoc(d.modelo,db.modelosDoc);
-    document.getElementById('imp').innerHTML=folhaDoc(d.nome||md?.[1]||'Documento',d.assina??md?.[3],p,d.texto,d.em.slice(0,10),d.por); window.print(); }
-  else if(a==='doc-editar'){ const {m}=docAtual(); ui.docMod=m[0]; ui.docEd={nome:m[1],texto:m[4],assina:m[3]}; render(true); document.getElementById('m-texto')?.focus(); }
+    document.getElementById('imp').innerHTML=folhaDoc(d.nome||md?.[1]||'Documento',d.assina??md?.[3],p,d.texto,d.em.slice(0,10),d.por,d.naTela?{img:d.assinatura,em:d.assinadoEm}:null); window.print(); }
+  else if(a==='doc-editar'){ const {m}=docAtual(); ui.docAss=null; ui.docMod=m[0]; ui.docEd={nome:m[1],texto:m[4],assina:m[3]}; render(true); document.getElementById('m-texto')?.focus(); }
   else if(a==='doc-novo-mod'){ ui.docEd={novo:true,nome:'',texto:'Eu, {paciente}, ',assina:true}; render(true); document.getElementById('m-nome')?.focus(); }
   else if(a==='doc-ed-x'){ ui.docEd=null; render(true); }
   else if(a==='doc-ed-orig'){ const o=MODELOS_DOC.find(x=>x[0]===ui.docMod); if(!o) return; if(!confirm('Voltar este modelo ao texto original? A sua versão será descartada.')) return;

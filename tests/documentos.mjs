@@ -5,7 +5,7 @@ import { seed } from '../js/dados/exemplos.js';
 import { hidratar, migrarV1, paraV1 } from '../js/dados/migracao.js';
 import { iniciarAtendimento, finalizarAtendimento } from '../js/dados/atendimento.js';
 import { definirLado, definirStatus, definirSituacao } from '../js/dados/prescricao.js';
-import { MODELOS_DOC, CAMPOS_DOC, apagarModelo, faltaModelo, guardarDocumento, marcarAssinado, modeloDoc, modelosDoc, preencherDoc, salvarModelo, textoModelo, voltarOriginal } from '../js/dados/documentos.js';
+import { MODELOS_DOC, CAMPOS_DOC, apagarModelo, assinarNaTela, faltaModelo, guardarDocumento, marcarAssinado, modeloDoc, modelosDoc, preencherDoc, salvarModelo, textoModelo, voltarOriginal } from '../js/dados/documentos.js';
 
 let falhas = 0;
 const ok = (c, m) => { console.log(`${c ? 'ok   ' : 'FALHA'} ${m}`); if (!c) falhas++; };
@@ -60,6 +60,14 @@ const d5 = guardarDocumento(P, { id:'d5', modelo:'mod1', texto:textoModelo('mod1
 ok(d5.nome === 'Atestado' && d5.texto === `Atesto que ${P.name} precisa de repouso.`, 'documento de modelo próprio guarda o nome');
 ok(!apagarModelo(db, 'termo') && apagarModelo(db, 'mod1') && !modeloDoc('mod1', db.modelosDoc) && marcarAssinado(P, 'd5', 'e', 'p') === d5, 'apaga só modelo próprio; o documento continua e pode ser marcado assinado');
 ok(salvarModelo(db, 'mod1', { nome:'x', texto:'y' }, 'e', 'p') === null, 'não salva em modelo apagado');
+
+// Assinatura na tela (etapa 7B)
+const IMG = 'data:image/png;base64,iVBORw0KGgo=';
+const d6 = guardarDocumento(P, { id:'d6', modelo:'termo', texto:'Eu, paciente.', em:'2026-11-05T22:00:00Z', por:'Maicon Farinelli' });
+ok(assinarNaTela(P, 'd6', { img:'javascript:alert(1)', em:'e', por:'p' }) === null && !d6.assinado, 'só aceita imagem PNG');
+ok(assinarNaTela(P, 'd1', { img:IMG, em:'e', por:'p' }) === null, 'declaração não pede assinatura');
+ok(assinarNaTela(P, 'd6', { img:IMG, em:'2026-11-05T22:01:00Z', por:'Maicon Farinelli' }) === d6 && d6.assinado && d6.naTela && d6.assinatura === IMG && d6.assinadoEm === '2026-11-05T22:01:00Z', 'assinado na tela com a imagem, quando e quem');
+ok(assinarNaTela(P, 'd6', { img:IMG, em:'x', por:'y' }) === null && marcarAssinado(P, 'd6', 'x', 'y') === null, 'não assina duas vezes');
 
 // Exportação no formato do protótipo: documentos não existem lá
 const v1 = paraV1(db);
