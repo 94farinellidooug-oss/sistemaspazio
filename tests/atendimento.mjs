@@ -10,7 +10,7 @@ import { evaluate } from '../js/raciocinio/avaliacao.js';
 import { TIPOS_MARCA, adicionarMarca, atendimentosAnteriores, editarMarca, marcasDe, removerMarca, preenchimento as preench4 } from '../js/dados/atendimento.js';
 import { POS, TAM, VISTAS, ladoDe, posicoes, temPosicao } from '../js/componentes/corpo.js';
 import { PT, CODIGOS, NPT } from '../js/conhecimento/pontos.js';
-import { bibliotecaDe, adicionarFichaParticular, removerFichaParticular, definirNotaPonto } from '../js/dados/biblioteca.js';
+import { bibliotecaDe, adicionarFichaParticular, removerFichaParticular, definirNotaPonto, revisaoDe, revisarPosicao } from '../js/dados/biblioteca.js';
 import { MERIDIANOS, VASOS_ATLAS, TRAJETOS, trajetoDoPonto, regiaoDoToque } from '../js/componentes/corpo.js';
 import { FONTE_INDICACOES, INDICADOS_REGIAO, REGIOES_CORPO, indicadosDaRegiao, regioesDoPonto, regioesDoTexto } from '../js/conhecimento/indicacoes-regiao.js';
 
@@ -206,6 +206,16 @@ console.log('\n11. Etapa 4B: Biblioteca (Particular) e Atlas');
   ok(CODIGOS.length === 361 && Object.values(NPT).reduce((a, b) => a + b, 0) === 361 && Object.keys(PT).every(c => CODIGOS.includes(c)), '361 códigos, incluindo os 28 com ficha');
   ok(MERIDIANOS.length === 12 && VASOS_ATLAS.length === 8 && [...MERIDIANOS, ...VASOS_ATLAS].every(k => TRAJETOS[k] && ['ant','post','lat'].some(c => TRAJETOS[k][c])), '12 meridianos e 8 vasos com trajeto aproximado');
   ok(trajetoDoPonto('VC12') === 'Ren Mai' && trajetoDoPonto('VG20') === 'Du Mai' && trajetoDoPonto('E36') === 'E', 'VC e VG seguem Ren Mai e Du Mai'); }
+
+console.log('\n13. Etapa 4C: revisão da posição dos pontos');
+{ const d = hidratar(migrarV1(seed(), '2026-11-05T10:00:00Z', 'exemplos')), v1 = JSON.stringify(paraV1(d)), pos = JSON.stringify(POS);
+  ok(revisaoDe(d, 'E36') === null && !('biblioteca' in d), 'sem revisão, os dados não mudam');
+  const r = revisarPosicao(d, 'E36', true, 'Mauren Turcatti', '2026-11-05T10:30:00Z');
+  ok(r.ok && r.por === 'Mauren Turcatti' && r.em === '2026-11-05T10:30:00Z' && r.hist.length === 1, 'revisão grava quem e quando');
+  ok(revisarPosicao(d, 'E36', true, 'X', 'Y') === null && revisaoDe(d, 'E36').por === 'Mauren Turcatti', 'revisar de novo não duplica');
+  revisarPosicao(d, 'E36', false, 'Mauren Turcatti', '2026-11-05T11:00:00Z');
+  ok(!revisaoDe(d, 'E36').ok && revisaoDe(d, 'E36').hist.map(h => h.acao).join('|') === 'Revisão retirada|Posição marcada como revisada', 'retirar fica no histórico, o mais recente primeiro');
+  ok(JSON.stringify(POS) === pos && JSON.stringify(paraV1(d)) === v1 && bibliotecaDe(d).particular.length === 0, 'revisão não muda posições, fichas nem a exportação v1'); }
 
 console.log('\n12. Etapa 4A: pontos indicados por região (tabela conferida)');
 { const L = Object.values(INDICADOS_REGIAO).flat();

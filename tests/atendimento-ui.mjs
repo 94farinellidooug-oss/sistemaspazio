@@ -243,6 +243,7 @@ async function verificar(browser, url, nome) {
   ok((await paciente()).atendimentos[0].historico.some(h => /VC12 indicado no mapa corporal/.test(h.acao)), `${nome}: ponto indicado pelo mapa registrado no histórico`);
   await p.click('#mk-prox [data-act="at-mv-ptv"][data-c="VC12"]'); await espera();
   ok(await tem('#ficha-pt', 'Vaso Concepção') && await tem('#ficha-pt .fp-dl', 'Linha média') && await p.locator('svg.mapa4 .ptp.pt-on[data-pt="VC12"]').count() === 1, `${nome}: ficha completa do ponto (meridiano, número, localização e ações)`);
+  ok(await tem('#fp-rev', 'ainda não revisada'), `${nome}: a ficha no mapa diz se a posição foi revisada`);
   await p.click('#ficha-pt [data-act="at-mv-ptf"]'); await espera();
   ok(await p.locator('#ficha-pt').count() === 0 && await tem('#ed-mk', 'Pontos próximos'), `${nome}: voltar da ficha para a marcação`);
   // Pontos indicados pelo livro para a região (tabela conferida por Mauren)

@@ -2240,6 +2240,44 @@ function trajetoSvg(k, v, on){
   const fim = base[base.length - 1], vaso = VASOS_ATLAS.includes(k);
   return `<g class="tj${vaso ? ' vaso' : ''}${on ? ' on' : ''}" data-tj="${esc(k)}" style="--c:${corTrajeto(k)}"><title>${esc(vaso ? k : MER[k][0])} · trajeto aproximado</title>${linhas.map(l => { const d = 'M' + l.map(q => q.join(' ')).join('L'); return `<path class="tj-h" d="${d}"/><path class="tj-l" d="${d}"/>`; }).join('')}<text class="tj-t" x="${fim[0]}" y="${fim[1] - 5}" text-anchor="middle">${esc(vaso ? SIGLA_VASO[k] : k)}</text></g>`;
 }
+// db.biblioteca = { particular:[{ id, titulo, ponto, texto, em }], notas:{ [codigo]:texto },
+//   revisoes:{ [codigo]:{ ok, por, em, hist:[{ acao, por, em }] } } }  (etapa 4C: revisão da posição no mapa)
+// O campo só é criado quando a clínica grava algo: quem não usa a Particular continua com os dados iguais.
+// Nada aqui altera as fichas Central nem a exportação no formato v1.
+const vazia = () => ({ particular:[], notas:{}, revisoes:{} });
+const bibliotecaDe = d => d?.biblioteca && typeof d.biblioteca === 'object' ? { ...vazia(), ...d.biblioteca } : vazia();
+function garantir(d){
+  if (!d.biblioteca || typeof d.biblioteca !== 'object') d.biblioteca = vazia();
+  if (!Array.isArray(d.biblioteca.particular)) d.biblioteca.particular = [];
+  if (!d.biblioteca.notas || typeof d.biblioteca.notas !== 'object') d.biblioteca.notas = {};
+  if (!d.biblioteca.revisoes || typeof d.biblioteca.revisoes !== 'object') d.biblioteca.revisoes = {};
+  return d.biblioteca;
+}
+function adicionarFichaParticular(d, { titulo, ponto, texto }, em, id){
+  const t = String(titulo || '').trim(), x = String(texto || '').trim();
+  if (!t || !x) return null;
+  const f = { id, titulo:t, ponto:String(ponto || '').trim().toUpperCase(), texto:x, em };
+  garantir(d).particular.unshift(f); return f;
+}
+function removerFichaParticular(d, id){
+  const B = garantir(d), i = B.particular.findIndex(f => f.id === id);
+  if (i < 0) return false; B.particular.splice(i, 1); return true;
+}
+// Anotação particular num ponto. Texto vazio apaga a anotação.
+function definirNotaPonto(d, codigo, texto){
+  const B = garantir(d), t = String(texto || '');
+  if (t.trim()) B.notas[codigo] = t; else delete B.notas[codigo];
+}
+// Etapa 4C: a profissional confere a posição aproximada do ponto no mapa e registra quem e quando.
+// Retirar a revisão também fica no histórico. Não muda a posição nem o conteúdo da ficha.
+const revisaoDe = (d, c) => bibliotecaDe(d).revisoes[c] || null;
+function revisarPosicao(d, c, ok, por, em){
+  const R = garantir(d).revisoes, r = R[c] ||= { ok:false, hist:[] };
+  if (!!r.ok === !!ok) return null;
+  Object.assign(r, { ok:!!ok, por, em });
+  r.hist.unshift({ acao: ok ? 'Posição marcada como revisada' : 'Revisão retirada', por, em });
+  return r;
+}
 // Não cria números: se um dado não existe, o indicador não aparece.
 
 const ALERTA_NOME = {gestante:'Gestante',anticoagulante:'Anticoagulante',marcapasso:'Marcapasso'};
@@ -2732,7 +2770,7 @@ function fichaPontoMapa(p, a){
     ${d ? '' : `<div class="notice" id="fp-pend">${ic('info')}<div><b>Ficha pendente na Biblioteca clínica.</b> Localização, ações e cautelas deste ponto ainda não foram cadastradas. Confira no livro${ind.length ? ` (p. ${ind[0][1]})` : ''} antes de usar.</div></div>`}
     ${w.map(([k, t]) => `<div class="notice ${k === 'crit' ? 'crit' : ''}">${ic(k === 'crit' ? 'escudo' : 'alerta')}<div><b>${k === 'crit' ? 'Atenção' : 'Cautela'}</b> ${esc(t)}</div></div>`).join('')}
     <div class="ed-a">${rasc ? `<button class="btn sm ${noPlano ? '' : 'pri'}" data-act="at-mv-ptx" data-c="${esc(c)}">${noPlano ? `${ic('x')}Tirar do plano` : `${ic('mais')}Incluir no plano`}</button>` : ''}${noPlano ? '<span class="pill acc">no plano</span>' : ''}</div>
-    <small class="muted">${d ? 'Conteúdo da Biblioteca clínica. Posição no mapa aproximada.' : 'Sem ficha ainda.'}${ind.length ? ` Indicações: ${fonteInd()}` : ''}</small></div>`;
+    <small class="muted">${d ? `Conteúdo da Biblioteca clínica. Posição no mapa aproximada${temPosicao(c) ? (revisaoDe(db, c)?.ok ? `, <span id="fp-rev">revisada por ${esc(revisaoDe(db, c).por)} em ${fmt(revisaoDe(db, c).em.slice(0, 10))}</span>` : ', <span id="fp-rev">ainda não revisada</span>') : ''}.` : 'Sem ficha ainda.'}${ind.length ? ` Indicações: ${fonteInd()}` : ''}</small></div>`;
 }
 function eMapa(p, a){
   const M = ui.mapa, v = M.vista, f = faceMapa(v), [w, h] = TAM[v], rasc = a.status === 'rascunho';
@@ -3123,32 +3161,6 @@ function vPentagrama(){
     <div class="card" style="align-self:start">${det}</div>
   </div>`;
 }
-// db.biblioteca = { particular:[{ id, titulo, ponto, texto, em }], notas:{ [codigo]:texto } }
-// O campo só é criado quando a clínica grava algo: quem não usa a Particular continua com os dados iguais.
-// Nada aqui altera as fichas Central nem a exportação no formato v1.
-const vazia = () => ({ particular:[], notas:{} });
-const bibliotecaDe = d => d?.biblioteca && typeof d.biblioteca === 'object' ? { ...vazia(), ...d.biblioteca } : vazia();
-function garantir(d){
-  if (!d.biblioteca || typeof d.biblioteca !== 'object') d.biblioteca = vazia();
-  if (!Array.isArray(d.biblioteca.particular)) d.biblioteca.particular = [];
-  if (!d.biblioteca.notas || typeof d.biblioteca.notas !== 'object') d.biblioteca.notas = {};
-  return d.biblioteca;
-}
-function adicionarFichaParticular(d, { titulo, ponto, texto }, em, id){
-  const t = String(titulo || '').trim(), x = String(texto || '').trim();
-  if (!t || !x) return null;
-  const f = { id, titulo:t, ponto:String(ponto || '').trim().toUpperCase(), texto:x, em };
-  garantir(d).particular.unshift(f); return f;
-}
-function removerFichaParticular(d, id){
-  const B = garantir(d), i = B.particular.findIndex(f => f.id === id);
-  if (i < 0) return false; B.particular.splice(i, 1); return true;
-}
-// Anotação particular num ponto. Texto vazio apaga a anotação.
-function definirNotaPonto(d, codigo, texto){
-  const B = garantir(d), t = String(texto || '');
-  if (t.trim()) B.notas[codigo] = t; else delete B.notas[codigo];
-}
 // (silhueta com os trajetos aproximados dos 12 meridianos e dos 8 vasos). Etapa 4B.
 // O conteúdo clínico é só o das fichas que já existem; os demais pontos aparecem como "ficha pendente".
 
@@ -3195,6 +3207,14 @@ function listaTodos(){
 // Regiões do corpo em que o livro indica o ponto, com a página. Só as linhas aprovadas por Mauren.
 const indRegioes = c => { const L = regioesDoPonto(c), F = FONTE_INDICACOES;
   return L.length ? `<span class="ind-r">${L.map(([r, pg]) => `<span class="pill">${esc(r)} · p. ${pg}</span>`).join('')}</span><small class="muted ind-f">${esc(F.autora)}, ${esc(F.obra)} (${esc(F.editora)}) · conferido por ${esc(F.aprovadoPor)} em ${fmt(F.aprovadoEm)}</small>` : '<span class="muted">Nenhuma região aprovada na tabela.</span>'; };
+// Revisão da posição (etapa 4C): quem conferiu e quando, com histórico. A posição continua aproximada.
+const hm = iso => new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+function revisaoHtml(c){
+  const r = revisaoDe(db, c);
+  return `${r?.ok ? `<span class="pill ok" id="rev-ok">${ic('check')}posição revisada</span><small class="muted">Revisada por ${esc(r.por)} em ${fmt(r.em.slice(0, 10))} às ${hm(r.em)}</small><button class="btn sm ghost" data-act="bib-rev" data-c="${c}" data-ok="0">Retirar revisão</button>`
+    : `<span class="pill warn">posição não revisada</span><button class="btn sm" data-act="bib-rev" data-c="${c}" data-ok="1">${ic('check')}Marcar posição como revisada</button>`}
+    ${r?.hist?.length ? `<details class="mais"><summary>${ic('historico')}Histórico da revisão (${r.hist.length})</summary><ul class="fx-h-l">${r.hist.map(h => `<li>${esc(h.acao)} · ${esc(h.por)} · ${fmt(h.em.slice(0, 10))} às ${hm(h.em)}</li>`).join('')}</ul></details>` : ''}`;
+}
 function fichaPonto(c, fechar){
   const p = PT[c], m = meridianoDe(c), mer = MER[m], nota = bibliotecaDe(db).notas[c] || '', vistas = vistasDoPonto(c);
   const conteudo = p ? `<dl class="fx-dl"><dt>Meridiano</dt><dd>${esc(mer[0])} (${m})</dd><dt>Número</dt><dd>${esc(c.slice(m.length))}</dd>
@@ -3207,7 +3227,7 @@ function fichaPonto(c, fechar){
     <div class="notice fx-pend">${ic('info')}<div><b>Ficha pendente.</b> Nome, localização, ações, indicações e cautelas entram pela importação da fonte aprovada, com obra e página.</div></div>`;
   return `<div class="ficha" data-ficha="${c}"><div class="fx-h"><span class="fx-c">${c}</span><div class="grow"><b>${p ? esc(p.pinyin) : 'Nome pendente'}</b><small>${esc(mer[0])}${mer[1] ? ' · ' + elTag(mer[1]) : ''}</small></div>${p ? '<span class="pill ok">ficha</span>' : '<span class="pill warn fx-pend-t">ficha pendente</span>'}<button class="btn ghost sm fx-x" data-act="${fechar}" aria-label="Fechar a ficha">${ic('x')}</button></div>
     ${conteudo}
-    <div class="fx-pos"><span class="lbl">Posição no mapa</span>${vistas.length ? `<span>Aproximada · ${vistas.join(', ')}</span>` : '<span class="muted">Sem posição no mapa</span>'}</div>
+    <div class="fx-pos" id="fx-pos"><span class="lbl">Posição no mapa</span>${vistas.length ? `<span>Aproximada · ${vistas.join(', ')}</span>${revisaoHtml(c)}` : '<span class="muted">Sem posição no mapa</span>'}</div>
     <div class="fx-part"><label class="lbl" for="nota-${c}">Anotação particular da clínica</label><textarea id="nota-${c}" data-bibnota="${c}" placeholder="Fica na Particular e não altera a Central.">${esc(nota)}</textarea><small class="muted">${ic('escudo')}Particular · não altera a ficha Central</small></div></div>`;
 }
 function painelFicha(c, fechar, vazioT, vazioS){
@@ -3440,6 +3460,7 @@ function acaoBiblioteca(a,t){
   else if(a==='bib-pt'){ ui.bibSel=ui.bibSel===c?null:c; render(true); }
   else if(a==='bib-fx-x'){ ui.bibSel=null; render(true); }
   else if(a==='bib-pa-pt'){ if(!CODIGOS.includes(c)){ toast(`${c}: ponto não encontrado na Central`,'info'); return; } ui.bib='central'; ui.bibSel=c; ui.ptQ=''; ui.ptMer=''; render(true); }
+  else if(a==='bib-rev'){ const c=t.dataset.c, ok=t.dataset.ok==='1'; if(revisarPosicao(db,c,ok,PROF.nome,new Date().toISOString())){ save(); render(true); toast(ok?`Posição de ${c} revisada`:'Revisão retirada',ok?'ok':'info'); } }
   else if(a==='bib-pa-rm'){ if(!confirm('Apagar esta ficha particular?')) return; if(removerFichaParticular(db,t.dataset.id)){ save(); render(true); toast('Ficha particular apagada','info'); } }
   else if(a==='atl-tj'){ const k=t.dataset.k, i=A.ativos.indexOf(k); i<0?A.ativos.push(k):A.ativos.splice(i,1); if(i>=0&&A.traj===k) A.traj=null; render(true); }
   else if(a==='atl-todos'||a==='atl-nenhum'){ const L=t.dataset.g==='m'?MERIDIANOS:VASOS_ATLAS; A.ativos=a==='atl-todos'?[...new Set([...A.ativos,...L])]:A.ativos.filter(k=>!L.includes(k)); if(A.traj&&!A.ativos.includes(A.traj)) A.traj=null; render(true); }

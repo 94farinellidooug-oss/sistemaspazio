@@ -6,7 +6,7 @@ import { FACES, LARGURA, MERIDIANOS, PONTOS_NO_MAPA, SIGLA_VASO, TAM, VASOS_ATLA
 import { CAUT, CODIGOS, MER, NPT, POINTS, PT, meridianoDe } from '../conhecimento/pontos.js';
 import { FONTE_INDICACOES, regioesDoPonto } from '../conhecimento/indicacoes-regiao.js';
 import { PARES_VASOS } from '../dados/atendimento.js';
-import { bibliotecaDe } from '../dados/biblioteca.js';
+import { bibliotecaDe, revisaoDe } from '../dados/biblioteca.js';
 import { db } from '../dados/repositorio.js';
 import { ui } from '../estado.js';
 import { ic } from '../componentes/icones.js';
@@ -55,6 +55,14 @@ export function listaTodos(){
 // Regiões do corpo em que o livro indica o ponto, com a página. Só as linhas aprovadas por Mauren.
 const indRegioes = c => { const L = regioesDoPonto(c), F = FONTE_INDICACOES;
   return L.length ? `<span class="ind-r">${L.map(([r, pg]) => `<span class="pill">${esc(r)} · p. ${pg}</span>`).join('')}</span><small class="muted ind-f">${esc(F.autora)}, ${esc(F.obra)} (${esc(F.editora)}) · conferido por ${esc(F.aprovadoPor)} em ${fmt(F.aprovadoEm)}</small>` : '<span class="muted">Nenhuma região aprovada na tabela.</span>'; };
+// Revisão da posição (etapa 4C): quem conferiu e quando, com histórico. A posição continua aproximada.
+const hm = iso => new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+function revisaoHtml(c){
+  const r = revisaoDe(db, c);
+  return `${r?.ok ? `<span class="pill ok" id="rev-ok">${ic('check')}posição revisada</span><small class="muted">Revisada por ${esc(r.por)} em ${fmt(r.em.slice(0, 10))} às ${hm(r.em)}</small><button class="btn sm ghost" data-act="bib-rev" data-c="${c}" data-ok="0">Retirar revisão</button>`
+    : `<span class="pill warn">posição não revisada</span><button class="btn sm" data-act="bib-rev" data-c="${c}" data-ok="1">${ic('check')}Marcar posição como revisada</button>`}
+    ${r?.hist?.length ? `<details class="mais"><summary>${ic('historico')}Histórico da revisão (${r.hist.length})</summary><ul class="fx-h-l">${r.hist.map(h => `<li>${esc(h.acao)} · ${esc(h.por)} · ${fmt(h.em.slice(0, 10))} às ${hm(h.em)}</li>`).join('')}</ul></details>` : ''}`;
+}
 function fichaPonto(c, fechar){
   const p = PT[c], m = meridianoDe(c), mer = MER[m], nota = bibliotecaDe(db).notas[c] || '', vistas = vistasDoPonto(c);
   const conteudo = p ? `<dl class="fx-dl"><dt>Meridiano</dt><dd>${esc(mer[0])} (${m})</dd><dt>Número</dt><dd>${esc(c.slice(m.length))}</dd>
@@ -67,7 +75,7 @@ function fichaPonto(c, fechar){
     <div class="notice fx-pend">${ic('info')}<div><b>Ficha pendente.</b> Nome, localização, ações, indicações e cautelas entram pela importação da fonte aprovada, com obra e página.</div></div>`;
   return `<div class="ficha" data-ficha="${c}"><div class="fx-h"><span class="fx-c">${c}</span><div class="grow"><b>${p ? esc(p.pinyin) : 'Nome pendente'}</b><small>${esc(mer[0])}${mer[1] ? ' · ' + elTag(mer[1]) : ''}</small></div>${p ? '<span class="pill ok">ficha</span>' : '<span class="pill warn fx-pend-t">ficha pendente</span>'}<button class="btn ghost sm fx-x" data-act="${fechar}" aria-label="Fechar a ficha">${ic('x')}</button></div>
     ${conteudo}
-    <div class="fx-pos"><span class="lbl">Posição no mapa</span>${vistas.length ? `<span>Aproximada · ${vistas.join(', ')}</span>` : '<span class="muted">Sem posição no mapa</span>'}</div>
+    <div class="fx-pos" id="fx-pos"><span class="lbl">Posição no mapa</span>${vistas.length ? `<span>Aproximada · ${vistas.join(', ')}</span>${revisaoHtml(c)}` : '<span class="muted">Sem posição no mapa</span>'}</div>
     <div class="fx-part"><label class="lbl" for="nota-${c}">Anotação particular da clínica</label><textarea id="nota-${c}" data-bibnota="${c}" placeholder="Fica na Particular e não altera a Central.">${esc(nota)}</textarea><small class="muted">${ic('escudo')}Particular · não altera a ficha Central</small></div></div>`;
 }
 function painelFicha(c, fechar, vazioT, vazioS){

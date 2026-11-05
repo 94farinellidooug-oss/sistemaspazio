@@ -11,6 +11,7 @@ import { CAUT, CODIGOS, MER, PT, meridianoDe } from '../conhecimento/pontos.js';
 import { FACES, LARGURA, TAM, pontosProximos, VISTAS, desenho, iconeMarca, marcaSvg, pontosSvg, temPosicao, vistaNome, vistasDoPonto } from '../componentes/corpo.js';
 import { SIGN, SIGNS } from '../conhecimento/sinais.js';
 import { LADOS_MARCA, TIPOS_MARCA, atendimentosAnteriores, marcaComIntensidade, marcasDe, CATEGORIAS, ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, PARES_VASOS, categoriaDe, ehBasal, encaminhados, vasoDe, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
+import { revisaoDe } from '../dados/biblioteca.js';
 import { alertasDe } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
 import { db, patient } from '../dados/repositorio.js';
@@ -297,7 +298,7 @@ function fichaPontoMapa(p, a){
     ${d ? '' : `<div class="notice" id="fp-pend">${ic('info')}<div><b>Ficha pendente na Biblioteca clínica.</b> Localização, ações e cautelas deste ponto ainda não foram cadastradas. Confira no livro${ind.length ? ` (p. ${ind[0][1]})` : ''} antes de usar.</div></div>`}
     ${w.map(([k, t]) => `<div class="notice ${k === 'crit' ? 'crit' : ''}">${ic(k === 'crit' ? 'escudo' : 'alerta')}<div><b>${k === 'crit' ? 'Atenção' : 'Cautela'}</b> ${esc(t)}</div></div>`).join('')}
     <div class="ed-a">${rasc ? `<button class="btn sm ${noPlano ? '' : 'pri'}" data-act="at-mv-ptx" data-c="${esc(c)}">${noPlano ? `${ic('x')}Tirar do plano` : `${ic('mais')}Incluir no plano`}</button>` : ''}${noPlano ? '<span class="pill acc">no plano</span>' : ''}</div>
-    <small class="muted">${d ? 'Conteúdo da Biblioteca clínica. Posição no mapa aproximada.' : 'Sem ficha ainda.'}${ind.length ? ` Indicações: ${fonteInd()}` : ''}</small></div>`;
+    <small class="muted">${d ? `Conteúdo da Biblioteca clínica. Posição no mapa aproximada${temPosicao(c) ? (revisaoDe(db, c)?.ok ? `, <span id="fp-rev">revisada por ${esc(revisaoDe(db, c).por)} em ${fmt(revisaoDe(db, c).em.slice(0, 10))}</span>` : ', <span id="fp-rev">ainda não revisada</span>') : ''}.` : 'Sem ficha ainda.'}${ind.length ? ` Indicações: ${fonteInd()}` : ''}</small></div>`;
 }
 function eMapa(p, a){
   const M = ui.mapa, v = M.vista, f = faceMapa(v), [w, h] = TAM[v], rasc = a.status === 'rascunho';
