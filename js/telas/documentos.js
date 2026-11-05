@@ -7,6 +7,7 @@ import { db, patient } from '../dados/repositorio.js';
 import { ui } from '../estado.js';
 import { LOGO, ic } from '../componentes/icones.js';
 import { PROF } from './menu.js';
+import { btnWa } from './whatsapp.js';
 import { TODAY, esc, fmt } from '../util.js';
 
 const ctxDoc = () => ({ appts:db.appts, hoje:TODAY, prof:PROF.nome });
@@ -60,7 +61,7 @@ export function vDocumentos(){
       <div class="doc-m" role="group" aria-label="Modelo">${L.map(([c,n,i,,,s])=>`<button class="${c===k?'on':''}" data-act="doc-mod" data-m="${c}" aria-pressed="${c===k}">${ic(i)}<span>${esc(n)}</span>${s!=='original'?'<i class="pill acc">seu</i>':''}</button>`).join('')}
         <button class="novo" data-act="doc-novo-mod">${ic('mais')}<span>Novo modelo</span></button></div>
       ${falta ? `<div class="notice">${ic('info')}<div>${falta}</div></div>` : ''}
-      <div class="rx-a"><div class="chips"><button class="btn pri" data-act="doc-imp">${ic('doc')}Imprimir</button><button class="btn" data-act="doc-guardar">${ic('check')}Guardar no prontuário</button></div>
+      <div class="rx-a"><div class="chips"><button class="btn pri" data-act="doc-imp">${ic('doc')}Imprimir</button><button class="btn" data-act="doc-guardar">${ic('check')}Guardar no prontuário</button>${k==='orientacoes' && texto ? btnWa('orientacoes', p.id) : ''}</div>
         <button class="btn ghost" data-act="doc-editar">${ic('editar')}Editar este modelo</button></div></div>`}
     <div class="card" id="doc-pv-card"><div class="card-h"><h2>Prévia<small>${esc(p.name)} · só para conferir; o texto se muda no modelo</small></h2></div>
       <div class="doc-pv" id="doc-pv">${previaDoc()}</div></div>

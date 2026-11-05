@@ -4,7 +4,9 @@ import { SERVICOS, SITUACOES_HORARIO, fimHorario, horariosDoDia, horariosLivres,
 import { db, patient } from '../dados/repositorio.js';
 import { ui } from '../estado.js';
 import { ic } from '../componentes/icones.js';
-import { TODAY, addDays, brl, esc, fmt } from '../util.js';
+import { btnWa } from './whatsapp.js';
+import { lembreteDe } from '../dados/whatsapp.js';
+import { TODAY, addDays, brl, esc, fmt, horaLocal } from '../util.js';
 
 // Usado pelo Painel: início da semana atual (off = 0), anterior (-1) etc.
 export function weekStart(off){ const d=new Date(); const wd=(d.getDay()+6)%7; return addDays(-wd+off*7); }
@@ -24,7 +26,16 @@ function linhaHorario(a){
     <div class="hor-p"><button class="lk" data-act="open" data-pid="${a.pid}">${esc(p?.name||'Paciente removido')}</button><small>${esc(a.tipo)} · ${dur} min${a.hist?.length ? ` · <span class="hor-hi">${esc(a.hist[0])}</span>` : ''}</small></div>
     ${fora ? '<span class="pill">Desmarcado</span>' : `<div class="rx-seg st" role="group" aria-label="Situação">${SITUACOES_HORARIO.map(([k,n,i])=>`<button class="${k}${st===k?' on':''}" data-act="ag-st" data-id="${a.id}" data-s="${k}" aria-pressed="${st===k}" aria-label="${n}" data-tip="${n}">${ic(i)}</button>`).join('')}</div>`}
     <div class="hor-a">${fora ? `<button class="btn sm" data-act="ag-rem" data-id="${a.id}">${ic('agenda')}Reagendar</button>`
-      : `${a.date===TODAY && st!=='atendido' && st!=='faltou' && p ? `<button class="btn sm pri" data-act="novo-atendimento" data-pid="${a.pid}">${ic('play')}Atender</button>` : ''}<button class="btn sm ghost" data-act="ag-rem" data-id="${a.id}" aria-label="Remarcar" data-tip="Remarcar">${ic('agenda')}</button><button class="btn sm ghost" data-act="ag-desm" data-id="${a.id}" aria-label="Desmarcar" data-tip="Desmarcar">${ic('x')}</button>`}</div></div>`;
+      : `${a.date===TODAY && st!=='atendido' && st!=='faltou' && p ? `<button class="btn sm pri" data-act="novo-atendimento" data-pid="${a.pid}">${ic('play')}Atender</button>` : ''}${p && a.date>=TODAY && st!=='atendido' && st!=='faltou' ? btnWa('lembrete', a.pid, a.id, true) : ''}<button class="btn sm ghost" data-act="ag-rem" data-id="${a.id}" aria-label="Remarcar" data-tip="Remarcar">${ic('agenda')}</button><button class="btn sm ghost" data-act="ag-desm" data-id="${a.id}" aria-label="Desmarcar" data-tip="Desmarcar">${ic('x')}</button>`}</div></div>`;
+}
+
+// Lembretes de amanhã: um toque abre o WhatsApp com a mensagem pronta; fica anotado quando foi aberta.
+function lembretes(){
+  const am = addDays(1, TODAY), L = horariosDoDia(db.appts, am).filter(a => a.st !== 'faltou' && patient(a.pid));
+  if (!L.length) return '';
+  const falta = L.filter(a => !lembreteDe(patient(a.pid), a.id)).length;
+  return `<div class="card" id="lembretes"><div class="card-h"><h2>Lembretes de amanhã<small>um toque abre o WhatsApp com a mensagem pronta</small></h2><span class="pill ${falta ? 'warn' : 'ok'}" id="lem-falta">${falta ? `${falta} a enviar` : 'todos enviados'}</span></div>
+    <div class="hor-l">${L.map(a => { const p = patient(a.pid), m = lembreteDe(p, a.id); return `<div class="hor lem" data-lem="${a.id}"><div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div><div class="hor-p"><b>${esc(p.name)}</b><small>${esc(a.tipo)}</small>${m ? `<small class="wa-ok">${ic('check')}mensagem aberta às ${horaLocal(m.em)}</small>` : ''}</div><div class="hor-a">${btnWa('lembrete', a.pid, a.id)}</div></div>`; }).join('')}</div></div>`;
 }
 
 export function vAgenda(){
@@ -54,6 +65,7 @@ export function vAgenda(){
       </div>
       <p class="muted sm" style="margin:10px 0">${sv[1]} min · ${brl(sv[2])} (valor do serviço).${prox?` Próximo horário: ${fmt(prox.date)} às ${prox.time}.`:''}</p>
       <button class="btn pri">${ic('check')}${R?'Salvar novo horário':'Agendar'}</button></form>
+    ${lembretes()}
     <div class="card"><h2>Como funciona</h2><p class="muted sm">Toque num dia da semana para ver os horários. Ao lado de cada horário, marque confirmado, atendido ou faltou. <b>Atender</b> abre o atendimento; ao finalizar, o horário fica como atendido. Remarcar guarda de onde veio e desmarcar não apaga.</p>
-      <p class="muted sm" style="margin-top:8px">Confirmação e lembrete pelo WhatsApp entram na etapa 7.</p></div></div></div>`;
+      <p class="muted sm" style="margin-top:8px">O botão do WhatsApp abre a mensagem de lembrete pronta; é só conferir e enviar.</p></div></div></div>`;
 }

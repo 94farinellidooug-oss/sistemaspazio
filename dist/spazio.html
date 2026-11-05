@@ -1301,6 +1301,22 @@ input[type=checkbox]{accent-color:var(--brand)}
 .int-s{display:flex;flex-wrap:wrap;gap:5px}
 .int-s .chip{padding:4px 10px;font-size:.78rem}
 .tel{white-space:nowrap}
+
+/* Etapa 7A · WhatsApp com mensagem pronta */
+.btn.wa{color:#1f7a4d;border-color:#b9dcc8}
+.btn.wa .ic{color:#1f7a4d}
+.wa-ok{display:inline-flex;align-items:center;gap:4px;color:var(--ok);font-size:.76rem}
+.wa-ok .ic{width:13px;height:13px}
+.hor-p .wa-ok{white-space:nowrap}
+.hor.lem{grid-template-columns:auto minmax(0,1fr) auto}
+.wa-p{padding:18px 20px;top:10vh;max-height:calc(100vh - 12vh);overflow:auto}
+.wa-p h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wa-p h3 small{flex-basis:100%}
+.wa-p textarea{min-height:130px}
+.wa-p small a{color:var(--accent)}
+.f-msg .mod-raw{margin-top:8px;font-size:.84rem}
+@media (max-width:560px){.wa-p{top:auto;bottom:0;border-radius:16px 16px 0 0;width:100vw;max-height:88vh}}
+.f-msg textarea{min-height:96px}
 </style>
 
 
@@ -1323,6 +1339,8 @@ const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
 const addDays = (n, base) => { const d = base ? new Date(base+'T12:00:00') : new Date(); d.setDate(d.getDate()+n); return iso(d); };
 const TODAY = addDays(0);
 const fmt = s => s.split('-').reverse().join('/');
+// Hora local (hh:mm) de um instante ISO, como ficou registrado.
+const horaLocal = iso => new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 const uid = () => Math.random().toString(36).slice(2,9);
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -1555,7 +1573,7 @@ function importar(texto){
 }
 // ov: camada aberta (busca, notif, perfil, atalhos); q/bi: texto e item escolhido na busca global;
 // lidas: notificações já vistas nesta sessão; dia: dia escolhido no calendário do Painel; crumbs: migalhas.
-const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, docPid:null, docMod:null, docEd:null, relOcultos:false, novoInt:null, cadPrevio:null, pq:'', menuMini:false, menuAberto:false,
+const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, docPid:null, docMod:null, docEd:null, wa:null, relOcultos:false, novoInt:null, cadPrevio:null, pq:'', menuMini:false, menuAberto:false,
   ov:null, q:'', bi:0, lidas:new Set(), dia:null, crumbs:[],
   // Mapa corporal do atendimento (etapa 4A): vista, face, ampliação, ferramenta, marcação selecionada e camadas de comparação.
   // Biblioteca clínica (etapa 4B): área (central, particular, atlas), ficha aberta e estado do Atlas.
@@ -1677,6 +1695,7 @@ function concluirHorario(L, pid, d){
 // Ícones Lucide (lucide-static 0.469.0, licença ISC: https://lucide.dev/license).
 // Gerado a partir dos SVGs oficiais; só o conteúdo interno de cada ícone, traço 24px.
 const ICONES = {
+  "mensagem":"<path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\" />", // message-circle
   "painel":"<rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\" /><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\" /><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\" /><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\" />", // layout-dashboard
   "agenda":"<path d=\"M8 2v4\" /><path d=\"M16 2v4\" /><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\" /><path d=\"M3 10h18\" /><path d=\"M8 14h.01\" /><path d=\"M12 14h.01\" /><path d=\"M16 14h.01\" /><path d=\"M8 18h.01\" /><path d=\"M12 18h.01\" /><path d=\"M16 18h.01\" />", // calendar-days
   "pacientes":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /><path d=\"M16 3.13a4 4 0 0 1 0 7.75\" />", // users
@@ -1751,59 +1770,60 @@ const ic = (k, c='') => `<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" st
 const LOGO = `<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" style="fill:var(--brand)"/><circle cx="11.2" cy="14" r="5.4" style="fill:none;stroke:#fff;stroke-width:2"/><circle cx="16.8" cy="14" r="5.4" style="fill:none;stroke:#fff;stroke-width:2;opacity:.75"/></svg>`;
 // Estado vazio com ícone, título, explicação e ação opcional.
 const vazio = (i, t, txt, acao='') => `<div class="empty"><span class="empty-i">${ic(i)}</span><b>${t}</b><p>${txt}</p>${acao}</div>`;
-// horários livres conforme o serviço e agendar com paciente, serviço, dia e horário.
+//
+// O sistema monta a mensagem e abre o WhatsApp (link wa.me) com o número e o texto; quem envia é o
+// profissional. Fica anotado quando a mensagem foi aberta e por quem, no próprio paciente:
+//   p.relacionamento.mensagens = [{tipo, em, por, ap?}] (mais recente primeiro; ap = horário da agenda)
+// Mensagens prontas editadas pelo profissional ficam em db.mensagensWa = {lembrete:{texto, em, por}, ...}
+// (criado no primeiro salvar; salvar igual ao original volta ao original). Nada disso vai para a
+// exportação v1.
 
-// Usado pelo Painel: início da semana atual (off = 0), anterior (-1) etc.
-function weekStart(off){ const d=new Date(); const wd=(d.getDay()+6)%7; return addDays(-wd+off*7); }
-const diaSem = (d, o={weekday:'short'}) => new Date(d+'T12:00:00').toLocaleDateString('pt-BR',o).replace('.','');
-// Formulário de agendar: paciente, serviço, dia e horário. Começa no paciente escolhido e no dia aberto.
-function formAgenda(){
-  const F = ui.agForm ||= { pid:null, date:null, time:'', tipo:SERVICOS[0][0] };
-  F.pid ||= ui.bookPid || ui.pid; F.date ||= ui.agDia || TODAY;
-  return F;
-}
-const proximoDe = pid => db.appts.filter(a=>a.pid===pid && a.date>=TODAY && !a.done && a.st!=='desmarcado' && a.st!=='faltou').sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
+// [chave, nome, texto com os dados entre chaves]
+const MENSAGENS_WA = [
+  ['lembrete', 'Lembrete de horário', 'Olá, {primeiro}! Passando para lembrar do seu horário de {servico} {quando}, às {hora}, na {clinica}. Pode confirmar por aqui?'],
+  ['retomar', 'Retomar contato', 'Olá, {primeiro}! Tudo bem? Faz um tempinho desde o seu último atendimento. Quer agendar um horário para continuarmos o tratamento?'],
+  ['orientacoes', 'Orientações para casa', 'Olá, {primeiro}! Seguem as orientações do atendimento:\n\n{orientacoes}'],
+  ['livre', 'Mensagem livre', 'Olá, {primeiro}! ']
+];
+// Dados que o sistema preenche: [campo, rótulo do botão]
+const CAMPOS_WA = [['primeiro','Primeiro nome'], ['servico','Serviço'], ['quando','Dia'], ['hora','Hora'], ['clinica','Clínica'], ['profissional','Profissional'], ['orientacoes','Orientações']];
 
-function linhaHorario(a){
-  const p = patient(a.pid), st = situacaoHorario(a), fora = a.st === 'desmarcado', [, dur] = servicoDe(a.tipo);
-  return `<div class="hor ${fora ? 'desmarcado' : st}" data-hor="${a.id}">
-    <div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div>
-    <div class="hor-p"><button class="lk" data-act="open" data-pid="${a.pid}">${esc(p?.name||'Paciente removido')}</button><small>${esc(a.tipo)} · ${dur} min${a.hist?.length ? ` · <span class="hor-hi">${esc(a.hist[0])}</span>` : ''}</small></div>
-    ${fora ? '<span class="pill">Desmarcado</span>' : `<div class="rx-seg st" role="group" aria-label="Situação">${SITUACOES_HORARIO.map(([k,n,i])=>`<button class="${k}${st===k?' on':''}" data-act="ag-st" data-id="${a.id}" data-s="${k}" aria-pressed="${st===k}" aria-label="${n}" data-tip="${n}">${ic(i)}</button>`).join('')}</div>`}
-    <div class="hor-a">${fora ? `<button class="btn sm" data-act="ag-rem" data-id="${a.id}">${ic('agenda')}Reagendar</button>`
-      : `${a.date===TODAY && st!=='atendido' && st!=='faltou' && p ? `<button class="btn sm pri" data-act="novo-atendimento" data-pid="${a.pid}">${ic('play')}Atender</button>` : ''}<button class="btn sm ghost" data-act="ag-rem" data-id="${a.id}" aria-label="Remarcar" data-tip="Remarcar">${ic('agenda')}</button><button class="btn sm ghost" data-act="ag-desm" data-id="${a.id}" aria-label="Desmarcar" data-tip="Desmarcar">${ic('x')}</button>`}</div></div>`;
+// [chave, nome, texto, 'original' | 'editada']
+const mensagensWa = (M = {}) => MENSAGENS_WA.map(([k, n, t]) => M[k] ? [k, n, M[k].texto, 'editada'] : [k, n, t, 'original']);
+const mensagemWa = (k, M) => mensagensWa(M).find(m => m[0] === k) || null;
+function salvarMensagemWa(db, k, texto, em, por){
+  const o = MENSAGENS_WA.find(m => m[0] === k), t = String(texto || '').trim();
+  if (!o || !t) return null;
+  const M = db.mensagensWa ||= {};
+  if (t === o[2].trim()) delete M[k]; else M[k] = { texto: t, em, por };
+  return k;
 }
+const voltarMensagemWa = (db, k) => { if (db.mensagensWa?.[k]) { delete db.mensagensWa[k]; return true; } return false; };
 
-function vAgenda(){
-  const dia = ui.agDia ||= TODAY, ws = inicioSemana(dia), dias = [...Array(7)].map((_,i)=>addDays(i,ws));
-  const L = horariosDoDia(db.appts, dia), fora = db.appts.filter(a=>a.date===dia && a.st==='desmarcado');
-  const conta = k => L.filter(a=>situacaoHorario(a)===k).length;
-  const sem = db.appts.filter(a=>a.date>=dias[0] && a.date<=dias[6] && a.st!=='desmarcado');
-  const R = ui.remarcar && db.appts.find(a=>a.id===ui.remarcar), F = formAgenda(), sv = servicoDe(F.tipo), pid = R ? R.pid : F.pid;
-  const livres = horariosLivres(db.appts, F.date, F.tipo, R?.id), prox = !R && proximoDe(pid);
-  return `<div class="head"><div><h1>Agenda</h1><p>Semana de ${fmt(dias[0])} a ${fmt(dias[6])} · ${sem.length} horário${sem.length===1?'':'s'} · ${brl(sem.reduce((n,a)=>n+a.valor,0))}</p></div>
-    <div class="quick"><button class="btn" data-act="week" data-d="-1" aria-label="Semana anterior" data-tip="Semana anterior">${ic('esq')}</button><button class="btn" data-act="week" data-d="0">Hoje</button><button class="btn" data-act="week" data-d="1" aria-label="Próxima semana" data-tip="Próxima semana">${ic('dir')}</button><button class="btn pri" data-act="rolar" data-to="f-appt">${ic('mais')}Agendar</button></div></div>
-  <div class="ag-sem" role="tablist" aria-label="Dias da semana">${dias.map(d=>{ const n=horariosDoDia(db.appts,d).length;
-    return `<button role="tab" class="${d===dia?'on':''} ${d===TODAY?'hoje':''}" data-act="ag-dia" data-d="${d}" aria-selected="${d===dia}"><span>${diaSem(d)}</span><b>${d.slice(8)}</b><small>${n?`${n} hor.`:'livre'}</small></button>`; }).join('')}</div>
-  <div class="grid g-side ag-cols"><div class="card" id="ag-dia"><div class="card-h"><h2>${diaSem(dia,{weekday:'long',day:'2-digit',month:'2-digit'})}${dia===TODAY?' · hoje':''}<small>${L.length} horário${L.length===1?'':'s'} · ${brl(L.reduce((n,a)=>n+a.valor,0))}</small></h2>
-      <div class="rx-res"><span class="pill ok" data-cont="confirmado">Confirmados ${conta('confirmado')}</span><span class="pill" data-cont="agendado">A confirmar ${conta('agendado')}</span>${conta('atendido')?`<span class="pill acc" data-cont="atendido">Atendidos ${conta('atendido')}</span>`:''}${conta('faltou')?`<span class="pill crit" data-cont="faltou">Faltas ${conta('faltou')}</span>`:''}</div></div>
-    <div class="rx-leg" aria-hidden="true">${SITUACOES_HORARIO.map(([,n,i])=>`<span>${ic(i)}${n}</span>`).join('')}</div>
-    <div class="hor-l" id="ag-l">${L.map(linhaHorario).join('') || `<div class="vazio">${ic('agenda')}Nenhum horário neste dia.</div>`}</div>
-    ${fora.length?`<details class="ag-fora"><summary>${fora.length} desmarcado${fora.length>1?'s':''}</summary><div class="hor-l">${fora.map(linhaHorario).join('')}</div></details>`:''}
-    <div class="lbl" style="margin:14px 0 8px">Horários livres para ${esc(F.tipo.toLowerCase())}${F.date===dia?'':` em ${fmt(F.date)}`}</div>
-    <div class="chips" id="ag-livres">${livres.map(h=>`<button class="chip ${F.time===h?'on':''}" data-act="ag-livre" data-h="${h}">${h}</button>`).join('') || '<span class="muted sm">Dia cheio.</span>'}</div></div>
-  <div class="grid" style="align-content:start"><form class="card" id="f-appt"><div class="card-h"><h2>${R?'Remarcar':'Agendar'}<small>${R?`${esc(patient(R.pid)?.name||'')} · era ${fmt(R.date)} às ${R.time}`:'paciente, serviço e horário'}</small></h2>${R?'<button type="button" class="btn sm ghost" data-act="ag-rem-x">Cancelar</button>':''}</div>
-      <div class="ag-f">
-        <label class="rx-f full"><span class="lbl">Paciente</span><select id="na-p" data-agf="pid" ${R?'disabled':''}>${db.patients.map(p=>`<option value="${p.id}" ${p.id===pid?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>
-        <label class="rx-f full"><span class="lbl">Serviço</span><select id="na-tipo" data-agf="tipo">${[...SERVICOS, ...(SERVICOS.some(s=>s[0]===F.tipo)?[]:[servicoDe(F.tipo)])].map(([n,m])=>`<option value="${esc(n)}" ${n===F.tipo?'selected':''}>${esc(n)} · ${m} min</option>`).join('')}</select></label>
-        <label class="rx-f"><span class="lbl">Dia</span><input id="na-d" type="date" data-agf="date" value="${F.date}" required></label>
-        <label class="rx-f"><span class="lbl">Horário</span><input id="na-t" type="time" data-agf="time" value="${F.time}" required></label>
-      </div>
-      <p class="muted sm" style="margin:10px 0">${sv[1]} min · ${brl(sv[2])} (valor do serviço).${prox?` Próximo horário: ${fmt(prox.date)} às ${prox.time}.`:''}</p>
-      <button class="btn pri">${ic('check')}${R?'Salvar novo horário':'Agendar'}</button></form>
-    <div class="card"><h2>Como funciona</h2><p class="muted sm">Toque num dia da semana para ver os horários. Ao lado de cada horário, marque confirmado, atendido ou faltou. <b>Atender</b> abre o atendimento; ao finalizar, o horário fica como atendido. Remarcar guarda de onde veio e desmarcar não apaga.</p>
-      <p class="muted sm" style="margin-top:8px">Confirmação e lembrete pelo WhatsApp entram na etapa 7.</p></div></div></div>`;
+// Número para o link: só dígitos; com DDD e sem o 55 (10 ou 11 dígitos), o 55 entra na frente.
+function numeroWa(tel){
+  const d = String(tel || '').replace(/\D/g, '');
+  return d.length === 10 || d.length === 11 ? '55' + d : d.length >= 12 && d.length <= 13 ? d : '';
 }
+const linkWa = (tel, texto) => numeroWa(tel) ? `https://wa.me/${numeroWa(tel)}?text=${encodeURIComponent(texto)}` : '';
+
+// Valores para o paciente e, quando houver, o horário da agenda (a) e as orientações já escritas.
+function valoresWa(p, a, { hoje, amanha, clinica, prof, orientacoes = '' }){
+  const quando = !a ? '' : a.date === hoje ? 'hoje' : a.date === amanha ? 'amanhã' : `no dia ${fmt(a.date)}`;
+  return { primeiro: (p.name || '').trim().split(/\s+/)[0] || '', servico: a ? String(a.tipo || '').toLowerCase() : '', quando, hora: a ? a.time : '',
+    clinica, profissional: prof, orientacoes };
+}
+const preencherWa = (t, v) => t.replace(/\{(\w+)\}/g, (m, k) => k in v ? v[k] : m);
+
+// Anota que a mensagem foi aberta no WhatsApp.
+function registrarMensagem(p, { tipo, em, por, ap }){
+  if (!MENSAGENS_WA.some(m => m[0] === tipo)) return null;
+  const r = p.relacionamento ||= {}, m = { tipo, em, por, ...(ap ? { ap } : {}) };
+  (r.mensagens ||= []).unshift(m);
+  return m;
+}
+// Último lembrete aberto para um horário da agenda.
+const lembreteDe = (p, apId) => p?.relacionamento?.mensagens?.find(m => m.tipo === 'lembrete' && m.ap === apId) || null;
 //
 // Um rascunho fica em p.atendimentos com status 'rascunho'. Ele não aparece nas sessões (p.sessions)
 // nem na exportação para o protótipo: só entra no prontuário quando é finalizado. Campos além do
@@ -2273,9 +2293,9 @@ function notificacoes(){
 const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
   ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
 const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', atendimento:'Atendimento', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
-  crm:'Relacionamento', equipe:'Equipe e permissões', configuracoes:'Configurações'};
+  crm:'Relacionamento', mensagens:'Mensagens prontas', equipe:'Equipe e permissões', configuracoes:'Configurações'};
 // Item do menu que fica marcado em cada tela.
-const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
+const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', mensagens:'administracao', equipe:'administracao', configuracoes:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
 const PROF = {nome:'Maicon Farinelli', papel:'Profissional responsável'};
 
@@ -2334,6 +2354,110 @@ function renderNav(route){
      <button class="toggle" data-act="menu-mini" aria-label="${ui.menuMini?'Expandir menu':'Recolher menu'}" data-tip="${ui.menuMini?'Expandir menu ( [ )':''}">${ic(ui.menuMini?'abrir_menu':'fechar_menu')}<span class="tx">Recolher menu</span><kbd class="tx">[</kbd></button></div>`;
   camada();
 }
+// abrir o WhatsApp, e a tela Mensagens prontas (na Administração).
+
+// Botão "WhatsApp": tipo da mensagem pronta, paciente e (opcional) o horário da agenda.
+const btnWa = (tipo, pid, ap = '', so = false) => `<button class="btn sm wa" data-act="wa" data-t="${tipo}" data-pid="${pid}"${ap ? ` data-ap="${ap}"` : ''}${so ? ' aria-label="WhatsApp" data-tip="WhatsApp"' : ''}>${ic('mensagem')}${so ? '' : 'WhatsApp'}</button>`;
+
+// Texto da mensagem pronta já preenchido para o paciente.
+function textoWa(tipo, pid, ap){
+  const p = patient(pid), a = ap ? db.appts.find(x => x.id === ap) : null, m = mensagemWa(tipo, db.mensagensWa);
+  if (!p || !m) return '';
+  const orientacoes = tipo === 'orientacoes' ? valoresDoc(p, { appts:db.appts, hoje:TODAY, prof:PROF.nome }).orientacoes : '';
+  return preencherWa(m[2], valoresWa(p, a, { hoje:TODAY, amanha:addDays(1, TODAY), clinica:CLINICA, prof:PROF.nome, orientacoes }));
+}
+function abrirPainelWa(tipo, pid, ap){ ui.wa = { tipo, pid, ap: ap || '', texto: textoWa(tipo, pid, ap) }; ui.ov = 'wa'; }
+
+// Painel sobre a tela: mensagem pronta, ajuste só desta mensagem e Abrir no WhatsApp.
+function painelWa(){
+  const W = ui.wa, p = W && patient(W.pid); if (!p) return '';
+  const num = numeroWa(p.phone);
+  return `<div class="veu" data-act="fechar"></div><div class="pal wa-p" role="dialog" aria-modal="true" aria-label="Mensagem pelo WhatsApp">
+    <div class="card-h"><h3>${ic('mensagem')}Mensagem para ${esc(p.name.split(' ')[0])}<small>${p.phone ? esc(p.phone) : 'sem telefone no cadastro'}</small></h3><button class="ib" data-act="fechar" aria-label="Fechar">${ic('x')}</button></div>
+    <div class="chips" role="group" aria-label="Mensagem pronta">${mensagensWa(db.mensagensWa).map(([k, n]) => `<button class="chip ${k === W.tipo ? 'on' : ''}" data-act="wa-tipo" data-k="${k}" aria-pressed="${k === W.tipo}">${n}</button>`).join('')}</div>
+    <label class="rx-f full" style="margin-top:10px"><span class="lbl">Mensagem</span><textarea id="wa-t" rows="6">${esc(W.texto)}</textarea></label>
+    <small class="muted">Ajuste se quiser; vale só para esta mensagem. Para mudar o texto padrão, use <a href="#mensagens" data-act="fechar-ir">Mensagens prontas</a>.</small>
+    ${num ? '' : `<div class="notice" style="margin-top:10px">${ic('info')}<div>Cadastre o telefone do paciente (com DDD) para enviar pelo WhatsApp.</div></div>`}
+    <div class="rx-a"><button class="btn pri" data-act="wa-abrir" ${num ? '' : 'disabled'}>${ic('mensagem')}Abrir no WhatsApp</button><button class="btn" data-act="fechar">Cancelar</button></div></div>`;
+}
+
+const comCamposWa = t => esc(t).split(/\n{2,}/).map(x => `<p>${x.replace(/\n/g, '<br>')}</p>`).join('').replace(/\{(\w+)\}/g, (s, k) => { const c = CAMPOS_WA.find(x => x[0] === k); return c ? `<span class="cp">${c[1]}</span>` : s; });
+// Tela Mensagens prontas: um campo por mensagem, botões para inserir os dados e voltar ao original.
+function vMensagens(){
+  ui.crumbs = [['#administracao','Administração'],[null,'Mensagens prontas']];
+  return `<div class="head"><div><h1>Mensagens prontas</h1><p>Os textos que aparecem quando você toca em WhatsApp</p></div></div>
+  <div class="grid g-side ag-cols"><div class="grid" style="align-content:start">${mensagensWa(db.mensagensWa).filter(m => m[0] !== 'livre').map(([k, n, t, s]) => `<form class="card f-msg" data-k="${k}"><div class="card-h"><h2>${n}</h2>${s === 'editada' ? '<span class="pill acc">sua</span>' : '<span class="pill">original</span>'}</div>
+      <div class="chips cps">${CAMPOS_WA.map(([c, r]) => `<button type="button" class="chip" data-act="msg-campo" data-k="${c}">${ic('mais')}${r}</button>`).join('')}</div>
+      <label class="rx-f full" style="margin-top:8px"><span class="lbl">Texto</span><textarea rows="4" data-msg="${k}">${esc(t)}</textarea></label>
+      <div class="mod-raw sm" data-raw="${k}">${comCamposWa(t)}</div>
+      <div class="rx-a"><button class="btn sm pri">${ic('check')}Salvar</button>${s === 'editada' ? `<button type="button" class="btn ghost sm" data-act="msg-orig" data-k="${k}">${ic('retorno')}Voltar ao texto original</button>` : ''}</div></form>`).join('')}</div>
+    <div class="card"><h2>Como funciona</h2><p class="muted sm">Ao tocar em <b>WhatsApp</b> na Agenda, no Relacionamento ou em Documentos, a mensagem abre já escrita; você confere e toca em Enviar no WhatsApp. Os dados entre chaves são preenchidos sozinhos. Na hora de enviar ainda dá para ajustar só aquela mensagem.</p>
+      <p class="muted sm" style="margin-top:8px">O sistema anota quando a mensagem foi aberta e por quem. Sem custo e sem cadastro em serviço externo.</p></div></div>`;
+}
+const textoComCamposWa = comCamposWa;
+// horários livres conforme o serviço e agendar com paciente, serviço, dia e horário.
+
+// Usado pelo Painel: início da semana atual (off = 0), anterior (-1) etc.
+function weekStart(off){ const d=new Date(); const wd=(d.getDay()+6)%7; return addDays(-wd+off*7); }
+const diaSem = (d, o={weekday:'short'}) => new Date(d+'T12:00:00').toLocaleDateString('pt-BR',o).replace('.','');
+// Formulário de agendar: paciente, serviço, dia e horário. Começa no paciente escolhido e no dia aberto.
+function formAgenda(){
+  const F = ui.agForm ||= { pid:null, date:null, time:'', tipo:SERVICOS[0][0] };
+  F.pid ||= ui.bookPid || ui.pid; F.date ||= ui.agDia || TODAY;
+  return F;
+}
+const proximoDe = pid => db.appts.filter(a=>a.pid===pid && a.date>=TODAY && !a.done && a.st!=='desmarcado' && a.st!=='faltou').sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
+
+function linhaHorario(a){
+  const p = patient(a.pid), st = situacaoHorario(a), fora = a.st === 'desmarcado', [, dur] = servicoDe(a.tipo);
+  return `<div class="hor ${fora ? 'desmarcado' : st}" data-hor="${a.id}">
+    <div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div>
+    <div class="hor-p"><button class="lk" data-act="open" data-pid="${a.pid}">${esc(p?.name||'Paciente removido')}</button><small>${esc(a.tipo)} · ${dur} min${a.hist?.length ? ` · <span class="hor-hi">${esc(a.hist[0])}</span>` : ''}</small></div>
+    ${fora ? '<span class="pill">Desmarcado</span>' : `<div class="rx-seg st" role="group" aria-label="Situação">${SITUACOES_HORARIO.map(([k,n,i])=>`<button class="${k}${st===k?' on':''}" data-act="ag-st" data-id="${a.id}" data-s="${k}" aria-pressed="${st===k}" aria-label="${n}" data-tip="${n}">${ic(i)}</button>`).join('')}</div>`}
+    <div class="hor-a">${fora ? `<button class="btn sm" data-act="ag-rem" data-id="${a.id}">${ic('agenda')}Reagendar</button>`
+      : `${a.date===TODAY && st!=='atendido' && st!=='faltou' && p ? `<button class="btn sm pri" data-act="novo-atendimento" data-pid="${a.pid}">${ic('play')}Atender</button>` : ''}${p && a.date>=TODAY && st!=='atendido' && st!=='faltou' ? btnWa('lembrete', a.pid, a.id, true) : ''}<button class="btn sm ghost" data-act="ag-rem" data-id="${a.id}" aria-label="Remarcar" data-tip="Remarcar">${ic('agenda')}</button><button class="btn sm ghost" data-act="ag-desm" data-id="${a.id}" aria-label="Desmarcar" data-tip="Desmarcar">${ic('x')}</button>`}</div></div>`;
+}
+
+// Lembretes de amanhã: um toque abre o WhatsApp com a mensagem pronta; fica anotado quando foi aberta.
+function lembretes(){
+  const am = addDays(1, TODAY), L = horariosDoDia(db.appts, am).filter(a => a.st !== 'faltou' && patient(a.pid));
+  if (!L.length) return '';
+  const falta = L.filter(a => !lembreteDe(patient(a.pid), a.id)).length;
+  return `<div class="card" id="lembretes"><div class="card-h"><h2>Lembretes de amanhã<small>um toque abre o WhatsApp com a mensagem pronta</small></h2><span class="pill ${falta ? 'warn' : 'ok'}" id="lem-falta">${falta ? `${falta} a enviar` : 'todos enviados'}</span></div>
+    <div class="hor-l">${L.map(a => { const p = patient(a.pid), m = lembreteDe(p, a.id); return `<div class="hor lem" data-lem="${a.id}"><div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div><div class="hor-p"><b>${esc(p.name)}</b><small>${esc(a.tipo)}</small>${m ? `<small class="wa-ok">${ic('check')}mensagem aberta às ${horaLocal(m.em)}</small>` : ''}</div><div class="hor-a">${btnWa('lembrete', a.pid, a.id)}</div></div>`; }).join('')}</div></div>`;
+}
+
+function vAgenda(){
+  const dia = ui.agDia ||= TODAY, ws = inicioSemana(dia), dias = [...Array(7)].map((_,i)=>addDays(i,ws));
+  const L = horariosDoDia(db.appts, dia), fora = db.appts.filter(a=>a.date===dia && a.st==='desmarcado');
+  const conta = k => L.filter(a=>situacaoHorario(a)===k).length;
+  const sem = db.appts.filter(a=>a.date>=dias[0] && a.date<=dias[6] && a.st!=='desmarcado');
+  const R = ui.remarcar && db.appts.find(a=>a.id===ui.remarcar), F = formAgenda(), sv = servicoDe(F.tipo), pid = R ? R.pid : F.pid;
+  const livres = horariosLivres(db.appts, F.date, F.tipo, R?.id), prox = !R && proximoDe(pid);
+  return `<div class="head"><div><h1>Agenda</h1><p>Semana de ${fmt(dias[0])} a ${fmt(dias[6])} · ${sem.length} horário${sem.length===1?'':'s'} · ${brl(sem.reduce((n,a)=>n+a.valor,0))}</p></div>
+    <div class="quick"><button class="btn" data-act="week" data-d="-1" aria-label="Semana anterior" data-tip="Semana anterior">${ic('esq')}</button><button class="btn" data-act="week" data-d="0">Hoje</button><button class="btn" data-act="week" data-d="1" aria-label="Próxima semana" data-tip="Próxima semana">${ic('dir')}</button><button class="btn pri" data-act="rolar" data-to="f-appt">${ic('mais')}Agendar</button></div></div>
+  <div class="ag-sem" role="tablist" aria-label="Dias da semana">${dias.map(d=>{ const n=horariosDoDia(db.appts,d).length;
+    return `<button role="tab" class="${d===dia?'on':''} ${d===TODAY?'hoje':''}" data-act="ag-dia" data-d="${d}" aria-selected="${d===dia}"><span>${diaSem(d)}</span><b>${d.slice(8)}</b><small>${n?`${n} hor.`:'livre'}</small></button>`; }).join('')}</div>
+  <div class="grid g-side ag-cols"><div class="card" id="ag-dia"><div class="card-h"><h2>${diaSem(dia,{weekday:'long',day:'2-digit',month:'2-digit'})}${dia===TODAY?' · hoje':''}<small>${L.length} horário${L.length===1?'':'s'} · ${brl(L.reduce((n,a)=>n+a.valor,0))}</small></h2>
+      <div class="rx-res"><span class="pill ok" data-cont="confirmado">Confirmados ${conta('confirmado')}</span><span class="pill" data-cont="agendado">A confirmar ${conta('agendado')}</span>${conta('atendido')?`<span class="pill acc" data-cont="atendido">Atendidos ${conta('atendido')}</span>`:''}${conta('faltou')?`<span class="pill crit" data-cont="faltou">Faltas ${conta('faltou')}</span>`:''}</div></div>
+    <div class="rx-leg" aria-hidden="true">${SITUACOES_HORARIO.map(([,n,i])=>`<span>${ic(i)}${n}</span>`).join('')}</div>
+    <div class="hor-l" id="ag-l">${L.map(linhaHorario).join('') || `<div class="vazio">${ic('agenda')}Nenhum horário neste dia.</div>`}</div>
+    ${fora.length?`<details class="ag-fora"><summary>${fora.length} desmarcado${fora.length>1?'s':''}</summary><div class="hor-l">${fora.map(linhaHorario).join('')}</div></details>`:''}
+    <div class="lbl" style="margin:14px 0 8px">Horários livres para ${esc(F.tipo.toLowerCase())}${F.date===dia?'':` em ${fmt(F.date)}`}</div>
+    <div class="chips" id="ag-livres">${livres.map(h=>`<button class="chip ${F.time===h?'on':''}" data-act="ag-livre" data-h="${h}">${h}</button>`).join('') || '<span class="muted sm">Dia cheio.</span>'}</div></div>
+  <div class="grid" style="align-content:start"><form class="card" id="f-appt"><div class="card-h"><h2>${R?'Remarcar':'Agendar'}<small>${R?`${esc(patient(R.pid)?.name||'')} · era ${fmt(R.date)} às ${R.time}`:'paciente, serviço e horário'}</small></h2>${R?'<button type="button" class="btn sm ghost" data-act="ag-rem-x">Cancelar</button>':''}</div>
+      <div class="ag-f">
+        <label class="rx-f full"><span class="lbl">Paciente</span><select id="na-p" data-agf="pid" ${R?'disabled':''}>${db.patients.map(p=>`<option value="${p.id}" ${p.id===pid?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>
+        <label class="rx-f full"><span class="lbl">Serviço</span><select id="na-tipo" data-agf="tipo">${[...SERVICOS, ...(SERVICOS.some(s=>s[0]===F.tipo)?[]:[servicoDe(F.tipo)])].map(([n,m])=>`<option value="${esc(n)}" ${n===F.tipo?'selected':''}>${esc(n)} · ${m} min</option>`).join('')}</select></label>
+        <label class="rx-f"><span class="lbl">Dia</span><input id="na-d" type="date" data-agf="date" value="${F.date}" required></label>
+        <label class="rx-f"><span class="lbl">Horário</span><input id="na-t" type="time" data-agf="time" value="${F.time}" required></label>
+      </div>
+      <p class="muted sm" style="margin:10px 0">${sv[1]} min · ${brl(sv[2])} (valor do serviço).${prox?` Próximo horário: ${fmt(prox.date)} às ${prox.time}.`:''}</p>
+      <button class="btn pri">${ic('check')}${R?'Salvar novo horário':'Agendar'}</button></form>
+    ${lembretes()}
+    <div class="card"><h2>Como funciona</h2><p class="muted sm">Toque num dia da semana para ver os horários. Ao lado de cada horário, marque confirmado, atendido ou faltou. <b>Atender</b> abre o atendimento; ao finalizar, o horário fica como atendido. Remarcar guarda de onde veio e desmarcar não apaga.</p>
+      <p class="muted sm" style="margin-top:8px">O botão do WhatsApp abre a mensagem de lembrete pronta; é só conferir e enviar.</p></div></div></div>`;
+}
 // lista dos documentos do paciente com a marcação de termo assinado.
 // Os modelos são editados na própria página, num campo comum, com botões para inserir os dados do
 // sistema (proposta/modelos, aprovada pelo Maicon em 05/11). A folha é só prévia: não se edita ali.
@@ -2389,7 +2513,7 @@ function vDocumentos(){
       <div class="doc-m" role="group" aria-label="Modelo">${L.map(([c,n,i,,,s])=>`<button class="${c===k?'on':''}" data-act="doc-mod" data-m="${c}" aria-pressed="${c===k}">${ic(i)}<span>${esc(n)}</span>${s!=='original'?'<i class="pill acc">seu</i>':''}</button>`).join('')}
         <button class="novo" data-act="doc-novo-mod">${ic('mais')}<span>Novo modelo</span></button></div>
       ${falta ? `<div class="notice">${ic('info')}<div>${falta}</div></div>` : ''}
-      <div class="rx-a"><div class="chips"><button class="btn pri" data-act="doc-imp">${ic('doc')}Imprimir</button><button class="btn" data-act="doc-guardar">${ic('check')}Guardar no prontuário</button></div>
+      <div class="rx-a"><div class="chips"><button class="btn pri" data-act="doc-imp">${ic('doc')}Imprimir</button><button class="btn" data-act="doc-guardar">${ic('check')}Guardar no prontuário</button>${k==='orientacoes' && texto ? btnWa('orientacoes', p.id) : ''}</div>
         <button class="btn ghost" data-act="doc-editar">${ic('editar')}Editar este modelo</button></div></div>`}
     <div class="card" id="doc-pv-card"><div class="card-h"><h2>Prévia<small>${esc(p.name)} · só para conferir; o texto se muda no modelo</small></h2></div>
       <div class="doc-pv" id="doc-pv">${previaDoc()}</div></div>
@@ -2458,7 +2582,7 @@ function vRelacionamento(){
   return `<div class="head"><div><h1>Relacionamento</h1><p>Quem retomar contato e quem procurou e ainda não é paciente</p></div></div>
   <div class="grid g-side ag-cols"><div class="card" id="rel-ret"><div class="card-h"><h2>Retomar contato<small>último atendimento há mais de 21 dias e nada agendado</small></h2><span class="pill warn">${vis.length}</span></div>
       <div class="ctt-l">${L.map(({p,ult,dias,contato,oculto})=>`<div class="ctt ${oculto?'oc':''}" data-rel="${p.id}"><span class="avatar">${initials(p.name)}</span><div class="grow"><button class="lk" data-act="open" data-pid="${p.id}">${esc(p.name)}</button><small>há ${dias} dias · ${fmt(ult)}${p.phone?` · <span class="tel">${esc(p.phone)}</span>`:''}</small>${contato?`<small class="ctt-c">${ic('check')}contato em ${fmt(contato.em.slice(0,10))} · ${esc(contato.por)}</small>`:''}</div>
-        <div class="hor-a">${oculto?`<button class="btn sm ghost" data-act="rel-volta" data-pid="${p.id}">Mostrar de novo</button>`:`<button class="btn sm pri" data-act="rel-agendar" data-pid="${p.id}">${ic('agenda')}Agendar</button><button class="btn sm ${contato?.em.slice(0,10)===TODAY?'ghost':''}" data-act="rel-contato" data-pid="${p.id}" ${contato?.em.slice(0,10)===TODAY?'disabled':''}>${ic('tel')}Contato feito</button><button class="btn sm ghost" data-act="rel-ocultar" data-pid="${p.id}" aria-label="Não retomar" data-tip="Não retomar">${ic('x')}</button>`}</div></div>`).join('') || `<div class="vazio">${ic('okc')}Ninguém para retomar agora.</div>`}</div>
+        <div class="hor-a">${oculto?`<button class="btn sm ghost" data-act="rel-volta" data-pid="${p.id}">Mostrar de novo</button>`:`${btnWa('retomar', p.id)}<button class="btn sm pri" data-act="rel-agendar" data-pid="${p.id}">${ic('agenda')}Agendar</button><button class="btn sm ${contato?.em.slice(0,10)===TODAY?'ghost':''}" data-act="rel-contato" data-pid="${p.id}" ${contato?.em.slice(0,10)===TODAY?'disabled':''}>${ic('tel')}Contato feito</button><button class="btn sm ghost" data-act="rel-ocultar" data-pid="${p.id}" aria-label="Não retomar" data-tip="Não retomar">${ic('x')}</button>`}</div></div>`).join('') || `<div class="vazio">${ic('okc')}Ninguém para retomar agora.</div>`}</div>
       ${oc?`<button class="btn sm ghost" data-act="rel-ver-oc" style="margin-top:10px">${ui.relOcultos?'Esconder':'Mostrar'} ${oc} que você preferiu não retomar</button>`:''}</div>
     <div class="grid" style="align-content:start"><div class="card" id="rel-int"><div class="card-h"><h2>Interessados<small>quem procurou e ainda não é paciente</small></h2><span class="pill">${I.filter(i=>i.sit==='novo'||i.sit==='agendou').length}</span></div>
       <div class="ctt-l">${I.map(i=>`<div class="ctt int ${i.sit}" data-int="${i.id}"><div class="grow"><b>${esc(i.nome)}</b><small>${i.tel?`<span class="tel">${esc(i.tel)}</span> · `:''}${esc(i.origem)} · ${fmt(i.em.slice(0,10))}</small></div>
@@ -2467,7 +2591,7 @@ function vRelacionamento(){
         <label class="rx-f"><span class="lbl">Telefone</span><input id="int-tel" data-int="tel" value="${esc(N.tel)}" inputmode="tel" autocomplete="off"></label>
         <label class="rx-f"><span class="lbl">Como chegou</span><select id="int-origem" data-int="origem">${ORIGENS.map(o=>`<option ${o===N.origem?'selected':''}>${o}</option>`).join('')}</select></label>
         <div class="full"><button class="btn sm pri">${ic('mais')}Incluir interessado</button></div></form></div>
-      <div class="card"><h2>Como funciona</h2><p class="muted sm">A lista de retomar contato se monta sozinha pela agenda e pelos atendimentos. <b>Contato feito</b> registra o dia e quem falou. Em <b>Paciente</b>, o cadastro abre com o nome e o telefone do interessado. Mensagens pelo WhatsApp entram na etapa 7.</p></div></div></div>`;
+      <div class="card"><h2>Como funciona</h2><p class="muted sm">A lista de retomar contato se monta sozinha pela agenda e pelos atendimentos. <b>Contato feito</b> registra o dia e quem falou. Em <b>Paciente</b>, o cadastro abre com o nome e o telefone do interessado. <b>WhatsApp</b> abre a mensagem pronta e já registra o contato feito.</p></div></div></div>`;
 }
 const EL = {
   madeira:{nome:'Madeira',han:'木',cor:'var(--wood)',ang:198,zang:'Fígado',fu:'Vesícula Biliar',emocao:'Raiva',estacao:'Primavera',clima:'Vento',sentido:'Olhos',tecido:'Tendões',sabor:'Ácido',som:'Grito',espirito:'Hun',funcoes:['Armazena o Xue','Garante o livre fluxo do Qi','Nutre tendões e olhos']},
@@ -3628,6 +3752,7 @@ function previaCadastro(){
 
 const MODULOS = {
   crm:{etapa:6,i:'tel',feito:true,texto:'Quem retomar contato e quem procurou e ainda não é paciente.'},
+  mensagens:{etapa:7,i:'mensagem',feito:true,texto:'Os textos do WhatsApp: lembrete de horário, retomar contato e orientações.'},
   financeiro:{etapa:8,i:'financeiro',texto:'Gestão financeira da clínica, separando o valor contratado do valor efetivamente recebido.',itens:['Contas a pagar e a receber','Fluxo de caixa','Pagamentos parciais e recorrentes','Pacotes terapêuticos e comissões','Inadimplência','Emissão de NFS-e por provedor integrador']},
   relatorios:{etapa:9,i:'relatorios',texto:'Indicadores clínicos, comerciais e financeiros.',itens:['Desempenho clínico','Conversão comercial','Agenda e ocupação','Financeiro','Desempenho por profissional','Desempenho por serviço']},
   equipe:{etapa:10,i:'pacientes',texto:'Profissionais, especialidades e permissões de acesso por clínica.',itens:['Perfil único por profissional','Especialidades e modalidades','Permissões por perfil','Várias clínicas','Pacientes compartilhados conforme permissão','Registro de atividades']},
@@ -3644,7 +3769,7 @@ function vEmBreve(k){
 
 function vAdministracao(){
   return `<div class="head"><div><h1>Administração</h1><p>Equipe, configurações da clínica e relacionamento com pacientes</p></div></div>
-  <div class="adm">${['equipe','configuracoes','crm'].map(k=>{const m=MODULOS[k]; return `<a class="adm-c" href="#${k}"><span class="tico acc">${ic(m.i)}</span><span class="grow"><b>${LABEL[k]}</b><small>${m.texto}</small></span>${m.feito?'<span class="pill ok">disponível</span>':`<span class="pill">etapa ${m.etapa}</span>`}</a>`;}).join('')}</div>
+  <div class="adm">${['equipe','configuracoes','crm','mensagens'].map(k=>{const m=MODULOS[k]; return `<a class="adm-c" href="#${k}"><span class="tico acc">${ic(m.i)}</span><span class="grow"><b>${LABEL[k]}</b><small>${m.texto}</small></span>${m.feito?'<span class="pill ok">disponível</span>':`<span class="pill">etapa ${m.etapa}</span>`}</a>`;}).join('')}</div>
   <div class="grid g2" style="margin-top:20px">
     <div class="card" id="dados"><div class="card-h"><h2>Dados e cópia de segurança</h2><span class="tico sm acc">${ic('escudo')}</span></div>
       <div class="ac-s" style="margin-bottom:14px"><div><small>Pacientes</small><b>${db.patients.length}</b></div><div><small>Atendimentos</small><b>${db.patients.reduce((n,p)=>n+p.atendimentos.length,0)}</b></div><div><small>Agendamentos</small><b>${db.appts.length}</b></div></div>
@@ -3923,7 +4048,7 @@ function vAtlas(){
     <aside class="fx-panel${A.sel || A.traj ? ' aberta' : ''}" aria-label="Ficha"><div class="card">${painel}</div></aside>
   </div>`;
 }
-const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento};
+const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -3931,6 +4056,7 @@ function render(keepScroll){
   const r=route(), y=scrollY, v=document.getElementById('view');
   ui.crumbs=[]; const html=VIEWS[r](); renderNav(r);
   v.innerHTML=html;
+  if(ui.ov==='wa'){ const c=document.getElementById('camada'); c.innerHTML=painelWa(); if(!c.innerHTML) ui.ov=null; }
   // Transição suave só quando a tela muda (não a cada clique dentro dela).
   if(r!==ultimaRota){ v.classList.remove('entra'); void v.offsetWidth; v.classList.add('entra'); ultimaRota=r; }
   if(keepScroll) scrollTo(0,y);
@@ -3990,6 +4116,15 @@ document.addEventListener('click',ev=>{
   else if(a.startsWith('bib-')||a.startsWith('atl-')){ acaoBiblioteca(a,t); }
   else if(a==='busca'||a==='notif'||a==='perfil'||a==='atalhos'){ abrir(a); }
   else if(a==='fechar'){ ui.ov=null; render(true); }
+  else if(a==='fechar-ir'){ ui.ov=null; ui.wa=null; }
+  else if(a==='wa'){ abrirPainelWa(t.dataset.t,t.dataset.pid,t.dataset.ap); render(true); document.getElementById('wa-t')?.focus(); }
+  else if(a==='wa-tipo'){ abrirPainelWa(t.dataset.k,ui.wa.pid,ui.wa.ap); render(true); }
+  else if(a==='wa-abrir'){ const W=ui.wa, p=patient(W?.pid), url=p&&linkWa(p.phone,document.getElementById('wa-t').value); if(!url) return;
+    window.open(url,'_blank','noopener'); const em=new Date().toISOString(); registrarMensagem(p,{tipo:W.tipo,em,por:PROF.nome,ap:W.ap});
+    if(W.tipo==='retomar') registrarContato(p,em,PROF.nome); ui.ov=null; ui.wa=null; save(); render(true); toast(W.tipo==='retomar'?'WhatsApp aberto; contato registrado':'WhatsApp aberto com a mensagem'); }
+  else if(a==='msg-campo'){ const ta=t.closest('form').querySelector('textarea'), c=`{${t.dataset.k}}`, i=ta.selectionStart??ta.value.length, f=ta.selectionEnd??i;
+    ta.value=ta.value.slice(0,i)+c+ta.value.slice(f); ta.focus(); ta.setSelectionRange(i+c.length,i+c.length); ta.dispatchEvent(new Event('input',{bubbles:true})); }
+  else if(a==='msg-orig'){ if(voltarMensagemWa(db,t.dataset.k)){ save(); render(true); toast('Mensagem de volta ao texto original'); } }
   else if(a==='ler-todas'){ notificacoes().forEach(n=>ui.lidas.add(n.k)); ui.ov=null; render(true); toast('Notificações marcadas como lidas'); }
   else if(a==='aviso'){ ui.ov=null; render(true); toast(t.dataset.m,'info'); }
   else if(a==='dia'){ ui.dia=t.dataset.d; render(true); }
@@ -4047,6 +4182,7 @@ document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.dataset.agf==='time'){ formAgenda().time=t.value; return; }
   if(t.dataset.int&&t.tagName==='INPUT'){ (ui.novoInt||={nome:'',tel:'',origem:'Instagram'})[t.dataset.int]=t.value; return; }
+  if(t.dataset.msg){ const r=document.querySelector(`[data-raw="${t.dataset.msg}"]`); if(r) r.innerHTML=textoComCamposWa(t.value); return; }
   if(t.dataset.doced&&ui.docEd){ ui.docEd[t.dataset.doced]=t.type==='checkbox'?t.checked:t.value; previaModelo(); return; }
   if(t.id==='pal-q'){ ui.q=t.value; ui.bi=0; document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(t.id==='pq'){ ui.pq=t.value; document.getElementById('plist').innerHTML=patientRows(); }
@@ -4230,6 +4366,8 @@ document.addEventListener('submit',ev=>{
   if(f.id==='f-rx-corr'){ const x=atendimentoAberto(), C=ui.rxCorr; if(!x||!C) return; if(!C.motivo.trim()){ toast('Escreva o motivo da correção','info'); return; }
     const em=new Date().toISOString(), mud=corrigirPonto(x.a,C.c,C,C.motivo,PROF.nome,em); if(!mud){ toast('Nada mudou neste ponto','info'); return; }
     ui.rxCorr=null; mudou(`plano terapêutico: correção de ${C.c} (${mud.map(([k,a,b])=>`${k.toLowerCase()}: ${a} → ${b}`).join('; ')}). Motivo: ${C.motivo.trim()}`); toast('Correção registrada'); return; }
+  if(f.matches('.f-msg')){ const k=f.dataset.k, tx=f.querySelector('textarea').value; if(!tx.trim()){ toast('Escreva o texto da mensagem','info'); return; }
+    salvarMensagemWa(db,k,tx,new Date().toISOString(),PROF.nome); save(); render(true); toast('Mensagem salva'); return; }
   if(f.id==='f-mod'){ const E=ui.docEd; if(!E) return; if(!E.nome.trim()||!E.texto.trim()){ toast('Dê um nome e escreva o texto do modelo','info'); return; }
     const k=salvarModelo(db,E.novo?null:ui.docMod,E,new Date().toISOString(),PROF.nome,'mod-'+uid()); if(!k) return;
     ui.docMod=k; ui.docEd=null; save(); render(true); toast(E.novo?'Modelo criado':'Modelo salvo'); return; }

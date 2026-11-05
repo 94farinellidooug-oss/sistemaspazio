@@ -1053,3 +1053,19 @@ input[type=checkbox]{accent-color:var(--brand)}
 .int-s{display:flex;flex-wrap:wrap;gap:5px}
 .int-s .chip{padding:4px 10px;font-size:.78rem}
 .tel{white-space:nowrap}
+
+/* Etapa 7A · WhatsApp com mensagem pronta */
+.btn.wa{color:#1f7a4d;border-color:#b9dcc8}
+.btn.wa .ic{color:#1f7a4d}
+.wa-ok{display:inline-flex;align-items:center;gap:4px;color:var(--ok);font-size:.76rem}
+.wa-ok .ic{width:13px;height:13px}
+.hor-p .wa-ok{white-space:nowrap}
+.hor.lem{grid-template-columns:auto minmax(0,1fr) auto}
+.wa-p{padding:18px 20px;top:10vh;max-height:calc(100vh - 12vh);overflow:auto}
+.wa-p h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wa-p h3 small{flex-basis:100%}
+.wa-p textarea{min-height:130px}
+.wa-p small a{color:var(--accent)}
+.f-msg .mod-raw{margin-top:8px;font-size:.84rem}
+@media (max-width:560px){.wa-p{top:auto;bottom:0;border-radius:16px 16px 0 0;width:100vw;max-height:88vh}}
+.f-msg textarea{min-height:96px}
