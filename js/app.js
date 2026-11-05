@@ -6,6 +6,8 @@ import { pointWarnings } from './raciocinio/seguranca.js';
 import { formAgenda, vAgenda } from './telas/agenda.js';
 import { docAtual, folhaDoc, ligarPad, painelAss, previaDoc, textoComCampos, vDocumentos } from './telas/documentos.js';
 import { vRelacionamento } from './telas/relacionamento.js';
+import { servicoPacote, vFinanceiro } from './telas/financeiro.js';
+import { dadosNota, desfazerRecebimento, faltaDe, financeiroDe, lerValor, novaDespesa, novoPacote, receber, removerDespesa } from './dados/financeiro.js';
 import { abrirPainelWa, painelWa, textoComCamposWa, vMensagens } from './telas/whatsapp.js';
 import { linkWa, registrarMensagem, salvarMensagemWa, voltarMensagemWa } from './dados/whatsapp.js';
 import { naoRetomar, novoInteressado, registrarContato, situacaoInteressado, virouPaciente } from './dados/relacionamento.js';
@@ -28,9 +30,9 @@ import { corrigirPonto, linhaRx, definirLado, definirMotivo, definirSituacao, de
 import { adicionarFichaParticular, definirNotaPonto, removerFichaParticular, revisarPosicao } from './dados/biblioteca.js';
 import { CODIGOS } from './conhecimento/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
-import { TODAY, addDays, esc, fmt, uid } from './util.js';
+import { TODAY, addDays, brl, esc, fmt, uid } from './util.js';
 
-export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens};
+export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -85,6 +87,20 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]'); if(!t||t.disabled) return;
   const a=t.dataset.act;
   if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
+  // Financeiro (etapa 8)
+  else if(a==='fin-receber'){ const x=db.appts.find(z=>z.id===t.dataset.ap); ui.finRec={ap:x.id,forma:'Pix',valor:String(faltaDe(db,x)).replace('.',',')}; render(true); document.getElementById('rec-v')?.focus(); }
+  else if(a==='fin-forma'){ ui.finRec.valor=document.getElementById('rec-v').value; ui.finRec.forma=t.dataset.f; render(true); }
+  else if(a==='fin-rec-x'){ ui.finRec=null; render(true); }
+  else if(a==='fin-desf'){ ui.finDesf=t.dataset.r; render(true); }
+  else if(a==='fin-desf-x'){ ui.finDesf=null; render(true); }
+  else if(a==='fin-desf-ok'){ desfazerRecebimento(db,t.dataset.r); ui.finDesf=null; save(); render(true); toast('Recebimento desfeito; voltou para A receber','info'); }
+  else if(a==='fin-nota'){ const r=db.financeiro?.recebimentos.find(x=>x.id===t.dataset.r); if(!r) return; const tx=dadosNota(db,r);
+    (navigator.clipboard?.writeText(tx)||Promise.reject()).then(()=>toast('Dados da nota copiados'),()=>toast('Não deu para copiar: '+tx.replace(/\n/g,' · '),'info')); }
+  else if(a==='fin-novo-pac'){ const pid=[...db.patients].sort((x,y)=>x.name.localeCompare(y.name))[0]?.id; ui.finPac={pid,total:'10',valor:''}; render(true); }
+  else if(a==='fin-pac-x'){ ui.finPac=null; render(true); }
+  else if(a==='fin-desp-x'){ ui.finDespX=t.dataset.d; render(true); }
+  else if(a==='fin-desp-n'){ ui.finDespX=null; render(true); }
+  else if(a==='fin-desp-ok'){ removerDespesa(db,t.dataset.d,TODAY.slice(0,7)); ui.finDespX=null; save(); render(true); toast('Despesa tirada deste mês','info'); }
   else if(a==='novo-atendimento'){ const p=patient(t.dataset.pid||ui.pid); let x=rascunhoDe(p);
     if(!x){ x=iniciarAtendimento(p,{id:uid(),data:TODAY},new Date().toISOString()); save(); }
     ui.pid=p.id; ui.atId=x.id; ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; limparMapa(); irPara('atendimento'); scrollTo(0,0); }
@@ -323,6 +339,7 @@ function previaModelo(){ const pv=document.getElementById('doc-pv'), r=document.
 // Baixa um texto como arquivo (cópia de segurança).
 function baixar(texto, nome){ const u=URL.createObjectURL(new Blob([texto],{type:'application/json'})), l=document.createElement('a'); l.href=u; l.download=nome; document.body.append(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
 document.addEventListener('change',ev=>{
+  if(ev.target.id==='np-p'&&ui.finPac){ Object.assign(ui.finPac,{pid:ev.target.value,total:document.getElementById('np-s').value,valor:document.getElementById('np-v').value}); render(true); return; }
   const t=ev.target;
   if(t.matches('[data-atltodos]')){ ui.atlas.todos=t.checked; render(true); return; }
   if(t.id==='imp-arq' && t.files[0]){ const f=t.files[0]; t.value='';
@@ -356,6 +373,13 @@ document.addEventListener('submit',ev=>{
   if(f.id==='f-mod'){ const E=ui.docEd; if(!E) return; if(!E.nome.trim()||!E.texto.trim()){ toast('Dê um nome e escreva o texto do modelo','info'); return; }
     const k=salvarModelo(db,E.novo?null:ui.docMod,E,new Date().toISOString(),PROF.nome,'mod-'+uid()); if(!k) return;
     ui.docMod=k; ui.docEd=null; save(); render(true); toast(E.novo?'Modelo criado':'Modelo salvo'); return; }
+  if(f.matches('.fin-rec')){ const r=receber(db,f.dataset.ap,{id:uid(),valor:lerValor(v('rec-v')),forma:ui.finRec?.forma,data:TODAY,por:PROF.nome});
+    if(typeof r==='string'){ toast(r,'info'); return; } const x=db.appts.find(z=>z.id===f.dataset.ap), falta=faltaDe(db,x);
+    ui.finRec=null; save(); render(true); toast(falta>0?`${brl(r.valor)} recebido; ficou faltando ${brl(falta)}`:`${brl(r.valor)} recebido de ${patient(x.pid)?.name.split(' ')[0]||''}`); return; }
+  if(f.id==='f-novo-pac'){ const pid=v('np-p'), k=novoPacote(db,{id:uid(),pid,serv:servicoPacote(pid),total:v('np-s'),valor:lerValor(v('np-v')),em:TODAY,por:PROF.nome});
+    if(!k){ toast('Informe as sessões e o valor','info'); return; } ui.finPac=null; save(); render(true); toast('Pacote criado'); return; }
+  if(f.id==='f-nova-desp'){ const d=novaDespesa(db,{id:uid(),desc:v('nd-d'),cat:v('nd-c'),valor:lerValor(v('nd-v')),data:TODAY,repete:document.getElementById('nd-r').checked,por:PROF.nome});
+    if(!d){ toast('Informe a despesa e o valor','info'); return; } save(); render(true); toast('Despesa lançada'); return; }
   if(f.id==='f-int'){ if(novoInteressado(db,{id:uid(),nome:v('int-nome'),tel:v('int-tel'),origem:v('int-origem'),em:new Date().toISOString(),por:PROF.nome})){ ui.novoInt=null; save(); render(true); toast('Interessado incluído'); } return; }
   if(f.id==='f-part'){ const d=Object.fromEntries(new FormData(f)); if(adicionarFichaParticular(db,d,new Date().toISOString(),uid())){ save(); render(true); toast('Ficha adicionada à Particular'); } return; }
   if(f.id==='f-patient'){

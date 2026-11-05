@@ -1323,6 +1323,35 @@ input[type=checkbox]{accent-color:var(--brand)}
 #ass-c{display:block;width:100%;height:auto;aspect-ratio:640/220;border:1px dashed var(--line-2);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;margin-top:10px}
 .dp-as .ass-img{display:block;width:220px;max-width:100%;height:auto;margin:0 auto -8px}
 @media print{#imp .dp-as .ass-img{width:200px}}
+
+/* Etapa 8 · Financeiro */
+.fin-t .tile{display:block;cursor:default}
+.fin-t .tile small{display:block;color:var(--muted);font-size:.78rem}
+.fin-t .tile b.num{display:block;font-size:1.45rem;margin:4px 0 2px}
+.fin-t .tile.t-ok b.num{color:var(--ok)}
+.fin-t .tile.t-warn b.num{color:var(--warn)}
+.fin-t .tile.t-crit b.num{color:var(--crit)}
+.fin-l{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:8px 8px 8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+.fin-l .hor-h b{font-family:var(--f-mono);font-size:.86rem}
+.fin-v{font-variant-numeric:tabular-nums;white-space:nowrap}
+.fin-v.neg{color:var(--crit)}
+.fin-l .pill.sm{font-size:.7rem;padding:1px 7px}
+.fin-rec{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:end;gap:10px;padding-top:8px;border-top:1px dashed var(--line-2)}
+.fin-val{width:140px}
+.pac{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:10px}
+.pac small{display:block;color:var(--muted);font-size:.8rem}
+.pac-b{height:6px;border-radius:4px;background:var(--surface-2);margin-top:6px;overflow:hidden}
+.pac-b span{display:block;height:100%;background:var(--accent)}
+.pac-n{font-family:var(--f-mono);font-size:.9rem}
+.fin-l.rec .hor-a .btn.ghost{padding:4px 7px}
+@media (max-width:560px){
+  .fin-l{grid-template-columns:auto minmax(0,1fr) auto}
+  .fin-l > .hor-a{grid-column:1/-1;justify-content:flex-end}
+  .fin-t .tile b.num{font-size:1.15rem}
+}
+.fin-l .hor-p .lk{max-width:100%}
+.pac.fim{opacity:.6}
+#np-serv{align-self:center}
 </style>
 
 
@@ -1580,7 +1609,7 @@ function importar(texto){
 }
 // ov: camada aberta (busca, notif, perfil, atalhos); q/bi: texto e item escolhido na busca global;
 // lidas: notificações já vistas nesta sessão; dia: dia escolhido no calendário do Painel; crumbs: migalhas.
-const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, docPid:null, docMod:null, docEd:null, docAss:null, wa:null, relOcultos:false, novoInt:null, cadPrevio:null, pq:'', menuMini:false, menuAberto:false,
+const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, docPid:null, docMod:null, docEd:null, docAss:null, wa:null, finRec:null, finPac:null, finDesf:null, finDespX:null, relOcultos:false, novoInt:null, cadPrevio:null, pq:'', menuMini:false, menuAberto:false,
   ov:null, q:'', bi:0, lidas:new Set(), dia:null, crumbs:[],
   // Mapa corporal do atendimento (etapa 4A): vista, face, ampliação, ferramenta, marcação selecionada e camadas de comparação.
   // Biblioteca clínica (etapa 4B): área (central, particular, atlas), ficha aberta e estado do Atlas.
@@ -2630,6 +2659,158 @@ function vRelacionamento(){
         <label class="rx-f"><span class="lbl">Como chegou</span><select id="int-origem" data-int="origem">${ORIGENS.map(o=>`<option ${o===N.origem?'selected':''}>${o}</option>`).join('')}</select></label>
         <div class="full"><button class="btn sm pri">${ic('mais')}Incluir interessado</button></div></form></div>
       <div class="card"><h2>Como funciona</h2><p class="muted sm">A lista de retomar contato se monta sozinha pela agenda e pelos atendimentos. <b>Contato feito</b> registra o dia e quem falou. Em <b>Paciente</b>, o cadastro abre com o nome e o telefone do interessado. <b>WhatsApp</b> abre a mensagem pronta e já registra o contato feito.</p></div></div></div>`;
+}
+//
+// O valor combinado continua no horário da agenda (a.valor); o que entrou de fato fica à parte, em
+// db.financeiro, para o horário e a exportação v1 não mudarem:
+//   db.financeiro = {
+//     inicio: 'aaaa-mm-dd'   (primeiro dia do mês em que o financeiro foi aberto; atendimentos antes disso
+//                              não entram em A receber, para não cobrar o histórico antigo)
+//     recebimentos: [{id, ap, valor, forma, data, por}]   (ap = horário da agenda; parcial é permitido)
+//     pacotes: [{id, pid, serv, total, valor, em, por}]   (pago na compra; cada atendido do serviço desconta uma)
+//     despesas: [{id, desc, cat, valor, data, repete, ate?, por}]   (repete = entra todo mês; ate = último mês)
+//   }
+// A nota fiscal (NFS-e) automática fica para a etapa 10; aqui só os dados prontos para a nota.
+
+const FORMAS = ['Pix', 'Dinheiro', 'Débito', 'Crédito'];
+const CATEGORIAS_DESP = ['Aluguel', 'Material', 'Contas', 'Outros'];
+const mesDe = d => String(d).slice(0, 7);
+const somaFin = (L, f = x => x.valor) => L.reduce((n, x) => n + f(x), 0);
+const centavos = v => Math.round(v * 100) / 100;
+
+// Lê um valor digitado ("1.150,50", "90", "R$ 40,00") como número.
+const lerValor = s => { const t = String(s ?? '').replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'); return t ? Number(t) : NaN; };
+
+// Estrutura do financeiro, criada na primeira vez (devolve se acabou de criar, para gravar).
+function financeiroDe(db, hoje){
+  if (db.financeiro) return [db.financeiro, false];
+  db.financeiro = { inicio: mesDe(hoje) + '-01', recebimentos: [], pacotes: [], despesas: [] };
+  return [db.financeiro, true];
+}
+const F = db => db.financeiro || { inicio: '9999-12-31', recebimentos: [], pacotes: [], despesas: [] };
+
+const recebidoDe = (db, apId) => somaFin(F(db).recebimentos.filter(r => r.ap === apId));
+// Horários atendidos cobertos por pacote: Map(horário → pacote). Cada pacote cobre, em ordem, os
+// atendidos do mesmo paciente e serviço a partir da compra, sem recebimento avulso, até o total.
+function coberturaPacotes(db){
+  const M = new Map(), uso = {};
+  const at = db.appts.filter(a => a.done && ativo(a) && !F(db).recebimentos.some(r => r.ap === a.id)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  const P = F(db).pacotes.slice().sort((a, b) => a.em.localeCompare(b.em));
+  for (const a of at) { const k = P.find(k => k.pid === a.pid && k.serv === a.tipo && k.em <= a.date && (uso[k.id] || 0) < k.total);
+    if (k) { M.set(a.id, k); uso[k.id] = (uso[k.id] || 0) + 1; } }
+  return M;
+}
+const usosPacote = (db, k, cob = coberturaPacotes(db)) => [...cob.values()].filter(x => x.id === k.id).length;
+const faltaDe = (db, a, cob = coberturaPacotes(db)) => cob.has(a.id) ? 0 : Math.max(0, centavos((a.valor || 0) - recebidoDe(db, a.id)));
+
+// Atendimentos feitos (até hoje, desde o início do financeiro) com algo ainda a receber.
+function aReceber(db, hoje){
+  const cob = coberturaPacotes(db), ini = F(db).inicio;
+  return db.appts.filter(a => a.done && ativo(a) && a.date >= ini && a.date <= hoje && faltaDe(db, a, cob) > 0)
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+
+// Recebe um valor (até o que falta). Devolve o recebimento, ou um texto com o motivo de não aceitar.
+function receber(db, apId, { id, valor, forma, data, por }){
+  const a = db.appts.find(x => x.id === apId), f = a ? faltaDe(db, a) : 0, v = centavos(Number(valor));
+  if (!a) return 'Atendimento não encontrado';
+  if (!(v > 0)) return 'Informe o valor recebido';
+  if (v > f + 0.001) return `O valor passa do que falta (${brl(f)})`;
+  if (!FORMAS.includes(forma)) return 'Escolha a forma de pagamento';
+  const r = { id, ap: apId, valor: v, forma, data, por };
+  F(db).recebimentos.push(r);
+  return r;
+}
+function desfazerRecebimento(db, id){
+  const L = F(db).recebimentos, i = L.findIndex(r => r.id === id);
+  if (i < 0) return false; L.splice(i, 1); return true;
+}
+
+function novoPacote(db, { id, pid, serv, total, valor, em, por }){
+  const t = Math.round(Number(total)), v = centavos(Number(valor));
+  if (!pid || !serv || !(t > 0) || !(v > 0)) return null;
+  const k = { id, pid, serv, total: t, valor: v, em, por };
+  F(db).pacotes.push(k);
+  return k;
+}
+
+function novaDespesa(db, { id, desc, cat, valor, data, repete, por }){
+  const d = String(desc || '').trim(), v = centavos(Number(valor));
+  if (!d || !(v > 0)) return null;
+  const x = { id, desc: d, cat: CATEGORIAS_DESP.includes(cat) ? cat : 'Outros', valor: v, data, repete: !!repete, por };
+  F(db).despesas.push(x);
+  return x;
+}
+const mesAnterior = m => { const [a, b] = m.split('-').map(Number); return b === 1 ? `${a - 1}-12` : `${a}-${String(b - 1).padStart(2, '0')}`; };
+// Tira a despesa do mês. A que repete e veio de um mês anterior para de repetir a partir deste mês
+// (os meses anteriores continuam com ela); a lançada neste mês sai de vez.
+function removerDespesa(db, id, mes){
+  const L = F(db).despesas, d = L.find(x => x.id === id);
+  if (!d) return false;
+  if (d.repete && mesDe(d.data) < mes) d.ate = mesAnterior(mes); else L.splice(L.indexOf(d), 1);
+  return true;
+}
+// Despesas do mês: as lançadas nele e as que repetem (no mesmo dia, até o dia 28).
+function despesasDoMes(db, mes){
+  return F(db).despesas.flatMap(d => mesDe(d.data) === mes ? [d]
+    : d.repete && mesDe(d.data) < mes && (!d.ate || d.ate >= mes) ? [{ ...d, data: `${mes}-${String(Math.min(28, Number(d.data.slice(8)))).padStart(2, '0')}`, repetida: true }] : [])
+    .sort((a, b) => a.data.localeCompare(b.data));
+}
+const recebimentosDoMes = (db, mes) => F(db).recebimentos.filter(r => mesDe(r.data) === mes).slice().reverse();
+
+// Resumo do mês: recebido (avulsos + pacotes vendidos no mês), a receber, despesas e saldo.
+function resumoMes(db, mes, hoje){
+  const rec = centavos(somaFin(recebimentosDoMes(db, mes)) + somaFin(F(db).pacotes.filter(k => mesDe(k.em) === mes)));
+  const cob = coberturaPacotes(db), pend = aReceber(db, hoje), desp = despesasDoMes(db, mes);
+  return { rec, aRec: centavos(somaFin(pend, a => faltaDe(db, a, cob))), pend: pend.length, desp: centavos(somaFin(desp)), nDesp: desp.length, saldo: centavos(rec - somaFin(desp)) };
+}
+
+// Dados que a nota fiscal vai pedir, prontos para copiar.
+function dadosNota(db, r){
+  const a = db.appts.find(x => x.id === r.ap), p = a && db.patients.find(x => x.id === a.pid);
+  return [`Paciente: ${p?.name || ''}`, `CPF: ${p?.cadastro?.cpf || 'não cadastrado'}`, `Serviço: ${a?.tipo || ''}`, `Valor: ${brl(r.valor)}`, `Data do atendimento: ${a ? fmt(a.date) : ''}`, `Recebido em: ${fmt(r.data)} (${r.forma})`].join('\n');
+}
+const MESES_FIN = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const nomeMes = m => MESES_FIN[Number(m.slice(5, 7)) - 1];
+// Serviço do pacote: o do último atendido do paciente (ou do último horário, ou o primeiro serviço da clínica).
+const servicoPacote = pid => { const L = db.appts.filter(a => a.pid === pid && a.st !== 'desmarcado').sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  return (L.find(a => a.done) || L[0])?.tipo || SERVICOS[0][0]; };
+
+function vFinanceiro(){
+  ui.crumbs = [[null, 'Financeiro']];
+  const mes = TODAY.slice(0, 7), nm = nomeMes(mes), R = resumoMes(db, mes, TODAY), pend = aReceber(db, TODAY), recs = recebimentosDoMes(db, mes);
+  const cob = coberturaPacotes(db), desp = despesasDoMes(db, mes), P = db.financeiro?.pacotes || [], Rx = ui.finRec, NP = ui.finPac;
+  const tile = (k, t, v, sub, cls = '') => `<div class="tile ${cls}" data-t="${k}"><div><small>${t}</small><b class="num">${brl(v)}</b><small>${sub}</small></div></div>`;
+  const pacs = [...db.patients].sort((a, b) => a.name.localeCompare(b.name));
+  return `<div class="head"><div><h1>Financeiro · ${nm} de ${mes.slice(0, 4)}</h1><p>O combinado em cada atendimento e o que entrou de fato</p></div></div>
+  <div class="tiles fin-t">${tile('rec', `Recebido em ${nm}`, R.rec, 'o que entrou de fato', 't-ok')}${tile('arec', 'A receber', R.aRec, `${R.pend} atendimento${R.pend === 1 ? '' : 's'} em aberto`, R.aRec ? 't-warn' : '')}${tile('desp', 'Despesas do mês', R.desp, `${R.nDesp} lançamento${R.nDesp === 1 ? '' : 's'}`)}${tile('saldo', 'Saldo do mês', R.saldo, 'recebido menos despesas', R.saldo < 0 ? 't-crit' : '')}</div>
+  <div class="grid g-side ag-cols"><div class="grid" style="align-content:start">
+    <div class="card" id="f-arec"><div class="card-h"><h2>A receber<small>atendimentos feitos que ainda não foram pagos (ou só em parte)</small></h2><span class="pill ${pend.length ? 'warn' : 'ok'}">${pend.length}</span></div>
+      <div class="hor-l">${pend.map(a => { const p = patient(a.pid), pg = recebidoDe(db, a.id), aberto = Rx?.ap === a.id; return `<div class="fin-l" data-ap="${a.id}"><div class="hor-h"><b>${fmt(a.date).slice(0, 5)}</b><small>${a.date === TODAY ? 'hoje' : ''}</small></div>
+        <div class="hor-p"><button class="lk" data-act="open" data-pid="${a.pid}">${esc(p?.name || '')}</button><small>${esc(a.tipo)} · ${brl(a.valor || 0)}${pg ? ` · já pagou ${brl(pg)}` : ''}</small></div><b class="fin-v">${brl(faltaDe(db, a, cob))}</b>
+        ${aberto ? `<form class="fin-rec" data-ap="${a.id}"><div class="chips" role="group" aria-label="Forma de pagamento">${FORMAS.map(f => `<button type="button" class="chip ${Rx.forma === f ? 'on' : ''}" data-act="fin-forma" data-f="${f}" aria-pressed="${Rx.forma === f}">${f}</button>`).join('')}</div>
+          <label class="rx-f fin-val"><span class="lbl">Valor recebido</span><input id="rec-v" inputmode="decimal" value="${esc(Rx.valor)}" autocomplete="off"></label><div class="chips"><button class="btn sm pri">${ic('check')}Confirmar</button><button type="button" class="btn sm ghost" data-act="fin-rec-x">Cancelar</button></div></form>`
+          : `<div class="hor-a"><button class="btn sm pri" data-act="fin-receber" data-ap="${a.id}">${ic('check')}Receber</button></div>`}</div>`; }).join('') || `<div class="vazio">${ic('okc')}Tudo recebido.</div>`}</div></div>
+    <div class="card" id="f-recs"><div class="card-h"><h2>Recebidos em ${nm}<small>com a forma de pagamento</small></h2></div>
+      <div class="hor-l">${recs.map(r => { const a = db.appts.find(x => x.id === r.ap), p = a && patient(a.pid); return `<div class="fin-l rec" data-rec="${r.id}"><div class="hor-h"><b>${fmt(r.data).slice(0, 5)}</b></div><div class="hor-p"><b>${esc(p?.name || '')}</b><small>${esc(a?.tipo || '')} · <span class="pill sm">${r.forma}</span>${a && r.valor < (a.valor || 0) ? ' · parcial' : ''}</small></div><b class="fin-v">${brl(r.valor)}</b>
+        <div class="hor-a">${ui.finDesf === r.id ? `<button class="btn sm" data-act="fin-desf-ok" data-r="${r.id}">Desfazer mesmo</button><button class="btn sm ghost" data-act="fin-desf-x">Manter</button>` : `<button class="btn sm ghost" data-act="fin-nota" data-r="${r.id}" aria-label="Copiar dados da nota" data-tip="Dados da nota">${ic('doc')}</button><button class="btn sm ghost" data-act="fin-desf" data-r="${r.id}" aria-label="Desfazer recebimento" data-tip="Desfazer">${ic('retorno')}</button>`}</div></div>`; }).join('') || '<p class="muted sm">Nada recebido ainda neste mês.</p>'}</div></div>
+  </div><div class="grid" style="align-content:start">
+    <div class="card" id="f-pac"><div class="card-h"><h2>Pacotes<small>sessões pagas antes; cada atendimento desconta uma</small></h2></div>
+      <div class="hor-l">${P.map(k => { const u = usosPacote(db, k, cob); return `<div class="pac ${u >= k.total ? 'fim' : ''}" data-pac="${k.id}"><div class="grow"><b>${esc(patient(k.pid)?.name || '')}</b><small>${esc(k.serv)} · ${k.total} sessões · ${brl(k.valor)} · pago em ${fmt(k.em)}</small>
+        <div class="pac-b" role="img" aria-label="${u} de ${k.total} sessões usadas"><span style="width:${Math.round(u / k.total * 100)}%"></span></div></div><b class="pac-n">${u}/${k.total}</b></div>`; }).join('') || '<p class="muted sm">Nenhum pacote ainda.</p>'}</div>
+      ${NP ? `<form id="f-novo-pac" class="ag-f" style="margin-top:12px"><label class="rx-f full"><span class="lbl">Paciente</span><select id="np-p">${pacs.map(p => `<option value="${p.id}" ${NP.pid === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+        <label class="rx-f"><span class="lbl">Sessões</span><input id="np-s" type="number" min="1" value="${esc(NP.total)}"></label><label class="rx-f"><span class="lbl">Valor total</span><input id="np-v" inputmode="decimal" value="${esc(NP.valor)}" autocomplete="off"></label>
+        <small class="muted full" id="np-serv">Serviço: ${esc(servicoPacote(NP.pid))}</small>
+        <div class="full chips"><button class="btn sm pri">${ic('check')}Criar pacote</button><button type="button" class="btn sm ghost" data-act="fin-pac-x">Cancelar</button></div></form>`
+      : `<button class="btn sm" data-act="fin-novo-pac" style="margin-top:10px">${ic('mais')}Novo pacote</button>`}</div>
+    <div class="card" id="f-desp"><div class="card-h"><h2>Despesas de ${nm}<small>o que saiu</small></h2></div>
+      <div class="hor-l">${desp.map(d => `<div class="fin-l desp" data-d="${d.id}"><div class="hor-h"><b>${fmt(d.data).slice(0, 5)}</b></div><div class="hor-p"><b>${esc(d.desc)}</b><small>${d.cat}${d.repete ? ' · todo mês' : ''}</small></div><b class="fin-v neg">${brl(d.valor)}</b>
+        <div class="hor-a">${ui.finDespX === d.id ? `<button class="btn sm" data-act="fin-desp-ok" data-d="${d.id}">${d.repetida ? 'Parar de repetir' : 'Tirar mesmo'}</button><button class="btn sm ghost" data-act="fin-desp-n">Manter</button>` : `<button class="btn sm ghost" data-act="fin-desp-x" data-d="${d.id}" aria-label="Tirar despesa" data-tip="Tirar">${ic('x')}</button>`}</div></div>`).join('') || '<p class="muted sm">Nenhuma despesa lançada neste mês.</p>'}</div>
+      <form id="f-nova-desp" class="ag-f" style="margin-top:12px"><label class="rx-f full"><span class="lbl">Despesa</span><input id="nd-d" placeholder="Ex.: conta de luz" autocomplete="off"></label>
+        <label class="rx-f"><span class="lbl">Valor</span><input id="nd-v" inputmode="decimal" placeholder="0,00" autocomplete="off"></label><label class="rx-f"><span class="lbl">Tipo</span><select id="nd-c">${CATEGORIAS_DESP.map(c => `<option>${c}</option>`).join('')}</select></label>
+        <label class="ck full"><input type="checkbox" id="nd-r"> Repete todo mês</label><div class="full"><button class="btn sm pri">${ic('mais')}Lançar despesa</button></div></form></div>
+    <div class="card" id="f-nota"><h2>Nota fiscal</h2><p class="muted sm">A emissão automática da nota de serviço (NFS-e) entra na etapa 10, junto com o servidor e o login. Por enquanto, em cada recebimento o botão <b>Dados da nota</b> copia paciente, CPF, serviço, valor e data, prontos para colar no emissor.</p></div>
+  </div></div>`;
 }
 const EL = {
   madeira:{nome:'Madeira',han:'木',cor:'var(--wood)',ang:198,zang:'Fígado',fu:'Vesícula Biliar',emocao:'Raiva',estacao:'Primavera',clima:'Vento',sentido:'Olhos',tecido:'Tendões',sabor:'Ácido',som:'Grito',espirito:'Hun',funcoes:['Armazena o Xue','Garante o livre fluxo do Qi','Nutre tendões e olhos']},
@@ -3791,7 +3972,7 @@ function previaCadastro(){
 const MODULOS = {
   crm:{etapa:6,i:'tel',feito:true,texto:'Quem retomar contato e quem procurou e ainda não é paciente.'},
   mensagens:{etapa:7,i:'mensagem',feito:true,texto:'Os textos do WhatsApp: lembrete de horário, retomar contato e orientações.'},
-  financeiro:{etapa:8,i:'financeiro',texto:'Gestão financeira da clínica, separando o valor contratado do valor efetivamente recebido.',itens:['Contas a pagar e a receber','Fluxo de caixa','Pagamentos parciais e recorrentes','Pacotes terapêuticos e comissões','Inadimplência','Emissão de NFS-e por provedor integrador']},
+  financeiro:{etapa:8,i:'financeiro',feito:true,texto:'Gestão financeira da clínica, separando o valor contratado do valor efetivamente recebido.',itens:['Contas a pagar e a receber','Fluxo de caixa','Pagamentos parciais e recorrentes','Pacotes terapêuticos e comissões','Inadimplência','Emissão de NFS-e por provedor integrador']},
   relatorios:{etapa:9,i:'relatorios',texto:'Indicadores clínicos, comerciais e financeiros.',itens:['Desempenho clínico','Conversão comercial','Agenda e ocupação','Financeiro','Desempenho por profissional','Desempenho por serviço']},
   equipe:{etapa:10,i:'pacientes',texto:'Profissionais, especialidades e permissões de acesso por clínica.',itens:['Perfil único por profissional','Especialidades e modalidades','Permissões por perfil','Várias clínicas','Pacientes compartilhados conforme permissão','Registro de atividades']},
   configuracoes:{etapa:10,i:'admin',texto:'Dados da clínica, serviços, modalidades e modelos.',itens:['Dados da clínica e local de atendimento','Serviços, duração e valores','Modalidades terapêuticas','Modelos de documento','Preferências de agenda','Privacidade e LGPD']}
@@ -4086,7 +4267,7 @@ function vAtlas(){
     <aside class="fx-panel${A.sel || A.traj ? ' aberta' : ''}" aria-label="Ficha"><div class="card">${painel}</div></aside>
   </div>`;
 }
-const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens};
+const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -4141,6 +4322,20 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]'); if(!t||t.disabled) return;
   const a=t.dataset.act;
   if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
+  // Financeiro (etapa 8)
+  else if(a==='fin-receber'){ const x=db.appts.find(z=>z.id===t.dataset.ap); ui.finRec={ap:x.id,forma:'Pix',valor:String(faltaDe(db,x)).replace('.',',')}; render(true); document.getElementById('rec-v')?.focus(); }
+  else if(a==='fin-forma'){ ui.finRec.valor=document.getElementById('rec-v').value; ui.finRec.forma=t.dataset.f; render(true); }
+  else if(a==='fin-rec-x'){ ui.finRec=null; render(true); }
+  else if(a==='fin-desf'){ ui.finDesf=t.dataset.r; render(true); }
+  else if(a==='fin-desf-x'){ ui.finDesf=null; render(true); }
+  else if(a==='fin-desf-ok'){ desfazerRecebimento(db,t.dataset.r); ui.finDesf=null; save(); render(true); toast('Recebimento desfeito; voltou para A receber','info'); }
+  else if(a==='fin-nota'){ const r=db.financeiro?.recebimentos.find(x=>x.id===t.dataset.r); if(!r) return; const tx=dadosNota(db,r);
+    (navigator.clipboard?.writeText(tx)||Promise.reject()).then(()=>toast('Dados da nota copiados'),()=>toast('Não deu para copiar: '+tx.replace(/\n/g,' · '),'info')); }
+  else if(a==='fin-novo-pac'){ const pid=[...db.patients].sort((x,y)=>x.name.localeCompare(y.name))[0]?.id; ui.finPac={pid,total:'10',valor:''}; render(true); }
+  else if(a==='fin-pac-x'){ ui.finPac=null; render(true); }
+  else if(a==='fin-desp-x'){ ui.finDespX=t.dataset.d; render(true); }
+  else if(a==='fin-desp-n'){ ui.finDespX=null; render(true); }
+  else if(a==='fin-desp-ok'){ removerDespesa(db,t.dataset.d,TODAY.slice(0,7)); ui.finDespX=null; save(); render(true); toast('Despesa tirada deste mês','info'); }
   else if(a==='novo-atendimento'){ const p=patient(t.dataset.pid||ui.pid); let x=rascunhoDe(p);
     if(!x){ x=iniciarAtendimento(p,{id:uid(),data:TODAY},new Date().toISOString()); save(); }
     ui.pid=p.id; ui.atId=x.id; ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; limparMapa(); irPara('atendimento'); scrollTo(0,0); }
@@ -4379,6 +4574,7 @@ function previaModelo(){ const pv=document.getElementById('doc-pv'), r=document.
 // Baixa um texto como arquivo (cópia de segurança).
 function baixar(texto, nome){ const u=URL.createObjectURL(new Blob([texto],{type:'application/json'})), l=document.createElement('a'); l.href=u; l.download=nome; document.body.append(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
 document.addEventListener('change',ev=>{
+  if(ev.target.id==='np-p'&&ui.finPac){ Object.assign(ui.finPac,{pid:ev.target.value,total:document.getElementById('np-s').value,valor:document.getElementById('np-v').value}); render(true); return; }
   const t=ev.target;
   if(t.matches('[data-atltodos]')){ ui.atlas.todos=t.checked; render(true); return; }
   if(t.id==='imp-arq' && t.files[0]){ const f=t.files[0]; t.value='';
@@ -4412,6 +4608,13 @@ document.addEventListener('submit',ev=>{
   if(f.id==='f-mod'){ const E=ui.docEd; if(!E) return; if(!E.nome.trim()||!E.texto.trim()){ toast('Dê um nome e escreva o texto do modelo','info'); return; }
     const k=salvarModelo(db,E.novo?null:ui.docMod,E,new Date().toISOString(),PROF.nome,'mod-'+uid()); if(!k) return;
     ui.docMod=k; ui.docEd=null; save(); render(true); toast(E.novo?'Modelo criado':'Modelo salvo'); return; }
+  if(f.matches('.fin-rec')){ const r=receber(db,f.dataset.ap,{id:uid(),valor:lerValor(v('rec-v')),forma:ui.finRec?.forma,data:TODAY,por:PROF.nome});
+    if(typeof r==='string'){ toast(r,'info'); return; } const x=db.appts.find(z=>z.id===f.dataset.ap), falta=faltaDe(db,x);
+    ui.finRec=null; save(); render(true); toast(falta>0?`${brl(r.valor)} recebido; ficou faltando ${brl(falta)}`:`${brl(r.valor)} recebido de ${patient(x.pid)?.name.split(' ')[0]||''}`); return; }
+  if(f.id==='f-novo-pac'){ const pid=v('np-p'), k=novoPacote(db,{id:uid(),pid,serv:servicoPacote(pid),total:v('np-s'),valor:lerValor(v('np-v')),em:TODAY,por:PROF.nome});
+    if(!k){ toast('Informe as sessões e o valor','info'); return; } ui.finPac=null; save(); render(true); toast('Pacote criado'); return; }
+  if(f.id==='f-nova-desp'){ const d=novaDespesa(db,{id:uid(),desc:v('nd-d'),cat:v('nd-c'),valor:lerValor(v('nd-v')),data:TODAY,repete:document.getElementById('nd-r').checked,por:PROF.nome});
+    if(!d){ toast('Informe a despesa e o valor','info'); return; } save(); render(true); toast('Despesa lançada'); return; }
   if(f.id==='f-int'){ if(novoInteressado(db,{id:uid(),nome:v('int-nome'),tel:v('int-tel'),origem:v('int-origem'),em:new Date().toISOString(),por:PROF.nome})){ ui.novoInt=null; save(); render(true); toast('Interessado incluído'); } return; }
   if(f.id==='f-part'){ const d=Object.fromEntries(new FormData(f)); if(adicionarFichaParticular(db,d,new Date().toISOString(),uid())){ save(); render(true); toast('Ficha adicionada à Particular'); } return; }
   if(f.id==='f-patient'){
