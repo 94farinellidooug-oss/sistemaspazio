@@ -86,7 +86,7 @@ async function verificar(browser, url, nome) {
   await p.click('[data-act="ler-todas"]'); await p.waitForTimeout(80);
   ok(await p.locator('.tb-r .badge').count() === 0, `${nome}: marcar como lidas zera o contador`);
   await p.click('[data-act="perfil"]'); await p.waitForTimeout(80);
-  ok(await p.locator('.dd-p.pf', { hasText: 'Mauren' }).count() === 1, `${nome}: menu do perfil abre`);
+  ok(await p.locator('.dd-p.pf', { hasText: 'Maicon' }).count() === 1, `${nome}: menu do perfil abre`);
   await p.mouse.click(700, 500); await p.waitForTimeout(80);
   ok(await p.locator('.dd-p').count() === 0, `${nome}: clique fora fecha o menu do perfil`);
 

@@ -11,6 +11,8 @@ import { TIPOS_MARCA, adicionarMarca, atendimentosAnteriores, editarMarca, marca
 import { POS, TAM, VISTAS, ladoDe, posicoes, temPosicao } from '../js/componentes/corpo.js';
 import { PT, CODIGOS, NPT } from '../js/conhecimento/pontos.js';
 import { bibliotecaDe, adicionarFichaParticular, removerFichaParticular, definirNotaPonto, revisaoDe, revisarPosicao } from '../js/dados/biblioteca.js';
+import { corrigirPonto, definirLado, definirMotivo, definirSituacao, definirStatus, esquecerPonto, linhaRx, todosRealizados } from '../js/dados/prescricao.js';
+import { trocarNomeProfissional } from '../js/dados/migracao.js';
 import { MERIDIANOS, VASOS_ATLAS, TRAJETOS, trajetoDoPonto, regiaoDoToque } from '../js/componentes/corpo.js';
 import { FONTE_INDICACOES, INDICADOS_REGIAO, REGIOES_CORPO, indicadosDaRegiao, regioesDoPonto, regioesDoTexto } from '../js/conhecimento/indicacoes-regiao.js';
 
@@ -210,10 +212,10 @@ console.log('\n11. Etapa 4B: Biblioteca (Particular) e Atlas');
 console.log('\n13. Etapa 4C: revisão da posição dos pontos');
 { const d = hidratar(migrarV1(seed(), '2026-11-05T10:00:00Z', 'exemplos')), v1 = JSON.stringify(paraV1(d)), pos = JSON.stringify(POS);
   ok(revisaoDe(d, 'E36') === null && !('biblioteca' in d), 'sem revisão, os dados não mudam');
-  const r = revisarPosicao(d, 'E36', true, 'Mauren Turcatti', '2026-11-05T10:30:00Z');
-  ok(r.ok && r.por === 'Mauren Turcatti' && r.em === '2026-11-05T10:30:00Z' && r.hist.length === 1, 'revisão grava quem e quando');
-  ok(revisarPosicao(d, 'E36', true, 'X', 'Y') === null && revisaoDe(d, 'E36').por === 'Mauren Turcatti', 'revisar de novo não duplica');
-  revisarPosicao(d, 'E36', false, 'Mauren Turcatti', '2026-11-05T11:00:00Z');
+  const r = revisarPosicao(d, 'E36', true, 'Maicon Farinelli', '2026-11-05T10:30:00Z');
+  ok(r.ok && r.por === 'Maicon Farinelli' && r.em === '2026-11-05T10:30:00Z' && r.hist.length === 1, 'revisão grava quem e quando');
+  ok(revisarPosicao(d, 'E36', true, 'X', 'Y') === null && revisaoDe(d, 'E36').por === 'Maicon Farinelli', 'revisar de novo não duplica');
+  revisarPosicao(d, 'E36', false, 'Maicon Farinelli', '2026-11-05T11:00:00Z');
   ok(!revisaoDe(d, 'E36').ok && revisaoDe(d, 'E36').hist.map(h => h.acao).join('|') === 'Revisão retirada|Posição marcada como revisada', 'retirar fica no histórico, o mais recente primeiro');
   ok(JSON.stringify(POS) === pos && JSON.stringify(paraV1(d)) === v1 && bibliotecaDe(d).particular.length === 0, 'revisão não muda posições, fichas nem a exportação v1'); }
 
@@ -222,7 +224,7 @@ console.log('\n12. Etapa 4A: pontos indicados por região (tabela conferida)');
   ok(REGIOES_CORPO.length === 20 && REGIOES_CORPO.every(r => Array.isArray(INDICADOS_REGIAO[r])) && L.length === 1030, '20 regiões e as 1030 linhas aprovadas');
   ok(L.every(([c, pg]) => CODIGOS.includes(c) && Number.isInteger(pg) && pg > 0), 'toda linha tem código válido e página do livro');
   ok(REGIOES_CORPO.every(r => new Set(INDICADOS_REGIAO[r].map(([c]) => c)).size === INDICADOS_REGIAO[r].length), 'sem ponto repetido na mesma região');
-  ok(FONTE_INDICACOES.aprovadoPor === 'Mauren' && FONTE_INDICACOES.aprovadoEm === '2026-11-04' && /Martins/.test(FONTE_INDICACOES.autora), 'fonte e aprovação registradas');
+  ok(FONTE_INDICACOES.aprovadoPor === 'Maicon' && FONTE_INDICACOES.aprovadoEm === '2026-11-04' && /Martins/.test(FONTE_INDICACOES.autora), 'fonte e aprovação registradas');
   ok(indicadosDaRegiao('Ombro').length === 47 && indicadosDaRegiao('Abdome').length === 93 && indicadosDaRegiao('xyz').length === 0, 'contagem por região igual à planilha');
   ok(regioesDoTexto('dor no ombro esquerdo').join() === 'Ombro' && regioesDoTexto('LOMBAR').join() === 'Lombar e sacro' && regioesDoTexto('pé').join() === 'Tornozelo e pé' && regioesDoTexto('Pescoço e nuca').join() === 'Pescoço e nuca', 'texto da região ligado à tabela, sem acento e sem maiúsculas');
   ok(regioesDoTexto('ombro e pescoço').length === 2 && regioesDoTexto('').length === 0 && regioesDoTexto('xyz').length === 0, 'mais de uma região no texto; texto vazio ou desconhecido não liga a nada');
@@ -235,6 +237,32 @@ console.log('\n12. Etapa 4A: pontos indicados por região (tabela conferida)');
   ok(!erradas.length, 'região sugerida pelo local tocado' + (erradas.length ? ': ' + erradas.map(e => e.join(' ') + ' → ' + regiaoDoToque(e[0], '', e[1], e[2])).join('; ') : ''));
   ok(regiaoDoToque('lat_d', '', 90, 150, true) === 'Braço e cotovelo' && regiaoDoToque('lat_d', '', 95, 220, true) === 'Punho e mão', 'no perfil, tocar no braço sugere braço');
   ok(REGIOES_CORPO.includes(regiaoDoToque('anterior', '', 100, 200)), 'a sugestão é sempre uma região da tabela'); }
+
+console.log('\n14. Etapa 5: prescrição em lista curta, evolução e correção');
+{ const d = hidratar(migrarV1(seed(), '2026-11-05T10:00:00Z', 'exemplos')), p = d.patients[0], v1 = JSON.stringify(paraV1(d));
+  const a = iniciarAtendimento(p, { id:'at5', data:'2026-11-05' }, '2026-11-05T10:00:00Z');
+  a.plano.pontos.push('BP6', 'VG20', 'IG4');
+  ok(J(linhaRx(a, 'BP6')) === J({ lado:'bil', status:'plan', motivo:'' }) && linhaRx(a, 'VG20').lado === 'med' && !('rx' in a.plano), 'padrão: bilateral (linha média para VG) e planejado, sem gravar nada');
+  ok(definirLado(a, 'VG20', 'uni') === null && definirLado(a, 'BP6', 'x') === null && definirLado(a, 'E36', 'uni') === null, 'lado inválido, linha média ou ponto fora do plano não mudam');
+  definirLado(a, 'BP6', 'uni'); definirStatus(a, 'IG4', 'nao'); definirMotivo(a, 'IG4', 'pediu para não aplicar');
+  ok(linhaRx(a, 'BP6').lado === 'uni' && linhaRx(a, 'IG4').motivo === 'pediu para não aplicar' && definirMotivo(a, 'BP6', 'x') === null, 'lado e motivo só do não realizado');
+  ok(J(todosRealizados(a)) === J(['BP6','VG20']) && linhaRx(a, 'IG4').status === 'nao', 'todos realizados só nos planejados');
+  definirStatus(a, 'IG4', 'real'); ok(linhaRx(a, 'IG4').motivo === '', 'sair do não realizado limpa o motivo');
+  esquecerPonto(a, 'BP6'); ok(!('BP6' in a.plano.rx), 'tirar o ponto apaga o registro');
+  ok(definirSituacao(a, 'q1', 'melhora') === 'melhora' && definirSituacao(a, 'q1', 'melhora') === '' && definirSituacao(a, 'q1', 'xx') === '' && !('q1' in a.evolucao.situacoes), 'situação da queixa: escolher, desmarcar, valor inválido');
+  ok(corrigirPonto(a, 'IG4', { status:'nao' }, 'motivo', 'Maicon Farinelli', 'em') === null, 'rascunho não usa correção');
+  finalizarAtendimento(p, a, '2026-11-05T11:00:00Z', 'av5');
+  ok(corrigirPonto(a, 'IG4', { status:'plan' }, '  ', 'Maicon Farinelli', 'em') === null && corrigirPonto(a, 'IG4', { status:'real' }, 'm', 'Maicon Farinelli', 'em') === null, 'correção exige motivo e mudança');
+  const mud = corrigirPonto(a, 'IG4', { lado:'uni', status:'plan' }, 'esqueci', 'Maicon Farinelli', '2026-11-05T12:00:00Z');
+  ok(J(mud) === J([['Lado','Bilateral','Unilateral'],['Situação','Realizado','Planejado']]) && a.retificacoes[0].por === 'Maicon Farinelli' && a.retificacoes[0].motivo === 'esqueci' && linhaRx(a, 'IG4').lado === 'uni', 'correção guarda antes, depois, quem, quando e motivo');
+  const s1 = paraV1(d).patients[0].sessions.find(x => x.id === 'at5');
+  ok(J(s1.pontos) === J(['BP6','VG20','IG4']) && !J(paraV1(d)).includes('retificacoes') && !J(paraV1(d)).includes('"rx"'), 'exportação v1 só com a lista de pontos, como antes'); }
+console.log('\n15. Profissional: Maicon Farinelli nos registros salvos');
+{ const d = hidratar(migrarV1(seed(), '2026-11-05T10:00:00Z', 'exemplos'));
+  d.patients[0].avaliacoes[0].prof = 'Mauren Turcatti'; d.patients[1].avaliacoes.forEach(v => { v.prof = 'Outra Pessoa'; });
+  d.biblioteca = { particular:[], notas:{}, revisoes:{ E36:{ ok:true, por:'Mauren Turcatti', em:'x', hist:[{ acao:'a', por:'Mauren Turcatti', em:'x' }] } } };
+  ok(trocarNomeProfissional(d, 'Mauren Turcatti', 'Maicon Farinelli') === 3 && d.patients[0].avaliacoes[0].prof === 'Maicon Farinelli' && d.biblioteca.revisoes.E36.hist[0].por === 'Maicon Farinelli' && d.patients[1].avaliacoes.every(v => v.prof === 'Outra Pessoa'), 'troca só o nome exato nos registros');
+  ok(trocarNomeProfissional(d, 'Mauren Turcatti', 'Maicon Farinelli') === 0, 'segunda vez não muda nada'); }
 
 console.log(falhas ? `\n${falhas} de ${total} verificações falharam.` : `\n${total} verificações do atendimento passaram.`);
 process.exit(falhas ? 1 : 0);

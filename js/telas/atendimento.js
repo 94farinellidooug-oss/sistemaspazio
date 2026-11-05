@@ -12,6 +12,7 @@ import { FACES, LARGURA, TAM, pontosProximos, VISTAS, desenho, iconeMarca, marca
 import { SIGN, SIGNS } from '../conhecimento/sinais.js';
 import { LADOS_MARCA, TIPOS_MARCA, atendimentosAnteriores, marcaComIntensidade, marcasDe, CATEGORIAS, ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, PARES_VASOS, categoriaDe, ehBasal, encaminhados, vasoDe, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
 import { revisaoDe } from '../dados/biblioteca.js';
+import { LADOS_RX, SITUACOES_QUEIXA, STATUS_RX, contagemRx, linhaMedia, linhasRx, nomeRx } from '../dados/prescricao.js';
 import { alertasDe } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
 import { db, patient } from '../dados/repositorio.js';
@@ -237,7 +238,7 @@ function proximosMarca(p, a, m){
     ${L.length ? L.map(linha).join('') : '<p class="muted sm">Nenhum ponto com posição perto deste local ainda. Mais pontos entram com o Atlas.</p>'}
     <p class="muted sm px-n">Pela posição aproximada no mapa, não é indicação para a queixa.</p></div>`;
 }
-// Pontos que o livro indica para a região escrita na marcação (tabela conferida por Mauren).
+// Pontos que o livro indica para a região escrita na marcação (tabela conferida por Maicon).
 const fonteInd = () => { const F = FONTE_INDICACOES; return `${esc(F.autora)}, <i>${esc(F.obra)}</i> (${esc(F.editora)}), seção Indicações. Lista conferida por ${esc(F.aprovadoPor)} em ${fmt(F.aprovadoEm)}.`; };
 export function indicadosMarca(p, a, m){
   const R = regioesDoTexto(m.regiao), P = a.plano.pontos;
@@ -346,15 +347,38 @@ function eMapa(p, a){
       <div class="card"><div class="field"><label class="lbl" for="at-mapa">Observações do mapa corporal</label><textarea id="at-mapa" data-atf="mapa" placeholder="Cicatrizes, áreas sensíveis, outras observações...">${esc(a.mapa?.nota || '')}</textarea></div></div>
     </aside></div>`;
 }
+// Etapa 5: cada ponto numa linha curta, só com lado e situação ao lado (proposta aprovada em 05/11).
+const ICONE_RX = { plan:'relogio', real:'check', nao:'x' };
+function linhaPonto(p, a, c, l){
+  const d = PT[c], w = pointWarnings([c], p, []), rasc = a.status === 'rascunho', C = ui.rxCorr;
+  const cab = `<div class="rx-p"><b class="mono rx-c">${esc(c)}</b><span class="rx-nm">${d ? esc(d.pinyin) : '<span class="muted">ficha pendente</span>'}</span>${w.length ? `<span class="rx-w" data-tip="${esc(w.map(x => x[1]).join(' · '))}" aria-label="Cautela">${ic('alerta')}</span>` : ''}</div>`;
+  if (!rasc && C && C.c === c) return `<form class="rx corr" id="f-rx-corr" data-c="${esc(c)}">${cab}
+      <div class="rx-g">${linhaMedia(c) ? '' : `<label class="rx-f"><span class="lbl">Lado</span><select data-rxc="lado">${LADOS_RX.slice(0, 2).map(([k, n]) => `<option value="${k}" ${C.lado === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`}
+        <label class="rx-f"><span class="lbl">Situação</span><select data-rxc="status">${STATUS_RX.map(([k, n]) => `<option value="${k}" ${C.status === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label class="rx-f full"><span class="lbl">Motivo da correção (obrigatório)</span><input data-rxc="motivo" value="${esc(C.motivo)}" placeholder="Ex.: esqueci de marcar como realizado" required></label></div>
+      <small class="muted">Antes: ${nomeRx(LADOS_RX, l.lado).toLowerCase()} · ${nomeRx(STATUS_RX, l.status).toLowerCase()}</small>
+      <div class="rx-ba"><button class="btn sm pri">${ic('check')}Salvar correção</button><button type="button" class="btn sm" data-act="at-rx-corrx">Cancelar</button></div></form>`;
+  if (!rasc) return `<div class="rx ${l.status}" data-rx="${esc(c)}">${cab}<span class="rx-ro">${nomeRx(LADOS_RX, l.lado)}</span><span class="pill ${l.status === 'real' ? 'ok' : l.status === 'nao' ? 'crit' : ''}">${nomeRx(STATUS_RX, l.status)}</span><button class="btn ghost sm" data-act="at-rx-corr" data-c="${esc(c)}">${ic('editar')}Corrigir</button>${l.status === 'nao' && l.motivo ? `<small class="rx-mt muted">${esc(l.motivo)}</small>` : ''}</div>`;
+  return `<div class="rx ${l.status}" data-rx="${esc(c)}">${cab}
+    ${l.lado === 'med' ? '<span class="rx-med">linha média</span>' : `<div class="rx-seg" role="group" aria-label="Lado de ${esc(c)}">${LADOS_RX.slice(0, 2).map(([k, n]) => `<button class="${l.lado === k ? 'on' : ''}" data-act="at-rx-lado" data-c="${esc(c)}" data-l="${k}" aria-pressed="${l.lado === k}">${n}</button>`).join('')}</div>`}
+    <div class="rx-seg st" role="group" aria-label="Situação de ${esc(c)}">${STATUS_RX.map(([k, n]) => `<button class="${k}${l.status === k ? ' on' : ''}" data-act="at-rx-st" data-c="${esc(c)}" data-s="${k}" aria-pressed="${l.status === k}" aria-label="${n}" data-tip="${n}">${ic(ICONE_RX[k])}</button>`).join('')}</div>
+    <button class="btn ghost sm rx-x" data-act="at-pt" data-c="${esc(c)}" aria-label="Tirar ${esc(c)} do plano">${ic('x')}</button>
+    ${l.status === 'nao' ? `<input class="rx-mot" data-rxmot="${esc(c)}" value="${esc(l.motivo)}" placeholder="Motivo (opcional)" aria-label="Motivo de ${esc(c)} não ter sido feito">` : ''}</div>`;
+}
 function ePlano(p,a){
-  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, ac=evaluate(av.signs).filter(h=>av.status[h.p.id]==='aceito'), P=a.plano.pontos, w=pointWarnings(P,p,a.plano.tec);
+  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, ac=evaluate(av.signs).filter(h=>av.status[h.p.id]==='aceito'), P=a.plano.pontos, w=pointWarnings(P,p,a.plano.tec), rasc=a.status==='rascunho', L=linhasRx(a), R=a.retificacoes||[];
   return `<div class="grid g-side"><div class="grid" style="align-content:start">
-    <div class="card"><div class="card-h"><h3>Pontos do plano</h3><span class="pill acc">${P.length}</span></div>
-      ${P.length?`<div class="chips">${P.map(c=>`<button class="chip on mono" data-act="at-pt" data-c="${esc(c)}" title="Remover">${esc(c)} ✕</button>`).join('')}</div>`:'<p class="muted sm">Escolha nas sugestões ao lado ou digite abaixo.</p>'}
-      <form id="f-at-pt" class="nq"><label class="so-leitor" for="at-pt-c">Código do ponto</label><input id="at-pt-c" class="mono" placeholder="Ex.: E36, BP6" required><button class="btn sm">${ic('mais')}Incluir</button></form>
-      <div class="lbl" style="margin:16px 0 8px">Técnicas</div><div class="chips">${TECNICAS.map(t=>`<button class="chip ${a.plano.tec.includes(t)?'on':''}" data-act="at-tec" data-t="${t}" aria-pressed="${a.plano.tec.includes(t)}">${t}</button>`).join('')}</div></div>
+    <div class="card" id="rx-card"><div class="card-h"><h3>Pontos do plano<small>${P.length} ponto${P.length===1?'':'s'}</small></h3>${P.length?`<div class="rx-res">${contagemRx(a).map(([k,n,q])=>`<span class="pill ${k==='real'?'ok':k==='nao'?'crit':''}" data-cont="${k}">${n} ${q}</span>`).join('')}</div>`:''}</div>
+      ${P.length?`<div class="rx-leg" aria-hidden="true">${STATUS_RX.map(([k,n])=>`<span>${ic(ICONE_RX[k])}${n}</span>`).join('')}</div>`:''}
+      <div class="rx-l" id="rx-l">${L.map(([c,l])=>linhaPonto(p,a,c,l)).join('')||'<p class="muted sm">Escolha nas sugestões ao lado, no mapa corporal ou digite abaixo.</p>'}</div>
+      <div class="rx-a"><form id="f-at-pt" class="nq"><label class="so-leitor" for="at-pt-c">Código do ponto</label><input id="at-pt-c" class="mono" placeholder="Ex.: E36, BP6" required><button class="btn sm">${ic('mais')}Incluir</button></form>
+        ${rasc&&L.some(([,l])=>l.status==='plan')?`<button class="btn sm" data-act="at-rx-todos">${ic('check')}Todos realizados</button>`:''}</div>
+      <div class="lbl" style="margin:16px 0 8px">Técnicas</div><div class="chips">${TECNICAS.map(t=>`<button class="chip ${a.plano.tec.includes(t)?'on':''}" data-act="at-tec" data-t="${t}" aria-pressed="${a.plano.tec.includes(t)}">${t}</button>`).join('')}</div>
+      ${R.length?`<details class="mais" id="rx-ret"><summary>${ic('historico')}Correções depois de finalizar (${R.length})</summary><ul class="ret-l">${R.map(r=>`<li><b class="mono">${esc(r.ponto)}</b> · ${r.mud.map(([k,x,y])=>`${k}: <s>${esc(x)}</s> → <b>${esc(y)}</b>`).join('; ')}<small class="muted">${esc(r.por)} · ${fmt(r.em.slice(0,10))} às ${hhmm(r.em)} · motivo: ${esc(r.motivo)}</small></li>`).join('')}</ul></details>`:''}</div>
     <div class="card seg" id="at-seg"><div class="card-h"><h3>${ic('escudo')} Verificação de segurança</h3>${w.length?`<span class="pill crit">${w.length}</span>`:'<span class="pill ok">ok</span>'}</div>
-      ${w.length?w.map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:8px">${ic(k==='crit'?'escudo':'alerta')}<div><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div></div>`).join(''):`<div class="vazio">${ic('okc')}Nenhuma contraindicação encontrada para os pontos e técnicas escolhidos.</div>`}</div></div>
+      ${w.length?w.map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:8px">${ic(k==='crit'?'escudo':'alerta')}<div><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div></div>`).join(''):`<div class="vazio">${ic('okc')}Nenhuma contraindicação encontrada para os pontos e técnicas escolhidos.</div>`}</div>
+    <div class="card" id="orient-card"><div class="field"><label class="lbl" for="at-orient">Orientações para casa <span class="pill">opcional</span></label><textarea id="at-orient" data-atorient="1" placeholder="Ex.: compressa morna na nuca à noite">${esc(a.plano.orient||'')}</textarea></div>
+      <button class="btn sm" data-act="at-imprimir" style="margin-top:10px">${ic('doc')}Imprimir para o paciente</button><small class="muted" style="display:block;margin-top:6px">Sai uma folha só com as orientações, o nome do paciente, a data e o seu nome.</small></div></div>
     <div class="grid" style="align-content:start">${(()=>{ const L=encaminhados(av,'plano'); return `<div class="card"><div class="card-h"><h3>Trazido pelo profissional</h3><span class="muted sm">só o que foi marcado como "Plano"</span></div>
       ${L.length?L.map(([c,nome,I])=>I.map(it=>`<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${nome}</small></div><button class="btn sm ghost" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="plano">${ic('x')}Retirar</button></div>`).join('')).join(''):`<p class="muted sm">Nada encaminhado. Marque "Plano" num achado da avaliação para ele aparecer aqui.</p>`}</div>`; })()}
     ${dicasTratamento(p,a)}
@@ -369,7 +393,28 @@ function eEvolucao(p,a){
     ${linhas(series,labels,{label:'Intensidade das queixas por atendimento'})}
     <div class="qsum">${series.map(s=>{ const v=s.vals.filter(x=>x!=null); return `<div><i style="background:${s.cor}"></i><span>${esc(s.nome)}</span><b>${v[0]} → ${v.at(-1)}</b>${v.length>1?delta(v[0],v.at(-1)):'<span class="pill acc">1ª medida</span>'}</div>`; }).join('')}</div>
     <p class="muted sm">Os valores de hoje vêm da etapa Anamnese.</p></div>
-    <div class="card"><div class="field"><label class="lbl" for="at-nota">Evolução e observações</label><textarea id="at-nota" data-atf="nota" placeholder="Como o paciente respondeu, o que mudou desde o último atendimento...">${esc(a.evolucao.nota)}</textarea></div></div></div>`;
+    <div class="grid" style="align-content:start">${situacoesQueixas(p,a,lista)}${feitoHoje(a)}
+    <div class="card"><div class="field"><label class="lbl" for="at-nota">Evolução e observações</label><textarea id="at-nota" data-atf="nota" placeholder="Como o paciente respondeu, o que mudou desde o último atendimento...">${esc(a.evolucao.nota)}</textarea></div></div></div></div>`;
+}
+// Situação de cada queixa: escolha do profissional. A diferença só mostra os números da Anamnese.
+function situacoesQueixas(p,a,lista){
+  const i=lista.indexOf(a), Q=p.queixas.filter(q=>a.evolucao.intensidades[q.id]!=null), S=a.evolucao.situacoes||{};
+  if(!Q.length) return '';
+  const sem=Q.filter(q=>!S[q.id]).length;
+  return `<div class="card" id="ev-q"><div class="card-h"><h3>Queixas neste atendimento<small>situação escolhida por você</small></h3>${sem?`<span class="pill warn">${sem} sem situação</span>`:'<span class="pill ok">todas com situação</span>'}</div>
+    <div class="qx-l">${Q.map(q=>{ const hoje=a.evolucao.intensidades[q.id], ant=lista.slice(0,i).map(x=>x.evolucao.intensidades[q.id]).filter(v=>v!=null).at(-1), dif=ant==null?null:hoje-ant;
+      return `<div class="qx" data-q="${esc(q.id)}"><div class="qx-h"><b>${esc(q.descricao)}</b><span class="qx-v">${ant==null?'<span class="pill acc">1º registro</span>':`<span class="muted">anterior</span> <b>${ant}</b>`} <span class="muted">hoje</span> <b>${hoje}</b>${dif==null?'':` <span class="qx-d ${dif<0?'cai':dif>0?'sobe':''}">${dif>0?'+':''}${dif}</span>`}</span></div>
+        <div class="qx-s" role="group" aria-label="Situação de ${esc(q.descricao)}">${SITUACOES_QUEIXA.map(([k,n])=>`<button class="chip ${S[q.id]===k?'on':''}" data-act="at-sit" data-q="${esc(q.id)}" data-s="${k}" aria-pressed="${S[q.id]===k}">${n}</button>`).join('')}</div></div>`; }).join('')}</div>
+    <p class="muted sm">O sistema não escolhe a situação por você.</p></div>`;
+}
+// O que foi feito, a partir da lista de pontos do Plano. Pontos ainda planejados só geram aviso.
+function feitoHoje(a){
+  const L=linhasRx(a); if(!L.length) return '';
+  const feitos=L.filter(([,l])=>l.status==='real'), nao=L.filter(([,l])=>l.status==='nao'), plan=L.filter(([,l])=>l.status==='plan'), n=plan.length, s=n>1?'s':'';
+  return `<div class="card" id="ev-feito"><div class="card-h"><h3>Feito ${a.status==='rascunho'?'hoje':'neste atendimento'}<small>vem da lista de pontos do Plano</small></h3><span class="pill ok">${feitos.length}</span></div>
+    ${feitos.length?`<ul class="ev-l">${feitos.map(([c,l])=>`<li>${ic('check')}<span><b class="mono">${esc(c)}</b> · ${nomeRx(LADOS_RX,l.lado).toLowerCase()}</span></li>`).join('')}</ul>`:'<p class="muted sm">Nenhum ponto marcado como realizado.</p>'}
+    ${nao.length?`<div class="lbl" style="margin-top:10px">Não realizado</div><ul class="ev-l nao">${nao.map(([c,l])=>`<li>${ic('x')}<span><b class="mono">${esc(c)}</b>${l.motivo?' · '+esc(l.motivo):''}</span></li>`).join('')}</ul>`:''}
+    ${n&&a.status==='rascunho'?`<div class="notice" id="ev-plan">${ic('alerta')}<div><b>${n} ponto${s} ainda planejado${s}.</b> Se finalizar assim, fica${n>1?'m':''} registrado${s} como planejado${s}, sem dizer se foi feito. <button class="btn sm ghost" data-act="at-ir-plano">Voltar ao plano</button></div></div>`:''}</div>`;
 }
 function eDocumentos(p,a,H){
   const D=[['doc','Registro do atendimento',a.status==='finalizado'?'Disponível no prontuário':'Entra no prontuário ao finalizar','ok','prontuario'],['agenda','Agendar retorno','Abre a agenda com o paciente escolhido','acc','retorno'],

@@ -127,7 +127,7 @@ await ir('/versoes');
 const basal = async () => p.locator('.ver.basal').innerText();
 const b0 = await basal();
 ok(await p.locator('.ver.basal', { hasText: 'bloqueada' }).count() === 1 && await p.locator('.ver.basal [data-a="corr"]').count() === 0, 'basal bloqueada, sem botão de correção');
-ok(/22\/09\/2026 às 09:10/.test(b0) && /Mauren Turcatti/.test(b0) && /Motivo/.test(b0), 'versão mostra data, hora, profissional e motivo');
+ok(/22\/09\/2026 às 09:10/.test(b0) && /Maicon Farinelli/.test(b0) && /Motivo/.test(b0), 'versão mostra data, hora, profissional e motivo');
 ok(await p.locator('.ver', { hasText: 'avulsa' }).count() >= 1 && await p.locator('.ver', { hasText: 'atendimento' }).count() >= 1, 'distingue reavaliação avulsa e versão de atendimento');
 const nVer = await p.locator('.ver').count();
 await p.click('[data-a="reav"]'); await espera();

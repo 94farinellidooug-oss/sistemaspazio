@@ -98,7 +98,7 @@ const delta = (a,b) => { if(a==null||b==null) return ''; const d=b-a; return `<s
 
 /* ---------- Menu, barra superior e camadas (busca, notificações, perfil, atalhos) ---------- */
 const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
-const PROF = {nome:'Mauren Turcatti', papel:'Profissional responsável'};
+const PROF = {nome:'Maicon Farinelli', papel:'Profissional responsável'};
 const diasDesde = d => Math.round((new Date(TODAY+'T12:00')-new Date(d+'T12:00'))/864e5);
 function acompanhamento(){
   return db.patients.map(p=>{ const m=[], l=p.sessions.at(-1), futuro=db.appts.some(a=>a.pid===p.id&&a.date>=TODAY&&!a.done), s=p.sessions.map(x=>x.eva);
@@ -567,7 +567,7 @@ function vDocumentos(){
   <div class="docs">${M.map(([t,i,s])=>`<button class="docc" data-a="toast" data-m="${t}: etapa 6.">${ic(i)}<b>${t}</b><small>${s}</small></button>`).join('')}</div>`;
 }
 function vAdmin(){
-  const E=[['Mauren Turcatti','Administradora · Acupuntura','admin'],['Profissional convidada','Fisioterapia · Acupuntura','clínica'],['Recepção','Agenda e financeiro','recepção']];
+  const E=[['Maicon Farinelli','Administradora · Acupuntura','admin'],['Profissional convidada','Fisioterapia · Acupuntura','clínica'],['Recepção','Agenda e financeiro','recepção']];
   return `<div class="head"><div><h1>Administração</h1><p>Equipe, permissões e dados da clínica · <span class="pill ex">etapa 10</span></p></div><button class="btn pri" data-a="toast" data-m="Multiusuário entra na etapa 10.">${ic('novo')}Convidar</button></div>
   <div class="grid g-side"><div class="card"><h3>Equipe</h3>${E.map(([n,d,r])=>`<div class="al-i"><span class="avatar">${initials(n)}</span><span class="grow"><b>${n}</b><small class="muted">${d}</small></span><span class="pill ${r==='admin'?'acc':''}">${r}</span></div>`).join('')}</div>
     <div class="card"><h3>Clínica</h3><dl class="corr" style="margin-top:12px"><dt>Nome</dt><dd>Spazio Terapias Integrativas</dd><dt>Cidade</dt><dd>São Paulo · hemisfério Sul</dd><dt>Serviços</dt><dd>Acupuntura, moxabustão, ventosa, auriculoterapia</dd><dt>Privacidade</dt><dd>LGPD · consentimento por paciente</dd></dl></div></div>`;

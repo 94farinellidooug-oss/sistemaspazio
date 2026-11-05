@@ -140,7 +140,7 @@ async function verificar(browser, url, nome) {
   await p.click('[data-act="at-par"][data-v="Chong Mai"]'); await espera();
   j = await paciente();
   ok(['BP4','CS6'].every(c => j.atendimentos[0].plano.pontos.includes(c)) && j.atendimentos[0].vasos['Chong Mai'].considerar && j.atendimentos[0].vasos['Chong Mai'].nota === 'considerar no ciclo' && await tem('.dicas .vt-r.tem', 'par no plano'), `${nome}: par incluído só pelo botão do profissional`);
-  for (const c of ['BP4','CS6']) await p.click(`.chip.on[data-act="at-pt"][data-c="${c}"]`);
+  for (const c of ['BP4','CS6']) await p.click(`#rx-l [data-act="at-pt"][data-c="${c}"]`);
   await espera(); ok(J((await paciente()).atendimentos[0].plano.pontos) === ptsAntes, `${nome}: pontos do par podem ser retirados`);
   await etapa(1);
   j = await paciente();
@@ -170,6 +170,33 @@ async function verificar(browser, url, nome) {
   const plano = j.atendimentos[0].plano, W = pointWarnings(plano.pontos, j, plano.tec);
   ok(plano.pontos.includes('BP6') && plano.pontos.includes('IG4') && plano.tec[0] === 'Acupuntura', `${nome}: pontos e técnicas no plano`);
   ok(W.length > 0 && await p.locator('#at-seg .notice').count() === W.length, `${nome}: avisos de segurança iguais aos da verificação existente (${W.length}, gestante)`);
+  // Etapa 5: lista curta com lado e situação de cada ponto
+  const rxDe = async c => ((await paciente()).atendimentos[0].plano.rx || {})[c];
+  ok(await p.locator('#rx-l .rx').count() === plano.pontos.length && await tem('#rx-l [data-rx="BP6"] [data-act="at-rx-lado"][data-l="bil"].on') && await tem('#rx-l [data-rx="BP6"] [data-act="at-rx-st"][data-s="plan"].on'), `${nome}: cada ponto numa linha, bilateral e planejado por padrão`);
+  ok(await p.locator('#rx-l select, #rx-l input[type="number"]').count() === 0, `${nome}: sem agulhas, técnica ou tempo por ponto`);
+  ok(j.atendimentos[0].plano.rx === undefined, `${nome}: sem marcar nada, os dados do plano não mudam`);
+  await p.click('#rx-l [data-rx="BP6"] [data-act="at-rx-lado"][data-l="uni"]'); await espera();
+  ok((await rxDe('BP6'))?.lado === 'uni' && await tem('#rx-l [data-rx="BP6"] [data-act="at-rx-lado"][data-l="uni"].on'), `${nome}: lado unilateral com um toque`);
+  await p.click('#rx-l [data-rx="BP6"] [data-act="at-rx-st"][data-s="real"]'); await espera();
+  await p.click('#rx-l [data-rx="IG4"] [data-act="at-rx-st"][data-s="nao"]'); await espera();
+  await p.fill('[data-rxmot="IG4"]', 'Paciente pediu para não aplicar'); await espera();
+  ok((await rxDe('BP6'))?.status === 'real' && (await rxDe('IG4'))?.status === 'nao' && (await rxDe('IG4'))?.motivo === 'Paciente pediu para não aplicar' && await tem('[data-cont="real"]', 'Realizado 1'), `${nome}: realizado e não realizado com motivo opcional`);
+  await p.click('[data-act="at-rx-todos"]'); await espera();
+  j = await paciente();
+  ok(j.atendimentos[0].plano.pontos.every(c => c === 'IG4' ? j.atendimentos[0].plano.rx[c].status === 'nao' : j.atendimentos[0].plano.rx[c]?.status === 'real'), `${nome}: todos realizados só muda os planejados`);
+  ok(J(j.atendimentos[0].plano.pontos) === J(plano.pontos) && J(pointWarnings(j.atendimentos[0].plano.pontos, j, j.atendimentos[0].plano.tec)) === J(W), `${nome}: lista de pontos e verificação de segurança iguais às de antes`);
+  await p.fill('#at-pt-c', 'E36'); await p.click('#f-at-pt button'); await espera();
+  await p.click('#rx-l [data-rx="E36"] [data-act="at-rx-st"][data-s="real"]'); await espera();
+  await p.click('#rx-l [data-act="at-pt"][data-c="E36"]'); await espera();
+  ok(!(await paciente()).atendimentos[0].plano.pontos.includes('E36') && (await rxDe('E36')) === undefined, `${nome}: tirar o ponto apaga o registro dele`);
+  // Orientações para casa com impressão
+  await p.evaluate(() => { window.__imp = 0; window.print = () => { window.__imp++; }; });
+  await p.click('[data-act="at-imprimir"]'); await espera();
+  ok(await p.evaluate(() => window.__imp) === 0, `${nome}: sem orientações, não imprime`);
+  await p.fill('#at-orient', 'Compressa morna na nuca à noite'); await espera();
+  await p.click('[data-act="at-imprimir"]'); await espera();
+  ok(await p.evaluate(() => window.__imp) === 1 && await tem('#imp', 'Compressa morna') && await tem('#imp', NOME) && await tem('#imp', 'Maicon Farinelli') && !(await tem('#imp', 'BP6')) && (await paciente()).atendimentos[0].plano.orient === 'Compressa morna na nuca à noite', `${nome}: orientações gravadas e impressas numa folha só para o paciente`);
+  await p.emulateMedia({ media:'print' }); ok(await p.locator('#imp').isVisible() && !(await p.locator('.app').isVisible()), `${nome}: na impressão só aparece a folha`); await p.emulateMedia({ media:'screen' });
   await etapa(4); ok(await p.locator('svg.mapa4 .ptp.plano[data-pt="BP6"]').count() === 2, `${nome}: mapa corporal mostra os pontos do plano (BP6 dos dois lados)`);
 
   // Etapa 4A: mapa corporal com seis vistas e marcações
@@ -246,11 +273,11 @@ async function verificar(browser, url, nome) {
   ok(await tem('#fp-rev', 'ainda não revisada'), `${nome}: a ficha no mapa diz se a posição foi revisada`);
   await p.click('#ficha-pt [data-act="at-mv-ptf"]'); await espera();
   ok(await p.locator('#ficha-pt').count() === 0 && await tem('#ed-mk', 'Pontos próximos'), `${nome}: voltar da ficha para a marcação`);
-  // Pontos indicados pelo livro para a região (tabela conferida por Mauren)
+  // Pontos indicados pelo livro para a região (tabela conferida por Maicon)
   const IND = await p.evaluate(async () => { const m = await import('/js/conhecimento/indicacoes-regiao.js').catch(() => null); return m ? m.INDICADOS_REGIAO : null; });
   const nInd = r => IND ? IND[r].length : (r === 'Abdome' ? 93 : r === 'Ombro' ? 47 : 29);
   ok((await marcas()).at(-1).regiao === 'Abdome' && await p.inputValue('#mk-reg') === 'Abdome', `${nome}: a região é sugerida pelo local tocado`);
-  ok(await tem('#mk-ind', 'Indicados para abdome') && await p.locator('#mk-ind .ind-b').count() === nInd('Abdome') && await tem('#mk-ind', 'Ednéa Iara Souza Martins') && await tem('#mk-ind', 'conferida por Mauren'), `${nome}: aparecem os pontos indicados pelo livro para a região, com a fonte`);
+  ok(await tem('#mk-ind', 'Indicados para abdome') && await p.locator('#mk-ind .ind-b').count() === nInd('Abdome') && await tem('#mk-ind', 'Ednéa Iara Souza Martins') && await tem('#mk-ind', 'conferida por Maicon'), `${nome}: aparecem os pontos indicados pelo livro para a região, com a fonte`);
   await marcar('dor', 66, 80);
   ok((await marcas()).at(-1).regiao === 'Ombro' && await p.locator('#mk-ind .ind-b').count() === nInd('Ombro'), `${nome}: dor no ombro mostra os pontos indicados para o ombro`);
   const pend = await p.$eval('#mk-ind .ind-b.pend', e => e.dataset.c);
@@ -287,6 +314,14 @@ async function verificar(browser, url, nome) {
 
   // Evolução e finalizar
   await etapa(6); await p.fill('[data-atf="nota"]', 'Respondeu bem'); await espera();
+  // Etapa 5: situação de cada queixa escolhida pelo profissional; feito hoje vem do Plano
+  ok(await tem('#ev-q', 'sem situação') && await p.locator('#ev-q .chip.on').count() === 0, `${nome}: queixas começam sem situação (nada é escolhido sozinho)`);
+  await p.click('[data-act="at-sit"][data-q="q1"][data-s="melhora"]'); await espera();
+  ok((await paciente()).atendimentos[0].evolucao.situacoes?.q1 === 'melhora' && await tem('[data-q="q1"] .chip.on', 'Melhora'), `${nome}: situação da queixa gravada`);
+  ok(await tem('#ev-feito', 'BP6') && await tem('#ev-feito .nao', 'Paciente pediu para não aplicar') && !(await tem('#ev-plan')), `${nome}: feito hoje e não realizado vêm da lista do Plano`);
+  await etapa(5); await p.fill('#at-pt-c', 'E40'); await p.click('#f-at-pt button'); await espera(); await etapa(6);
+  ok(await tem('#ev-plan', '1 ponto ainda planejado'), `${nome}: aviso de ponto ainda planejado`);
+  await etapa(5); await p.click('#rx-l [data-act="at-pt"][data-c="E40"]'); await espera();
   await etapa(7);
   ok(await tem('.hist-alt', 'plano terapêutico') && await tem('.hist-alt', 'atendimento iniciado'), `${nome}: histórico de alterações visível`);
   await p.click('[data-act="at-finalizar"]'); await espera();
@@ -307,6 +342,17 @@ async function verificar(browser, url, nome) {
   j = await paciente();
   ok(j.atendimentos[0].evolucao.nota.endsWith('7 dias') && j.atendimentos[0].historico.at(-1).acao === 'evolução (após finalizar)', `${nome}: complemento registrado no histórico como "após finalizar"`);
 
+  // Etapa 5: depois de finalizar, mudar um ponto é correção com motivo
+  await etapa(5);
+  ok(await p.locator('#rx-l [data-act="at-rx-st"]').count() === 0 && await tem('#rx-l [data-rx="IG4"] [data-act="at-rx-corr"]'), `${nome}: finalizado, a lista só se corrige com motivo`);
+  await p.click('#rx-l [data-rx="IG4"] [data-act="at-rx-corr"]'); await espera();
+  await p.selectOption('#f-rx-corr [data-rxc="status"]', 'real'); await p.click('#f-rx-corr .btn.pri'); await espera();
+  ok(!(await paciente()).atendimentos[0].retificacoes, `${nome}: sem motivo, a correção não é salva`);
+  await p.fill('#f-rx-corr [data-rxc="motivo"]', 'Esqueci de marcar'); await p.click('#f-rx-corr .btn.pri'); await espera();
+  j = await paciente();
+  { const r = j.atendimentos[0].retificacoes?.[0];
+    ok(r && r.ponto === 'IG4' && J(r.mud) === J([['Situação','Não realizado','Realizado']]) && r.por === 'Maicon Farinelli' && r.motivo === 'Esqueci de marcar' && j.atendimentos[0].plano.rx.IG4.status === 'real' && j.atendimentos[0].plano.rx.IG4.motivo === '', `${nome}: correção guarda antes, depois, quem e motivo`);
+    ok(/correção de IG4.*Motivo: Esqueci de marcar \(após finalizar\)$/.test(j.atendimentos[0].historico.at(-1).acao) && await tem('#rx-ret', 'Esqueci de marcar'), `${nome}: correção no histórico e na lista de correções`); }
   // Etapa 3C: a avaliação basal fica bloqueada depois de finalizada
   await etapa(1);
   ok(await tem('.trava', 'Avaliação basal bloqueada') && await p.locator('fieldset.trava-f[disabled]').count() === 1, `${nome}: basal bloqueada na avaliação`);
@@ -335,7 +381,7 @@ async function verificar(browser, url, nome) {
 
   // Etapa 3C: versões da avaliação e reavaliação avulsa com motivo
   await p.click('.tabs [data-t="versoes"]'); await espera();
-  ok(await p.locator('.ver').count() === 1 && await tem('.ver.basal', 'bloqueada') && await tem('.ver.basal', 'Mauren Turcatti') && await tem('.ver.basal', 'Atendimento de'), `${nome}: versões mostram a basal, profissional e contexto`);
+  ok(await p.locator('.ver').count() === 1 && await tem('.ver.basal', 'bloqueada') && await tem('.ver.basal', 'Maicon Farinelli') && await tem('.ver.basal', 'Atendimento de'), `${nome}: versões mostram a basal, profissional e contexto`);
   await p.click('#f-reav button'); await espera();
   ok(await p.evaluate(() => location.hash) === '#prontuario', `${nome}: reavaliação sem motivo não começa`);
   await p.fill('#rv-motivo', 'Piora após viagem'); await p.click('#f-reav button'); await espera();
@@ -343,7 +389,7 @@ async function verificar(browser, url, nome) {
   for (const s of ['irritabilidade', 'tpm', 'lombalgia']) await p.click(`[data-s="${s}"]`);
   await p.click('[data-act="save-assess"]'); await espera();
   j = await paciente();
-  ok(j.avaliacoes.length === 2 && J(j.avaliacoes[0].signs) === J(SINAIS) && j.avaliacoes[1].motivo === 'Piora após viagem' && j.avaliacoes[1].prof === 'Mauren Turcatti', `${nome}: nova versão com motivo e profissional; a basal continua igual`);
+  ok(j.avaliacoes.length === 2 && J(j.avaliacoes[0].signs) === J(SINAIS) && j.avaliacoes[1].motivo === 'Piora após viagem' && j.avaliacoes[1].prof === 'Maicon Farinelli', `${nome}: nova versão com motivo e profissional; a basal continua igual`);
   ok(await tem('.tabs [data-t="versoes"].on') && await p.locator('.ver').count() === 2 && await tem('.ver:not(.basal)', 'Piora após viagem') && await tem('.ver:not(.basal)', 'Reavaliação avulsa'), `${nome}: versões listam a reavaliação avulsa`);
   ok(await p.locator('.cmp svg.penta').count() === 2 && await tem('.sinais-cmp', 'Lombalgia'), `${nome}: compara duas versões`);
   ok(J(Object.keys(paraV1(JSON.parse(await p.evaluate(() => localStorage.getItem('musubi-v2')))).patients.find(x => x.name === NOME).assess[1])) === J(['id','date','signs','status','nota']), `${nome}: exportação v1 sem os campos de versão`);

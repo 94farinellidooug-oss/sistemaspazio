@@ -15,7 +15,7 @@ export const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Bi
 // Item do menu que fica marcado em cada tela.
 const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
-export const PROF = {nome:'Mauren Turcatti', papel:'Profissional responsável'};
+export const PROF = {nome:'Maicon Farinelli', papel:'Profissional responsável'};
 
 const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 // Itens da busca global: [grupo, ícone, título, detalhe, atributos do link].

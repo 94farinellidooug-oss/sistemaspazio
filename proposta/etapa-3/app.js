@@ -13,7 +13,7 @@ import { pointWarnings } from '../../js/raciocinio/seguranca.js';
 import { esc, fmt, initials } from '../../js/util.js';
 
 /* ---------- Paciente e profissional fictícios ---------- */
-const PROF = 'Mauren Turcatti';
+const PROF = 'Maicon Farinelli';
 const P = { name:'Marina Costa', idade:35, alerts:{gestante:false,anticoagulante:false,marcapasso:false}, cidade:'Caxias do Sul, RS', hemisferio:'Sul' };
 const HOJE = '2026-11-03';
 

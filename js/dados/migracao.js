@@ -138,3 +138,17 @@ export function alternarQueixa(p, id, em){
 // Evolução de uma queixa: intensidade em cada atendimento finalizado em que ela foi medida.
 export const serieQueixa = (p, id) => p.atendimentos.filter(a => a.status === 'finalizado' && a.evolucao.intensidades[id] != null)
   .map(a => ({ data: a.data, valor: a.evolucao.intensidades[id] }));
+
+// Troca o nome do profissional gravado nos registros (avaliações, revisões de posição e correções da
+// prescrição). Pedido do Maicon em 05/11/2026: os registros feitos como "Mauren Turcatti" são dele.
+// Só troca o nome exato; devolve quantos campos mudaram.
+export function trocarNomeProfissional(db, de, para){
+  let n = 0;
+  const t = (o, k) => { if (o && o[k] === de) { o[k] = para; n++; } };
+  db.patients.forEach(p => {
+    (p.avaliacoes || []).forEach(v => t(v, 'prof'));
+    (p.atendimentos || []).forEach(a => (a.retificacoes || []).forEach(r => t(r, 'por')));
+  });
+  Object.values(db.biblioteca?.revisoes || {}).forEach(r => { t(r, 'por'); (r.hist || []).forEach(h => t(h, 'por')); });
+  return n;
+}

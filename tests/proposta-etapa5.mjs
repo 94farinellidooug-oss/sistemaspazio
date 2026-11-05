@@ -50,7 +50,7 @@ await clicar('[data-a="imprimir"]');
 ok(await p.evaluate(() => window.__imp) === 0, 'sem orientações, não imprime');
 await p.fill('#orient', 'Compressa morna na nuca à noite'); await espera();
 await clicar('[data-a="imprimir"]');
-ok(await p.evaluate(() => window.__imp) === 1 && await tem('#imp', 'Compressa morna') && await tem('#imp', 'Marina Costa') && await tem('#imp', 'Mauren Turcatti') && !(await tem('#imp', 'VB20')), 'imprime folha só com as orientações, paciente, data e profissional');
+ok(await p.evaluate(() => window.__imp) === 1 && await tem('#imp', 'Compressa morna') && await tem('#imp', 'Marina Costa') && await tem('#imp', 'Maicon Farinelli') && !(await tem('#imp', 'VB20')), 'imprime folha só com as orientações, paciente, data e profissional');
 await p.emulateMedia({ media:'print' });
 ok(await p.locator('#imp').isVisible() && !(await p.locator('.app').isVisible()), 'na impressão só aparece a folha do paciente');
 await p.emulateMedia({ media:'screen' });
@@ -78,7 +78,7 @@ ok(await tem('#f-corr', 'antes: BP6'), 'corrigir mostra o valor anterior');
 await p.selectOption('#f-corr select[data-k="status"]', 'real'); await clicar('#f-corr .btn.pri');
 ok(await tem('#f-corr') && await tem('#pr-ret', 'Nenhuma correção'), 'sem motivo, a correção não é salva');
 await p.fill('#f-corr input[data-k="motivo"]', 'Esqueci de marcar como realizado'); await clicar('#f-corr .btn.pri');
-ok(await tem('#pr-ret li', 'Situação') && await tem('#pr-ret li s', 'Planejado') && await tem('#pr-ret li', 'Realizado') && await tem('#pr-ret li', 'Mauren Turcatti') && await tem('#pr-ret li', 'Esqueci de marcar'), 'correção registrada com antes, depois, autor e motivo');
+ok(await tem('#pr-ret li', 'Situação') && await tem('#pr-ret li s', 'Planejado') && await tem('#pr-ret li', 'Realizado') && await tem('#pr-ret li', 'Maicon Farinelli') && await tem('#pr-ret li', 'Esqueci de marcar'), 'correção registrada com antes, depois, autor e motivo');
 ok(await tem('.pr-li:has-text("BP6") .pill.ok', 'Realizado'), 'linha mostra o valor corrigido');
 
 // Celular

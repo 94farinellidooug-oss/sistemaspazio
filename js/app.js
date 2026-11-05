@@ -11,16 +11,17 @@ import { cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cada
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { PROF, listaBusca, renderNav } from './telas/menu.js';
 import { notificacoes } from './dados/indicadores.js';
-import { ic } from './componentes/icones.js';
+import { LOGO, ic } from './componentes/icones.js';
 import { FACES, MERIDIANOS, TAM, VASOS_ATLAS, ladoDe, regiaoDoToque } from './componentes/corpo.js';
 import { patientRows, vPacientes } from './telas/pacientes.js';
 import { vPainel } from './telas/painel.js';
 import { vPentagrama } from './telas/pentagrama.js';
 import { listaTodos, pointCards, vPontos } from './telas/pontos.js';
+import { corrigirPonto, linhaRx, definirLado, definirMotivo, definirSituacao, definirStatus, esquecerPonto, todosRealizados } from './dados/prescricao.js';
 import { adicionarFichaParticular, definirNotaPonto, removerFichaParticular, revisarPosicao } from './dados/biblioteca.js';
 import { CODIGOS } from './conhecimento/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
-import { TODAY, esc, uid } from './util.js';
+import { TODAY, esc, fmt, uid } from './util.js';
 
 export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
@@ -124,6 +125,10 @@ document.addEventListener('input',ev=>{
   else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
   else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
+  if(t.dataset.rxmot||t.dataset.atorient){ const x=atendimentoAberto(); if(!x) return;
+    if(t.dataset.rxmot){ if(x.a.status==='rascunho'&&definirMotivo(x.a,t.dataset.rxmot,t.value)) mudou(`plano terapêutico: motivo de ${t.dataset.rxmot} não realizado`,false); }
+    else { x.a.plano.orient=t.value; mudou('plano terapêutico: orientações para casa',false); } return; }
+  if(t.dataset.rxc){ if(ui.rxCorr) ui.rxCorr[t.dataset.rxc]=t.value; return; }
   if(t.dataset.mk&&t.tagName!=='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)) mudou(`mapa corporal: ${({procedimento:'procedimento',regiao:'região',nota:'anotação'})[t.dataset.mk]||t.dataset.mk} da marcação`,false); if(t.dataset.mk==='regiao'){ const x=atendimentoAberto(), m=x&&marcasDe(x.a).find(y=>y.id===ui.mapa.sel), e=document.getElementById('mk-ind'); if(m&&e) e.outerHTML=indicadosMarca(x.p,x.a,m); } return; }
   // Ambiente de atendimento: salva a cada alteração, sem redesenhar a tela enquanto se digita.
   const x=(t.dataset.atq||t.dataset.atan||t.dataset.atf||t.dataset.vnota||t.dataset.atp||t.dataset.atr||t.dataset.atln)&&atendimentoAberto(); if(!x) return;
@@ -145,7 +150,7 @@ export function sessionWarn(){
   document.getElementById('ns-warn').innerHTML=pointWarnings(codes,p,tec).map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:6px"><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div>`).join('');
 }
 // Ambiente de atendimento: troca de etapa, alterações com salvamento automático e histórico.
-function irEtapa(i){ const x=atendimentoAberto(); if(!x) return; ui.etapa=Math.max(0,Math.min(7,i));
+function irEtapa(i){ const x=atendimentoAberto(); if(!x) return; ui.etapa=Math.max(0,Math.min(7,i)); ui.rxCorr=null;
   if(x.a.status==='rascunho'&&!x.a.etapas.includes(ui.etapa)){ x.a.etapas.push(ui.etapa); save(); }
   render(); scrollTo(0,0); }
 // Correção de uma versão já registrada: guarda os valores de antes, uma vez por abertura do atendimento.
@@ -156,6 +161,11 @@ function mudou(acao, redesenhar=true){ const x=atendimentoAberto(); if(!x) retur
   if(x.a.status==='finalizado'&&ui.avFoto){ const av=avaliacaoEditavel(x.p,x.a); if(av&&av.id===ui.avFoto.id&&JSON.stringify(fotoVersao(av))!==JSON.stringify(ui.avFoto.foto)){ registrarCorrecao(av,ui.avFoto.foto,em); ui.avFoto=null; } }
   if(x.a.status==='finalizado'&&/avalia/.test(acao)){ const av=avaliacaoEditavel(x.p,x.a); if(av) registrarAlteracao(av,'avaliação alterada após finalizar o atendimento',em); }
   save(); if(redesenhar) render(true); else { const e=document.getElementById('autosave'); if(e) e.innerHTML=textoSalvo(x.a); } }
+// Folha para o paciente: só as orientações para casa, o nome, a data e o profissional. Nada clínico.
+function imprimirOrientacoes(p,A){
+  const o=(A.plano.orient||'').trim(); if(!o){ toast('Escreva as orientações antes de imprimir','info'); return; }
+  document.getElementById('imp').innerHTML=`<div class="imp-h">${LOGO}<div><b>Orientações para casa</b><small>${esc(p.name)} · ${fmt(A.data)}</small></div></div><div class="imp-t">${esc(o).replace(/\n/g,'<br>')}</div><div class="imp-a">${esc(PROF.nome)}</div>`;
+  window.print(); }
 const catNome = c => CATEGORIAS.find(x=>x[0]===c)?.[1]||c;
 function acaoAtendimento(a,t){
   const x=atendimentoAberto(); if(!x) return; const {p}=x, A=x.a, av0=avaliacaoEditavel(p,A), av=travada(p,A,av0)?null:av0;
@@ -172,7 +182,15 @@ function acaoAtendimento(a,t){
   else if(a.startsWith('at-mv-')||a.startsWith('at-mk-')){ acaoMapa(a,t,A); }
   else if(a==='at-aba'){ ui.avAba=Number(t.dataset.i); render(true); document.querySelector('.ab-bar')?.scrollIntoView({block:'nearest'}); }
   else if(a==='at-hip'&&av){ const id=t.dataset.p; av.status[id]=av.status[id]===t.dataset.st?'':t.dataset.st; mudou('avaliação energética: hipóteses'); }
-  else if(a==='at-pt'){ alterna(A.plano.pontos,t.dataset.c); mudou('plano terapêutico: pontos'); }
+  else if(a==='at-pt'){ alterna(A.plano.pontos,t.dataset.c); if(!A.plano.pontos.includes(t.dataset.c)) esquecerPonto(A,t.dataset.c); mudou('plano terapêutico: pontos'); }
+  else if(a==='at-rx-lado'){ if(A.status==='rascunho'&&definirLado(A,t.dataset.c,t.dataset.l)) mudou(`plano terapêutico: lado de ${t.dataset.c}`); }
+  else if(a==='at-rx-st'){ if(A.status==='rascunho'&&definirStatus(A,t.dataset.c,t.dataset.s)) mudou(`plano terapêutico: ${t.dataset.c} ${({plan:'planejado',real:'realizado',nao:'não realizado'})[t.dataset.s]}`); }
+  else if(a==='at-rx-todos'){ if(A.status==='rascunho'&&todosRealizados(A).length){ mudou('plano terapêutico: pontos planejados marcados como realizados'); toast('Pontos planejados marcados como realizados'); } }
+  else if(a==='at-rx-corr'){ const l=linhaRx(A,t.dataset.c); ui.rxCorr={c:t.dataset.c,lado:l.lado,status:l.status,motivo:''}; render(true); }
+  else if(a==='at-rx-corrx'){ ui.rxCorr=null; render(true); }
+  else if(a==='at-sit'){ definirSituacao(A,t.dataset.q,t.dataset.s); mudou('evolução: situação da queixa'); }
+  else if(a==='at-ir-plano'){ irEtapa(5); }
+  else if(a==='at-imprimir'){ imprimirOrientacoes(p,A); }
   else if(a==='at-tec'){ alterna(A.plano.tec,t.dataset.t); mudou('plano terapêutico: técnicas'); }
   else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
   else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
@@ -212,7 +230,7 @@ function acaoMapa(a,t,A){
   else if(a==='at-mv-plano'){ M.plano=!M.plano; render(true); }
   else if(a==='at-mv-ptf'){ M.pt=null; render(true); }
   else if(a==='at-mv-ptv'){ M.pt=t.dataset.c; render(true); }
-  else if(a==='at-mv-ptx'){ const c=t.dataset.c; if(A.status!=='rascunho'||!c) return; const L=A.plano.pontos, tinha=L.includes(c); tinha?L.splice(L.indexOf(c),1):L.push(c);
+  else if(a==='at-mv-ptx'){ const c=t.dataset.c; if(A.status!=='rascunho'||!c) return; const L=A.plano.pontos, tinha=L.includes(c); tinha?(L.splice(L.indexOf(c),1),esquecerPonto(A,c)):L.push(c);
     if(tinha) toast(`${c} retirado do plano`,'info'); else toast(`${c} incluído no plano`);
     mudou(`plano terapêutico: pontos (${c} ${tinha?'retirado':'indicado'} no mapa corporal)`); }
   else if(a==='at-mk-sel'){ const x=marcasDe(A).find(y=>y.id===t.dataset.id); if(!x) return; M.sel=x.id; M.pt=null; M.rm=false; M.vista=x.vista; if(FACES[x.vista]) M.face[x.vista]=x.face; render(true); }
@@ -271,6 +289,9 @@ document.addEventListener('change',ev=>{
 });
 document.addEventListener('submit',ev=>{
   ev.preventDefault(); const f=ev.target, v=id=>document.getElementById(id).value;
+  if(f.id==='f-rx-corr'){ const x=atendimentoAberto(), C=ui.rxCorr; if(!x||!C) return; if(!C.motivo.trim()){ toast('Escreva o motivo da correção','info'); return; }
+    const em=new Date().toISOString(), mud=corrigirPonto(x.a,C.c,C,C.motivo,PROF.nome,em); if(!mud){ toast('Nada mudou neste ponto','info'); return; }
+    ui.rxCorr=null; mudou(`plano terapêutico: correção de ${C.c} (${mud.map(([k,a,b])=>`${k.toLowerCase()}: ${a} → ${b}`).join('; ')}). Motivo: ${C.motivo.trim()}`); toast('Correção registrada'); return; }
   if(f.id==='f-part'){ const d=Object.fromEntries(new FormData(f)); if(adicionarFichaParticular(db,d,new Date().toISOString(),uid())){ save(); render(true); toast('Ficha adicionada à Particular'); } return; }
   if(f.id==='f-patient'){
     const cpf=document.getElementById('np-cpf');
