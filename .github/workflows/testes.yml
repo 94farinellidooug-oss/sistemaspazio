@@ -43,3 +43,6 @@ jobs:
 
       - name: Proposta navegável da etapa 4
         run: node tests/proposta-etapa4.mjs
+
+      - name: Proposta navegável da etapa 5
+        run: node tests/proposta-etapa5.mjs
