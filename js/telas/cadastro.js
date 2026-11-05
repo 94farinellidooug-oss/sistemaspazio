@@ -20,7 +20,7 @@ export function cpfValido(v){
 export const cpfFormatado = v => { const d=String(v||'').replace(/\D/g,'').slice(0,11); return d.length===11?`${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}`:v; };
 
 export function vCadastro(){
-  const p = ui.editPid ? patient(ui.editPid) : null, c = p?.cadastro || {};
+  const p = ui.editPid ? patient(ui.editPid) : null, c = p?.cadastro || {}, pre = p || ui.cadPrevio;
   const titulo = p ? 'Editar cadastro' : 'Novo paciente';
   ui.crumbs = p ? [['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Cadastro']] : [['#pacientes','Pacientes'],[null,'Novo paciente']];
   const campo = (id,l,val='',t='text',ph='',extra='',cls='') => `<div class="field ${cls}"><label class="lbl" for="${id}">${l}</label><input id="${id}" type="${t}" placeholder="${ph}" value="${esc(val)}" ${extra}></div>`;
@@ -29,8 +29,8 @@ export function vCadastro(){
   <form id="f-patient" class="cad">
     <div class="grid" style="align-content:start">
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('doc_id')}</span><div><h3>Identificação</h3><small class="muted">Dados pessoais e contato</small></div></div>
-        <div class="form">${campo('np-name','Nome completo *',p?.name,'text','Ex.: Marina Costa','required autocomplete="off"','full')}${campo('np-birth','Data de nascimento *',p?.birth,'date','','required')}${campo('np-cpf','CPF',c.cpf,'text','000.000.000-00','inputmode="numeric"')}
-          ${campo('np-phone','Telefone (WhatsApp)',p?.phone,'tel','(11) 90000-0000')}${campo('np-email','E-mail',c.email,'email','nome@email.com')}
+        <div class="form">${campo('np-name','Nome completo *',pre?.name,'text','Ex.: Marina Costa','required autocomplete="off"','full')}${campo('np-birth','Data de nascimento *',p?.birth,'date','','required')}${campo('np-cpf','CPF',c.cpf,'text','000.000.000-00','inputmode="numeric"')}
+          ${campo('np-phone','Telefone (WhatsApp)',pre?.phone,'tel','(11) 90000-0000')}${campo('np-email','E-mail',c.email,'email','nome@email.com')}
           ${campo('np-emerg','Contato de emergência',c.contatoEmergencia,'text','Nome e telefone','','full')}</div></section>
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('local')}</span><div><h3>Endereço e local de atendimento</h3><small class="muted">A cidade e o hemisfério são usados no contexto sazonal, só como complemento</small></div></div>
         <div class="form">${campo('np-end','Endereço',c.endereco,'text','Rua, número, bairro','','full')}${campo('np-cid','Cidade',c.cidade,'text','São Paulo')}
