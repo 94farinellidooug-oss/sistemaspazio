@@ -3,7 +3,8 @@ import { db, exportarV1, exportarV2, importar, patient, restaurarExemplos, save 
 import { adicionarQueixa, alternarQueixa, hidratarPaciente, novoPaciente, registrarAvaliacao, registrarSessao } from './dados/migracao.js';
 import { ui } from './estado.js';
 import { pointWarnings } from './raciocinio/seguranca.js';
-import { vAgenda } from './telas/agenda.js';
+import { formAgenda, vAgenda } from './telas/agenda.js';
+import { concluirHorario, conflito, desmarcar, marcarHorario, novoHorario, remarcar } from './dados/agenda.js';
 import { vAvaliacao } from './telas/avaliacao.js';
 import { atendimentoAberto, indicadosMarca, textoSalvo, vAtendimento } from './telas/atendimento.js';
 import { TIPOS_MARCA, LADOS_MARCA, adicionarMarca, editarMarca, marcasDe, removerMarca, CATEGORIAS, PARES_VASOS, adicionarAchadoLivre, definirVaso, ehBasal, fotoVersao, registrarCorrecao, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirAchadoLivre, definirPulso, notaCategoria, removerAchadoLivre, descartarRascunho, finalizarAtendimento, iniciarAtendimento, rascunhoDe, registrarAlteracao } from './dados/atendimento.js';
@@ -21,7 +22,7 @@ import { corrigirPonto, linhaRx, definirLado, definirMotivo, definirSituacao, de
 import { adicionarFichaParticular, definirNotaPonto, removerFichaParticular, revisarPosicao } from './dados/biblioteca.js';
 import { CODIGOS } from './conhecimento/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
-import { TODAY, esc, fmt, uid } from './util.js';
+import { TODAY, addDays, esc, fmt, uid } from './util.js';
 
 export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
@@ -95,15 +96,20 @@ document.addEventListener('click',ev=>{
   else if(a==='dia'){ ui.dia=t.dataset.d; render(true); }
   else if(a==='rolar'){ const d=document.getElementById(t.dataset.to); d?.scrollIntoView({behavior:'smooth',block:'start'}); d?.querySelector('input')?.focus({preventScroll:true}); }
   else if(a==='serie'){ const on=t.getAttribute('aria-pressed')!=='false'; t.setAttribute('aria-pressed',String(!on)); t.closest('.card').querySelectorAll(`.chart .se[data-s="${t.dataset.s}"]`).forEach(g=>g.classList.toggle('oculta',on)); }
-  else if(a==='book'){ ui.bookPid=t.dataset.pid; }
+  else if(a==='book'){ ui.bookPid=t.dataset.pid; ui.agForm=null; ui.remarcar=null; }
   else if(a==='tab'){ ui.tab=t.dataset.t; render(true); }
   else if(a==='sign'){ const s=t.dataset.s, L=ui.assess.signs; const i=L.indexOf(s); i<0?L.push(s):L.splice(i,1); render(true); }
   else if(a==='hyp'){ const id=t.dataset.p; ui.assess.status[id] = ui.assess.status[id]===t.dataset.st ? '' : t.dataset.st; render(true); }
   else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); const nv=registrarAvaliacao(p,{id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota},new Date().toISOString()); nv.prof=PROF.nome; const rm=ui.reavMotivo?.pid===p.id; if(rm) nv.motivo=ui.reavMotivo.motivo; ui.reavMotivo=null; save(); ui.pid=p.id; ui.tab=rm?'versoes':'resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
   else if(a==='el'){ ui.el = t.dataset.e && ui.el!==t.dataset.e ? t.dataset.e : null; render(true); }
   else if(a==='mer'){ ui.ptMer=t.dataset.m; render(true); }
-  else if(a==='week'){ ui.week = t.dataset.d==='0'?0:ui.week+Number(t.dataset.d); render(true); }
-  else if(a==='appt'){ const x=db.appts.find(z=>z.id===t.dataset.id); x.done=!x.done; save(); render(true); toast(x.done?'Atendimento concluído':'Atendimento reaberto'); }
+  else if(a==='week'||a==='ag-dia'){ ui.agDia = a==='ag-dia'?t.dataset.d:t.dataset.d==='0'?TODAY:addDays(7*Number(t.dataset.d),ui.agDia||TODAY);
+    if(!ui.remarcar){ const F=formAgenda(); F.date=ui.agDia; F.time=''; } render(true); }
+  else if(a==='ag-livre'){ formAgenda().time=t.dataset.h; render(true); document.getElementById('na-t')?.focus({preventScroll:true}); }
+  else if(a==='ag-st'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(x && marcarHorario(x,t.dataset.s)){ save(); render(true); } }
+  else if(a==='ag-desm'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; desmarcar(x,TODAY); if(ui.remarcar===x.id){ ui.remarcar=null; ui.agForm=null; } save(); render(true); toast(`Horário de ${patient(x.pid)?.name.split(' ')[0]||''} desmarcado; ele fica na lista de desmarcados`,'info'); }
+  else if(a==='ag-rem'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; ui.remarcar=x.id; ui.agForm={pid:x.pid,date:x.date,time:'',tipo:x.tipo}; ui.agDia=x.date; render(true); document.getElementById('f-appt')?.scrollIntoView({block:'nearest'}); }
+  else if(a==='ag-rem-x'){ ui.remarcar=null; ui.agForm=null; render(true); }
   else if(a==='addpt'){ const i=document.getElementById('ns-pts'); const L=i.value.split(',').map(s=>s.trim()).filter(Boolean); if(!L.includes(t.dataset.c)) L.push(t.dataset.c); i.value=L.join(', '); i.dispatchEvent(new Event('input',{bubbles:true})); }
   else if(a==='menu-mini'){ ui.menuMini=!ui.menuMini; render(true); }
   else if(a==='menu-abrir'){ ui.menuAberto=!ui.menuAberto; render(true); }
@@ -115,6 +121,7 @@ document.addEventListener('click',ev=>{
 document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
 document.addEventListener('input',ev=>{
   const t=ev.target;
+  if(t.dataset.agf==='time'){ formAgenda().time=t.value; return; }
   if(t.id==='pal-q'){ ui.q=t.value; ui.bi=0; document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(t.id==='pq'){ ui.pq=t.value; document.getElementById('plist').innerHTML=patientRows(); }
   else if(t.id==='pt-q'){ ui.ptQ=t.value; document.getElementById('ptlist').innerHTML=pointCards(); const ct=document.getElementById('c-todos'); if(ct) ct.innerHTML=listaTodos(); }
@@ -194,8 +201,8 @@ function acaoAtendimento(a,t){
   else if(a==='at-tec'){ alterna(A.plano.tec,t.dataset.t); mudou('plano terapêutico: técnicas'); }
   else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
   else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
-  else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; irPara('agenda'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
-  else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); const nv=p.avaliacoes.find(v=>v.id===A.avaliacaoId); if(nv) nv.prof=PROF.nome; save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
+  else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; ui.agForm=null; ui.remarcar=null; irPara('agenda'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
+  else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); concluirHorario(db.appts,p.id,A.data); const nv=p.avaliacoes.find(v=>v.id===A.avaliacaoId); if(nv) nv.prof=PROF.nome; save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
   else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
     descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
 }
@@ -273,6 +280,7 @@ document.addEventListener('change',ev=>{
     if(!confirm(`Importar “${f.name}”? Os dados atuais deste navegador serão substituídos. Exporte antes se quiser guardá-los.`)) return;
     f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
   if(t.dataset.vcmp){ ui[t.dataset.vcmp]=t.value; render(true); return; }
+  if(t.dataset.agf){ const F=formAgenda(); F[t.dataset.agf]=t.value; if(t.dataset.agf==='date'&&t.value) ui.agDia=t.value; if(t.dataset.agf!=='time') render(true); return; }
   if(t.hasAttribute('data-mvhist')){ ui.mapa.hist=t.value; render(true); return; }
   if(t.dataset.mk&&t.tagName==='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)){ if(t.dataset.mk==='tipo'&&t.value==='irradiacao'&&marcasDe(x.a).find(m=>m.id===ui.mapa.sel)?.x2==null) ui.mapa.rad=ui.mapa.sel; mudou(`mapa corporal: ${t.dataset.mk==='tipo'?'tipo':'lado'} da marcação`); } return; }
   if(t.dataset.atlsit||t.dataset.atlorig){ const x=atendimentoAberto(), av=x&&avaliacaoEditavel(x.p,x.a); if(av&&!travada(x.p,x.a,av)){ const [c,id]=(t.dataset.atlsit||t.dataset.atlorig).split('.'); definirAchadoLivre(av,c,id,t.dataset.atlsit?'sit':'orig',t.value); mudou(`avaliação energética: ${catNome(c)}: ${t.dataset.atlsit?'situação':'origem'} do achado`); } return; }
@@ -324,7 +332,12 @@ document.addEventListener('submit',ev=>{
     registrarSessao(p,{id:uid(),date:v('ns-date'),eva:Number(v('ns-eva')),intensidades:Object.fromEntries([...f.querySelectorAll('input[data-q]')].map(x=>[x.dataset.q,Number(x.value)])),pontos:v('ns-pts').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),tec:[...document.querySelectorAll('input[name=tec]:checked')].map(x=>x.value),nota:v('ns-nota')},new Date().toISOString());
     save(); ui.tab='sessoes'; toast('Sessão registrada'); render();
   } else if(f.id==='f-appt'){
-    db.appts.push({id:uid(),pid:v('na-p'),date:v('na-d'),time:v('na-t'),tipo:v('na-tipo'),valor:Number(v('na-v'))||0,done:false}); save(); ui.bookPid=null; toast('Agendamento criado'); render(true);
+    const date=v('na-d'), time=v('na-t'), tipo=v('na-tipo'), R=ui.remarcar&&db.appts.find(a=>a.id===ui.remarcar);
+    if(!date||!time){ toast('Escolha o dia e o horário','info'); return; }
+    const c=conflito(db.appts,date,time,tipo,R?.id), nome=pid=>patient(pid)?.name.split(' ')[0]||'';
+    if(R){ remarcar(R,date,time,tipo); toast(`${nome(R.pid)} remarcado para ${fmt(date)} às ${time}`); }
+    else { db.appts.push(novoHorario(uid(),v('na-p'),date,time,tipo)); toast(`Agendamento criado${c?`; atenção: encosta no horário de ${nome(c.pid)} às ${c.time}`:''}`, c?'info':'ok'); }
+    save(); ui.bookPid=null; ui.remarcar=null; ui.agForm=null; ui.agDia=date; render(true);
   }
 });
 render();
