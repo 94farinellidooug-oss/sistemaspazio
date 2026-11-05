@@ -5,7 +5,7 @@ import { seed } from '../js/dados/exemplos.js';
 import { hidratar, migrarV1, paraV1 } from '../js/dados/migracao.js';
 import { iniciarAtendimento, finalizarAtendimento } from '../js/dados/atendimento.js';
 import { definirLado, definirStatus, definirSituacao } from '../js/dados/prescricao.js';
-import { MODELOS_DOC, faltaModelo, guardarDocumento, marcarAssinado, modeloDoc, textoModelo } from '../js/dados/documentos.js';
+import { MODELOS_DOC, CAMPOS_DOC, apagarModelo, faltaModelo, guardarDocumento, marcarAssinado, modeloDoc, modelosDoc, preencherDoc, salvarModelo, textoModelo, voltarOriginal } from '../js/dados/documentos.js';
 
 let falhas = 0;
 const ok = (c, m) => { console.log(`${c ? 'ok   ' : 'FALHA'} ${m}`); if (!c) falhas++; };
@@ -43,9 +43,27 @@ ok(marcarAssinado(P, 'd2', '2026-11-05T15:00:00Z', 'Maicon Farinelli') === d2 &&
 ok(marcarAssinado(P, 'd2', 'outra', 'outro') === null && d2.assinadoEm === '2026-11-05T15:00:00Z', 'não marca duas vezes');
 ok(guardarDocumento(P, { id: 'd3', modelo: 'xx', texto: 'a', em: 'x', por: 'y' }) === null, 'modelo desconhecido não é guardado');
 
+// Modelos editados na página (pedido do Maicon em 05/11)
+ok(CAMPOS_DOC.length === 8 && preencherDoc('A {paciente}, {nada} e {xx}.', { paciente:'Ana', nada:'' }) === 'A Ana e {xx}.', 'dado vazio some com a vírgula; chave desconhecida fica');
+ok(salvarModelo(db, 'termo', { nome:'Termo', texto:'  ', assina:true }, 'e', 'p') === null && !db.modelosDoc, 'sem texto não salva e nada é criado');
+ok(salvarModelo(db, 'termo', { nome:'Termo de consentimento', texto:'Eu, {paciente}, {cpf}, autorizo. {data}', assina:false }, '2026-11-05T16:00:00Z', 'Maicon Farinelli') === 'termo', 'salva o termo editado');
+ok(modeloDoc('termo', db.modelosDoc)[5] === 'editado' && modeloDoc('termo', db.modelosDoc)[3] === false && textoModelo('termo', P, ctx, db.modelosDoc) === `Eu, ${P.name}, autorizo. ${HOJE.split('-').reverse().join('/')}`, 'documento usa o modelo editado (sem CPF, o dado some)');
+ok(textoModelo('termo', P, ctx) === termo, 'sem os modelos do profissional, vale o original');
+const d4 = guardarDocumento(P, { id:'d4', modelo:'termo', texto:'x', em:'e', por:'p' }, db.modelosDoc);
+ok(d4.assina === false && marcarAssinado(P, 'd4', 'e', 'p') === null, 'documento guarda se pede assinatura conforme o modelo usado');
+ok(voltarOriginal(db, 'termo') && !db.modelosDoc.termo && modeloDoc('termo', db.modelosDoc)[5] === 'original' && !voltarOriginal(db, 'termo'), 'voltar ao texto original');
+salvarModelo(db, 'declaracao', { nome:MODELOS_DOC[1][1], texto:MODELOS_DOC[1][4], assina:false }, 'e', 'p');
+ok(!db.modelosDoc.declaracao, 'salvar igual ao original não vira versão própria');
+const k = salvarModelo(db, null, { nome:' Atestado ', texto:'Atesto que {paciente} precisa de repouso.', assina:true }, 'e', 'Maicon Farinelli', 'mod1');
+ok(k === 'mod1' && modelosDoc(db.modelosDoc).length === 5 && modeloDoc('mod1', db.modelosDoc)[1] === 'Atestado' && modeloDoc('mod1', db.modelosDoc)[5] === 'proprio', 'cria modelo próprio');
+const d5 = guardarDocumento(P, { id:'d5', modelo:'mod1', texto:textoModelo('mod1', P, ctx, db.modelosDoc), em:'e', por:'p' }, db.modelosDoc);
+ok(d5.nome === 'Atestado' && d5.texto === `Atesto que ${P.name} precisa de repouso.`, 'documento de modelo próprio guarda o nome');
+ok(!apagarModelo(db, 'termo') && apagarModelo(db, 'mod1') && !modeloDoc('mod1', db.modelosDoc) && marcarAssinado(P, 'd5', 'e', 'p') === d5, 'apaga só modelo próprio; o documento continua e pode ser marcado assinado');
+ok(salvarModelo(db, 'mod1', { nome:'x', texto:'y' }, 'e', 'p') === null, 'não salva em modelo apagado');
+
 // Exportação no formato do protótipo: documentos não existem lá
 const v1 = paraV1(db);
-ok(!JSON.stringify(v1).includes('"documentos":[{') && !JSON.stringify(v1.patients[0]).includes('Ajuste.'), 'documentos não vão para a exportação v1');
+ok(!JSON.stringify(v1).includes('"documentos":[{') && !JSON.stringify(v1.patients[0]).includes('Ajuste.') && !('modelosDoc' in v1), 'documentos e modelos não vão para a exportação v1');
 ok(v1Antes.length > 0, 'dados de exemplo carregados');
 
 console.log(falhas ? `\n${falhas} verificações falharam.` : '\nTodas as verificações dos documentos passaram.');
