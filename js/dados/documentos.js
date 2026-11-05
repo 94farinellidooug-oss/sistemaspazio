@@ -87,6 +87,16 @@ export function guardarDocumento(p, { id, modelo, texto, em, por }, M){
   (p.documentos ||= []).unshift(d);
   return d;
 }
+// Assinatura na tela (etapa 7B, aprovada pelo Maicon em 05/11, proposta/etapa-7): o paciente assina com o
+// dedo e a imagem fica no documento guardado, com quando e quem conduziu. É uma assinatura eletrônica
+// simples; o papel continua valendo (marcarAssinado).
+export const ASSINATURA_IMG = /^data:image\/png;base64,[A-Za-z0-9+/=]+$/;
+export function assinarNaTela(p, id, { img, em, por }){
+  const d = (p.documentos || []).find(x => x.id === id);
+  if (!d || d.assinado || !(d.assina ?? modeloDoc(d.modelo)?.[3]) || !ASSINATURA_IMG.test(String(img || ''))) return null;
+  Object.assign(d, { assinado: true, assinadoEm: em, assinadoPor: por, naTela: true, assinatura: img });
+  return d;
+}
 // Termo assinado no papel: fica registrado quem marcou e quando.
 export function marcarAssinado(p, id, em, por){
   const d = (p.documentos || []).find(x => x.id === id);

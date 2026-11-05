@@ -74,6 +74,29 @@ async function verificar(browser, url, nome){
   await clicar('[data-m="declaracao"]'); await clicar('#doc-lista .doc-li:has-text("Termo") [data-act="doc-reimp"]');
   ok((await p.evaluate(() => window.__imp.at(-1))).includes('Ajuste feito na hora'), `${nome}: imprimir de novo usa o texto guardado`);
 
+  // Assinatura na tela (etapa 7B)
+  await p.selectOption('#doc-p', 'p3'); await espera(); await clicar('[data-m="termo"]');
+  await clicar('[data-act="doc-assinar"]');
+  ok(await tem('.ass-p canvas#ass-c') && await p.locator('[data-act="ass-ok"]').isDisabled(), `${nome}: quadro de assinatura; confirmar só depois de assinar`);
+  const bb = await p.locator('#ass-c').boundingBox();
+  const assinar = async () => { await p.mouse.move(bb.x + 40, bb.y + 100); await p.mouse.down(); for (let i = 0; i < 20; i++) await p.mouse.move(bb.x + 40 + i * 12, bb.y + 100 + 35 * Math.sin(i / 3)); await p.mouse.up(); await espera(); };
+  await assinar();
+  ok(!(await p.locator('[data-act="ass-ok"]').isDisabled()), `${nome}: depois de assinar, pode confirmar`);
+  await clicar('[data-act="ass-limpar"]');
+  ok(await p.locator('[data-act="ass-ok"]').isDisabled(), `${nome}: limpar recomeça`);
+  await assinar(); await clicar('[data-act="ass-ok"]');
+  ok(await tem('#doc-pv .dp-as img.ass-img') && await tem('#doc-pv .dp-as', 'assinado na tela em') && await p.locator('[data-act="doc-assinar"]').isDisabled(), `${nome}: assinatura vai para a prévia com data e hora`);
+  await clicar('[data-act="doc-imp"]');
+  ok(await p.evaluate(() => !!document.querySelector('#imp img.ass-img')), `${nome}: a folha impressa leva a assinatura`);
+  await clicar('[data-act="doc-guardar"]');
+  const dA = (await dados()).patients.find(x => x.id === 'p3').documentos[0];
+  ok(dA.assinado && dA.naTela && dA.assinatura.startsWith('data:image/png;base64,') && dA.assinadoPor === 'Maicon Farinelli' && await tem('#doc-lista .pill.ok', 'assinado na tela'), `${nome}: guardado no prontuário com a assinatura, quando e quem`);
+  ok(!(await tem('#doc-pv img.ass-img')) && !(await p.locator('[data-act="doc-assinar"]').isDisabled()), `${nome}: o próximo documento começa sem assinatura`);
+  await clicar('#doc-lista .doc-li:has-text("Termo") [data-act="doc-reimp"]');
+  ok(await p.evaluate(() => !!document.querySelector('#imp img.ass-img')), `${nome}: imprimir de novo leva a assinatura guardada`);
+  await clicar('[data-m="declaracao"]');
+  ok(!(await tem('[data-act="doc-assinar"]')), `${nome}: declaração não tem assinatura`);
+
   // Atalhos
   await p.evaluate(() => { location.hash = 'pacientes'; }); await espera();
   await clicar('[data-act="open"][data-pid="p3"]');
