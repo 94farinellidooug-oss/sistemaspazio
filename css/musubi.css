@@ -992,7 +992,7 @@ input[type=checkbox]{accent-color:var(--brand)}
 }
 
 /* Etapa 6B · Documentos */
-.doc-m{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}
+.doc-m{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:14px 0}
 .doc-m button{display:grid;justify-items:center;gap:6px;text-align:center;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 6px;font:inherit;font-size:.8rem;color:var(--ink);cursor:pointer;min-width:0}
 .doc-m button .ic{width:20px;height:20px;color:var(--accent)}
 .doc-m button.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent-soft)}
@@ -1002,7 +1002,6 @@ input[type=checkbox]{accent-color:var(--brand)}
 .dp-h svg{width:28px;height:28px}
 .dp-h small{display:block;color:#666;font-size:.78rem}
 .dp-t{line-height:1.6;font-size:.92rem;outline:0;border-radius:6px;overflow-wrap:anywhere;min-height:60px}
-.dp-t:focus{box-shadow:0 0 0 2px var(--accent-soft)}
 .dp-t p,.imp-t p{margin:0 0 10px}
 .dp-p{margin-top:18px;color:#555;font-size:.86rem}
 .dp-as{margin-top:30px;display:grid;justify-items:center;gap:4px}
@@ -1019,6 +1018,26 @@ input[type=checkbox]{accent-color:var(--brand)}
   .doc-pv{padding:16px}
 }
 @media print{#imp .dp-as span{border-color:#000}}
+
+/* Modelos de documento editados na página (proposta/modelos) */
+.doc-m button{position:relative}
+.doc-m button i.pill{position:absolute;top:6px;right:6px;font-style:normal;font-size:.66rem;padding:1px 6px}
+.doc-m button.novo{border-style:dashed;color:var(--muted)}
+.doc-m button.novo .ic{color:var(--muted)}
+.rx-f textarea{width:100%;min-width:0;font:inherit;font-size:.9rem;line-height:1.55;padding:9px 11px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink);resize:vertical;min-height:180px}
+.rx-f textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.cps{display:flex;flex-wrap:wrap;gap:6px}
+.cps .chip{font-size:.78rem;padding:4px 9px}
+.cps .chip .ic{width:13px;height:13px}
+.cp{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:5px;padding:0 6px;font-size:.84em;font-weight:500}
+.mod-raw{line-height:1.6;font-size:.88rem;border:1px dashed var(--line-2);border-radius:8px;padding:12px 14px;overflow-wrap:anywhere}
+.mod-raw p{margin:0 0 8px}
+.mod-l{margin-top:10px}
+.mod-l li{align-items:center}
+.mod-l .ic{color:var(--accent);margin-top:0}
+.ck{display:flex;gap:8px;align-items:center;font-size:.88rem;cursor:pointer}
+.ck input{width:17px;height:17px;accent-color:var(--accent)}
+#f-mod .dica{display:block;margin-top:6px;font-size:.78rem}
 
 /* Etapa 6C · Relacionamento */
 .ctt-l{display:grid;gap:8px}

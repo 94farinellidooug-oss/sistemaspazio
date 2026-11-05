@@ -4,10 +4,10 @@ import { adicionarQueixa, alternarQueixa, hidratarPaciente, novoPaciente, regist
 import { ui } from './estado.js';
 import { pointWarnings } from './raciocinio/seguranca.js';
 import { formAgenda, vAgenda } from './telas/agenda.js';
-import { docAtual, folhaDoc, vDocumentos } from './telas/documentos.js';
+import { docAtual, folhaDoc, previaDoc, textoComCampos, vDocumentos } from './telas/documentos.js';
 import { vRelacionamento } from './telas/relacionamento.js';
 import { naoRetomar, novoInteressado, registrarContato, situacaoInteressado, virouPaciente } from './dados/relacionamento.js';
-import { guardarDocumento, marcarAssinado, modeloDoc } from './dados/documentos.js';
+import { MODELOS_DOC, apagarModelo, guardarDocumento, marcarAssinado, modeloDoc, salvarModelo, voltarOriginal } from './dados/documentos.js';
 import { concluirHorario, conflito, desmarcar, marcarHorario, novoHorario, remarcar } from './dados/agenda.js';
 import { vAvaliacao } from './telas/avaliacao.js';
 import { atendimentoAberto, indicadosMarca, textoSalvo, vAtendimento } from './telas/atendimento.js';
@@ -120,15 +120,24 @@ document.addEventListener('click',ev=>{
   else if(a==='int-sit'){ const i=(db.interessados||[]).find(x=>x.id===t.dataset.id); if(!i) return;
     if(t.dataset.s==='paciente' && !i.pid){ ui.editPid=null; ui.cadPrevio={name:i.nome,phone:i.tel,intId:i.id}; irPara('cadastro'); return; }
     if(situacaoInteressado(i,t.dataset.s)){ save(); render(true); } }
-  else if(a==='doc-abrir'){ ui.docPid=t.dataset.pid; ui.docMod=t.dataset.m||null; ui.docTexto=null; irPara('documentos'); }
-  else if(a==='doc-mod'){ ui.docMod=t.dataset.m; ui.docTexto=null; render(true); }
-  else if(a==='doc-refazer'){ ui.docTexto=null; render(true); }
-  else if(a==='doc-imp'||a==='doc-guardar'){ const {p,k}=docAtual(), texto=(document.getElementById('doc-t')?.innerText||'').trim();
-    if(!texto){ toast('Escreva o texto do documento antes','info'); return; }
-    if(a==='doc-imp'){ document.getElementById('imp').innerHTML=folhaDoc(k,p,texto); window.print(); return; }
-    guardarDocumento(p,{id:uid(),modelo:k,texto,em:new Date().toISOString(),por:PROF.nome}); save(); render(true); toast(`${modeloDoc(k)[1]} guardado no prontuário de ${p.name.split(' ')[0]}`); }
+  else if(a==='doc-abrir'){ ui.docPid=t.dataset.pid; ui.docMod=t.dataset.m||null; ui.docEd=null; irPara('documentos'); }
+  else if(a==='doc-mod'){ ui.docMod=t.dataset.m; render(true); }
+  else if(a==='doc-imp'||a==='doc-guardar'){ const {p,k,nome,assina,texto}=docAtual();
+    if(!texto){ toast('O documento está sem texto; edite o modelo antes','info'); return; }
+    if(a==='doc-imp'){ document.getElementById('imp').innerHTML=folhaDoc(nome,assina,p,texto); window.print(); return; }
+    guardarDocumento(p,{id:uid(),modelo:k,texto,em:new Date().toISOString(),por:PROF.nome},db.modelosDoc); save(); render(true); toast(`${nome} guardado no prontuário de ${p.name.split(' ')[0]}`); }
   else if(a==='doc-ass'){ const {p}=docAtual(); if(marcarAssinado(p,t.dataset.id,new Date().toISOString(),PROF.nome)){ save(); render(true); toast('Termo marcado como assinado'); } }
-  else if(a==='doc-reimp'){ const {p}=docAtual(), d=(p.documentos||[]).find(x=>x.id===t.dataset.id); if(!d) return; document.getElementById('imp').innerHTML=folhaDoc(d.modelo,p,d.texto,d.em.slice(0,10),d.por); window.print(); }
+  else if(a==='doc-reimp'){ const {p}=docAtual(), d=(p.documentos||[]).find(x=>x.id===t.dataset.id); if(!d) return; const md=modeloDoc(d.modelo,db.modelosDoc);
+    document.getElementById('imp').innerHTML=folhaDoc(d.nome||md?.[1]||'Documento',d.assina??md?.[3],p,d.texto,d.em.slice(0,10),d.por); window.print(); }
+  else if(a==='doc-editar'){ const {m}=docAtual(); ui.docMod=m[0]; ui.docEd={nome:m[1],texto:m[4],assina:m[3]}; render(true); document.getElementById('m-texto')?.focus(); }
+  else if(a==='doc-novo-mod'){ ui.docEd={novo:true,nome:'',texto:'Eu, {paciente}, ',assina:true}; render(true); document.getElementById('m-nome')?.focus(); }
+  else if(a==='doc-ed-x'){ ui.docEd=null; render(true); }
+  else if(a==='doc-ed-orig'){ const o=MODELOS_DOC.find(x=>x[0]===ui.docMod); if(!o) return; if(!confirm('Voltar este modelo ao texto original? A sua versão será descartada.')) return;
+    voltarOriginal(db,o[0]); ui.docEd=null; save(); render(true); toast('Modelo de volta ao texto original'); }
+  else if(a==='doc-ed-apagar'){ const m=modeloDoc(ui.docMod,db.modelosDoc); if(!m||!confirm(`Apagar o modelo “${m[1]}”? Os documentos já guardados continuam no prontuário.`)) return;
+    apagarModelo(db,m[0]); ui.docEd=null; ui.docMod=null; save(); render(true); toast('Modelo apagado','info'); }
+  else if(a==='doc-campo'){ const ta=document.getElementById('m-texto'), c=`{${t.dataset.k}}`, i=ta.selectionStart??ta.value.length, f=ta.selectionEnd??i;
+    ta.value=ta.value.slice(0,i)+c+ta.value.slice(f); ui.docEd.texto=ta.value; ta.focus(); ta.setSelectionRange(i+c.length,i+c.length); previaModelo(); }
   else if(a==='ag-rem-x'){ ui.remarcar=null; ui.agForm=null; render(true); }
   else if(a==='addpt'){ const i=document.getElementById('ns-pts'); const L=i.value.split(',').map(s=>s.trim()).filter(Boolean); if(!L.includes(t.dataset.c)) L.push(t.dataset.c); i.value=L.join(', '); i.dispatchEvent(new Event('input',{bubbles:true})); }
   else if(a==='menu-mini'){ ui.menuMini=!ui.menuMini; render(true); }
@@ -143,7 +152,7 @@ document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.dataset.agf==='time'){ formAgenda().time=t.value; return; }
   if(t.dataset.int&&t.tagName==='INPUT'){ (ui.novoInt||={nome:'',tel:'',origem:'Instagram'})[t.dataset.int]=t.value; return; }
-  if(t.id==='doc-t'){ ui.docTexto=t.innerText; const r=document.querySelector('[data-act="doc-refazer"]'); if(r) r.hidden=false; return; }
+  if(t.dataset.doced&&ui.docEd){ ui.docEd[t.dataset.doced]=t.type==='checkbox'?t.checked:t.value; previaModelo(); return; }
   if(t.id==='pal-q'){ ui.q=t.value; ui.bi=0; document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(t.id==='pq'){ ui.pq=t.value; document.getElementById('plist').innerHTML=patientRows(); }
   else if(t.id==='pt-q'){ ui.ptQ=t.value; document.getElementById('ptlist').innerHTML=pointCards(); const ct=document.getElementById('c-todos'); if(ct) ct.innerHTML=listaTodos(); }
@@ -223,7 +232,7 @@ function acaoAtendimento(a,t){
   else if(a==='at-tec'){ alterna(A.plano.tec,t.dataset.t); mudou('plano terapêutico: técnicas'); }
   else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
   else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
-  else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; ui.agForm=null; ui.remarcar=null; irPara('agenda'); } else if(t.dataset.d.startsWith('doc-')){ ui.docPid=p.id; ui.docMod=t.dataset.d.slice(4); ui.docTexto=null; irPara('documentos'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
+  else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; ui.agForm=null; ui.remarcar=null; irPara('agenda'); } else if(t.dataset.d.startsWith('doc-')){ ui.docPid=p.id; ui.docMod=t.dataset.d.slice(4); ui.docEd=null; irPara('documentos'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
   else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); concluirHorario(db.appts,p.id,A.data); const nv=p.avaliacoes.find(v=>v.id===A.avaliacaoId); if(nv) nv.prof=PROF.nome; save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
   else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
     descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
@@ -293,6 +302,8 @@ function toqueMapa(ev,svg){
   else toast(`${nomeTipo(tipo)} marcada · ${m.regiao?m.regiao.toLowerCase()+' · ':''}${nomeLadoMarca(m.lado).toLowerCase()}`);
   mudou(`mapa corporal: marcação de ${nomeTipo(tipo).toLowerCase()} adicionada`);
 }
+// Atualiza só a prévia e o texto destacado enquanto o modelo é editado, sem perder o cursor do campo.
+function previaModelo(){ const pv=document.getElementById('doc-pv'), r=document.getElementById('mod-raw'); if(pv) pv.innerHTML=previaDoc(); if(r) r.innerHTML=textoComCampos(); }
 // Baixa um texto como arquivo (cópia de segurança).
 function baixar(texto, nome){ const u=URL.createObjectURL(new Blob([texto],{type:'application/json'})), l=document.createElement('a'); l.href=u; l.download=nome; document.body.append(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
 document.addEventListener('change',ev=>{
@@ -303,7 +314,7 @@ document.addEventListener('change',ev=>{
     f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
   if(t.dataset.vcmp){ ui[t.dataset.vcmp]=t.value; render(true); return; }
   if(t.dataset.int){ (ui.novoInt||={nome:'',tel:'',origem:'Instagram'})[t.dataset.int]=t.value; return; }
-  if(t.dataset.docp){ ui.docPid=t.value; ui.docTexto=null; render(true); return; }
+  if(t.dataset.docp){ ui.docPid=t.value; render(true); return; }
   if(t.dataset.agf){ const F=formAgenda(); F[t.dataset.agf]=t.value; if(t.dataset.agf==='date'&&t.value) ui.agDia=t.value; if(t.dataset.agf!=='time') render(true); return; }
   if(t.hasAttribute('data-mvhist')){ ui.mapa.hist=t.value; render(true); return; }
   if(t.dataset.mk&&t.tagName==='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)){ if(t.dataset.mk==='tipo'&&t.value==='irradiacao'&&marcasDe(x.a).find(m=>m.id===ui.mapa.sel)?.x2==null) ui.mapa.rad=ui.mapa.sel; mudou(`mapa corporal: ${t.dataset.mk==='tipo'?'tipo':'lado'} da marcação`); } return; }
@@ -324,6 +335,9 @@ document.addEventListener('submit',ev=>{
   if(f.id==='f-rx-corr'){ const x=atendimentoAberto(), C=ui.rxCorr; if(!x||!C) return; if(!C.motivo.trim()){ toast('Escreva o motivo da correção','info'); return; }
     const em=new Date().toISOString(), mud=corrigirPonto(x.a,C.c,C,C.motivo,PROF.nome,em); if(!mud){ toast('Nada mudou neste ponto','info'); return; }
     ui.rxCorr=null; mudou(`plano terapêutico: correção de ${C.c} (${mud.map(([k,a,b])=>`${k.toLowerCase()}: ${a} → ${b}`).join('; ')}). Motivo: ${C.motivo.trim()}`); toast('Correção registrada'); return; }
+  if(f.id==='f-mod'){ const E=ui.docEd; if(!E) return; if(!E.nome.trim()||!E.texto.trim()){ toast('Dê um nome e escreva o texto do modelo','info'); return; }
+    const k=salvarModelo(db,E.novo?null:ui.docMod,E,new Date().toISOString(),PROF.nome,'mod-'+uid()); if(!k) return;
+    ui.docMod=k; ui.docEd=null; save(); render(true); toast(E.novo?'Modelo criado':'Modelo salvo'); return; }
   if(f.id==='f-int'){ if(novoInteressado(db,{id:uid(),nome:v('int-nome'),tel:v('int-tel'),origem:v('int-origem'),em:new Date().toISOString(),por:PROF.nome})){ ui.novoInt=null; save(); render(true); toast('Interessado incluído'); } return; }
   if(f.id==='f-part'){ const d=Object.fromEntries(new FormData(f)); if(adicionarFichaParticular(db,d,new Date().toISOString(),uid())){ save(); render(true); toast('Ficha adicionada à Particular'); } return; }
   if(f.id==='f-patient'){
