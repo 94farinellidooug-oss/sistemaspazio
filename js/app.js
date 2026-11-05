@@ -6,6 +6,8 @@ import { pointWarnings } from './raciocinio/seguranca.js';
 import { formAgenda, vAgenda } from './telas/agenda.js';
 import { docAtual, folhaDoc, previaDoc, textoComCampos, vDocumentos } from './telas/documentos.js';
 import { vRelacionamento } from './telas/relacionamento.js';
+import { abrirPainelWa, painelWa, textoComCamposWa, vMensagens } from './telas/whatsapp.js';
+import { linkWa, registrarMensagem, salvarMensagemWa, voltarMensagemWa } from './dados/whatsapp.js';
 import { naoRetomar, novoInteressado, registrarContato, situacaoInteressado, virouPaciente } from './dados/relacionamento.js';
 import { MODELOS_DOC, apagarModelo, guardarDocumento, marcarAssinado, modeloDoc, salvarModelo, voltarOriginal } from './dados/documentos.js';
 import { concluirHorario, conflito, desmarcar, marcarHorario, novoHorario, remarcar } from './dados/agenda.js';
@@ -28,7 +30,7 @@ import { CODIGOS } from './conhecimento/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
 import { TODAY, addDays, esc, fmt, uid } from './util.js';
 
-export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento};
+export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -36,6 +38,7 @@ export function render(keepScroll){
   const r=route(), y=scrollY, v=document.getElementById('view');
   ui.crumbs=[]; const html=VIEWS[r](); renderNav(r);
   v.innerHTML=html;
+  if(ui.ov==='wa'){ const c=document.getElementById('camada'); c.innerHTML=painelWa(); if(!c.innerHTML) ui.ov=null; }
   // Transição suave só quando a tela muda (não a cada clique dentro dela).
   if(r!==ultimaRota){ v.classList.remove('entra'); void v.offsetWidth; v.classList.add('entra'); ultimaRota=r; }
   if(keepScroll) scrollTo(0,y);
@@ -95,6 +98,15 @@ document.addEventListener('click',ev=>{
   else if(a.startsWith('bib-')||a.startsWith('atl-')){ acaoBiblioteca(a,t); }
   else if(a==='busca'||a==='notif'||a==='perfil'||a==='atalhos'){ abrir(a); }
   else if(a==='fechar'){ ui.ov=null; render(true); }
+  else if(a==='fechar-ir'){ ui.ov=null; ui.wa=null; }
+  else if(a==='wa'){ abrirPainelWa(t.dataset.t,t.dataset.pid,t.dataset.ap); render(true); document.getElementById('wa-t')?.focus(); }
+  else if(a==='wa-tipo'){ abrirPainelWa(t.dataset.k,ui.wa.pid,ui.wa.ap); render(true); }
+  else if(a==='wa-abrir'){ const W=ui.wa, p=patient(W?.pid), url=p&&linkWa(p.phone,document.getElementById('wa-t').value); if(!url) return;
+    window.open(url,'_blank','noopener'); const em=new Date().toISOString(); registrarMensagem(p,{tipo:W.tipo,em,por:PROF.nome,ap:W.ap});
+    if(W.tipo==='retomar') registrarContato(p,em,PROF.nome); ui.ov=null; ui.wa=null; save(); render(true); toast(W.tipo==='retomar'?'WhatsApp aberto; contato registrado':'WhatsApp aberto com a mensagem'); }
+  else if(a==='msg-campo'){ const ta=t.closest('form').querySelector('textarea'), c=`{${t.dataset.k}}`, i=ta.selectionStart??ta.value.length, f=ta.selectionEnd??i;
+    ta.value=ta.value.slice(0,i)+c+ta.value.slice(f); ta.focus(); ta.setSelectionRange(i+c.length,i+c.length); ta.dispatchEvent(new Event('input',{bubbles:true})); }
+  else if(a==='msg-orig'){ if(voltarMensagemWa(db,t.dataset.k)){ save(); render(true); toast('Mensagem de volta ao texto original'); } }
   else if(a==='ler-todas'){ notificacoes().forEach(n=>ui.lidas.add(n.k)); ui.ov=null; render(true); toast('Notificações marcadas como lidas'); }
   else if(a==='aviso'){ ui.ov=null; render(true); toast(t.dataset.m,'info'); }
   else if(a==='dia'){ ui.dia=t.dataset.d; render(true); }
@@ -152,6 +164,7 @@ document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.dataset.agf==='time'){ formAgenda().time=t.value; return; }
   if(t.dataset.int&&t.tagName==='INPUT'){ (ui.novoInt||={nome:'',tel:'',origem:'Instagram'})[t.dataset.int]=t.value; return; }
+  if(t.dataset.msg){ const r=document.querySelector(`[data-raw="${t.dataset.msg}"]`); if(r) r.innerHTML=textoComCamposWa(t.value); return; }
   if(t.dataset.doced&&ui.docEd){ ui.docEd[t.dataset.doced]=t.type==='checkbox'?t.checked:t.value; previaModelo(); return; }
   if(t.id==='pal-q'){ ui.q=t.value; ui.bi=0; document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(t.id==='pq'){ ui.pq=t.value; document.getElementById('plist').innerHTML=patientRows(); }
@@ -335,6 +348,8 @@ document.addEventListener('submit',ev=>{
   if(f.id==='f-rx-corr'){ const x=atendimentoAberto(), C=ui.rxCorr; if(!x||!C) return; if(!C.motivo.trim()){ toast('Escreva o motivo da correção','info'); return; }
     const em=new Date().toISOString(), mud=corrigirPonto(x.a,C.c,C,C.motivo,PROF.nome,em); if(!mud){ toast('Nada mudou neste ponto','info'); return; }
     ui.rxCorr=null; mudou(`plano terapêutico: correção de ${C.c} (${mud.map(([k,a,b])=>`${k.toLowerCase()}: ${a} → ${b}`).join('; ')}). Motivo: ${C.motivo.trim()}`); toast('Correção registrada'); return; }
+  if(f.matches('.f-msg')){ const k=f.dataset.k, tx=f.querySelector('textarea').value; if(!tx.trim()){ toast('Escreva o texto da mensagem','info'); return; }
+    salvarMensagemWa(db,k,tx,new Date().toISOString(),PROF.nome); save(); render(true); toast('Mensagem salva'); return; }
   if(f.id==='f-mod'){ const E=ui.docEd; if(!E) return; if(!E.nome.trim()||!E.texto.trim()){ toast('Dê um nome e escreva o texto do modelo','info'); return; }
     const k=salvarModelo(db,E.novo?null:ui.docMod,E,new Date().toISOString(),PROF.nome,'mod-'+uid()); if(!k) return;
     ui.docMod=k; ui.docEd=null; save(); render(true); toast(E.novo?'Modelo criado':'Modelo salvo'); return; }
