@@ -990,3 +990,32 @@ input[type=checkbox]{accent-color:var(--brand)}
   .ag-sem button{padding:6px 0}
   .ag-sem button small{font-size:.6rem}
 }
+
+/* Etapa 6B · Documentos */
+.doc-m{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}
+.doc-m button{display:grid;justify-items:center;gap:6px;text-align:center;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 6px;font:inherit;font-size:.8rem;color:var(--ink);cursor:pointer;min-width:0}
+.doc-m button .ic{width:20px;height:20px;color:var(--accent)}
+.doc-m button.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent-soft)}
+#doc-novo > .notice{margin-bottom:10px}
+.doc-pv{border:1px solid var(--line-2);border-radius:8px;background:#fff;color:#1d1d1b;padding:22px 24px;margin-bottom:8px;box-shadow:var(--shadow)}
+.dp-h{display:flex;gap:10px;align-items:center;border-bottom:1px solid #ccc;padding-bottom:10px;margin-bottom:14px}
+.dp-h svg{width:28px;height:28px}
+.dp-h small{display:block;color:#666;font-size:.78rem}
+.dp-t{line-height:1.6;font-size:.92rem;outline:0;border-radius:6px;overflow-wrap:anywhere;min-height:60px}
+.dp-t:focus{box-shadow:0 0 0 2px var(--accent-soft)}
+.dp-t p,.imp-t p{margin:0 0 10px}
+.dp-p{margin-top:18px;color:#555;font-size:.86rem}
+.dp-as{margin-top:30px;display:grid;justify-items:center;gap:4px}
+.dp-as span{width:min(260px,80%);border-bottom:1px solid #555;height:20px}
+.dp-as small{color:#555}
+.lk-s{border:0;background:none;padding:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
+.doc-l{display:grid;gap:4px}
+.doc-li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.88rem;flex-wrap:wrap}
+.doc-li .grow{display:grid;min-width:0;flex:1 1 140px}
+.doc-li small{color:var(--muted);font-size:.78rem}
+.doc-li .btn.ghost{padding:4px 7px}
+@media (max-width:560px){
+  .doc-m{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .doc-pv{padding:16px}
+}
+@media print{#imp .dp-as span{border-color:#000}}

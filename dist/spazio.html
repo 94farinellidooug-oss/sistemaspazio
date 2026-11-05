@@ -1238,6 +1238,35 @@ input[type=checkbox]{accent-color:var(--brand)}
   .ag-sem button{padding:6px 0}
   .ag-sem button small{font-size:.6rem}
 }
+
+/* Etapa 6B · Documentos */
+.doc-m{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}
+.doc-m button{display:grid;justify-items:center;gap:6px;text-align:center;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 6px;font:inherit;font-size:.8rem;color:var(--ink);cursor:pointer;min-width:0}
+.doc-m button .ic{width:20px;height:20px;color:var(--accent)}
+.doc-m button.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent-soft)}
+#doc-novo > .notice{margin-bottom:10px}
+.doc-pv{border:1px solid var(--line-2);border-radius:8px;background:#fff;color:#1d1d1b;padding:22px 24px;margin-bottom:8px;box-shadow:var(--shadow)}
+.dp-h{display:flex;gap:10px;align-items:center;border-bottom:1px solid #ccc;padding-bottom:10px;margin-bottom:14px}
+.dp-h svg{width:28px;height:28px}
+.dp-h small{display:block;color:#666;font-size:.78rem}
+.dp-t{line-height:1.6;font-size:.92rem;outline:0;border-radius:6px;overflow-wrap:anywhere;min-height:60px}
+.dp-t:focus{box-shadow:0 0 0 2px var(--accent-soft)}
+.dp-t p,.imp-t p{margin:0 0 10px}
+.dp-p{margin-top:18px;color:#555;font-size:.86rem}
+.dp-as{margin-top:30px;display:grid;justify-items:center;gap:4px}
+.dp-as span{width:min(260px,80%);border-bottom:1px solid #555;height:20px}
+.dp-as small{color:#555}
+.lk-s{border:0;background:none;padding:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
+.doc-l{display:grid;gap:4px}
+.doc-li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.88rem;flex-wrap:wrap}
+.doc-li .grow{display:grid;min-width:0;flex:1 1 140px}
+.doc-li small{color:var(--muted);font-size:.78rem}
+.doc-li .btn.ghost{padding:4px 7px}
+@media (max-width:560px){
+  .doc-m{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .doc-pv{padding:16px}
+}
+@media print{#imp .dp-as span{border-color:#000}}
 </style>
 
 
@@ -1492,7 +1521,7 @@ function importar(texto){
 }
 // ov: camada aberta (busca, notif, perfil, atalhos); q/bi: texto e item escolhido na busca global;
 // lidas: notificações já vistas nesta sessão; dia: dia escolhido no calendário do Painel; crumbs: migalhas.
-const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, pq:'', menuMini:false, menuAberto:false,
+const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, docPid:null, docMod:null, docTexto:null, pq:'', menuMini:false, menuAberto:false,
   ov:null, q:'', bi:0, lidas:new Set(), dia:null, crumbs:[],
   // Mapa corporal do atendimento (etapa 4A): vista, face, ampliação, ferramenta, marcação selecionada e camadas de comparação.
   // Biblioteca clínica (etapa 4B): área (central, particular, atlas), ficha aberta e estado do Atlas.
@@ -1741,236 +1770,6 @@ function vAgenda(){
     <div class="card"><h2>Como funciona</h2><p class="muted sm">Toque num dia da semana para ver os horários. Ao lado de cada horário, marque confirmado, atendido ou faltou. <b>Atender</b> abre o atendimento; ao finalizar, o horário fica como atendido. Remarcar guarda de onde veio e desmarcar não apaga.</p>
       <p class="muted sm" style="margin-top:8px">Confirmação e lembrete pelo WhatsApp entram na etapa 7.</p></div></div></div>`;
 }
-const EL = {
-  madeira:{nome:'Madeira',han:'木',cor:'var(--wood)',ang:198,zang:'Fígado',fu:'Vesícula Biliar',emocao:'Raiva',estacao:'Primavera',clima:'Vento',sentido:'Olhos',tecido:'Tendões',sabor:'Ácido',som:'Grito',espirito:'Hun',funcoes:['Armazena o Xue','Garante o livre fluxo do Qi','Nutre tendões e olhos']},
-  fogo:{nome:'Fogo',han:'火',cor:'var(--fire)',ang:-90,zang:'Coração · Pericárdio',fu:'Intestino Delgado · Triplo Aquecedor',emocao:'Alegria (em excesso, agitação)',estacao:'Verão',clima:'Calor',sentido:'Língua',tecido:'Vasos',sabor:'Amargo',som:'Riso',espirito:'Shen',funcoes:['Governa o Xue e os vasos','Abriga o Shen','Manifesta-se na face']},
-  terra:{nome:'Terra',han:'土',cor:'var(--earth)',ang:-18,zang:'Baço',fu:'Estômago',emocao:'Preocupação',estacao:'Fim do verão',clima:'Umidade',sentido:'Boca',tecido:'Músculos',sabor:'Doce',som:'Canto',espirito:'Yi',funcoes:['Transforma e transporta','Produz Qi e Xue a partir dos alimentos','Mantém o Xue nos vasos']},
-  metal:{nome:'Metal',han:'金',cor:'var(--metal)',ang:54,zang:'Pulmão',fu:'Intestino Grosso',emocao:'Tristeza',estacao:'Outono',clima:'Secura',sentido:'Nariz',tecido:'Pele e pelos',sabor:'Picante',som:'Choro',espirito:'Po',funcoes:['Governa o Qi e a respiração','Difunde o Wei Qi','Regula as vias das águas']},
-  agua:{nome:'Água',han:'水',cor:'var(--water)',ang:126,zang:'Rim',fu:'Bexiga',emocao:'Medo',estacao:'Inverno',clima:'Frio',sentido:'Ouvidos',tecido:'Ossos',sabor:'Salgado',som:'Gemido',espirito:'Zhi',funcoes:['Armazena o Jing','Governa a água','Raiz do Yin e do Yang do corpo']}
-};
-const ORDER = ['fogo','terra','metal','agua','madeira'];
-const SHENG = {madeira:'fogo',fogo:'terra',terra:'metal',metal:'agua',agua:'madeira'};
-const KE = {madeira:'terra',terra:'agua',agua:'fogo',fogo:'metal',metal:'madeira'};
-const mae = e => Object.keys(SHENG).find(k=>SHENG[k]===e);
-const controlador = e => Object.keys(KE).find(k=>KE[k]===e);
-const elTag = e => e ? `<span class="el-tag"><i style="background:${EL[e].cor}"></i>${EL[e].nome}</span>` : '';
-const patientSelect = (id,cur) => `<select id="${id}">${db.patients.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`;
-function pentagram(state, sel, o={}){
-  const C=250,R=160,r=46, rad=a=>a*Math.PI/180;
-  const pos=e=>[C+R*Math.cos(rad(EL[e].ang)), C+R*Math.sin(rad(EL[e].ang))];
-  const rel = (a,b)=>!sel || a===sel || b===sel;
-  let s=`<svg viewBox="-80 0 660 480" class="penta" role="img" aria-label="Pentagrama dos cinco elementos com ciclos de geração e controle">
-  <defs>
-    <marker id="ms" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" style="fill:var(--accent)"/></marker>
-    <marker id="mk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" style="fill:var(--muted)"/></marker>
-  </defs>`;
-  if(o.sheng!==false) ORDER.forEach(e=>{
-    const d=(r+10)/R, a1=rad(EL[e].ang)+d, a2=rad(EL[e].ang+72)-d;
-    const p1=[C+R*Math.cos(a1),C+R*Math.sin(a1)], p2=[C+R*Math.cos(a2),C+R*Math.sin(a2)];
-    const cls = sel ? (rel(e,SHENG[e])?'hi':'dim') : '';
-    s+=`<path class="sheng ${cls}" d="M${p1[0].toFixed(1)},${p1[1].toFixed(1)} A${R},${R} 0 0 1 ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" marker-end="url(#ms)"/>`;
-  });
-  if(o.ke!==false) ORDER.forEach(e=>{
-    const [x1,y1]=pos(e),[x2,y2]=pos(KE[e]), L=Math.hypot(x2-x1,y2-y1), ux=(x2-x1)/L, uy=(y2-y1)/L, k=r+8;
-    const cls = sel ? (rel(e,KE[e])?'hi':'dim') : '';
-    s+=`<path class="ke ${cls}" d="M${(x1+ux*k).toFixed(1)},${(y1+uy*k).toFixed(1)} L${(x2-ux*k).toFixed(1)},${(y2-uy*k).toFixed(1)}" marker-end="url(#mk)"/>`;
-  });
-  ORDER.forEach(e=>{
-    const [x,y]=pos(e), E=EL[e], st=state?state[e]:{def:0,exc:0};
-    const kind = st.exc>st.def && st.exc>0 ? 'exc' : st.def>0 ? 'def' : '';
-    const dim = sel && sel!==e && SHENG[sel]!==e && mae(sel)!==e && KE[sel]!==e && controlador(sel)!==e;
-    s+=`<g class="node" data-act="el" data-e="${e}" tabindex="0" role="button" aria-label="${E.nome}" style="opacity:${dim?.35:1}">
-      <circle cx="${x}" cy="${y}" r="${r}" style="fill:${E.cor};fill-opacity:${kind==='def'?.08:.18}"/>
-      <circle class="ring" cx="${x}" cy="${y}" r="${r}" style="fill:none;stroke:${E.cor};stroke-width:${kind==='exc'?6:sel===e?5:3}" ${kind==='def'?'stroke-dasharray="6 5"':''}/>
-      <text x="${x}" y="${y-2}" text-anchor="middle" style="fill:${E.cor};font-size:28px;font-weight:600">${E.han}</text>
-      <text x="${x}" y="${y+20}" text-anchor="middle" style="fill:var(--ink);font-size:13px;font-weight:600">${E.nome}</text>
-      ${(()=>{ const c=Math.cos(rad(E.ang)); let lx=x, ly=y+r+17, an='middle';
-        if(e==='fogo') ly=y-r-26; else if(c<-.5){lx=x-r-10;ly=y+4;an='end'} else if(c>.5&&e==='terra'){lx=x+r+10;ly=y+4;an='start'}
-        return `<text x="${lx}" y="${ly}" text-anchor="${an}" style="fill:var(--muted);font-size:11.5px">${E.zang.split(' · ')[0]} · ${E.emocao.split(' ')[0]}</text>`+
-        (kind?`<text x="${lx}" y="${ly+15}" text-anchor="${an}" style="fill:${kind==='exc'?'var(--crit)':'var(--warn)'};font-size:11px;font-weight:600">${kind==='exc'?'▲ excesso':'▼ deficiência'}</text>`:''); })()}
-    </g>`;
-  });
-  return s+'</svg>';
-}
-const SIGNS = {
-  'Língua':[['lingua_palida','Pálida'],['lingua_vermelha','Vermelha'],['ponta_vermelha','Ponta vermelha'],['bordas_vermelhas','Bordas vermelhas'],['lingua_purpura','Arroxeada'],['lingua_inchada','Inchada'],['marcas_dentes','Marcas de dentes'],['sem_saburra','Sem saburra'],['saburra_amarela','Saburra amarela pegajosa'],['saburra_branca','Saburra branca espessa']],
-  'Pulso':[['pulso_fraco','Fraco / vazio'],['pulso_corda','Em corda'],['pulso_fino','Fino'],['pulso_rapido','Rápido'],['pulso_lento','Lento'],['pulso_profundo','Profundo'],['pulso_escorregadio','Escorregadio']],
-  'Sinais e sintomas':[['cansaco','Cansaço'],['fezes_amolecidas','Fezes amolecidas'],['distensao_pos','Distensão após comer'],['preocupacao','Pensamento excessivo'],['irritabilidade','Irritabilidade'],['distensao_hipo','Distensão no hipocôndrio'],['tpm','Tensão pré-menstrual'],['suspiros','Suspiros frequentes'],['cefaleia_temporal','Cefaleia temporal'],['sudorese_noturna','Sudorese noturna'],['calor_tarde','Calor ao fim da tarde'],['boca_seca','Boca seca'],['zumbido','Zumbido'],['lombalgia','Lombalgia'],['frio_extremidades','Frio nas extremidades'],['mic_frequente','Micção frequente e clara'],['palpitacoes','Palpitações'],['insonia','Insônia'],['ansiedade','Ansiedade'],['memoria','Memória fraca'],['aftas','Aftas'],['falta_ar','Falta de ar ao esforço'],['voz_fraca','Voz fraca'],['resfriados','Resfriados frequentes'],['tristeza','Tristeza persistente'],['peso_corpo','Sensação de peso'],['dor_fixa','Dor fixa e em pontada']]
-};
-const SIGN = {};
-Object.values(SIGNS).flat().forEach(([k,v])=>SIGN[k]=v);
-const PATTERNS = [
-  {id:'bp_qi',nome:'Deficiência de Qi do Baço',el:'terra',tipo:'def',sinais:['lingua_palida','marcas_dentes','pulso_fraco','cansaco','fezes_amolecidas','distensao_pos','preocupacao'],
-   pontos:[['E36','Tonifica o Qi do Baço e do Estômago'],['BP3','Ponto fonte (Yuan) do Baço'],['VC12','Ponto Mu do Estômago, fortalece o Aquecedor Médio'],['BP6','Apoia a função de transformação']]},
-  {id:'f_estag',nome:'Estagnação do Qi do Fígado',el:'madeira',tipo:'exc',sinais:['pulso_corda','irritabilidade','distensao_hipo','tpm','suspiros'],
-   pontos:[['F3','Ponto fonte, promove o livre fluxo do Qi'],['IG4','Com F3 forma os Quatro Portões, move o Qi'],['VB34','Regula o Qi do Fígado e da Vesícula'],['CS6','Abre o tórax e harmoniza o Qi']]},
-  {id:'f_yang',nome:'Ascensão do Yang do Fígado',el:'madeira',tipo:'exc',sinais:['bordas_vermelhas','pulso_corda','cefaleia_temporal','irritabilidade','zumbido'],
-   pontos:[['F3','Acalma o Yang do Fígado'],['VB20','Indicado para cefaleia e vertigem'],['VG20','Acalma o Shen e a cabeça'],['R3','Nutre o Yin do Rim para ancorar o Yang']]},
-  {id:'r_yin',nome:'Deficiência de Yin do Rim',el:'agua',tipo:'def',sinais:['lingua_vermelha','sem_saburra','pulso_fino','pulso_rapido','sudorese_noturna','calor_tarde','boca_seca','zumbido','lombalgia'],
-   pontos:[['R3','Ponto fonte, tonifica o Rim'],['R6','Nutre o Yin e favorece o sono'],['BP6','Nutre Yin e Xue'],['VC4','Fortalece o Rim e o Yuan Qi']]},
-  {id:'r_yang',nome:'Deficiência de Yang do Rim',el:'agua',tipo:'def',sinais:['lingua_palida','lingua_inchada','pulso_profundo','pulso_lento','frio_extremidades','lombalgia','mic_frequente'],
-   pontos:[['B23','Ponto Shu do Rim'],['VG4','Mingmen, aquece o Yang do Rim (moxa)'],['VC4','Tonifica o Yuan Qi (moxa)'],['R7','Tonifica o Yang do Rim']]},
-  {id:'c_xue',nome:'Deficiência de Xue do Coração',el:'fogo',tipo:'def',sinais:['lingua_palida','pulso_fino','palpitacoes','insonia','ansiedade','memoria'],
-   pontos:[['C7','Ponto fonte, acalma o Shen'],['CS6','Acalma o Shen e regula o Coração'],['BP6','Nutre o Xue'],['B15','Ponto Shu do Coração']]},
-  {id:'c_fogo',nome:'Fogo no Coração',el:'fogo',tipo:'exc',sinais:['ponta_vermelha','saburra_amarela','pulso_rapido','insonia','aftas','ansiedade'],
-   pontos:[['C8','Ponto fogo, elimina calor do Coração'],['CS7','Acalma o Shen e elimina calor'],['C7','Acalma o Shen'],['R6','Nutre Yin para conter o Fogo']]},
-  {id:'p_qi',nome:'Deficiência de Qi do Pulmão',el:'metal',tipo:'def',sinais:['pulso_fraco','falta_ar','voz_fraca','resfriados','tristeza','cansaco'],
-   pontos:[['P9','Ponto fonte, tonifica o Qi do Pulmão'],['E36','Fortalece a Terra, mãe do Metal'],['B13','Ponto Shu do Pulmão'],['VC17','Ponto de reunião do Qi']]},
-  {id:'umid_calor',nome:'Umidade-Calor no Aquecedor Médio',el:'terra',tipo:'exc',sinais:['saburra_amarela','pulso_escorregadio','pulso_rapido','peso_corpo','fezes_amolecidas','boca_seca'],
-   pontos:[['BP9','Resolve umidade'],['IG11','Elimina calor'],['E40','Transforma fleuma e umidade'],['VC12','Harmoniza o Aquecedor Médio']]},
-  {id:'estase_xue',nome:'Estase de Xue',el:'madeira',tipo:'exc',sinais:['lingua_purpura','dor_fixa','tpm','pulso_corda'],
-   pontos:[['BP10','Move o Xue'],['B17','Ponto de reunião do Xue'],['F3','Move o Qi para mover o Xue'],['BP6','Regula o Xue no baixo ventre']]}
-];
-const BAGANG = {
-  calor:['lingua_vermelha','ponta_vermelha','bordas_vermelhas','saburra_amarela','pulso_rapido','aftas','calor_tarde','boca_seca','sudorese_noturna'],
-  frio:['lingua_palida','pulso_lento','frio_extremidades','mic_frequente','saburra_branca'],
-  def:['pulso_fraco','pulso_fino','cansaco','voz_fraca','falta_ar','memoria','sem_saburra','marcas_dentes','resfriados'],
-  exc:['pulso_corda','pulso_escorregadio','saburra_amarela','dor_fixa','distensao_hipo','irritabilidade','cefaleia_temporal','peso_corpo']
-};
-function evaluate(signs){
-  const s = new Set(signs);
-  return PATTERNS.map(p=>{
-    const m = p.sinais.filter(x=>s.has(x));
-    return {p, m, falta:p.sinais.filter(x=>!s.has(x)), score:m.length/p.sinais.length};
-  }).filter(h=>h.m.length>=2).sort((a,b)=>b.score-a.score);
-}
-function elemState(signs, status){
-  const st = {}; ORDER.forEach(e=>st[e]={def:0,exc:0});
-  evaluate(signs).forEach(h=>{ if((status||{})[h.p.id]==='descartado') return; st[h.p.el][h.p.tipo] += h.score * ((status||{})[h.p.id]==='aceito'?1:.6); });
-  return st;
-}
-function bagang(signs){
-  const s=new Set(signs), c=k=>BAGANG[k].filter(x=>s.has(x)).length;
-  const t=(a,b)=>{const A=c(a),B=c(b);return A+B?(B-A)/(A+B):0};
-  return {fc:t('frio','calor'), de:t('def','exc'), n:signs.length};
-}
-function vAvaliacao(){
-  if(!ui.assess || !patient(ui.assess.pid)) ui.assess={pid:ui.pid,signs:[],status:{},nota:''};
-  const A=ui.assess, p=patient(A.pid);
-  ui.crumbs=[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Avaliação energética']];
-  const hyps=evaluate(A.signs), st=elemState(A.signs,A.status), bg=bagang(A.signs);
-  const axis=(l,r,v)=>`<div class="axis"><span>${l}</span><div class="track"><span class="dot" style="left:${50+v*50}%"></span></div><span>${r}</span></div>`;
-  return `<div class="head"><div><h1>Avaliação energética</h1><p>Língua, pulso e manifestações organizados segundo a MTC</p></div>
-    <div class="field" style="min-width:200px"><label class="lbl" for="as-patient">Paciente</label>${patientSelect('as-patient',A.pid)}</div></div>
-  <div class="notice" style="margin-bottom:16px">${ic('info')}<div><b>Apoio ao raciocínio clínico.</b> As hipóteses abaixo são geradas a partir dos sinais marcados e não constituem diagnóstico. Cabe ao profissional aceitar, descartar e decidir a conduta.</div></div>
-  <div class="grid g-side">
-    <div class="grid" style="align-content:start">
-      <div class="card sigs">${Object.entries(SIGNS).map(([g,list])=>`<div><div class="lbl" style="margin-bottom:6px">${g}</div><div class="chips">${list.map(([k,l])=>`<button class="chip ${A.signs.includes(k)?'on':''}" data-act="sign" data-s="${k}" aria-pressed="${A.signs.includes(k)}">${l}</button>`).join('')}</div></div>`).join('')}</div>
-      <div class="card"><div class="card-h"><h2>Hipóteses de padrão</h2><span class="muted">${hyps.length} encontradas</span></div>
-        <div class="grid">${hyps.length?hyps.map(h=>{const s=A.status[h.p.id]||'';return `<div class="hyp ${s}">
-          <div class="hyp-h"><div><b>${h.p.nome}</b> <span style="margin-left:6px">${elTag(h.p.el)}</span></div>
-            <div style="display:flex;gap:6px"><button class="btn sm ${s==='aceito'?'pri':''}" data-act="hyp" data-p="${h.p.id}" data-st="aceito">${s==='aceito'?'Aceito':'Aceitar'}</button><button class="btn sm" data-act="hyp" data-p="${h.p.id}" data-st="descartado">${s==='descartado'?'Descartado':'Descartar'}</button></div></div>
-          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div class="bar"><i style="width:${Math.round(h.score*100)}%"></i></div><span class="mono muted">${h.m.length}/${h.p.sinais.length} sinais</span></div>
-          <div style="font-size:.86rem"><span class="lbl">Por que aparece</span><br>${h.m.map(x=>SIGN[x]).join(', ')}</div>
-          ${h.falta.length?`<div style="font-size:.86rem" class="muted"><span class="lbl">Sinais esperados não observados</span><br>${h.falta.map(x=>SIGN[x]).join(', ')}</div>`:''}
-          <div class="pts"><span class="lbl">Pontos frequentemente considerados</span>${h.p.pontos.map(([c,j])=>`<div><span class="mono">${c}</span> ${esc(PT[c]?.pinyin||'')} · <span class="muted">${esc(j)}</span>${PT[c]?.cautela?` <span class="pill warn">${CAUT[PT[c].cautela]}</span>`:''}</div>`).join('')}</div>
-        </div>`}).join(''):'<p class="muted">Marque ao menos dois sinais para ver hipóteses.</p>'}</div>
-      </div>
-    </div>
-    <div class="grid" style="align-content:start">
-      <div class="card"><h3>Oito princípios (Ba Gang)</h3><div class="grid" style="gap:10px">${axis('Frio','Calor',bg.fc)}${axis('Deficiência','Excesso',bg.de)}</div>
-        <p class="muted" style="font-size:.8rem;margin-top:10px">${bg.n?`Calculado a partir de ${bg.n} sinais marcados.`:'Marque sinais para posicionar os eixos.'}</p></div>
-      <div class="card"><h3>Cinco elementos</h3>${pentagram(st,null)}<p class="muted" style="font-size:.8rem">Atualiza conforme você marca sinais e valida hipóteses.</p></div>
-      <div class="card"><div class="field"><label class="lbl" for="as-nota">Observações do profissional</label><textarea id="as-nota">${esc(A.nota)}</textarea></div>
-        <button class="btn pri" style="margin-top:10px" data-act="save-assess" ${A.signs.length?'':'disabled'}>Salvar avaliação no prontuário de ${esc(p.name.split(' ')[0])}</button></div>
-    </div>
-  </div>`;
-}
-// Pontos e barras levam data-tip, que mostra o valor ao passar o mouse.
-
-// Linhas de 0 a 10 (intensidade da queixa). series: [{vals, cor, nome}], vals pode ter null; o.mini desenha sem eixos.
-function linhas(series, labels, o={}){
-  const W=o.w||640, H=o.h||220, [L,R,T,B]=o.mini?[6,8,6,6]:[28,14,12,26], n=Math.max(2,...series.map(s=>s.vals.length));
-  const x=i=>L+i*(W-L-R)/(n-1), y=v=>T+(1-v/10)*(H-T-B);
-  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||'Gráfico de evolução')}">`;
-  if(!o.mini) [0,5,10].forEach(v=>s+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L-8}" y="${y(v)+4}" text-anchor="end">${v}</text>`);
-  labels.forEach((l,i)=>s+=`<text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${esc(l)}</text>`);
-  series.forEach((se,k)=>{ if(!se.vals.some(v=>v!=null)) return;
-    // Valores ausentes (null) ficam sem ponto e interrompem a linha (queixa não medida naquele atendimento).
-    const ult=se.vals.reduce((u,v,i)=>v!=null?i:u,-1);
-    const d=se.vals.map((v,i)=>v==null?'':`${i&&se.vals[i-1]!=null?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
-    s+=`<g class="se" data-s="${k}"><path d="${d}" fill="none" stroke="${se.cor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
-    s+=se.vals.map((v,i)=>{ if(v==null) return ''; const tip=o.mini?'':(o.tips?.[i]||`${se.nome?se.nome+' · ':''}${labels[i]||''}: ${String(v).replace('.',',')}`);
-      return `<circle class="${tip?'pt-i':''}" cx="${x(i)}" cy="${y(v)}" r="${i===ult?5:3.5}" fill="${i===ult?se.cor:'var(--surface)'}" stroke="${se.cor}" stroke-width="2" ${tip?`data-tip="${esc(tip)}"`:''}/>`; }).join('')+'</g>';
-  });
-  return s+'</svg>';
-}
-// Barras verticais; a última fica destacada (período atual).
-function barrasV(vals, labels, o={}){
-  const W=o.w||560, H=o.h||190, B=24, T=18, max=Math.max(1,...vals), bw=W/vals.length;
-  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||'')}">`;
-  [0,.5,1].forEach(f=>s+=`<line class="gl" x1="0" x2="${W}" y1="${H-B-f*(H-B-T)}" y2="${H-B-f*(H-B-T)}"/>`);
-  vals.forEach((v,i)=>{ const h=v/max*(H-B-T), x=i*bw+bw*.22, w=bw*.56, ult=i===vals.length-1;
-    s+=`<rect class="br-i" x="${x}" y="${H-B-h}" width="${w}" height="${Math.max(h,2)}" rx="6" fill="${ult?'var(--brand)':'var(--sage)'}" data-tip="${esc(o.tips?o.tips[i]:`${labels[i]}: ${v}`)}"/><text class="ax" x="${x+w/2}" y="${H-B-h-6}" text-anchor="middle">${v}</text><text class="ax" x="${x+w/2}" y="${H-6}" text-anchor="middle">${esc(labels[i])}</text>`; });
-  return s+'</svg>';
-}
-// Anel de progresso (0 a 1) com texto no centro.
-function anel(pct, txt, cor='var(--brand)'){
-  const r=24, c=2*Math.PI*r;
-  return `<svg class="anel" viewBox="0 0 60 60" width="60" height="60" aria-hidden="true"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--line)" stroke-width="6"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${cor}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(Math.max(0,Math.min(1,pct))*c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 30 30)"/><text x="30" y="34.5" text-anchor="middle">${txt}</text></svg>`;
-}
-// Barras dos cinco elementos a partir do estado calculado pela avaliação (elemState), sem recalcular nada.
-// base: estado da avaliação basal, mostrado como marca vertical.
-const ORDEM_EL = ['madeira','fogo','terra','metal','agua'];
-const tipoEl = s => s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';
-function barrasEl(st, base){
-  const pct = s => Math.min(100,Math.round(Math.max(s.def,s.exc)/1.6*100));
-  return `<div class="elbars">${ORDEM_EL.map(e=>{ const s=st[e], k=tipoEl(s), E=EL[e], b=base?pct(base[e]):null;
-    return `<div class="elb"><span class="han" style="color:${E.cor}">${E.han}</span><span class="nm">${E.nome}</span>
-      <div class="trk">${b!==null?`<i class="base" style="left:${b}%" title="Basal"></i>`:''}<i class="fill ${k}" style="width:${Math.max(k?6:0,pct(s))}%;background:${E.cor}"></i></div>
-      <span class="st ${k}">${k==='exc'?'Excesso':k==='def'?'Deficiência':'Equilíbrio'}</span></div>`;}).join('')}</div>`;
-}
-// Variação entre dois valores de intensidade (queda é melhora).
-const delta = (a,b) => { if(a==null||b==null) return ''; const d=b-a; return `<span class="delta ${d<0?'bom':d>0?'ruim':''}">${d<0?'▼':d>0?'▲':'='} ${Math.abs(d)}</span>`; };
-// Fonte: MARTINS, Ednéa Iara Souza. Atlas dos Pontos de Acupuntura: guia de localização. GEN/Roca.
-// Seção "Indicações" de cada ponto, lida por palavras de região. Só o código do ponto e a página do livro;
-// nenhum texto do livro foi copiado. Cada linha foi conferida e aprovada ("sim") por Maicon em 04/11/2026.
-// [código, página no livro]
-const FONTE_INDICACOES = { obra:'Atlas dos Pontos de Acupuntura: guia de localização', autora:'Ednéa Iara Souza Martins', editora:'GEN/Roca', aprovadoPor:'Maicon', aprovadoEm:'2026-11-04' };
-const REGIOES_CORPO = ["Cabeça", "Face e dentes", "Olhos", "Ouvido", "Nariz", "Boca e garganta", "Pescoço e nuca", "Ombro", "Braço e cotovelo", "Punho e mão", "Tórax", "Abdome", "Costas", "Lombar e sacro", "Quadril e nádega", "Nervo ciático", "Coxa", "Joelho", "Perna", "Tornozelo e pé"];
-const INDICADOS_REGIAO = {
-  "Cabeça":[["P6",62],["P7",64],["P9",68],["IG2",82],["IG3",84],["IG5",88],["IG7",92],["IG8",94],["IG9",96],["IG11",100],["IG17",112],["E1",128],["E8",142],["E9",144],["E10",146],["E40",206],["E41",208],["E42",210],["BP3",228],["BP8",238],["C2",274],["C5",280],["C6",282],["ID1",296],["ID2",298],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["B2",342],["B3",344],["B5",348],["B6",350],["B7",352],["B8",354],["B10",358],["B11",360],["B12",362],["B18",374],["B22",382],["B27",392],["B37",412],["B58",454],["B59",456],["B60",458],["B64",466],["B65",468],["B67",472],["R1",480],["R2",482],["CS2",542],["CS6",550],["CS7",552],["TA1",564],["TA3",568],["TA5",572],["TA9",580],["TA10",582],["TA12",586],["TA16",594],["TA19",600],["TA21",604],["TA22",606],["TA23",608],["VB1",618],["VB3",622],["VB5",626],["VB6",628],["VB7",630],["VB9",634],["VB10",636],["VB11",638],["VB12",640],["VB13",642],["VB14",644],["VB15",646],["VB17",650],["VB18",652],["VB19",654],["VB20",656],["VB21",658],["VB36",688],["VB39",694],["VB41",698],["F1",712],["F2",714],["F3",716],["F4",718],["F7",724],["VG13",820],["VG14",822],["VG15",824],["VG16",826],["VG17",828],["VG18",830],["VG19",832],["VG20",834],["VG21",836],["VG24",842]],
-  "Face e dentes":[["P3",56],["P4",58],["P6",62],["P7",64],["P11",72],["IG1",80],["IG2",82],["IG3",84],["IG5",88],["IG6",90],["IG7",92],["IG8",94],["IG9",96],["IG10",98],["IG12",102],["IG15",108],["IG19",116],["IG20",118],["E1",128],["E3",132],["E5",136],["E7",140],["E8",142],["E9",144],["E33",192],["E41",208],["E42",210],["E43",212],["E45",216],["BP2",226],["BP4",230],["BP5",232],["BP14",250],["C1",272],["C3",276],["C5",280],["C6",282],["ID1",296],["ID3",300],["ID5",304],["ID8",310],["ID9",312],["ID18",330],["ID19",332],["B1",340],["B2",342],["B8",354],["B18",374],["B56",450],["B59",456],["B61",460],["B62",462],["B64",466],["B65",468],["R1",480],["R7",492],["R8",494],["R9",496],["CS2",542],["CS3",544],["TA1",564],["TA5",572],["TA8",578],["TA9",580],["TA12",586],["TA16",594],["TA21",604],["TA22",606],["TA23",608],["VB1",618],["VB2",620],["VB3",622],["VB5",626],["VB6",628],["VB7",630],["VB8",632],["VB10",636],["VB11",638],["VB12",640],["VB13",642],["VB14",644],["VB15",646],["VB17",650],["VB31",678],["VB32",680],["VB33",682],["VB34",684],["VB35",686],["VB36",688],["F1",712],["F2",714],["F3",716],["F7",724],["F12",734],["VG15",824],["VG25",844],["VG26",846],["VG27",848],["VG28",850]],
-  "Olhos":[["P7",64],["P9",68],["IG1",80],["IG2",82],["IG3",84],["IG6",90],["IG8",94],["IG11",100],["IG14",106],["E1",128],["E3",132],["E7",140],["E8",142],["E41",208],["E42",210],["E43",212],["C5",280],["ID1",296],["ID2",298],["ID3",300],["ID5",304],["ID6",306],["ID18",330],["B1",340],["B2",342],["B3",344],["B5",348],["B6",350],["B7",352],["B8",354],["B9",356],["B10",358],["B18",374],["B23",384],["B58",454],["B60",458],["B62",462],["B64",466],["B65",468],["B67",472],["R1",480],["R3",484],["R6",490],["TA1",564],["TA5",572],["TA6",574],["TA10",582],["TA16",594],["TA23",608],["VB1",618],["VB2",620],["VB5",626],["VB6",628],["VB7",630],["VB8",632],["VB9",634],["VB10",636],["VB11",638],["VB14",644],["VB15",646],["VB17",650],["VB18",652],["VB19",654],["VB20",656],["VB38",692],["VB41",698],["F2",714],["F3",716],["VG16",826],["VG17",828],["VG18",830],["VG20",834],["VG21",836],["VG26",846],["VG28",850]],
-  "Ouvido":[["IG1",80],["IG5",88],["IG6",90],["E7",140],["ID2",298],["ID3",300],["ID5",304],["ID8",310],["ID9",312],["ID16",326],["ID17",328],["ID19",332],["B23",384],["B65",468],["R3",484],["TA1",564],["TA3",568],["TA5",572],["TA6",574],["TA7",576],["TA8",578],["TA9",580],["TA10",582],["TA16",594],["TA19",600],["TA21",604],["VB2",620],["VB3",622],["VB8",632],["VB10",636],["VB11",638],["VB12",640],["VB15",646],["VB20",656],["VB41",698],["VG15",824],["VG16",826],["VG20",834]],
-  "Nariz":[["P3",56],["P4",58],["P7",64],["P11",72],["IG2",82],["IG3",84],["IG5",88],["IG6",90],["IG19",116],["IG20",118],["E3",132],["E45",216],["BP1",224],["C6",282],["ID2",298],["ID3",300],["B2",342],["B3",344],["B5",348],["B6",350],["B7",352],["B8",354],["B9",356],["B10",358],["B12",362],["B18",374],["B58",454],["B59",456],["B60",458],["B64",466],["B67",472],["R22",522],["CS4",546],["TA22",606],["VB5",626],["VB15",646],["VB18",652],["VB19",654],["VB20",656],["VB39",694],["VG15",824],["VG16",826],["VG20",834],["VG21",836],["VG24",842],["VG25",844],["VG26",846],["VG27",848],["VG28",850]],
-  "Boca e garganta":[["P1",52],["P6",62],["P7",64],["P8",66],["P9",68],["P10",70],["P11",72],["IG1",80],["IG2",82],["IG3",84],["IG7",92],["IG10",98],["IG11",100],["IG17",112],["IG18",114],["E5",136],["E9",144],["E10",146],["E11",148],["E12",150],["E24",174],["E43",212],["E45",216],["BP5",232],["C1",272],["C5",280],["C6",282],["C8",286],["ID1",296],["ID2",298],["ID3",300],["ID16",326],["ID17",328],["B10",358],["B11",360],["B57",452],["R1",480],["R2",482],["R3",484],["R4",486],["R6",490],["CS5",548],["CS6",550],["CS7",552],["CS8",554],["TA1",564],["TA3",568],["TA5",572],["TA6",574],["TA8",578],["TA9",580],["TA10",582],["TA16",594],["VB7",630],["VB10",636],["VB34",684],["VB35",686],["VB38",692],["VB39",694],["F5",720],["F7",724],["VG15",824],["VG16",826],["VG17",828],["VG27",848]],
-  "Pescoço e nuca":[["P7",64],["IG11",100],["IG13",104],["IG14",106],["IG15",108],["IG17",112],["IG18",114],["E5",136],["E9",144],["E10",146],["E11",148],["E12",150],["C1",272],["C3",276],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["ID9",312],["ID10",314],["ID12",318],["ID13",320],["ID14",322],["ID16",326],["ID17",328],["B7",352],["B8",354],["B9",356],["B10",358],["B11",360],["B12",362],["B41",420],["B42",422],["B60",458],["B64",466],["B65",468],["CS6",550],["TA5",572],["TA6",574],["TA10",582],["TA12",586],["TA16",594],["TA21",604],["TA22",606],["VB7",630],["VB11",638],["VB12",640],["VB13",642],["VB17",650],["VB19",654],["VB20",656],["VB21",658],["VB36",688],["VB38",692],["VB39",694],["VB40",696],["VB41",698],["VG13",820],["VG14",822],["VG15",824],["VG17",828],["VG18",830],["VG19",832]],
-  "Ombro":[["P1",52],["P2",54],["P4",58],["P7",64],["IG1",80],["IG2",82],["IG3",84],["IG9",96],["IG10",98],["IG12",102],["IG13",104],["IG14",106],["IG15",108],["IG18",114],["E12",150],["E40",206],["C1",272],["C2",274],["ID2",298],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["ID9",312],["ID10",314],["ID12",318],["ID13",320],["ID14",322],["B11",360],["B12",362],["B41",420],["B42",422],["B60",458],["CS2",542],["TA1",564],["TA6",574],["TA8",578],["TA10",582],["TA12",586],["VB10",636],["VB21",658],["VB22",660],["VB24",664],["VB34",684],["F9",728],["VG14",822]],
-  "Braço e cotovelo":[["P2",54],["P3",56],["P4",58],["P6",62],["P7",64],["P9",68],["IG6",90],["IG7",92],["IG8",94],["IG9",96],["IG10",98],["IG12",102],["IG13",104],["IG14",106],["IG15",108],["IG18",114],["E42",210],["C1",272],["C2",274],["C3",276],["C4",278],["C5",280],["C6",282],["C8",286],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["ID9",312],["ID10",314],["ID12",318],["ID13",320],["ID14",322],["B14",366],["B15",368],["B41",420],["B60",458],["B64",466],["CS2",542],["CS3",544],["CS4",546],["CS5",548],["CS6",550],["TA3",568],["TA5",572],["TA6",574],["TA7",576],["TA8",578],["TA9",580],["TA10",582],["TA12",586],["VB21",658],["VB22",660]],
-  "Punho e mão":[["P7",64],["P8",66],["P9",68],["P10",70],["IG1",80],["IG2",82],["IG3",84],["IG5",88],["IG6",90],["IG9",96],["C2",274],["C3",276],["C4",278],["C5",280],["C6",282],["C7",284],["C8",286],["ID1",296],["ID2",298],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["B11",360],["CS3",544],["CS6",550],["CS7",552],["CS8",554],["TA3",568],["TA5",572],["TA8",578],["TA9",580],["VB21",658]],
-  "Tórax":[["P1",52],["P2",54],["P3",56],["P4",58],["P7",64],["P8",66],["P9",68],["P10",70],["IG3",84],["E12",150],["E13",152],["E15",156],["E16",158],["E19",164],["E22",170],["E37",200],["E40",206],["BP3",228],["BP17",256],["BP18",258],["BP19",260],["BP20",262],["BP21",264],["C1",272],["C2",274],["C3",276],["C4",278],["C5",280],["C6",282],["C7",284],["C8",286],["C9",288],["ID3",300],["ID6",306],["B11",360],["B13",364],["B14",366],["B15",368],["B17",372],["B18",374],["B21",380],["B41",420],["B47",432],["R20",518],["R22",522],["R23",524],["R24",526],["R25",528],["R26",530],["CS2",542],["CS3",544],["CS4",546],["CS5",548],["CS6",550],["CS7",552],["CS8",554],["CS9",556],["TA1",564],["TA5",572],["TA6",574],["TA8",578],["VB11",638],["VB22",660],["VB23",662],["VB24",664],["VB25",666],["VB34",684],["VB35",686],["VB36",688],["VB39",694],["VB41",698],["F2",714],["F3",716],["F5",720],["F14",738],["VG1",796],["VG8",810],["VG9",812],["VG13",820]],
-  "Abdome":[["P2",54],["P10",70],["IG2",82],["IG7",92],["IG8",94],["IG9",96],["IG10",98],["E19",164],["E21",168],["E22",170],["E23",172],["E24",174],["E25",176],["E26",178],["E27",180],["E28",182],["E29",184],["E30",186],["E33",192],["E37",200],["E41",208],["E42",210],["E43",212],["E45",216],["BP1",224],["BP2",226],["BP3",228],["BP4",230],["BP5",232],["BP6",234],["BP7",236],["BP8",238],["BP9",240],["BP10",242],["BP13",248],["BP14",250],["BP15",252],["BP17",256],["BP21",264],["ID4",302],["B17",372],["B18",374],["B20",378],["B21",380],["B22",382],["B25",388],["B26",390],["B27",392],["B29",396],["B34",406],["B35",408],["B39",416],["B40",418],["B47",432],["B49",436],["B51",440],["B53",444],["R1",480],["R2",482],["R7",492],["R8",494],["R11",500],["R15",508],["R16",510],["R17",512],["R19",516],["R20",518],["R21",520],["R22",522],["R24",526],["CS6",550],["CS7",552],["CS9",556],["TA6",574],["VB24",664],["VB25",666],["VB26",668],["VB27",670],["VB34",684],["VB36",688],["VB39",694],["F2",714],["F3",716],["F4",718],["F9",728],["F10",730],["F13",736],["F14",738],["VG5",804],["VG6",806],["VG7",808],["VG8",810],["VG9",812]],
-  "Costas":[["P1",52],["P2",54],["P9",68],["IG3",84],["IG14",106],["E13",152],["BP19",260],["ID3",300],["ID4",302],["ID13",320],["ID14",322],["B10",358],["B11",360],["B13",364],["B15",368],["B20",378],["B21",380],["B22",382],["B23",384],["B24",386],["B25",388],["B27",392],["B34",406],["B47",432],["B53",444],["B58",454],["B60",458],["B62",462],["B63",464],["B64",466],["B65",468],["TA12",586],["VG1",796],["VG5",804],["VG6",806],["VG7",808],["VG9",812]],
-  "Lombar e sacro":[["P7",64],["P10",70],["IG10",98],["E25",176],["E30",186],["E37",200],["BP2",226],["BP3",228],["BP8",238],["BP9",240],["ID3",300],["ID6",306],["ID14",322],["B5",348],["B10",358],["B11",360],["B12",362],["B18",374],["B19",376],["B21",380],["B22",382],["B23",384],["B24",386],["B25",388],["B26",390],["B27",392],["B28",394],["B29",396],["B30",398],["B31",400],["B32",402],["B33",404],["B34",406],["B35",408],["B36",410],["B37",412],["B39",416],["B40",418],["B47",432],["B51",440],["B52",442],["B53",444],["B54",446],["B55",448],["B56",450],["B57",452],["B58",454],["B59",456],["B60",458],["B61",460],["B62",462],["B63",464],["B64",466],["B65",468],["R3",484],["R4",486],["R7",492],["R8",494],["R9",496],["R15",508],["TA3",568],["TA8",578],["TA12",586],["VB25",666],["VB26",668],["VB27",670],["VB29",674],["VB30",676],["VB31",678],["VB32",680],["VB35",686],["VB38",692],["VB41",698],["F9",728],["F11",732],["F12",734],["VG1",796],["VG3",800],["VG5",804],["VG7",808],["VG8",810],["VG9",812],["VG15",824],["VG26",846],["VG28",850]],
-  "Quadril e nádega":[["B30",398],["B36",410],["B37",412],["B54",446],["VB29",674],["VB30",676]],
-  "Nervo ciático":[["B26",390],["B53",444],["B56",450],["B58",454]],
-  "Coxa":[["E33",192],["BP10",242],["B64",466],["VB29",674],["VB30",676],["VB31",678],["VB32",680],["VB36",688],["F1",712],["F10",730],["F11",732],["F12",734]],
-  "Joelho":[["E33",192],["E35",196],["E37",200],["E40",206],["BP9",240],["BP10",242],["ID5",304],["B23",384],["B31",400],["B33",404],["B39",416],["B40",418],["B52",442],["B55",448],["B56",450],["B61",460],["B63",464],["B64",466],["R10",498],["VB30",676],["VB31",678],["VB32",680],["VB33",682],["VB34",684],["VB38",692],["VB39",694],["VB41",698],["F7",724],["F8",726]],
-  "Perna":[["IG9",96],["E33",192],["E43",212],["BP3",228],["BP9",240],["B22",382],["B33",404],["B34",406],["B37",412],["B39",416],["B40",418],["B54",446],["B56",450],["B57",452],["B58",454],["B61",460],["B63",464],["B64",466],["B65",468],["R8",494],["R9",496],["VB28",672],["VB31",678],["VB33",682],["VB35",686],["VB36",688],["VB39",694],["F5",720],["F11",732]],
-  "Tornozelo e pé":[["E35",196],["E41",208],["E42",210],["E43",212],["E45",216],["BP3",228],["BP4",230],["BP5",232],["BP7",236],["B11",360],["B39",416],["B57",452],["B59",456],["B61",460],["B62",462],["B63",464],["B64",466],["B65",468],["B67",472],["R1",480],["R2",482],["R4",486],["R7",492],["R8",494],["R9",496],["CS8",554],["VB31",678],["VB35",686],["VB39",694],["VB40",696],["VB41",698],["F4",718]],
-};
-
-// Liga o texto do campo "Região" da marcação às regiões da tabela, por palavras (sem acento, sem maiúsculas).
-// Só palavras de lugar do corpo: nenhuma regra clínica.
-const PALAVRAS_REGIAO = {
-  'Cabeça':['cabeca','cranio','testa','temporal','occipital'], 'Face e dentes':['face','rosto','dente','dentes','mandibula','maxilar'],
-  'Olhos':['olho','olhos'], 'Ouvido':['ouvido','ouvidos','orelha','orelhas'], 'Nariz':['nariz'], 'Boca e garganta':['boca','garganta','labio','labios','lingua'],
-  'Pescoço e nuca':['pescoco','nuca','cervical'], 'Ombro':['ombro','ombros'], 'Braço e cotovelo':['braco','bracos','antebraco','cotovelo','cotovelos'],
-  'Punho e mão':['punho','punhos','mao','maos','dedo','dedos'], 'Tórax':['torax','peito','toracica'], 'Abdome':['abdome','abdomen','abdominal','barriga'],
-  'Costas':['costas','dorsal','escapula'], 'Lombar e sacro':['lombar','lombo','sacro','sacral','coccix'], 'Quadril e nádega':['quadril','nadega','nadegas','gluteo','virilha'],
-  'Nervo ciático':['ciatico','ciatica'], 'Coxa':['coxa','coxas'], 'Joelho':['joelho','joelhos'], 'Perna':['perna','pernas','panturrilha','canela'],
-  'Tornozelo e pé':['tornozelo','tornozelos','pe','pes','calcanhar','planta']
-};
-const semAcentoReg = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-function regioesDoTexto(t){
-  const pal = new Set(semAcentoReg(t).split(/[^a-z]+/).filter(Boolean));
-  return REGIOES_CORPO.filter(r => semAcentoReg(r) === semAcentoReg(t).trim() || PALAVRAS_REGIAO[r].some(w => pal.has(w)));
-}
-// [[código, página], ...] aprovados para a região, na ordem do livro.
-const indicadosDaRegiao = r => INDICADOS_REGIAO[r] || [];
-// Regiões em que o ponto foi aprovado: [[região, página], ...].
-const regioesDoPonto = c => REGIOES_CORPO.flatMap(r => (INDICADOS_REGIAO[r] || []).filter(([x]) => x === c).map(([, pg]) => [r, pg]));
 //
 // Um rascunho fica em p.atendimentos com status 'rascunho'. Ele não aparece nas sessões (p.sessions)
 // nem na exportação para o protótipo: só entra no prontuário quando é finalizado. Campos além do
@@ -2248,6 +2047,490 @@ function atendimentosAnteriores(p, a){
   const F = finalizados(p), i = F.indexOf(a);
   return i >= 0 ? F.slice(0, i) : F.filter(x => x.data <= a.data);
 }
+//
+// Os pontos continuam em a.plano.pontos (lista de códigos), que é o que o cálculo, a verificação de
+// segurança e a exportação v1 leem. Para cada ponto o profissional registra só:
+//   lado: 'bil' (bilateral) | 'uni' (unilateral) | 'med' (linha média, VC e VG)
+//   status: 'plan' (planejado) | 'real' (realizado) | 'nao' (não realizado), com motivo opcional.
+// Fica em a.plano.rx = {[código]:{lado, status, motivo}}, criado só quando algo é marcado: ponto sem
+// registro é bilateral (linha média para VC e VG) e planejado. a.plano.orient guarda as orientações
+// para casa. a.evolucao.situacoes = {[queixa]: 'melhora'|'estavel'|'piora'|'resolvida'|'nova'} é
+// escolha do profissional: nada é calculado nem sugerido a partir das intensidades.
+// Depois de finalizado, mudar o lado ou a situação de um ponto é uma correção: exige motivo e fica em
+// a.retificacoes com o valor anterior, o novo, quem, quando e o motivo.
+
+const LADOS_RX = [['bil','Bilateral'],['uni','Unilateral'],['med','Linha média']];
+const STATUS_RX = [['plan','Planejado'],['real','Realizado'],['nao','Não realizado']];
+const SITUACOES_QUEIXA = [['melhora','Melhora'],['estavel','Estável'],['piora','Piora'],['resolvida','Resolvida'],['nova','Nova']];
+const nomeRx = (L, k) => (L.find(x => x[0] === k) || ['', '—'])[1];
+const linhaMedia = c => /^V[CG]\d+$/.test(c);
+
+const linhaRx = (a, c) => ({ lado: linhaMedia(c) ? 'med' : 'bil', status: 'plan', motivo: '', ...(a.plano.rx?.[c] || {}) });
+const linhasRx = a => a.plano.pontos.map(c => [c, linhaRx(a, c)]);
+function gravarRx(a, c, campos){
+  if (!a.plano.pontos.includes(c)) return null;
+  const r = (a.plano.rx ||= {})[c] ||= {};
+  Object.assign(r, campos);
+  return linhaRx(a, c);
+}
+function definirLado(a, c, lado){
+  if (linhaMedia(c) || !['bil','uni'].includes(lado)) return null;
+  return gravarRx(a, c, { lado });
+}
+function definirStatus(a, c, status){
+  if (!STATUS_RX.some(s => s[0] === status)) return null;
+  return gravarRx(a, c, status === 'nao' ? { status } : { status, motivo: '' });
+}
+function definirMotivo(a, c, motivo){
+  if (linhaRx(a, c).status !== 'nao') return null;
+  return gravarRx(a, c, { motivo: String(motivo || '') });
+}
+// Marca como realizados só os pontos ainda planejados.
+function todosRealizados(a){
+  const L = a.plano.pontos.filter(c => linhaRx(a, c).status === 'plan');
+  L.forEach(c => gravarRx(a, c, { status: 'real' }));
+  return L;
+}
+// Ao tirar um ponto do plano, o registro dele sai junto.
+function esquecerPonto(a, c){
+  if (a.plano.rx) delete a.plano.rx[c];
+}
+const contagemRx = a => STATUS_RX.map(([k, n]) => [k, n, linhasRx(a).filter(([, l]) => l.status === k).length]);
+
+function definirSituacao(a, idQueixa, sit){
+  const S = a.evolucao.situacoes ||= {};
+  if (!sit || S[idQueixa] === sit) delete S[idQueixa];
+  else if (SITUACOES_QUEIXA.some(s => s[0] === sit)) S[idQueixa] = sit;
+  return S[idQueixa] || '';
+}
+
+// Correção de um ponto num atendimento finalizado. Devolve as mudanças [campo, antes, depois] ou null.
+function corrigirPonto(a, c, { lado, status }, motivo, por, em){
+  const m = String(motivo || '').trim();
+  if (a.status !== 'finalizado' || !m || !a.plano.pontos.includes(c)) return null;
+  const antes = linhaRx(a, c), depois = { lado: linhaMedia(c) ? 'med' : lado || antes.lado, status: status || antes.status };
+  if (!['bil','uni','med'].includes(depois.lado) || !STATUS_RX.some(s => s[0] === depois.status)) return null;
+  const mud = [['Lado', 'lado', LADOS_RX], ['Situação', 'status', STATUS_RX]].filter(([, k]) => antes[k] !== depois[k]).map(([n, k, L]) => [n, nomeRx(L, antes[k]), nomeRx(L, depois[k])]);
+  if (!mud.length) return null;
+  gravarRx(a, c, depois.status === 'nao' ? depois : { ...depois, motivo: '' });
+  (a.retificacoes ||= []).unshift({ em, por, ponto: c, mud, motivo: m });
+  return mud;
+}
+//
+// O profissional escolhe o paciente e o modelo; o texto vem preenchido com os dados já registrados
+// e pode ser ajustado antes de imprimir. Ao guardar, o texto como ficou vai para o prontuário:
+//   p.documentos = [{id, modelo, texto, em, por, assinado?, assinadoEm?, assinadoPor?}] (mais recente
+//   primeiro), criado só quando o primeiro documento é guardado. Não entra na exportação v1.
+// Os textos dos modelos são exemplos (o Maicon troca pelos seus em Configurações, etapa 10). Nada é
+// concluído pelo sistema: o registro do atendimento só repete o que foi marcado.
+
+const CLINICA = 'Spazio Stabilità';
+// [chave, nome, ícone, pede assinatura do paciente]
+const MODELOS_DOC = [
+  ['termo', 'Termo de consentimento', 'assinatura', true],
+  ['declaracao', 'Declaração de comparecimento', 'doc_id', false],
+  ['orientacoes', 'Orientações para casa', 'folha', false],
+  ['registro', 'Registro do atendimento', 'doc', false]
+];
+const modeloDoc = k => MODELOS_DOC.find(m => m[0] === k) || null;
+
+// Último atendimento (rascunho ou finalizado) com orientações escritas.
+const comOrientacao = p => [...p.atendimentos].reverse().find(a => (a.plano?.orient || '').trim());
+
+// Texto do modelo para o paciente, em parágrafos separados por linha em branco.
+function textoModelo(k, p, { appts = [], hoje, prof }){
+  if (k === 'termo') return `Eu, ${p.name}, declaro que fui informado(a) por ${prof} sobre o tratamento com acupuntura e técnicas associadas, seus objetivos e possíveis reações, e que tive minhas dúvidas esclarecidas.\n\nInformei corretamente minhas condições de saúde e os medicamentos em uso, e sei que posso interromper o tratamento quando quiser.`;
+  if (k === 'declaracao') {
+    const h = horariosDoDia(appts, hoje).find(a => a.pid === p.id && a.st !== 'faltou');
+    return `Declaro, para os devidos fins, que ${p.name} esteve em atendimento na ${CLINICA} no dia ${fmt(hoje)}${h ? `, das ${h.time} às ${fimHorario(h)}` : ''}.`;
+  }
+  if (k === 'orientacoes') { const a = comOrientacao(p); return a ? a.plano.orient.trim() : ''; }
+  if (k === 'registro') {
+    const a = finalizados(p).at(-1); if (!a) return '';
+    // Sem situação marcada em nenhum ponto (atendimentos antigos), lista os pontos registrados sem dizer se foram feitos.
+    const marcado = !!a.plano.rx && Object.keys(a.plano.rx).length > 0, desc = ([c, l]) => `${c} (${nomeRx(LADOS_RX, l.lado).toLowerCase()})`;
+    const feitos = linhasRx(a).filter(([, l]) => !marcado || l.status === 'real').map(desc);
+    const sit = Object.entries(a.evolucao?.situacoes || {}).map(([q, s]) => [p.queixas.find(x => x.id === q)?.descricao, s]).filter(([q]) => q).map(([q, s]) => `${q} (${nomeRx(SITUACOES_QUEIXA, s).toLowerCase()})`);
+    return [`Atendimento de ${fmt(a.data)}${a.plano.tec.length ? ` · ${a.plano.tec.join(', ')}` : ''}.`,
+      feitos.length ? `${marcado ? 'Pontos realizados' : 'Pontos registrados'}: ${feitos.join('; ')}.` : marcado ? 'Nenhum ponto marcado como realizado.' : '',
+      sit.length ? `Queixas: ${sit.join('; ')}.` : ''].filter(Boolean).join('\n\n');
+  }
+  return '';
+}
+// Por que o modelo veio vazio (para dizer na tela).
+const faltaModelo = k => ({ orientacoes:'Nenhum atendimento com orientações para casa ainda.', registro:'Nenhum atendimento finalizado ainda.' })[k] || '';
+
+function guardarDocumento(p, { id, modelo, texto, em, por }){
+  const t = String(texto || '').trim();
+  if (!modeloDoc(modelo) || !t) return null;
+  const d = { id, modelo, texto: t, em, por };
+  (p.documentos ||= []).unshift(d);
+  return d;
+}
+// Termo assinado no papel: fica registrado quem marcou e quando.
+function marcarAssinado(p, id, em, por){
+  const d = (p.documentos || []).find(x => x.id === id);
+  if (!d || d.assinado || !modeloDoc(d.modelo)[3]) return null;
+  Object.assign(d, { assinado: true, assinadoEm: em, assinadoPor: por });
+  return d;
+}
+// Não cria números: se um dado não existe, o indicador não aparece.
+
+const ALERTA_NOME = {gestante:'Gestante',anticoagulante:'Anticoagulante',marcapasso:'Marcapasso'};
+const alertasDe = p => Object.keys(ALERTA_NOME).filter(k=>p.alerts[k]).map(k=>ALERTA_NOME[k]);
+const diasDesde = d => Math.round((new Date(TODAY+'T12:00')-new Date(d+'T12:00'))/864e5);
+// Melhora da queixa principal em %, comparando a primeira e a última EVA registradas.
+const melhoraPct = s => s.length>1 && s[0] ? Math.round((s[0]-s.at(-1))/s[0]*100) : null;
+
+// Pacientes que precisam de acompanhamento, com o motivo de cada um.
+// Retorno: última sessão há mais de 21 dias e nenhum agendamento futuro (mesmo critério das pendências da etapa 1B).
+function acompanhamento(){
+  return db.patients.map(p=>{ const m=[], l=p.sessions.at(-1), s=p.sessions.map(x=>x.eva);
+    if(l && l.date<TODAY && diasDesde(l.date)>21 && !db.appts.some(a=>ativo(a)&&a.pid===p.id && a.date>=TODAY)) m.push(['retorno','warn',`sem retorno há ${diasDesde(l.date)} dias`]);
+    if(!p.assess.length) m.push(['yin','acc','sem avaliação energética']);
+    if(s.length>=2 && s.at(-1)>=s[0]) m.push(['queda','crit','sem melhora desde a 1ª sessão']);
+    return {p,m}; }).filter(x=>x.m.length);
+}
+// Notificações: alertas de segurança de pacientes de hoje, agendamentos passados sem conclusão e acompanhamento.
+function notificacoes(){
+  const N=[], hoje=db.appts.filter(ativo).filter(a=>a.date===TODAY);
+  [...new Set(hoje.map(a=>a.pid))].map(patient).filter(p=>p && alertasDe(p).length)
+    .forEach(p=>N.push({k:'al-'+p.id,i:'escudo',t:'crit',titulo:`Alerta de segurança: ${p.name}`,txt:alertasDe(p).join(', ')+' · atendimento hoje',pid:p.id}));
+  db.appts.filter(ativo).filter(a=>a.date<TODAY && !a.done && a.st!=='faltou').forEach(a=>N.push({k:'at-'+a.id,i:'relogio',t:'warn',titulo:'Agendamento sem conclusão',txt:`${patient(a.pid)?.name||''} · ${fmt(a.date)} ${a.time}`,href:'#agenda'}));
+  acompanhamento().forEach(({p,m})=>N.push({k:'ac-'+p.id,i:m[0][0],t:m[0][1],titulo:p.name,txt:m.map(x=>x[2]).join(' · '),pid:p.id}));
+  return N;
+}
+// e as camadas que abrem por cima da tela (busca e atalhos de teclado).
+
+// [rota, rótulo, ícone]
+const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
+  ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
+const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', atendimento:'Atendimento', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
+  crm:'CRM', equipe:'Equipe e permissões', configuracoes:'Configurações'};
+// Item do menu que fica marcado em cada tela.
+const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
+// Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
+const PROF = {nome:'Maicon Farinelli', papel:'Profissional responsável'};
+
+const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+// Itens da busca global: [grupo, ícone, título, detalhe, atributos do link].
+function buscaItens(q){
+  const Q=semAcento(q.trim()), ok=s=>!Q||semAcento(s).includes(Q), R=[];
+  db.patients.filter(p=>ok(p.name+' '+p.queixa)).forEach(p=>R.push(['Pacientes','pacientes',p.name,p.queixa,`data-act="open" data-pid="${p.id}"`]));
+  [['Novo paciente','novo','#cadastro'],['Abrir agenda','agenda','#agenda'],['Avaliação energética','yin','#avaliacao'],['Pentagrama','estrela','#pentagrama']].filter(([t])=>ok(t)).forEach(([t,i,h])=>R.push(['Ações',i,t,'',`href="${h}"`]));
+  if(Q) NAV.filter(([,l])=>ok(l)).forEach(([k,l,i])=>R.push(['Telas',i,l,'',`href="#${k}"`]));
+  if(Q) POINTS.filter(p=>ok(p.code+' '+p.pinyin+' '+p.acoes)).slice(0,5).forEach(p=>R.push(['Pontos','biblioteca',`${p.code} · ${p.pinyin}`,p.acoes,`data-act="ver-ponto" data-c="${p.code}"`]));
+  return R.slice(0,12);
+}
+function listaBusca(){
+  const R=buscaItens(ui.q||''); ui.bi=Math.min(ui.bi||0,Math.max(0,R.length-1)); let g='';
+  return R.length?R.map((r,i)=>{ const cab=r[0]!==g?`<div class="pal-g">${r[0]}</div>`:''; g=r[0];
+    const tag=r[4].startsWith('href')?'a':'button';
+    return `${cab}<${tag} class="pal-i ${i===ui.bi?'on':''}" ${r[4]}><span class="tico sm">${ic(r[1])}</span><span class="grow"><b>${esc(r[2])}</b>${r[3]?`<small class="trunc">${esc(r[3])}</small>`:''}</span>${i===ui.bi?'<kbd>↵</kbd>':''}</${tag}>`; }).join('')
+    : vazio('busca','Nada encontrado',`Nenhum paciente, ponto ou tela para “${esc(ui.q)}”.`);
+}
+function camada(){
+  const el=document.getElementById('camada');
+  if(ui.ov==='busca') el.innerHTML=`<div class="veu" data-act="fechar"></div><div class="pal" role="dialog" aria-label="Busca global"><label class="pal-c">${ic('busca')}<input id="pal-q" placeholder="Buscar pacientes, pontos, telas e ações" value="${esc(ui.q||'')}" autocomplete="off"><kbd>Esc</kbd></label><div class="pal-l" id="pal-l">${listaBusca()}</div><div class="pal-r"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>↵</kbd> abrir</span><span><kbd>Ctrl</kbd><kbd>K</kbd> busca</span></div></div>`;
+  else if(ui.ov==='atalhos') el.innerHTML=`<div class="veu" data-act="fechar"></div><div class="pal atl" role="dialog" aria-label="Atalhos de teclado"><div class="card-h"><h3>Atalhos de teclado</h3><button class="ib" data-act="fechar" aria-label="Fechar">${ic('x')}</button></div>
+    ${[['Ctrl K  ou  /','Busca global'],['[','Recolher ou expandir o menu'],['?','Mostrar esta lista'],['Esc','Fechar janelas e menus']].map(([k,l])=>`<div class="atl-i"><span>${l}</span><span>${k.split('  ou  ').map(x=>x.split(' ').map(y=>`<kbd>${y}</kbd>`).join('')).join(' ou ')}</span></div>`).join('')}</div>`;
+  else el.innerHTML='';
+  if(ui.ov==='busca'){ const i=document.getElementById('pal-q'); i.focus(); i.setSelectionRange(i.value.length,i.value.length); }
+}
+const notifAttr = n => n.pid?`data-act="open" data-pid="${n.pid}"`:`href="${n.href}"`;
+
+function renderNav(route){
+  const atual=ATIVO[route]||route, app=document.querySelector('.app');
+  app.classList.toggle('mini', !!ui.menuMini);
+  app.classList.toggle('open', !!ui.menuAberto);
+  const N=notificacoes(), nl=N.filter(n=>!ui.lidas.has(n.k)).length;
+  const crumbs=ui.crumbs.length?ui.crumbs:[[null,LABEL[route]||'Painel']];
+  document.getElementById('topbar').innerHTML=`<button class="menu-btn" data-act="menu-abrir" aria-label="Abrir menu" aria-expanded="${!!ui.menuAberto}">${ic('menu')}</button>
+    <a class="tb-logo" href="#painel">${LOGO}<b>Musubi</b></a>
+    <nav class="migalha" aria-label="Caminho">${crumbs.map(([h,t],i)=>h&&i<crumbs.length-1?`<a ${h.startsWith('#')?`href="${h}"`:h}>${esc(t)}</a>`:`<span>${esc(t)}</span>`).join(ic('dir'))}</nav>
+    <button class="busca-g" data-act="busca" aria-label="Busca global (Ctrl K)">${ic('busca')}<span>Buscar pacientes, pontos e telas</span><kbd>Ctrl K</kbd></button>
+    <div class="tb-r">
+      <button class="ib so-cel" data-act="busca" aria-label="Buscar" data-tip="Buscar">${ic('busca')}</button>
+      <button class="ib" data-act="atalhos" aria-label="Atalhos de teclado" data-tip="Atalhos de teclado (?)">${ic('teclado')}</button>
+      <div class="dd"><button class="ib" data-act="notif" aria-label="Notificações: ${nl} novas" aria-expanded="${ui.ov==='notif'}" data-tip="Notificações">${ic('sino')}${nl?`<span class="badge">${nl}</span>`:''}</button>
+        ${ui.ov==='notif'?`<div class="dd-p notif" role="menu"><div class="dd-h"><b>Notificações</b>${nl?'<button class="btn ghost sm" data-act="ler-todas">Marcar como lidas</button>':''}</div>
+          ${N.length?N.map(n=>`<a class="nt ${ui.lidas.has(n.k)?'':'nova'}" ${notifAttr(n)} data-lida="${n.k}"><span class="tico sm ${n.t}">${ic(n.i)}</span><span class="grow"><b>${esc(n.titulo)}</b><small>${esc(n.txt)}</small></span></a>`).join(''):vazio('sino','Tudo em dia','Nenhuma notificação no momento.')}
+          <div class="dd-f muted sm">Geradas a partir da agenda, dos alertas e dos prontuários.</div></div>`:''}</div>
+      <div class="dd"><button class="perfil-b" data-act="perfil" aria-expanded="${ui.ov==='perfil'}" aria-label="Perfil do profissional"><span class="avatar">${initials(PROF.nome)}</span><span class="pf-n">${PROF.nome.split(' ')[0]}</span>${ic('baixo')}</button>
+        ${ui.ov==='perfil'?`<div class="dd-p pf" role="menu"><div class="pf-h"><span class="avatar lg">${initials(PROF.nome)}</span><div><b>${PROF.nome}</b><small class="muted">${PROF.papel}</small></div></div>
+          <a class="pf-i" href="#configuracoes">${ic('admin')}Preferências</a><button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
+          <button class="pf-i sair" data-act="aviso" data-m="Sair: disponível quando houver login (etapa 10).">${ic('sair')}Sair</button></div>`:''}</div>
+    </div>`;
+  document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+
+    NAV.map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+
+    `<div class="foot"><button class="toggle reset" data-act="reset" aria-label="Restaurar exemplos" data-tip="${ui.menuMini?'Restaurar exemplos':''}">${ic('retorno')}<span class="tx">Restaurar exemplos</span></button>
+     <button class="toggle" data-act="menu-mini" aria-label="${ui.menuMini?'Expandir menu':'Recolher menu'}" data-tip="${ui.menuMini?'Expandir menu ( [ )':''}">${ic(ui.menuMini?'abrir_menu':'fechar_menu')}<span class="tx">Recolher menu</span><kbd class="tx">[</kbd></button></div>`;
+  camada();
+}
+// no prontuário; lista dos documentos do paciente com a marcação de termo assinado.
+
+// Paciente e modelo escolhidos, e o texto (o preenchido ou o que foi ajustado na folha).
+function docAtual(){
+  const p = patient(ui.docPid) || patient(ui.pid) || db.patients[0];
+  const k = modeloDoc(ui.docMod) ? ui.docMod : MODELOS_DOC[0][0];
+  const texto = ui.docTexto ?? textoModelo(k, p || { name:'', atendimentos:[], queixas:[] }, { appts:db.appts, hoje:TODAY, prof:PROF.nome });
+  return { p, k, texto };
+}
+const paragrafos = t => esc(t).split(/\n{2,}/).map(x => `<p>${x.replace(/\n/g, '<br>')}</p>`).join('');
+const assinatura = (k, p) => modeloDoc(k)[3] ? `<div class="dp-as"><span></span><small>${esc(p.name)}</small></div>` : '';
+// Folha impressa: cabeçalho, texto, linha de assinatura do paciente (termo) e o profissional.
+function folhaDoc(k, p, texto, data = TODAY, por = PROF.nome){
+  return `<div class="imp-h">${LOGO}<div><b>${modeloDoc(k)[1]}</b><small>${CLINICA} · ${fmt(data)}</small></div></div><div class="imp-t">${paragrafos(texto)}</div>${assinatura(k, p)}<div class="imp-a">${esc(por)}</div>`;
+}
+
+function vDocumentos(){
+  if (!db.patients.length) return `<div class="head"><div><h1>Documentos</h1><p>Cadastre um paciente para gerar documentos.</p></div></div>`;
+  const { p, k, texto } = docAtual(), m = modeloDoc(k), meus = p.documentos || [], falta = !texto.trim() && faltaModelo(k);
+  return `<div class="head"><div><h1>Documentos</h1><p>Escolha o paciente e o modelo; o resto vem preenchido</p></div></div>
+  <div class="grid g-side ag-cols"><div class="card" id="doc-novo"><div class="card-h"><h2>Novo documento<small>${esc(p.name)} · ${m[1].toLowerCase()}</small></h2></div>
+      <label class="rx-f" style="max-width:360px"><span class="lbl">Paciente</span><select id="doc-p" data-docp="1">${db.patients.map(x=>`<option value="${x.id}" ${x.id===p.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
+      <div class="doc-m" role="group" aria-label="Modelo">${MODELOS_DOC.map(([c,n,i])=>`<button class="${c===k?'on':''}" data-act="doc-mod" data-m="${c}" aria-pressed="${c===k}">${ic(i)}<span>${n}</span></button>`).join('')}</div>
+      ${falta ? `<div class="notice">${ic('info')}<div>${falta} Você pode escrever o texto direto na folha.</div></div>` : ''}
+      <div class="doc-pv" id="doc-pv"><div class="dp-h">${LOGO}<div><b>${m[1]}</b><small>${CLINICA} · ${fmt(TODAY)}</small></div></div>
+        <div class="dp-t" id="doc-t" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Texto do documento">${paragrafos(texto)}</div>${assinatura(k, p)}<div class="dp-p">${esc(PROF.nome)}</div></div>
+      <small class="muted">Dá para ajustar o texto direto na folha antes de imprimir. <button class="lk-s" data-act="doc-refazer" ${ui.docTexto==null?'hidden':''}>Voltar ao texto do modelo</button></small>
+      <div class="rx-a"><button class="btn pri" data-act="doc-imp">${ic('doc')}Imprimir</button><button class="btn" data-act="doc-guardar">${ic('check')}Guardar no prontuário</button></div></div>
+    <div class="grid" style="align-content:start"><div class="card" id="doc-lista"><div class="card-h"><h2>Documentos de ${esc(p.name.split(' ')[0])}<small>ficam no prontuário</small></h2><span class="pill">${meus.length}</span></div>
+      ${meus.length ? `<div class="doc-l">${meus.map(d=>{ const md=modeloDoc(d.modelo); return `<div class="doc-li" data-doc="${d.id}"><span class="tico sm">${ic(md[2])}</span><div class="grow"><b>${md[1]}</b><small>${fmt(d.em.slice(0,10))} · ${esc(d.por)}${d.assinado?` · assinado, marcado em ${fmt(d.assinadoEm.slice(0,10))}`:''}</small></div>
+        ${md[3] ? (d.assinado ? `<span class="pill ok">${ic('check')}assinado</span>` : `<button class="btn sm" data-act="doc-ass" data-id="${d.id}">${ic('assinatura')}Marcar assinado</button>`) : ''}<button class="btn sm ghost" data-act="doc-reimp" data-id="${d.id}" aria-label="Imprimir de novo" data-tip="Imprimir de novo">${ic('doc')}</button></div>`; }).join('')}</div>` : '<p class="muted sm">Nenhum documento guardado ainda.</p>'}</div>
+      <div class="card"><h2>Assinatura</h2><p class="muted sm">Por enquanto o termo é impresso, assinado no papel e marcado aqui como assinado. A assinatura pelo celular, por um serviço externo, vamos escolher juntos na etapa 7.</p>
+        <p class="muted sm" style="margin-top:8px">Os textos dos modelos são exemplos; você vai poder trocar pelos seus em Configurações.</p></div></div></div>`;
+}
+const EL = {
+  madeira:{nome:'Madeira',han:'木',cor:'var(--wood)',ang:198,zang:'Fígado',fu:'Vesícula Biliar',emocao:'Raiva',estacao:'Primavera',clima:'Vento',sentido:'Olhos',tecido:'Tendões',sabor:'Ácido',som:'Grito',espirito:'Hun',funcoes:['Armazena o Xue','Garante o livre fluxo do Qi','Nutre tendões e olhos']},
+  fogo:{nome:'Fogo',han:'火',cor:'var(--fire)',ang:-90,zang:'Coração · Pericárdio',fu:'Intestino Delgado · Triplo Aquecedor',emocao:'Alegria (em excesso, agitação)',estacao:'Verão',clima:'Calor',sentido:'Língua',tecido:'Vasos',sabor:'Amargo',som:'Riso',espirito:'Shen',funcoes:['Governa o Xue e os vasos','Abriga o Shen','Manifesta-se na face']},
+  terra:{nome:'Terra',han:'土',cor:'var(--earth)',ang:-18,zang:'Baço',fu:'Estômago',emocao:'Preocupação',estacao:'Fim do verão',clima:'Umidade',sentido:'Boca',tecido:'Músculos',sabor:'Doce',som:'Canto',espirito:'Yi',funcoes:['Transforma e transporta','Produz Qi e Xue a partir dos alimentos','Mantém o Xue nos vasos']},
+  metal:{nome:'Metal',han:'金',cor:'var(--metal)',ang:54,zang:'Pulmão',fu:'Intestino Grosso',emocao:'Tristeza',estacao:'Outono',clima:'Secura',sentido:'Nariz',tecido:'Pele e pelos',sabor:'Picante',som:'Choro',espirito:'Po',funcoes:['Governa o Qi e a respiração','Difunde o Wei Qi','Regula as vias das águas']},
+  agua:{nome:'Água',han:'水',cor:'var(--water)',ang:126,zang:'Rim',fu:'Bexiga',emocao:'Medo',estacao:'Inverno',clima:'Frio',sentido:'Ouvidos',tecido:'Ossos',sabor:'Salgado',som:'Gemido',espirito:'Zhi',funcoes:['Armazena o Jing','Governa a água','Raiz do Yin e do Yang do corpo']}
+};
+const ORDER = ['fogo','terra','metal','agua','madeira'];
+const SHENG = {madeira:'fogo',fogo:'terra',terra:'metal',metal:'agua',agua:'madeira'};
+const KE = {madeira:'terra',terra:'agua',agua:'fogo',fogo:'metal',metal:'madeira'};
+const mae = e => Object.keys(SHENG).find(k=>SHENG[k]===e);
+const controlador = e => Object.keys(KE).find(k=>KE[k]===e);
+const elTag = e => e ? `<span class="el-tag"><i style="background:${EL[e].cor}"></i>${EL[e].nome}</span>` : '';
+const patientSelect = (id,cur) => `<select id="${id}">${db.patients.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`;
+function pentagram(state, sel, o={}){
+  const C=250,R=160,r=46, rad=a=>a*Math.PI/180;
+  const pos=e=>[C+R*Math.cos(rad(EL[e].ang)), C+R*Math.sin(rad(EL[e].ang))];
+  const rel = (a,b)=>!sel || a===sel || b===sel;
+  let s=`<svg viewBox="-80 0 660 480" class="penta" role="img" aria-label="Pentagrama dos cinco elementos com ciclos de geração e controle">
+  <defs>
+    <marker id="ms" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" style="fill:var(--accent)"/></marker>
+    <marker id="mk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" style="fill:var(--muted)"/></marker>
+  </defs>`;
+  if(o.sheng!==false) ORDER.forEach(e=>{
+    const d=(r+10)/R, a1=rad(EL[e].ang)+d, a2=rad(EL[e].ang+72)-d;
+    const p1=[C+R*Math.cos(a1),C+R*Math.sin(a1)], p2=[C+R*Math.cos(a2),C+R*Math.sin(a2)];
+    const cls = sel ? (rel(e,SHENG[e])?'hi':'dim') : '';
+    s+=`<path class="sheng ${cls}" d="M${p1[0].toFixed(1)},${p1[1].toFixed(1)} A${R},${R} 0 0 1 ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" marker-end="url(#ms)"/>`;
+  });
+  if(o.ke!==false) ORDER.forEach(e=>{
+    const [x1,y1]=pos(e),[x2,y2]=pos(KE[e]), L=Math.hypot(x2-x1,y2-y1), ux=(x2-x1)/L, uy=(y2-y1)/L, k=r+8;
+    const cls = sel ? (rel(e,KE[e])?'hi':'dim') : '';
+    s+=`<path class="ke ${cls}" d="M${(x1+ux*k).toFixed(1)},${(y1+uy*k).toFixed(1)} L${(x2-ux*k).toFixed(1)},${(y2-uy*k).toFixed(1)}" marker-end="url(#mk)"/>`;
+  });
+  ORDER.forEach(e=>{
+    const [x,y]=pos(e), E=EL[e], st=state?state[e]:{def:0,exc:0};
+    const kind = st.exc>st.def && st.exc>0 ? 'exc' : st.def>0 ? 'def' : '';
+    const dim = sel && sel!==e && SHENG[sel]!==e && mae(sel)!==e && KE[sel]!==e && controlador(sel)!==e;
+    s+=`<g class="node" data-act="el" data-e="${e}" tabindex="0" role="button" aria-label="${E.nome}" style="opacity:${dim?.35:1}">
+      <circle cx="${x}" cy="${y}" r="${r}" style="fill:${E.cor};fill-opacity:${kind==='def'?.08:.18}"/>
+      <circle class="ring" cx="${x}" cy="${y}" r="${r}" style="fill:none;stroke:${E.cor};stroke-width:${kind==='exc'?6:sel===e?5:3}" ${kind==='def'?'stroke-dasharray="6 5"':''}/>
+      <text x="${x}" y="${y-2}" text-anchor="middle" style="fill:${E.cor};font-size:28px;font-weight:600">${E.han}</text>
+      <text x="${x}" y="${y+20}" text-anchor="middle" style="fill:var(--ink);font-size:13px;font-weight:600">${E.nome}</text>
+      ${(()=>{ const c=Math.cos(rad(E.ang)); let lx=x, ly=y+r+17, an='middle';
+        if(e==='fogo') ly=y-r-26; else if(c<-.5){lx=x-r-10;ly=y+4;an='end'} else if(c>.5&&e==='terra'){lx=x+r+10;ly=y+4;an='start'}
+        return `<text x="${lx}" y="${ly}" text-anchor="${an}" style="fill:var(--muted);font-size:11.5px">${E.zang.split(' · ')[0]} · ${E.emocao.split(' ')[0]}</text>`+
+        (kind?`<text x="${lx}" y="${ly+15}" text-anchor="${an}" style="fill:${kind==='exc'?'var(--crit)':'var(--warn)'};font-size:11px;font-weight:600">${kind==='exc'?'▲ excesso':'▼ deficiência'}</text>`:''); })()}
+    </g>`;
+  });
+  return s+'</svg>';
+}
+const SIGNS = {
+  'Língua':[['lingua_palida','Pálida'],['lingua_vermelha','Vermelha'],['ponta_vermelha','Ponta vermelha'],['bordas_vermelhas','Bordas vermelhas'],['lingua_purpura','Arroxeada'],['lingua_inchada','Inchada'],['marcas_dentes','Marcas de dentes'],['sem_saburra','Sem saburra'],['saburra_amarela','Saburra amarela pegajosa'],['saburra_branca','Saburra branca espessa']],
+  'Pulso':[['pulso_fraco','Fraco / vazio'],['pulso_corda','Em corda'],['pulso_fino','Fino'],['pulso_rapido','Rápido'],['pulso_lento','Lento'],['pulso_profundo','Profundo'],['pulso_escorregadio','Escorregadio']],
+  'Sinais e sintomas':[['cansaco','Cansaço'],['fezes_amolecidas','Fezes amolecidas'],['distensao_pos','Distensão após comer'],['preocupacao','Pensamento excessivo'],['irritabilidade','Irritabilidade'],['distensao_hipo','Distensão no hipocôndrio'],['tpm','Tensão pré-menstrual'],['suspiros','Suspiros frequentes'],['cefaleia_temporal','Cefaleia temporal'],['sudorese_noturna','Sudorese noturna'],['calor_tarde','Calor ao fim da tarde'],['boca_seca','Boca seca'],['zumbido','Zumbido'],['lombalgia','Lombalgia'],['frio_extremidades','Frio nas extremidades'],['mic_frequente','Micção frequente e clara'],['palpitacoes','Palpitações'],['insonia','Insônia'],['ansiedade','Ansiedade'],['memoria','Memória fraca'],['aftas','Aftas'],['falta_ar','Falta de ar ao esforço'],['voz_fraca','Voz fraca'],['resfriados','Resfriados frequentes'],['tristeza','Tristeza persistente'],['peso_corpo','Sensação de peso'],['dor_fixa','Dor fixa e em pontada']]
+};
+const SIGN = {};
+Object.values(SIGNS).flat().forEach(([k,v])=>SIGN[k]=v);
+const PATTERNS = [
+  {id:'bp_qi',nome:'Deficiência de Qi do Baço',el:'terra',tipo:'def',sinais:['lingua_palida','marcas_dentes','pulso_fraco','cansaco','fezes_amolecidas','distensao_pos','preocupacao'],
+   pontos:[['E36','Tonifica o Qi do Baço e do Estômago'],['BP3','Ponto fonte (Yuan) do Baço'],['VC12','Ponto Mu do Estômago, fortalece o Aquecedor Médio'],['BP6','Apoia a função de transformação']]},
+  {id:'f_estag',nome:'Estagnação do Qi do Fígado',el:'madeira',tipo:'exc',sinais:['pulso_corda','irritabilidade','distensao_hipo','tpm','suspiros'],
+   pontos:[['F3','Ponto fonte, promove o livre fluxo do Qi'],['IG4','Com F3 forma os Quatro Portões, move o Qi'],['VB34','Regula o Qi do Fígado e da Vesícula'],['CS6','Abre o tórax e harmoniza o Qi']]},
+  {id:'f_yang',nome:'Ascensão do Yang do Fígado',el:'madeira',tipo:'exc',sinais:['bordas_vermelhas','pulso_corda','cefaleia_temporal','irritabilidade','zumbido'],
+   pontos:[['F3','Acalma o Yang do Fígado'],['VB20','Indicado para cefaleia e vertigem'],['VG20','Acalma o Shen e a cabeça'],['R3','Nutre o Yin do Rim para ancorar o Yang']]},
+  {id:'r_yin',nome:'Deficiência de Yin do Rim',el:'agua',tipo:'def',sinais:['lingua_vermelha','sem_saburra','pulso_fino','pulso_rapido','sudorese_noturna','calor_tarde','boca_seca','zumbido','lombalgia'],
+   pontos:[['R3','Ponto fonte, tonifica o Rim'],['R6','Nutre o Yin e favorece o sono'],['BP6','Nutre Yin e Xue'],['VC4','Fortalece o Rim e o Yuan Qi']]},
+  {id:'r_yang',nome:'Deficiência de Yang do Rim',el:'agua',tipo:'def',sinais:['lingua_palida','lingua_inchada','pulso_profundo','pulso_lento','frio_extremidades','lombalgia','mic_frequente'],
+   pontos:[['B23','Ponto Shu do Rim'],['VG4','Mingmen, aquece o Yang do Rim (moxa)'],['VC4','Tonifica o Yuan Qi (moxa)'],['R7','Tonifica o Yang do Rim']]},
+  {id:'c_xue',nome:'Deficiência de Xue do Coração',el:'fogo',tipo:'def',sinais:['lingua_palida','pulso_fino','palpitacoes','insonia','ansiedade','memoria'],
+   pontos:[['C7','Ponto fonte, acalma o Shen'],['CS6','Acalma o Shen e regula o Coração'],['BP6','Nutre o Xue'],['B15','Ponto Shu do Coração']]},
+  {id:'c_fogo',nome:'Fogo no Coração',el:'fogo',tipo:'exc',sinais:['ponta_vermelha','saburra_amarela','pulso_rapido','insonia','aftas','ansiedade'],
+   pontos:[['C8','Ponto fogo, elimina calor do Coração'],['CS7','Acalma o Shen e elimina calor'],['C7','Acalma o Shen'],['R6','Nutre Yin para conter o Fogo']]},
+  {id:'p_qi',nome:'Deficiência de Qi do Pulmão',el:'metal',tipo:'def',sinais:['pulso_fraco','falta_ar','voz_fraca','resfriados','tristeza','cansaco'],
+   pontos:[['P9','Ponto fonte, tonifica o Qi do Pulmão'],['E36','Fortalece a Terra, mãe do Metal'],['B13','Ponto Shu do Pulmão'],['VC17','Ponto de reunião do Qi']]},
+  {id:'umid_calor',nome:'Umidade-Calor no Aquecedor Médio',el:'terra',tipo:'exc',sinais:['saburra_amarela','pulso_escorregadio','pulso_rapido','peso_corpo','fezes_amolecidas','boca_seca'],
+   pontos:[['BP9','Resolve umidade'],['IG11','Elimina calor'],['E40','Transforma fleuma e umidade'],['VC12','Harmoniza o Aquecedor Médio']]},
+  {id:'estase_xue',nome:'Estase de Xue',el:'madeira',tipo:'exc',sinais:['lingua_purpura','dor_fixa','tpm','pulso_corda'],
+   pontos:[['BP10','Move o Xue'],['B17','Ponto de reunião do Xue'],['F3','Move o Qi para mover o Xue'],['BP6','Regula o Xue no baixo ventre']]}
+];
+const BAGANG = {
+  calor:['lingua_vermelha','ponta_vermelha','bordas_vermelhas','saburra_amarela','pulso_rapido','aftas','calor_tarde','boca_seca','sudorese_noturna'],
+  frio:['lingua_palida','pulso_lento','frio_extremidades','mic_frequente','saburra_branca'],
+  def:['pulso_fraco','pulso_fino','cansaco','voz_fraca','falta_ar','memoria','sem_saburra','marcas_dentes','resfriados'],
+  exc:['pulso_corda','pulso_escorregadio','saburra_amarela','dor_fixa','distensao_hipo','irritabilidade','cefaleia_temporal','peso_corpo']
+};
+function evaluate(signs){
+  const s = new Set(signs);
+  return PATTERNS.map(p=>{
+    const m = p.sinais.filter(x=>s.has(x));
+    return {p, m, falta:p.sinais.filter(x=>!s.has(x)), score:m.length/p.sinais.length};
+  }).filter(h=>h.m.length>=2).sort((a,b)=>b.score-a.score);
+}
+function elemState(signs, status){
+  const st = {}; ORDER.forEach(e=>st[e]={def:0,exc:0});
+  evaluate(signs).forEach(h=>{ if((status||{})[h.p.id]==='descartado') return; st[h.p.el][h.p.tipo] += h.score * ((status||{})[h.p.id]==='aceito'?1:.6); });
+  return st;
+}
+function bagang(signs){
+  const s=new Set(signs), c=k=>BAGANG[k].filter(x=>s.has(x)).length;
+  const t=(a,b)=>{const A=c(a),B=c(b);return A+B?(B-A)/(A+B):0};
+  return {fc:t('frio','calor'), de:t('def','exc'), n:signs.length};
+}
+function vAvaliacao(){
+  if(!ui.assess || !patient(ui.assess.pid)) ui.assess={pid:ui.pid,signs:[],status:{},nota:''};
+  const A=ui.assess, p=patient(A.pid);
+  ui.crumbs=[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Avaliação energética']];
+  const hyps=evaluate(A.signs), st=elemState(A.signs,A.status), bg=bagang(A.signs);
+  const axis=(l,r,v)=>`<div class="axis"><span>${l}</span><div class="track"><span class="dot" style="left:${50+v*50}%"></span></div><span>${r}</span></div>`;
+  return `<div class="head"><div><h1>Avaliação energética</h1><p>Língua, pulso e manifestações organizados segundo a MTC</p></div>
+    <div class="field" style="min-width:200px"><label class="lbl" for="as-patient">Paciente</label>${patientSelect('as-patient',A.pid)}</div></div>
+  <div class="notice" style="margin-bottom:16px">${ic('info')}<div><b>Apoio ao raciocínio clínico.</b> As hipóteses abaixo são geradas a partir dos sinais marcados e não constituem diagnóstico. Cabe ao profissional aceitar, descartar e decidir a conduta.</div></div>
+  <div class="grid g-side">
+    <div class="grid" style="align-content:start">
+      <div class="card sigs">${Object.entries(SIGNS).map(([g,list])=>`<div><div class="lbl" style="margin-bottom:6px">${g}</div><div class="chips">${list.map(([k,l])=>`<button class="chip ${A.signs.includes(k)?'on':''}" data-act="sign" data-s="${k}" aria-pressed="${A.signs.includes(k)}">${l}</button>`).join('')}</div></div>`).join('')}</div>
+      <div class="card"><div class="card-h"><h2>Hipóteses de padrão</h2><span class="muted">${hyps.length} encontradas</span></div>
+        <div class="grid">${hyps.length?hyps.map(h=>{const s=A.status[h.p.id]||'';return `<div class="hyp ${s}">
+          <div class="hyp-h"><div><b>${h.p.nome}</b> <span style="margin-left:6px">${elTag(h.p.el)}</span></div>
+            <div style="display:flex;gap:6px"><button class="btn sm ${s==='aceito'?'pri':''}" data-act="hyp" data-p="${h.p.id}" data-st="aceito">${s==='aceito'?'Aceito':'Aceitar'}</button><button class="btn sm" data-act="hyp" data-p="${h.p.id}" data-st="descartado">${s==='descartado'?'Descartado':'Descartar'}</button></div></div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div class="bar"><i style="width:${Math.round(h.score*100)}%"></i></div><span class="mono muted">${h.m.length}/${h.p.sinais.length} sinais</span></div>
+          <div style="font-size:.86rem"><span class="lbl">Por que aparece</span><br>${h.m.map(x=>SIGN[x]).join(', ')}</div>
+          ${h.falta.length?`<div style="font-size:.86rem" class="muted"><span class="lbl">Sinais esperados não observados</span><br>${h.falta.map(x=>SIGN[x]).join(', ')}</div>`:''}
+          <div class="pts"><span class="lbl">Pontos frequentemente considerados</span>${h.p.pontos.map(([c,j])=>`<div><span class="mono">${c}</span> ${esc(PT[c]?.pinyin||'')} · <span class="muted">${esc(j)}</span>${PT[c]?.cautela?` <span class="pill warn">${CAUT[PT[c].cautela]}</span>`:''}</div>`).join('')}</div>
+        </div>`}).join(''):'<p class="muted">Marque ao menos dois sinais para ver hipóteses.</p>'}</div>
+      </div>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h3>Oito princípios (Ba Gang)</h3><div class="grid" style="gap:10px">${axis('Frio','Calor',bg.fc)}${axis('Deficiência','Excesso',bg.de)}</div>
+        <p class="muted" style="font-size:.8rem;margin-top:10px">${bg.n?`Calculado a partir de ${bg.n} sinais marcados.`:'Marque sinais para posicionar os eixos.'}</p></div>
+      <div class="card"><h3>Cinco elementos</h3>${pentagram(st,null)}<p class="muted" style="font-size:.8rem">Atualiza conforme você marca sinais e valida hipóteses.</p></div>
+      <div class="card"><div class="field"><label class="lbl" for="as-nota">Observações do profissional</label><textarea id="as-nota">${esc(A.nota)}</textarea></div>
+        <button class="btn pri" style="margin-top:10px" data-act="save-assess" ${A.signs.length?'':'disabled'}>Salvar avaliação no prontuário de ${esc(p.name.split(' ')[0])}</button></div>
+    </div>
+  </div>`;
+}
+// Pontos e barras levam data-tip, que mostra o valor ao passar o mouse.
+
+// Linhas de 0 a 10 (intensidade da queixa). series: [{vals, cor, nome}], vals pode ter null; o.mini desenha sem eixos.
+function linhas(series, labels, o={}){
+  const W=o.w||640, H=o.h||220, [L,R,T,B]=o.mini?[6,8,6,6]:[28,14,12,26], n=Math.max(2,...series.map(s=>s.vals.length));
+  const x=i=>L+i*(W-L-R)/(n-1), y=v=>T+(1-v/10)*(H-T-B);
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||'Gráfico de evolução')}">`;
+  if(!o.mini) [0,5,10].forEach(v=>s+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L-8}" y="${y(v)+4}" text-anchor="end">${v}</text>`);
+  labels.forEach((l,i)=>s+=`<text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${esc(l)}</text>`);
+  series.forEach((se,k)=>{ if(!se.vals.some(v=>v!=null)) return;
+    // Valores ausentes (null) ficam sem ponto e interrompem a linha (queixa não medida naquele atendimento).
+    const ult=se.vals.reduce((u,v,i)=>v!=null?i:u,-1);
+    const d=se.vals.map((v,i)=>v==null?'':`${i&&se.vals[i-1]!=null?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+    s+=`<g class="se" data-s="${k}"><path d="${d}" fill="none" stroke="${se.cor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    s+=se.vals.map((v,i)=>{ if(v==null) return ''; const tip=o.mini?'':(o.tips?.[i]||`${se.nome?se.nome+' · ':''}${labels[i]||''}: ${String(v).replace('.',',')}`);
+      return `<circle class="${tip?'pt-i':''}" cx="${x(i)}" cy="${y(v)}" r="${i===ult?5:3.5}" fill="${i===ult?se.cor:'var(--surface)'}" stroke="${se.cor}" stroke-width="2" ${tip?`data-tip="${esc(tip)}"`:''}/>`; }).join('')+'</g>';
+  });
+  return s+'</svg>';
+}
+// Barras verticais; a última fica destacada (período atual).
+function barrasV(vals, labels, o={}){
+  const W=o.w||560, H=o.h||190, B=24, T=18, max=Math.max(1,...vals), bw=W/vals.length;
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||'')}">`;
+  [0,.5,1].forEach(f=>s+=`<line class="gl" x1="0" x2="${W}" y1="${H-B-f*(H-B-T)}" y2="${H-B-f*(H-B-T)}"/>`);
+  vals.forEach((v,i)=>{ const h=v/max*(H-B-T), x=i*bw+bw*.22, w=bw*.56, ult=i===vals.length-1;
+    s+=`<rect class="br-i" x="${x}" y="${H-B-h}" width="${w}" height="${Math.max(h,2)}" rx="6" fill="${ult?'var(--brand)':'var(--sage)'}" data-tip="${esc(o.tips?o.tips[i]:`${labels[i]}: ${v}`)}"/><text class="ax" x="${x+w/2}" y="${H-B-h-6}" text-anchor="middle">${v}</text><text class="ax" x="${x+w/2}" y="${H-6}" text-anchor="middle">${esc(labels[i])}</text>`; });
+  return s+'</svg>';
+}
+// Anel de progresso (0 a 1) com texto no centro.
+function anel(pct, txt, cor='var(--brand)'){
+  const r=24, c=2*Math.PI*r;
+  return `<svg class="anel" viewBox="0 0 60 60" width="60" height="60" aria-hidden="true"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--line)" stroke-width="6"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${cor}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(Math.max(0,Math.min(1,pct))*c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 30 30)"/><text x="30" y="34.5" text-anchor="middle">${txt}</text></svg>`;
+}
+// Barras dos cinco elementos a partir do estado calculado pela avaliação (elemState), sem recalcular nada.
+// base: estado da avaliação basal, mostrado como marca vertical.
+const ORDEM_EL = ['madeira','fogo','terra','metal','agua'];
+const tipoEl = s => s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';
+function barrasEl(st, base){
+  const pct = s => Math.min(100,Math.round(Math.max(s.def,s.exc)/1.6*100));
+  return `<div class="elbars">${ORDEM_EL.map(e=>{ const s=st[e], k=tipoEl(s), E=EL[e], b=base?pct(base[e]):null;
+    return `<div class="elb"><span class="han" style="color:${E.cor}">${E.han}</span><span class="nm">${E.nome}</span>
+      <div class="trk">${b!==null?`<i class="base" style="left:${b}%" title="Basal"></i>`:''}<i class="fill ${k}" style="width:${Math.max(k?6:0,pct(s))}%;background:${E.cor}"></i></div>
+      <span class="st ${k}">${k==='exc'?'Excesso':k==='def'?'Deficiência':'Equilíbrio'}</span></div>`;}).join('')}</div>`;
+}
+// Variação entre dois valores de intensidade (queda é melhora).
+const delta = (a,b) => { if(a==null||b==null) return ''; const d=b-a; return `<span class="delta ${d<0?'bom':d>0?'ruim':''}">${d<0?'▼':d>0?'▲':'='} ${Math.abs(d)}</span>`; };
+// Fonte: MARTINS, Ednéa Iara Souza. Atlas dos Pontos de Acupuntura: guia de localização. GEN/Roca.
+// Seção "Indicações" de cada ponto, lida por palavras de região. Só o código do ponto e a página do livro;
+// nenhum texto do livro foi copiado. Cada linha foi conferida e aprovada ("sim") por Maicon em 04/11/2026.
+// [código, página no livro]
+const FONTE_INDICACOES = { obra:'Atlas dos Pontos de Acupuntura: guia de localização', autora:'Ednéa Iara Souza Martins', editora:'GEN/Roca', aprovadoPor:'Maicon', aprovadoEm:'2026-11-04' };
+const REGIOES_CORPO = ["Cabeça", "Face e dentes", "Olhos", "Ouvido", "Nariz", "Boca e garganta", "Pescoço e nuca", "Ombro", "Braço e cotovelo", "Punho e mão", "Tórax", "Abdome", "Costas", "Lombar e sacro", "Quadril e nádega", "Nervo ciático", "Coxa", "Joelho", "Perna", "Tornozelo e pé"];
+const INDICADOS_REGIAO = {
+  "Cabeça":[["P6",62],["P7",64],["P9",68],["IG2",82],["IG3",84],["IG5",88],["IG7",92],["IG8",94],["IG9",96],["IG11",100],["IG17",112],["E1",128],["E8",142],["E9",144],["E10",146],["E40",206],["E41",208],["E42",210],["BP3",228],["BP8",238],["C2",274],["C5",280],["C6",282],["ID1",296],["ID2",298],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["B2",342],["B3",344],["B5",348],["B6",350],["B7",352],["B8",354],["B10",358],["B11",360],["B12",362],["B18",374],["B22",382],["B27",392],["B37",412],["B58",454],["B59",456],["B60",458],["B64",466],["B65",468],["B67",472],["R1",480],["R2",482],["CS2",542],["CS6",550],["CS7",552],["TA1",564],["TA3",568],["TA5",572],["TA9",580],["TA10",582],["TA12",586],["TA16",594],["TA19",600],["TA21",604],["TA22",606],["TA23",608],["VB1",618],["VB3",622],["VB5",626],["VB6",628],["VB7",630],["VB9",634],["VB10",636],["VB11",638],["VB12",640],["VB13",642],["VB14",644],["VB15",646],["VB17",650],["VB18",652],["VB19",654],["VB20",656],["VB21",658],["VB36",688],["VB39",694],["VB41",698],["F1",712],["F2",714],["F3",716],["F4",718],["F7",724],["VG13",820],["VG14",822],["VG15",824],["VG16",826],["VG17",828],["VG18",830],["VG19",832],["VG20",834],["VG21",836],["VG24",842]],
+  "Face e dentes":[["P3",56],["P4",58],["P6",62],["P7",64],["P11",72],["IG1",80],["IG2",82],["IG3",84],["IG5",88],["IG6",90],["IG7",92],["IG8",94],["IG9",96],["IG10",98],["IG12",102],["IG15",108],["IG19",116],["IG20",118],["E1",128],["E3",132],["E5",136],["E7",140],["E8",142],["E9",144],["E33",192],["E41",208],["E42",210],["E43",212],["E45",216],["BP2",226],["BP4",230],["BP5",232],["BP14",250],["C1",272],["C3",276],["C5",280],["C6",282],["ID1",296],["ID3",300],["ID5",304],["ID8",310],["ID9",312],["ID18",330],["ID19",332],["B1",340],["B2",342],["B8",354],["B18",374],["B56",450],["B59",456],["B61",460],["B62",462],["B64",466],["B65",468],["R1",480],["R7",492],["R8",494],["R9",496],["CS2",542],["CS3",544],["TA1",564],["TA5",572],["TA8",578],["TA9",580],["TA12",586],["TA16",594],["TA21",604],["TA22",606],["TA23",608],["VB1",618],["VB2",620],["VB3",622],["VB5",626],["VB6",628],["VB7",630],["VB8",632],["VB10",636],["VB11",638],["VB12",640],["VB13",642],["VB14",644],["VB15",646],["VB17",650],["VB31",678],["VB32",680],["VB33",682],["VB34",684],["VB35",686],["VB36",688],["F1",712],["F2",714],["F3",716],["F7",724],["F12",734],["VG15",824],["VG25",844],["VG26",846],["VG27",848],["VG28",850]],
+  "Olhos":[["P7",64],["P9",68],["IG1",80],["IG2",82],["IG3",84],["IG6",90],["IG8",94],["IG11",100],["IG14",106],["E1",128],["E3",132],["E7",140],["E8",142],["E41",208],["E42",210],["E43",212],["C5",280],["ID1",296],["ID2",298],["ID3",300],["ID5",304],["ID6",306],["ID18",330],["B1",340],["B2",342],["B3",344],["B5",348],["B6",350],["B7",352],["B8",354],["B9",356],["B10",358],["B18",374],["B23",384],["B58",454],["B60",458],["B62",462],["B64",466],["B65",468],["B67",472],["R1",480],["R3",484],["R6",490],["TA1",564],["TA5",572],["TA6",574],["TA10",582],["TA16",594],["TA23",608],["VB1",618],["VB2",620],["VB5",626],["VB6",628],["VB7",630],["VB8",632],["VB9",634],["VB10",636],["VB11",638],["VB14",644],["VB15",646],["VB17",650],["VB18",652],["VB19",654],["VB20",656],["VB38",692],["VB41",698],["F2",714],["F3",716],["VG16",826],["VG17",828],["VG18",830],["VG20",834],["VG21",836],["VG26",846],["VG28",850]],
+  "Ouvido":[["IG1",80],["IG5",88],["IG6",90],["E7",140],["ID2",298],["ID3",300],["ID5",304],["ID8",310],["ID9",312],["ID16",326],["ID17",328],["ID19",332],["B23",384],["B65",468],["R3",484],["TA1",564],["TA3",568],["TA5",572],["TA6",574],["TA7",576],["TA8",578],["TA9",580],["TA10",582],["TA16",594],["TA19",600],["TA21",604],["VB2",620],["VB3",622],["VB8",632],["VB10",636],["VB11",638],["VB12",640],["VB15",646],["VB20",656],["VB41",698],["VG15",824],["VG16",826],["VG20",834]],
+  "Nariz":[["P3",56],["P4",58],["P7",64],["P11",72],["IG2",82],["IG3",84],["IG5",88],["IG6",90],["IG19",116],["IG20",118],["E3",132],["E45",216],["BP1",224],["C6",282],["ID2",298],["ID3",300],["B2",342],["B3",344],["B5",348],["B6",350],["B7",352],["B8",354],["B9",356],["B10",358],["B12",362],["B18",374],["B58",454],["B59",456],["B60",458],["B64",466],["B67",472],["R22",522],["CS4",546],["TA22",606],["VB5",626],["VB15",646],["VB18",652],["VB19",654],["VB20",656],["VB39",694],["VG15",824],["VG16",826],["VG20",834],["VG21",836],["VG24",842],["VG25",844],["VG26",846],["VG27",848],["VG28",850]],
+  "Boca e garganta":[["P1",52],["P6",62],["P7",64],["P8",66],["P9",68],["P10",70],["P11",72],["IG1",80],["IG2",82],["IG3",84],["IG7",92],["IG10",98],["IG11",100],["IG17",112],["IG18",114],["E5",136],["E9",144],["E10",146],["E11",148],["E12",150],["E24",174],["E43",212],["E45",216],["BP5",232],["C1",272],["C5",280],["C6",282],["C8",286],["ID1",296],["ID2",298],["ID3",300],["ID16",326],["ID17",328],["B10",358],["B11",360],["B57",452],["R1",480],["R2",482],["R3",484],["R4",486],["R6",490],["CS5",548],["CS6",550],["CS7",552],["CS8",554],["TA1",564],["TA3",568],["TA5",572],["TA6",574],["TA8",578],["TA9",580],["TA10",582],["TA16",594],["VB7",630],["VB10",636],["VB34",684],["VB35",686],["VB38",692],["VB39",694],["F5",720],["F7",724],["VG15",824],["VG16",826],["VG17",828],["VG27",848]],
+  "Pescoço e nuca":[["P7",64],["IG11",100],["IG13",104],["IG14",106],["IG15",108],["IG17",112],["IG18",114],["E5",136],["E9",144],["E10",146],["E11",148],["E12",150],["C1",272],["C3",276],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["ID9",312],["ID10",314],["ID12",318],["ID13",320],["ID14",322],["ID16",326],["ID17",328],["B7",352],["B8",354],["B9",356],["B10",358],["B11",360],["B12",362],["B41",420],["B42",422],["B60",458],["B64",466],["B65",468],["CS6",550],["TA5",572],["TA6",574],["TA10",582],["TA12",586],["TA16",594],["TA21",604],["TA22",606],["VB7",630],["VB11",638],["VB12",640],["VB13",642],["VB17",650],["VB19",654],["VB20",656],["VB21",658],["VB36",688],["VB38",692],["VB39",694],["VB40",696],["VB41",698],["VG13",820],["VG14",822],["VG15",824],["VG17",828],["VG18",830],["VG19",832]],
+  "Ombro":[["P1",52],["P2",54],["P4",58],["P7",64],["IG1",80],["IG2",82],["IG3",84],["IG9",96],["IG10",98],["IG12",102],["IG13",104],["IG14",106],["IG15",108],["IG18",114],["E12",150],["E40",206],["C1",272],["C2",274],["ID2",298],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["ID9",312],["ID10",314],["ID12",318],["ID13",320],["ID14",322],["B11",360],["B12",362],["B41",420],["B42",422],["B60",458],["CS2",542],["TA1",564],["TA6",574],["TA8",578],["TA10",582],["TA12",586],["VB10",636],["VB21",658],["VB22",660],["VB24",664],["VB34",684],["F9",728],["VG14",822]],
+  "Braço e cotovelo":[["P2",54],["P3",56],["P4",58],["P6",62],["P7",64],["P9",68],["IG6",90],["IG7",92],["IG8",94],["IG9",96],["IG10",98],["IG12",102],["IG13",104],["IG14",106],["IG15",108],["IG18",114],["E42",210],["C1",272],["C2",274],["C3",276],["C4",278],["C5",280],["C6",282],["C8",286],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["ID9",312],["ID10",314],["ID12",318],["ID13",320],["ID14",322],["B14",366],["B15",368],["B41",420],["B60",458],["B64",466],["CS2",542],["CS3",544],["CS4",546],["CS5",548],["CS6",550],["TA3",568],["TA5",572],["TA6",574],["TA7",576],["TA8",578],["TA9",580],["TA10",582],["TA12",586],["VB21",658],["VB22",660]],
+  "Punho e mão":[["P7",64],["P8",66],["P9",68],["P10",70],["IG1",80],["IG2",82],["IG3",84],["IG5",88],["IG6",90],["IG9",96],["C2",274],["C3",276],["C4",278],["C5",280],["C6",282],["C7",284],["C8",286],["ID1",296],["ID2",298],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["B11",360],["CS3",544],["CS6",550],["CS7",552],["CS8",554],["TA3",568],["TA5",572],["TA8",578],["TA9",580],["VB21",658]],
+  "Tórax":[["P1",52],["P2",54],["P3",56],["P4",58],["P7",64],["P8",66],["P9",68],["P10",70],["IG3",84],["E12",150],["E13",152],["E15",156],["E16",158],["E19",164],["E22",170],["E37",200],["E40",206],["BP3",228],["BP17",256],["BP18",258],["BP19",260],["BP20",262],["BP21",264],["C1",272],["C2",274],["C3",276],["C4",278],["C5",280],["C6",282],["C7",284],["C8",286],["C9",288],["ID3",300],["ID6",306],["B11",360],["B13",364],["B14",366],["B15",368],["B17",372],["B18",374],["B21",380],["B41",420],["B47",432],["R20",518],["R22",522],["R23",524],["R24",526],["R25",528],["R26",530],["CS2",542],["CS3",544],["CS4",546],["CS5",548],["CS6",550],["CS7",552],["CS8",554],["CS9",556],["TA1",564],["TA5",572],["TA6",574],["TA8",578],["VB11",638],["VB22",660],["VB23",662],["VB24",664],["VB25",666],["VB34",684],["VB35",686],["VB36",688],["VB39",694],["VB41",698],["F2",714],["F3",716],["F5",720],["F14",738],["VG1",796],["VG8",810],["VG9",812],["VG13",820]],
+  "Abdome":[["P2",54],["P10",70],["IG2",82],["IG7",92],["IG8",94],["IG9",96],["IG10",98],["E19",164],["E21",168],["E22",170],["E23",172],["E24",174],["E25",176],["E26",178],["E27",180],["E28",182],["E29",184],["E30",186],["E33",192],["E37",200],["E41",208],["E42",210],["E43",212],["E45",216],["BP1",224],["BP2",226],["BP3",228],["BP4",230],["BP5",232],["BP6",234],["BP7",236],["BP8",238],["BP9",240],["BP10",242],["BP13",248],["BP14",250],["BP15",252],["BP17",256],["BP21",264],["ID4",302],["B17",372],["B18",374],["B20",378],["B21",380],["B22",382],["B25",388],["B26",390],["B27",392],["B29",396],["B34",406],["B35",408],["B39",416],["B40",418],["B47",432],["B49",436],["B51",440],["B53",444],["R1",480],["R2",482],["R7",492],["R8",494],["R11",500],["R15",508],["R16",510],["R17",512],["R19",516],["R20",518],["R21",520],["R22",522],["R24",526],["CS6",550],["CS7",552],["CS9",556],["TA6",574],["VB24",664],["VB25",666],["VB26",668],["VB27",670],["VB34",684],["VB36",688],["VB39",694],["F2",714],["F3",716],["F4",718],["F9",728],["F10",730],["F13",736],["F14",738],["VG5",804],["VG6",806],["VG7",808],["VG8",810],["VG9",812]],
+  "Costas":[["P1",52],["P2",54],["P9",68],["IG3",84],["IG14",106],["E13",152],["BP19",260],["ID3",300],["ID4",302],["ID13",320],["ID14",322],["B10",358],["B11",360],["B13",364],["B15",368],["B20",378],["B21",380],["B22",382],["B23",384],["B24",386],["B25",388],["B27",392],["B34",406],["B47",432],["B53",444],["B58",454],["B60",458],["B62",462],["B63",464],["B64",466],["B65",468],["TA12",586],["VG1",796],["VG5",804],["VG6",806],["VG7",808],["VG9",812]],
+  "Lombar e sacro":[["P7",64],["P10",70],["IG10",98],["E25",176],["E30",186],["E37",200],["BP2",226],["BP3",228],["BP8",238],["BP9",240],["ID3",300],["ID6",306],["ID14",322],["B5",348],["B10",358],["B11",360],["B12",362],["B18",374],["B19",376],["B21",380],["B22",382],["B23",384],["B24",386],["B25",388],["B26",390],["B27",392],["B28",394],["B29",396],["B30",398],["B31",400],["B32",402],["B33",404],["B34",406],["B35",408],["B36",410],["B37",412],["B39",416],["B40",418],["B47",432],["B51",440],["B52",442],["B53",444],["B54",446],["B55",448],["B56",450],["B57",452],["B58",454],["B59",456],["B60",458],["B61",460],["B62",462],["B63",464],["B64",466],["B65",468],["R3",484],["R4",486],["R7",492],["R8",494],["R9",496],["R15",508],["TA3",568],["TA8",578],["TA12",586],["VB25",666],["VB26",668],["VB27",670],["VB29",674],["VB30",676],["VB31",678],["VB32",680],["VB35",686],["VB38",692],["VB41",698],["F9",728],["F11",732],["F12",734],["VG1",796],["VG3",800],["VG5",804],["VG7",808],["VG8",810],["VG9",812],["VG15",824],["VG26",846],["VG28",850]],
+  "Quadril e nádega":[["B30",398],["B36",410],["B37",412],["B54",446],["VB29",674],["VB30",676]],
+  "Nervo ciático":[["B26",390],["B53",444],["B56",450],["B58",454]],
+  "Coxa":[["E33",192],["BP10",242],["B64",466],["VB29",674],["VB30",676],["VB31",678],["VB32",680],["VB36",688],["F1",712],["F10",730],["F11",732],["F12",734]],
+  "Joelho":[["E33",192],["E35",196],["E37",200],["E40",206],["BP9",240],["BP10",242],["ID5",304],["B23",384],["B31",400],["B33",404],["B39",416],["B40",418],["B52",442],["B55",448],["B56",450],["B61",460],["B63",464],["B64",466],["R10",498],["VB30",676],["VB31",678],["VB32",680],["VB33",682],["VB34",684],["VB38",692],["VB39",694],["VB41",698],["F7",724],["F8",726]],
+  "Perna":[["IG9",96],["E33",192],["E43",212],["BP3",228],["BP9",240],["B22",382],["B33",404],["B34",406],["B37",412],["B39",416],["B40",418],["B54",446],["B56",450],["B57",452],["B58",454],["B61",460],["B63",464],["B64",466],["B65",468],["R8",494],["R9",496],["VB28",672],["VB31",678],["VB33",682],["VB35",686],["VB36",688],["VB39",694],["F5",720],["F11",732]],
+  "Tornozelo e pé":[["E35",196],["E41",208],["E42",210],["E43",212],["E45",216],["BP3",228],["BP4",230],["BP5",232],["BP7",236],["B11",360],["B39",416],["B57",452],["B59",456],["B61",460],["B62",462],["B63",464],["B64",466],["B65",468],["B67",472],["R1",480],["R2",482],["R4",486],["R7",492],["R8",494],["R9",496],["CS8",554],["VB31",678],["VB35",686],["VB39",694],["VB40",696],["VB41",698],["F4",718]],
+};
+
+// Liga o texto do campo "Região" da marcação às regiões da tabela, por palavras (sem acento, sem maiúsculas).
+// Só palavras de lugar do corpo: nenhuma regra clínica.
+const PALAVRAS_REGIAO = {
+  'Cabeça':['cabeca','cranio','testa','temporal','occipital'], 'Face e dentes':['face','rosto','dente','dentes','mandibula','maxilar'],
+  'Olhos':['olho','olhos'], 'Ouvido':['ouvido','ouvidos','orelha','orelhas'], 'Nariz':['nariz'], 'Boca e garganta':['boca','garganta','labio','labios','lingua'],
+  'Pescoço e nuca':['pescoco','nuca','cervical'], 'Ombro':['ombro','ombros'], 'Braço e cotovelo':['braco','bracos','antebraco','cotovelo','cotovelos'],
+  'Punho e mão':['punho','punhos','mao','maos','dedo','dedos'], 'Tórax':['torax','peito','toracica'], 'Abdome':['abdome','abdomen','abdominal','barriga'],
+  'Costas':['costas','dorsal','escapula'], 'Lombar e sacro':['lombar','lombo','sacro','sacral','coccix'], 'Quadril e nádega':['quadril','nadega','nadegas','gluteo','virilha'],
+  'Nervo ciático':['ciatico','ciatica'], 'Coxa':['coxa','coxas'], 'Joelho':['joelho','joelhos'], 'Perna':['perna','pernas','panturrilha','canela'],
+  'Tornozelo e pé':['tornozelo','tornozelos','pe','pes','calcanhar','planta']
+};
+const semAcentoReg = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function regioesDoTexto(t){
+  const pal = new Set(semAcentoReg(t).split(/[^a-z]+/).filter(Boolean));
+  return REGIOES_CORPO.filter(r => semAcentoReg(r) === semAcentoReg(t).trim() || PALAVRAS_REGIAO[r].some(w => pal.has(w)));
+}
+// [[código, página], ...] aprovados para a região, na ordem do livro.
+const indicadosDaRegiao = r => INDICADOS_REGIAO[r] || [];
+// Regiões em que o ponto foi aprovado: [[região, página], ...].
+const regioesDoPonto = c => REGIOES_CORPO.flatMap(r => (INDICADOS_REGIAO[r] || []).filter(([x]) => x === c).map(([, pg]) => [r, pg]));
 // aproximadas dos pontos que já têm ficha e o desenho das marcações. As marcações guardam x e y como
 // fração do desenho de cada vista (0 a 1), por isso não dependem do tamanho da tela nem da ampliação.
 // Tudo aqui é aproximado e só de apresentação: nenhum cálculo clínico.
@@ -2506,101 +2789,6 @@ function revisarPosicao(d, c, ok, por, em){
   r.hist.unshift({ acao: ok ? 'Posição marcada como revisada' : 'Revisão retirada', por, em });
   return r;
 }
-//
-// Os pontos continuam em a.plano.pontos (lista de códigos), que é o que o cálculo, a verificação de
-// segurança e a exportação v1 leem. Para cada ponto o profissional registra só:
-//   lado: 'bil' (bilateral) | 'uni' (unilateral) | 'med' (linha média, VC e VG)
-//   status: 'plan' (planejado) | 'real' (realizado) | 'nao' (não realizado), com motivo opcional.
-// Fica em a.plano.rx = {[código]:{lado, status, motivo}}, criado só quando algo é marcado: ponto sem
-// registro é bilateral (linha média para VC e VG) e planejado. a.plano.orient guarda as orientações
-// para casa. a.evolucao.situacoes = {[queixa]: 'melhora'|'estavel'|'piora'|'resolvida'|'nova'} é
-// escolha do profissional: nada é calculado nem sugerido a partir das intensidades.
-// Depois de finalizado, mudar o lado ou a situação de um ponto é uma correção: exige motivo e fica em
-// a.retificacoes com o valor anterior, o novo, quem, quando e o motivo.
-
-const LADOS_RX = [['bil','Bilateral'],['uni','Unilateral'],['med','Linha média']];
-const STATUS_RX = [['plan','Planejado'],['real','Realizado'],['nao','Não realizado']];
-const SITUACOES_QUEIXA = [['melhora','Melhora'],['estavel','Estável'],['piora','Piora'],['resolvida','Resolvida'],['nova','Nova']];
-const nomeRx = (L, k) => (L.find(x => x[0] === k) || ['', '—'])[1];
-const linhaMedia = c => /^V[CG]\d+$/.test(c);
-
-const linhaRx = (a, c) => ({ lado: linhaMedia(c) ? 'med' : 'bil', status: 'plan', motivo: '', ...(a.plano.rx?.[c] || {}) });
-const linhasRx = a => a.plano.pontos.map(c => [c, linhaRx(a, c)]);
-function gravarRx(a, c, campos){
-  if (!a.plano.pontos.includes(c)) return null;
-  const r = (a.plano.rx ||= {})[c] ||= {};
-  Object.assign(r, campos);
-  return linhaRx(a, c);
-}
-function definirLado(a, c, lado){
-  if (linhaMedia(c) || !['bil','uni'].includes(lado)) return null;
-  return gravarRx(a, c, { lado });
-}
-function definirStatus(a, c, status){
-  if (!STATUS_RX.some(s => s[0] === status)) return null;
-  return gravarRx(a, c, status === 'nao' ? { status } : { status, motivo: '' });
-}
-function definirMotivo(a, c, motivo){
-  if (linhaRx(a, c).status !== 'nao') return null;
-  return gravarRx(a, c, { motivo: String(motivo || '') });
-}
-// Marca como realizados só os pontos ainda planejados.
-function todosRealizados(a){
-  const L = a.plano.pontos.filter(c => linhaRx(a, c).status === 'plan');
-  L.forEach(c => gravarRx(a, c, { status: 'real' }));
-  return L;
-}
-// Ao tirar um ponto do plano, o registro dele sai junto.
-function esquecerPonto(a, c){
-  if (a.plano.rx) delete a.plano.rx[c];
-}
-const contagemRx = a => STATUS_RX.map(([k, n]) => [k, n, linhasRx(a).filter(([, l]) => l.status === k).length]);
-
-function definirSituacao(a, idQueixa, sit){
-  const S = a.evolucao.situacoes ||= {};
-  if (!sit || S[idQueixa] === sit) delete S[idQueixa];
-  else if (SITUACOES_QUEIXA.some(s => s[0] === sit)) S[idQueixa] = sit;
-  return S[idQueixa] || '';
-}
-
-// Correção de um ponto num atendimento finalizado. Devolve as mudanças [campo, antes, depois] ou null.
-function corrigirPonto(a, c, { lado, status }, motivo, por, em){
-  const m = String(motivo || '').trim();
-  if (a.status !== 'finalizado' || !m || !a.plano.pontos.includes(c)) return null;
-  const antes = linhaRx(a, c), depois = { lado: linhaMedia(c) ? 'med' : lado || antes.lado, status: status || antes.status };
-  if (!['bil','uni','med'].includes(depois.lado) || !STATUS_RX.some(s => s[0] === depois.status)) return null;
-  const mud = [['Lado', 'lado', LADOS_RX], ['Situação', 'status', STATUS_RX]].filter(([, k]) => antes[k] !== depois[k]).map(([n, k, L]) => [n, nomeRx(L, antes[k]), nomeRx(L, depois[k])]);
-  if (!mud.length) return null;
-  gravarRx(a, c, depois.status === 'nao' ? depois : { ...depois, motivo: '' });
-  (a.retificacoes ||= []).unshift({ em, por, ponto: c, mud, motivo: m });
-  return mud;
-}
-// Não cria números: se um dado não existe, o indicador não aparece.
-
-const ALERTA_NOME = {gestante:'Gestante',anticoagulante:'Anticoagulante',marcapasso:'Marcapasso'};
-const alertasDe = p => Object.keys(ALERTA_NOME).filter(k=>p.alerts[k]).map(k=>ALERTA_NOME[k]);
-const diasDesde = d => Math.round((new Date(TODAY+'T12:00')-new Date(d+'T12:00'))/864e5);
-// Melhora da queixa principal em %, comparando a primeira e a última EVA registradas.
-const melhoraPct = s => s.length>1 && s[0] ? Math.round((s[0]-s.at(-1))/s[0]*100) : null;
-
-// Pacientes que precisam de acompanhamento, com o motivo de cada um.
-// Retorno: última sessão há mais de 21 dias e nenhum agendamento futuro (mesmo critério das pendências da etapa 1B).
-function acompanhamento(){
-  return db.patients.map(p=>{ const m=[], l=p.sessions.at(-1), s=p.sessions.map(x=>x.eva);
-    if(l && l.date<TODAY && diasDesde(l.date)>21 && !db.appts.some(a=>ativo(a)&&a.pid===p.id && a.date>=TODAY)) m.push(['retorno','warn',`sem retorno há ${diasDesde(l.date)} dias`]);
-    if(!p.assess.length) m.push(['yin','acc','sem avaliação energética']);
-    if(s.length>=2 && s.at(-1)>=s[0]) m.push(['queda','crit','sem melhora desde a 1ª sessão']);
-    return {p,m}; }).filter(x=>x.m.length);
-}
-// Notificações: alertas de segurança de pacientes de hoje, agendamentos passados sem conclusão e acompanhamento.
-function notificacoes(){
-  const N=[], hoje=db.appts.filter(ativo).filter(a=>a.date===TODAY);
-  [...new Set(hoje.map(a=>a.pid))].map(patient).filter(p=>p && alertasDe(p).length)
-    .forEach(p=>N.push({k:'al-'+p.id,i:'escudo',t:'crit',titulo:`Alerta de segurança: ${p.name}`,txt:alertasDe(p).join(', ')+' · atendimento hoje',pid:p.id}));
-  db.appts.filter(ativo).filter(a=>a.date<TODAY && !a.done && a.st!=='faltou').forEach(a=>N.push({k:'at-'+a.id,i:'relogio',t:'warn',titulo:'Agendamento sem conclusão',txt:`${patient(a.pid)?.name||''} · ${fmt(a.date)} ${a.time}`,href:'#agenda'}));
-  acompanhamento().forEach(({p,m})=>N.push({k:'ac-'+p.id,i:m[0][0],t:m[0][1],titulo:p.name,txt:m.map(x=>x[2]).join(' · '),pid:p.id}));
-  return N;
-}
 // - Resumo: indicadores, queixas com a evolução de cada uma, atendimentos recentes, mapa dos cinco
 //   elementos, padrões validados e dados cadastrais;
 // - Prontuário: evolução das queixas, avaliação basal × atual e linha do tempo dos atendimentos e
@@ -2784,7 +2972,7 @@ function vProntuario(){
   return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
     ${alerts.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}</div>`:''}</div>
-    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
+    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button><button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
     <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}`;
 }
 // alertas, preenchimento por etapa e salvamento automático. Usa, sem alterar, o raciocínio clínico
@@ -3186,7 +3374,7 @@ function feitoHoje(a){
 }
 function eDocumentos(p,a,H){
   const D=[['doc','Registro do atendimento',a.status==='finalizado'?'Disponível no prontuário':'Entra no prontuário ao finalizar','ok','prontuario'],['agenda','Agendar retorno','Abre a agenda com o paciente escolhido','acc','retorno'],
-    ['plano','Orientações ao paciente','Modelos na etapa 6','',''],['escudo','Termo de consentimento','Assinatura eletrônica na etapa 6','','']];
+    ['folha','Orientações para casa','Folha para o paciente, em Documentos','acc','doc-orientacoes'],['assinatura','Termo de consentimento','Preenchido para imprimir e assinar','acc','doc-termo']];
   return `<div class="docs">${D.map(([i,t,s,k,acao])=>acao?`<button class="docc" data-act="at-doc" data-d="${acao}">${ic(i)}<b>${t}</b><small>${s}</small>${k?`<span class="pill ${k}">${k==='ok'?'automático':'disponível'}</span>`:''}</button>`
     :`<div class="docc off">${ic(i)}<b>${t}</b><small>${s}</small><span class="pill">em breve</span></div>`).join('')}</div>
   <div class="card" style="margin-top:20px"><h3>${a.status==='finalizado'?'Etapas registradas':'Antes de finalizar'}</h3><div class="chk">${ETAPAS.slice(0,7).map(([,n],j)=>{ const ok=preenchimento(p,a,j,H)>=1; return `<a href="#atendimento" data-act="etapa" data-i="${j}" class="${ok?'ok':''}">${ic(ok?'okc':'relogio')}${n}</a>`; }).join('')}</div>
@@ -3268,79 +3456,11 @@ function previaCadastro(){
   const av=document.getElementById('pv-av'); if(!av) return;
   av.textContent=n?initials(n):'?'; document.getElementById('pv-n').textContent=n||'Nome do paciente'; document.getElementById('pv-q').textContent=q||'Queixa principal';
 }
-// e as camadas que abrem por cima da tela (busca e atalhos de teclado).
-
-// [rota, rótulo, ícone]
-const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
-  ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
-const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', atendimento:'Atendimento', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
-  crm:'CRM', equipe:'Equipe e permissões', configuracoes:'Configurações'};
-// Item do menu que fica marcado em cada tela.
-const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
-// Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
-const PROF = {nome:'Maicon Farinelli', papel:'Profissional responsável'};
-
-const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
-// Itens da busca global: [grupo, ícone, título, detalhe, atributos do link].
-function buscaItens(q){
-  const Q=semAcento(q.trim()), ok=s=>!Q||semAcento(s).includes(Q), R=[];
-  db.patients.filter(p=>ok(p.name+' '+p.queixa)).forEach(p=>R.push(['Pacientes','pacientes',p.name,p.queixa,`data-act="open" data-pid="${p.id}"`]));
-  [['Novo paciente','novo','#cadastro'],['Abrir agenda','agenda','#agenda'],['Avaliação energética','yin','#avaliacao'],['Pentagrama','estrela','#pentagrama']].filter(([t])=>ok(t)).forEach(([t,i,h])=>R.push(['Ações',i,t,'',`href="${h}"`]));
-  if(Q) NAV.filter(([,l])=>ok(l)).forEach(([k,l,i])=>R.push(['Telas',i,l,'',`href="#${k}"`]));
-  if(Q) POINTS.filter(p=>ok(p.code+' '+p.pinyin+' '+p.acoes)).slice(0,5).forEach(p=>R.push(['Pontos','biblioteca',`${p.code} · ${p.pinyin}`,p.acoes,`data-act="ver-ponto" data-c="${p.code}"`]));
-  return R.slice(0,12);
-}
-function listaBusca(){
-  const R=buscaItens(ui.q||''); ui.bi=Math.min(ui.bi||0,Math.max(0,R.length-1)); let g='';
-  return R.length?R.map((r,i)=>{ const cab=r[0]!==g?`<div class="pal-g">${r[0]}</div>`:''; g=r[0];
-    const tag=r[4].startsWith('href')?'a':'button';
-    return `${cab}<${tag} class="pal-i ${i===ui.bi?'on':''}" ${r[4]}><span class="tico sm">${ic(r[1])}</span><span class="grow"><b>${esc(r[2])}</b>${r[3]?`<small class="trunc">${esc(r[3])}</small>`:''}</span>${i===ui.bi?'<kbd>↵</kbd>':''}</${tag}>`; }).join('')
-    : vazio('busca','Nada encontrado',`Nenhum paciente, ponto ou tela para “${esc(ui.q)}”.`);
-}
-function camada(){
-  const el=document.getElementById('camada');
-  if(ui.ov==='busca') el.innerHTML=`<div class="veu" data-act="fechar"></div><div class="pal" role="dialog" aria-label="Busca global"><label class="pal-c">${ic('busca')}<input id="pal-q" placeholder="Buscar pacientes, pontos, telas e ações" value="${esc(ui.q||'')}" autocomplete="off"><kbd>Esc</kbd></label><div class="pal-l" id="pal-l">${listaBusca()}</div><div class="pal-r"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>↵</kbd> abrir</span><span><kbd>Ctrl</kbd><kbd>K</kbd> busca</span></div></div>`;
-  else if(ui.ov==='atalhos') el.innerHTML=`<div class="veu" data-act="fechar"></div><div class="pal atl" role="dialog" aria-label="Atalhos de teclado"><div class="card-h"><h3>Atalhos de teclado</h3><button class="ib" data-act="fechar" aria-label="Fechar">${ic('x')}</button></div>
-    ${[['Ctrl K  ou  /','Busca global'],['[','Recolher ou expandir o menu'],['?','Mostrar esta lista'],['Esc','Fechar janelas e menus']].map(([k,l])=>`<div class="atl-i"><span>${l}</span><span>${k.split('  ou  ').map(x=>x.split(' ').map(y=>`<kbd>${y}</kbd>`).join('')).join(' ou ')}</span></div>`).join('')}</div>`;
-  else el.innerHTML='';
-  if(ui.ov==='busca'){ const i=document.getElementById('pal-q'); i.focus(); i.setSelectionRange(i.value.length,i.value.length); }
-}
-const notifAttr = n => n.pid?`data-act="open" data-pid="${n.pid}"`:`href="${n.href}"`;
-
-function renderNav(route){
-  const atual=ATIVO[route]||route, app=document.querySelector('.app');
-  app.classList.toggle('mini', !!ui.menuMini);
-  app.classList.toggle('open', !!ui.menuAberto);
-  const N=notificacoes(), nl=N.filter(n=>!ui.lidas.has(n.k)).length;
-  const crumbs=ui.crumbs.length?ui.crumbs:[[null,LABEL[route]||'Painel']];
-  document.getElementById('topbar').innerHTML=`<button class="menu-btn" data-act="menu-abrir" aria-label="Abrir menu" aria-expanded="${!!ui.menuAberto}">${ic('menu')}</button>
-    <a class="tb-logo" href="#painel">${LOGO}<b>Musubi</b></a>
-    <nav class="migalha" aria-label="Caminho">${crumbs.map(([h,t],i)=>h&&i<crumbs.length-1?`<a ${h.startsWith('#')?`href="${h}"`:h}>${esc(t)}</a>`:`<span>${esc(t)}</span>`).join(ic('dir'))}</nav>
-    <button class="busca-g" data-act="busca" aria-label="Busca global (Ctrl K)">${ic('busca')}<span>Buscar pacientes, pontos e telas</span><kbd>Ctrl K</kbd></button>
-    <div class="tb-r">
-      <button class="ib so-cel" data-act="busca" aria-label="Buscar" data-tip="Buscar">${ic('busca')}</button>
-      <button class="ib" data-act="atalhos" aria-label="Atalhos de teclado" data-tip="Atalhos de teclado (?)">${ic('teclado')}</button>
-      <div class="dd"><button class="ib" data-act="notif" aria-label="Notificações: ${nl} novas" aria-expanded="${ui.ov==='notif'}" data-tip="Notificações">${ic('sino')}${nl?`<span class="badge">${nl}</span>`:''}</button>
-        ${ui.ov==='notif'?`<div class="dd-p notif" role="menu"><div class="dd-h"><b>Notificações</b>${nl?'<button class="btn ghost sm" data-act="ler-todas">Marcar como lidas</button>':''}</div>
-          ${N.length?N.map(n=>`<a class="nt ${ui.lidas.has(n.k)?'':'nova'}" ${notifAttr(n)} data-lida="${n.k}"><span class="tico sm ${n.t}">${ic(n.i)}</span><span class="grow"><b>${esc(n.titulo)}</b><small>${esc(n.txt)}</small></span></a>`).join(''):vazio('sino','Tudo em dia','Nenhuma notificação no momento.')}
-          <div class="dd-f muted sm">Geradas a partir da agenda, dos alertas e dos prontuários.</div></div>`:''}</div>
-      <div class="dd"><button class="perfil-b" data-act="perfil" aria-expanded="${ui.ov==='perfil'}" aria-label="Perfil do profissional"><span class="avatar">${initials(PROF.nome)}</span><span class="pf-n">${PROF.nome.split(' ')[0]}</span>${ic('baixo')}</button>
-        ${ui.ov==='perfil'?`<div class="dd-p pf" role="menu"><div class="pf-h"><span class="avatar lg">${initials(PROF.nome)}</span><div><b>${PROF.nome}</b><small class="muted">${PROF.papel}</small></div></div>
-          <a class="pf-i" href="#configuracoes">${ic('admin')}Preferências</a><button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
-          <button class="pf-i sair" data-act="aviso" data-m="Sair: disponível quando houver login (etapa 10).">${ic('sair')}Sair</button></div>`:''}</div>
-    </div>`;
-  document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+
-    NAV.map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+
-    `<div class="foot"><button class="toggle reset" data-act="reset" aria-label="Restaurar exemplos" data-tip="${ui.menuMini?'Restaurar exemplos':''}">${ic('retorno')}<span class="tx">Restaurar exemplos</span></button>
-     <button class="toggle" data-act="menu-mini" aria-label="${ui.menuMini?'Expandir menu':'Recolher menu'}" data-tip="${ui.menuMini?'Expandir menu ( [ )':''}">${ic(ui.menuMini?'abrir_menu':'fechar_menu')}<span class="tx">Recolher menu</span><kbd class="tx">[</kbd></button></div>`;
-  camada();
-}
 // que reúne os módulos administrativos.
 
 const MODULOS = {
   crm:{etapa:6,i:'tel',texto:'Acompanhamento do relacionamento, do primeiro contato à reativação de pacientes.',itens:['Interessados e origem dos contatos','Negociações e observações','Lembretes e tarefas','Reativação de pacientes antigos','Continuidade de tratamentos','WhatsApp: confirmações e lembretes (etapa 7)']},
   financeiro:{etapa:8,i:'financeiro',texto:'Gestão financeira da clínica, separando o valor contratado do valor efetivamente recebido.',itens:['Contas a pagar e a receber','Fluxo de caixa','Pagamentos parciais e recorrentes','Pacotes terapêuticos e comissões','Inadimplência','Emissão de NFS-e por provedor integrador']},
-  documentos:{etapa:6,i:'doc',texto:'Documentos gerados com os dados do paciente e da profissional, prontos para assinatura eletrônica.',itens:['Ficha de anamnese','Termos de consentimento','Autorizações específicas','Orientações e planos terapêuticos','Registros de atendimento','Assinatura eletrônica por provedor externo']},
   relatorios:{etapa:9,i:'relatorios',texto:'Indicadores clínicos, comerciais e financeiros.',itens:['Desempenho clínico','Conversão comercial','Agenda e ocupação','Financeiro','Desempenho por profissional','Desempenho por serviço']},
   equipe:{etapa:10,i:'pacientes',texto:'Profissionais, especialidades e permissões de acesso por clínica.',itens:['Perfil único por profissional','Especialidades e modalidades','Permissões por perfil','Várias clínicas','Pacientes compartilhados conforme permissão','Registro de atividades']},
   configuracoes:{etapa:10,i:'admin',texto:'Dados da clínica, serviços, modalidades e modelos.',itens:['Dados da clínica e local de atendimento','Serviços, duração e valores','Modalidades terapêuticas','Modelos de documento','Preferências de agenda','Privacidade e LGPD']}
@@ -3635,7 +3755,7 @@ function vAtlas(){
     <aside class="fx-panel${A.sel || A.traj ? ' aberta' : ''}" aria-label="Ficha"><div class="card">${painel}</div></aside>
   </div>`;
 }
-const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao};
+const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -3720,6 +3840,15 @@ document.addEventListener('click',ev=>{
   else if(a==='ag-st'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(x && marcarHorario(x,t.dataset.s)){ save(); render(true); } }
   else if(a==='ag-desm'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; desmarcar(x,TODAY); if(ui.remarcar===x.id){ ui.remarcar=null; ui.agForm=null; } save(); render(true); toast(`Horário de ${patient(x.pid)?.name.split(' ')[0]||''} desmarcado; ele fica na lista de desmarcados`,'info'); }
   else if(a==='ag-rem'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; ui.remarcar=x.id; ui.agForm={pid:x.pid,date:x.date,time:'',tipo:x.tipo}; ui.agDia=x.date; render(true); document.getElementById('f-appt')?.scrollIntoView({block:'nearest'}); }
+  else if(a==='doc-abrir'){ ui.docPid=t.dataset.pid; ui.docMod=t.dataset.m||null; ui.docTexto=null; irPara('documentos'); }
+  else if(a==='doc-mod'){ ui.docMod=t.dataset.m; ui.docTexto=null; render(true); }
+  else if(a==='doc-refazer'){ ui.docTexto=null; render(true); }
+  else if(a==='doc-imp'||a==='doc-guardar'){ const {p,k}=docAtual(), texto=(document.getElementById('doc-t')?.innerText||'').trim();
+    if(!texto){ toast('Escreva o texto do documento antes','info'); return; }
+    if(a==='doc-imp'){ document.getElementById('imp').innerHTML=folhaDoc(k,p,texto); window.print(); return; }
+    guardarDocumento(p,{id:uid(),modelo:k,texto,em:new Date().toISOString(),por:PROF.nome}); save(); render(true); toast(`${modeloDoc(k)[1]} guardado no prontuário de ${p.name.split(' ')[0]}`); }
+  else if(a==='doc-ass'){ const {p}=docAtual(); if(marcarAssinado(p,t.dataset.id,new Date().toISOString(),PROF.nome)){ save(); render(true); toast('Termo marcado como assinado'); } }
+  else if(a==='doc-reimp'){ const {p}=docAtual(), d=(p.documentos||[]).find(x=>x.id===t.dataset.id); if(!d) return; document.getElementById('imp').innerHTML=folhaDoc(d.modelo,p,d.texto,d.em.slice(0,10),d.por); window.print(); }
   else if(a==='ag-rem-x'){ ui.remarcar=null; ui.agForm=null; render(true); }
   else if(a==='addpt'){ const i=document.getElementById('ns-pts'); const L=i.value.split(',').map(s=>s.trim()).filter(Boolean); if(!L.includes(t.dataset.c)) L.push(t.dataset.c); i.value=L.join(', '); i.dispatchEvent(new Event('input',{bubbles:true})); }
   else if(a==='menu-mini'){ ui.menuMini=!ui.menuMini; render(true); }
@@ -3733,6 +3862,7 @@ document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') &&
 document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.dataset.agf==='time'){ formAgenda().time=t.value; return; }
+  if(t.id==='doc-t'){ ui.docTexto=t.innerText; const r=document.querySelector('[data-act="doc-refazer"]'); if(r) r.hidden=false; return; }
   if(t.id==='pal-q'){ ui.q=t.value; ui.bi=0; document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(t.id==='pq'){ ui.pq=t.value; document.getElementById('plist').innerHTML=patientRows(); }
   else if(t.id==='pt-q'){ ui.ptQ=t.value; document.getElementById('ptlist').innerHTML=pointCards(); const ct=document.getElementById('c-todos'); if(ct) ct.innerHTML=listaTodos(); }
@@ -3812,7 +3942,7 @@ function acaoAtendimento(a,t){
   else if(a==='at-tec'){ alterna(A.plano.tec,t.dataset.t); mudou('plano terapêutico: técnicas'); }
   else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
   else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
-  else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; ui.agForm=null; ui.remarcar=null; irPara('agenda'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
+  else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; ui.agForm=null; ui.remarcar=null; irPara('agenda'); } else if(t.dataset.d.startsWith('doc-')){ ui.docPid=p.id; ui.docMod=t.dataset.d.slice(4); ui.docTexto=null; irPara('documentos'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
   else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); concluirHorario(db.appts,p.id,A.data); const nv=p.avaliacoes.find(v=>v.id===A.avaliacaoId); if(nv) nv.prof=PROF.nome; save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
   else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
     descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
@@ -3891,6 +4021,7 @@ document.addEventListener('change',ev=>{
     if(!confirm(`Importar “${f.name}”? Os dados atuais deste navegador serão substituídos. Exporte antes se quiser guardá-los.`)) return;
     f.text().then(x=>{ const erro=importar(x); if(erro){ toast(erro,'info'); return; } ui.assess=null; ui.pid=db.patients[0]?.id||''; toast('Dados importados'); render(); }); return; }
   if(t.dataset.vcmp){ ui[t.dataset.vcmp]=t.value; render(true); return; }
+  if(t.dataset.docp){ ui.docPid=t.value; ui.docTexto=null; render(true); return; }
   if(t.dataset.agf){ const F=formAgenda(); F[t.dataset.agf]=t.value; if(t.dataset.agf==='date'&&t.value) ui.agDia=t.value; if(t.dataset.agf!=='time') render(true); return; }
   if(t.hasAttribute('data-mvhist')){ ui.mapa.hist=t.value; render(true); return; }
   if(t.dataset.mk&&t.tagName==='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)){ if(t.dataset.mk==='tipo'&&t.value==='irradiacao'&&marcasDe(x.a).find(m=>m.id===ui.mapa.sel)?.x2==null) ui.mapa.rad=ui.mapa.sel; mudou(`mapa corporal: ${t.dataset.mk==='tipo'?'tipo':'lado'} da marcação`); } return; }

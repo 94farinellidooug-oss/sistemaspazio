@@ -1,0 +1,52 @@
+// Regras dos documentos (etapa 6B): modelos preenchidos com o que já está registrado, guardar no
+// prontuário com quem e quando, marcar termo assinado e nada na exportação v1.
+// Uso: node tests/documentos.mjs
+import { seed } from '../js/dados/exemplos.js';
+import { hidratar, migrarV1, paraV1 } from '../js/dados/migracao.js';
+import { iniciarAtendimento, finalizarAtendimento } from '../js/dados/atendimento.js';
+import { definirLado, definirStatus, definirSituacao } from '../js/dados/prescricao.js';
+import { MODELOS_DOC, faltaModelo, guardarDocumento, marcarAssinado, modeloDoc, textoModelo } from '../js/dados/documentos.js';
+
+let falhas = 0;
+const ok = (c, m) => { console.log(`${c ? 'ok   ' : 'FALHA'} ${m}`); if (!c) falhas++; };
+const db = hidratar(migrarV1(seed(), 'exemplos', '2026-11-05T10:00:00Z'));
+const P = db.patients[0], HOJE = db.appts.find(a => a.pid === P.id).date, ctx = { appts: db.appts, hoje: HOJE, prof: 'Maicon Farinelli' };
+const v1Antes = JSON.stringify(paraV1(db));
+
+ok(MODELOS_DOC.length === 4 && modeloDoc('termo')[3] === true && modeloDoc('declaracao')[3] === false && modeloDoc('xx') === null, 'quatro modelos; só o termo pede assinatura');
+const termo = textoModelo('termo', P, ctx);
+ok(termo.includes(P.name) && termo.includes('Maicon Farinelli') && termo.includes('\n\n'), 'termo com o paciente e o profissional, em parágrafos');
+ok(textoModelo('declaracao', P, ctx).endsWith(`no dia ${HOJE.split('-').reverse().join('/')}, das 09:00 às 10:00.`), 'declaração usa o horário de hoje na agenda');
+ok(!textoModelo('declaracao', P, { ...ctx, appts: [] }).includes(' das '), 'sem horário na agenda, só o dia');
+ok(textoModelo('orientacoes', P, ctx) === '' && faltaModelo('orientacoes').length > 0, 'sem orientações registradas, vem vazio e a tela explica');
+const reg0 = textoModelo('registro', P, ctx);
+ok(reg0.includes('Pontos registrados: F3 (bilateral); R3 (bilateral); VB20 (bilateral).') && !reg0.includes('realizado'), 'atendimento antigo: lista os pontos registrados, sem dizer se foram feitos');
+
+// Atendimento novo com prescrição marcada, orientações e situação da queixa
+const a = iniciarAtendimento(P, { id: 'atd', data: HOJE }, '2026-11-05T12:00:00Z');
+a.plano.pontos.push('E36', 'VG20', 'C7'); a.plano.tec.push('Acupuntura');
+definirStatus(a, 'E36', 'real'); definirStatus(a, 'VG20', 'real'); definirLado(a, 'E36', 'uni'); definirStatus(a, 'C7', 'nao');
+definirSituacao(a, P.queixas[0].id, 'melhora'); a.plano.orient = '  Compressa morna na nuca.  ';
+ok(textoModelo('orientacoes', P, ctx) === 'Compressa morna na nuca.', 'orientações vêm do atendimento (mesmo em rascunho)');
+ok(textoModelo('registro', P, ctx) === reg0, 'registro só considera atendimento finalizado');
+finalizarAtendimento(P, a, '2026-11-05T13:00:00Z', 'av');
+const reg = textoModelo('registro', P, ctx);
+ok(reg.includes('Pontos realizados: E36 (unilateral); VG20 (linha média).') && !reg.includes('C7') && reg.includes(`${P.queixas[0].descricao} (melhora)`) && reg.includes('Acupuntura'), 'registro do último atendimento: realizados com o lado, técnicas e situação das queixas');
+
+// Guardar e assinar
+ok(guardarDocumento(P, { id: 'd0', modelo: 'termo', texto: '   ', em: 'x', por: 'y' }) === null && !P.documentos, 'texto vazio não é guardado e nada é criado');
+const d1 = guardarDocumento(P, { id: 'd1', modelo: 'declaracao', texto: ' Declaro... ', em: '2026-11-05T14:00:00Z', por: 'Maicon Farinelli' });
+const d2 = guardarDocumento(P, { id: 'd2', modelo: 'termo', texto: termo + '\n\nAjuste.', em: '2026-11-05T14:05:00Z', por: 'Maicon Farinelli' });
+ok(P.documentos[0] === d2 && P.documentos[1] === d1 && d1.texto === 'Declaro...' && d2.texto.endsWith('Ajuste.'), 'guarda o texto como ficou, mais recente primeiro');
+ok(marcarAssinado(P, 'd1', 'e', 'p') === null && !d1.assinado, 'declaração não pede assinatura');
+ok(marcarAssinado(P, 'd2', '2026-11-05T15:00:00Z', 'Maicon Farinelli') === d2 && d2.assinado && d2.assinadoPor === 'Maicon Farinelli', 'termo marcado como assinado com quem e quando');
+ok(marcarAssinado(P, 'd2', 'outra', 'outro') === null && d2.assinadoEm === '2026-11-05T15:00:00Z', 'não marca duas vezes');
+ok(guardarDocumento(P, { id: 'd3', modelo: 'xx', texto: 'a', em: 'x', por: 'y' }) === null, 'modelo desconhecido não é guardado');
+
+// Exportação no formato do protótipo: documentos não existem lá
+const v1 = paraV1(db);
+ok(!JSON.stringify(v1).includes('"documentos":[{') && !JSON.stringify(v1.patients[0]).includes('Ajuste.'), 'documentos não vão para a exportação v1');
+ok(v1Antes.length > 0, 'dados de exemplo carregados');
+
+console.log(falhas ? `\n${falhas} verificações falharam.` : '\nTodas as verificações dos documentos passaram.');
+process.exit(falhas ? 1 : 0);
