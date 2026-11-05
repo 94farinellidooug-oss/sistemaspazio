@@ -1,0 +1,22 @@
+/* Proposta da etapa 7: só o que é novo. */
+.p7-abas{margin-bottom:14px}
+.p7-abas a.chip{text-decoration:none;color:var(--ink)}
+.p7-abas a.chip.on{color:var(--accent-ink)}
+.wa-p small a{color:var(--accent)}
+.btn.wa{color:#1f7a4d;border-color:#b9dcc8}
+.btn.wa .ic{color:#1f7a4d}
+.wa-ok{display:inline-flex;align-items:center;gap:4px;color:var(--ok);font-size:.76rem}
+.wa-ok .ic{width:13px;height:13px}
+.hor-p .wa-ok{white-space:nowrap}
+/* Painel sobre a tela (mensagem e assinatura) */
+.wa-fundo{position:fixed;inset:0;background:rgba(20,24,16,.42);z-index:60}
+.wa-p{position:fixed;z-index:61;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;box-shadow:0 18px 48px rgba(0,0,0,.18)}
+.wa-p h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wa-p h3 small{flex-basis:100%}
+.wa-p textarea{min-height:130px}
+.ass-p{width:min(720px,calc(100vw - 24px))}
+#ass-c{display:block;width:100%;height:auto;aspect-ratio:640/220;border:1px dashed var(--line-2);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;margin-top:10px}
+.dp-as .ass-img{display:block;width:220px;max-width:100%;height:auto;margin:0 auto -8px}
+@media (max-width:560px){
+  .wa-p{top:auto;bottom:0;transform:translateX(-50%);border-radius:16px 16px 0 0;width:100vw}
+}

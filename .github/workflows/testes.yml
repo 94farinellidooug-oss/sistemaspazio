@@ -51,3 +51,5 @@ jobs:
         run: node tests/proposta-etapa6.mjs
       - name: Proposta dos modelos de documento
         run: node tests/proposta-modelos.mjs
+      - name: Proposta navegável da etapa 7
+        run: node tests/proposta-etapa7.mjs
