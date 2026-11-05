@@ -1781,7 +1781,7 @@ const vazio = (i, t, txt, acao='') => `<div class="empty"><span class="empty-i">
 // O sistema monta a mensagem e abre o WhatsApp (link wa.me) com o número e o texto; quem envia é o
 // profissional. Fica anotado quando a mensagem foi aberta e por quem, no próprio paciente:
 //   p.relacionamento.mensagens = [{tipo, em, por, ap?}] (mais recente primeiro; ap = horário da agenda)
-// Mensagens prontas editadas pelo profissional ficam em db.mensagensWa = {lembrete:{texto, em, por}, ...}
+// Modelos de mensagens editadas pelo profissional ficam em db.mensagensWa = {lembrete:{texto, em, por}, ...}
 // (criado no primeiro salvar; salvar igual ao original volta ao original). Nada disso vai para a
 // exportação v1.
 
@@ -2310,7 +2310,7 @@ function notificacoes(){
 const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
   ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
 const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', atendimento:'Atendimento', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
-  crm:'Relacionamento', mensagens:'Mensagens prontas', equipe:'Equipe e permissões', configuracoes:'Configurações'};
+  crm:'Relacionamento', mensagens:'Modelos de mensagens', equipe:'Equipe e permissões', configuracoes:'Configurações'};
 // Item do menu que fica marcado em cada tela.
 const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', mensagens:'administracao', equipe:'administracao', configuracoes:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
@@ -2371,7 +2371,7 @@ function renderNav(route){
      <button class="toggle" data-act="menu-mini" aria-label="${ui.menuMini?'Expandir menu':'Recolher menu'}" data-tip="${ui.menuMini?'Expandir menu ( [ )':''}">${ic(ui.menuMini?'abrir_menu':'fechar_menu')}<span class="tx">Recolher menu</span><kbd class="tx">[</kbd></button></div>`;
   camada();
 }
-// abrir o WhatsApp, e a tela Mensagens prontas (na Administração).
+// abrir o WhatsApp, e a tela Modelos de mensagens (na Administração).
 
 // Botão "WhatsApp": tipo da mensagem pronta, paciente e (opcional) o horário da agenda.
 const btnWa = (tipo, pid, ap = '', so = false) => `<button class="btn sm wa" data-act="wa" data-t="${tipo}" data-pid="${pid}"${ap ? ` data-ap="${ap}"` : ''}${so ? ' aria-label="WhatsApp" data-tip="WhatsApp"' : ''}>${ic('mensagem')}${so ? '' : 'WhatsApp'}</button>`;
@@ -2391,18 +2391,18 @@ function painelWa(){
   const num = numeroWa(p.phone);
   return `<div class="veu" data-act="fechar"></div><div class="pal wa-p" role="dialog" aria-modal="true" aria-label="Mensagem pelo WhatsApp">
     <div class="card-h"><h3>${ic('mensagem')}Mensagem para ${esc(p.name.split(' ')[0])}<small>${p.phone ? esc(p.phone) : 'sem telefone no cadastro'}</small></h3><button class="ib" data-act="fechar" aria-label="Fechar">${ic('x')}</button></div>
-    <div class="chips" role="group" aria-label="Mensagem pronta">${mensagensWa(db.mensagensWa).map(([k, n]) => `<button class="chip ${k === W.tipo ? 'on' : ''}" data-act="wa-tipo" data-k="${k}" aria-pressed="${k === W.tipo}">${n}</button>`).join('')}</div>
+    <div class="chips" role="group" aria-label="Modelo de mensagem">${mensagensWa(db.mensagensWa).map(([k, n]) => `<button class="chip ${k === W.tipo ? 'on' : ''}" data-act="wa-tipo" data-k="${k}" aria-pressed="${k === W.tipo}">${n}</button>`).join('')}</div>
     <label class="rx-f full" style="margin-top:10px"><span class="lbl">Mensagem</span><textarea id="wa-t" rows="6">${esc(W.texto)}</textarea></label>
-    <small class="muted">Ajuste se quiser; vale só para esta mensagem. Para mudar o texto padrão, use <a href="#mensagens" data-act="fechar-ir">Mensagens prontas</a>.</small>
+    <small class="muted">Ajuste se quiser; vale só para esta mensagem. Para mudar o texto padrão, use <a href="#mensagens" data-act="fechar-ir">Modelos de mensagens</a>.</small>
     ${num ? '' : `<div class="notice" style="margin-top:10px">${ic('info')}<div>Cadastre o telefone do paciente (com DDD) para enviar pelo WhatsApp.</div></div>`}
     <div class="rx-a"><button class="btn pri" data-act="wa-abrir" ${num ? '' : 'disabled'}>${ic('mensagem')}Abrir no WhatsApp</button><button class="btn" data-act="fechar">Cancelar</button></div></div>`;
 }
 
 const comCamposWa = t => esc(t).split(/\n{2,}/).map(x => `<p>${x.replace(/\n/g, '<br>')}</p>`).join('').replace(/\{(\w+)\}/g, (s, k) => { const c = CAMPOS_WA.find(x => x[0] === k); return c ? `<span class="cp">${c[1]}</span>` : s; });
-// Tela Mensagens prontas: um campo por mensagem, botões para inserir os dados e voltar ao original.
+// Tela Modelos de mensagens: um campo por mensagem, botões para inserir os dados e voltar ao original.
 function vMensagens(){
-  ui.crumbs = [['#administracao','Administração'],[null,'Mensagens prontas']];
-  return `<div class="head"><div><h1>Mensagens prontas</h1><p>Os textos que aparecem quando você toca em WhatsApp</p></div></div>
+  ui.crumbs = [['#administracao','Administração'],[null,'Modelos de mensagens']];
+  return `<div class="head"><div><h1>Modelos de mensagens</h1><p>Os textos que aparecem quando você toca em WhatsApp</p></div></div>
   <div class="grid g-side ag-cols"><div class="grid" style="align-content:start">${mensagensWa(db.mensagensWa).filter(m => m[0] !== 'livre').map(([k, n, t, s]) => `<form class="card f-msg" data-k="${k}"><div class="card-h"><h2>${n}</h2>${s === 'editada' ? '<span class="pill acc">sua</span>' : '<span class="pill">original</span>'}</div>
       <div class="chips cps">${CAMPOS_WA.map(([c, r]) => `<button type="button" class="chip" data-act="msg-campo" data-k="${c}">${ic('mais')}${r}</button>`).join('')}</div>
       <label class="rx-f full" style="margin-top:8px"><span class="lbl">Texto</span><textarea rows="4" data-msg="${k}">${esc(t)}</textarea></label>

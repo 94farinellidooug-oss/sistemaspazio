@@ -1,7 +1,7 @@
 // Verifica no navegador o WhatsApp (etapa 7A) no sistema modular e no arquivo único: lembretes de
 // amanhã na Agenda, painel com a mensagem pronta, link wa.me com número e texto, registro de quando
 // foi aberto, sem telefone não abre, retomar contato registra o contato, orientações em Documentos,
-// Mensagens prontas na Administração e celular sem rolagem horizontal.
+// Modelos de mensagens na Administração e celular sem rolagem horizontal.
 // Uso: node tests/whatsapp-ui.mjs   (requer Playwright e Chromium)
 import { createRequire } from 'node:module';
 import { iniciar } from '../tools/servidor.mjs';
@@ -64,9 +64,9 @@ async function verificar(browser, url, nome){
   await p.selectOption('#doc-p', 'p2'); await espera();
   ok(!(await tem('#doc-novo [data-act="wa"]')), `${nome}: sem orientações escritas, sem botão`);
 
-  // Mensagens prontas
+  // Modelos de mensagens
   await p.evaluate(() => { location.hash = 'administracao'; }); await espera();
-  ok(await tem('a.adm-c[href="#mensagens"] .pill.ok', 'disponível'), `${nome}: Mensagens prontas na Administração`);
+  ok(await tem('a.adm-c[href="#mensagens"] .pill.ok', 'disponível'), `${nome}: Modelos de mensagens na Administração`);
   await clicar('a.adm-c[href="#mensagens"]');
   const f = '.f-msg[data-k="lembrete"]';
   await p.fill(`${f} textarea`, 'Oi, '); await p.locator(`${f} textarea`).press('End');
@@ -79,7 +79,7 @@ async function verificar(browser, url, nome){
   await clicar('#lembretes .hor:has-text("Rafael") [data-act="wa"]');
   ok((await p.locator('#wa-t').inputValue()) === 'Oi, Rafael! Até amanhã às 08:00.', `${nome}: lembrete usa a mensagem salva`);
   await clicar('.wa-p [data-act="fechar-ir"]'); await espera();
-  ok(await p.evaluate(() => location.hash) === '#mensagens' && !(await tem('.wa-p')), `${nome}: atalho do painel para Mensagens prontas`);
+  ok(await p.evaluate(() => location.hash) === '#mensagens' && !(await tem('.wa-p')), `${nome}: atalho do painel para Modelos de mensagens`);
   await clicar(`${f} [data-act="msg-orig"]`);
   ok(await tem(`${f} .pill`, 'original') && !(await dados()).mensagensWa?.lembrete, `${nome}: voltar ao texto original`);
 

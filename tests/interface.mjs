@@ -106,7 +106,7 @@ async function verificar(browser, url, nome) {
     ok(await p.locator('#view h1').count() === 1 && await p.locator('#view', { hasText: 'Planejado para a etapa' }).count() > 0, `${nome}: tela "em breve" de ${r}`);
   }
   await ir('administracao');
-  ok(await p.locator('#view .adm-c').count() === 4, `${nome}: Administração reúne Equipe, Configurações, Relacionamento e Mensagens prontas`);
+  ok(await p.locator('#view .adm-c').count() === 4, `${nome}: Administração reúne Equipe, Configurações, Relacionamento e Modelos de mensagens`);
 
   // Paleta
   const brand = await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--brand').trim());
