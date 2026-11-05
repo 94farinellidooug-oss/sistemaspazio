@@ -3,7 +3,7 @@
 // O sistema monta a mensagem e abre o WhatsApp (link wa.me) com o número e o texto; quem envia é o
 // profissional. Fica anotado quando a mensagem foi aberta e por quem, no próprio paciente:
 //   p.relacionamento.mensagens = [{tipo, em, por, ap?}] (mais recente primeiro; ap = horário da agenda)
-// Mensagens prontas editadas pelo profissional ficam em db.mensagensWa = {lembrete:{texto, em, por}, ...}
+// Modelos de mensagens editadas pelo profissional ficam em db.mensagensWa = {lembrete:{texto, em, por}, ...}
 // (criado no primeiro salvar; salvar igual ao original volta ao original). Nada disso vai para a
 // exportação v1.
 import { fmt } from '../util.js';
