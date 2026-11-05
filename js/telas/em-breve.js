@@ -6,13 +6,13 @@ import { LABEL } from './menu.js';
 import { fmt } from '../util.js';
 
 const MODULOS = {
-  crm:{etapa:6,i:'tel',texto:'Acompanhamento do relacionamento, do primeiro contato à reativação de pacientes.',itens:['Interessados e origem dos contatos','Negociações e observações','Lembretes e tarefas','Reativação de pacientes antigos','Continuidade de tratamentos','WhatsApp: confirmações e lembretes (etapa 7)']},
+  crm:{etapa:6,i:'tel',feito:true,texto:'Quem retomar contato e quem procurou e ainda não é paciente.'},
   financeiro:{etapa:8,i:'financeiro',texto:'Gestão financeira da clínica, separando o valor contratado do valor efetivamente recebido.',itens:['Contas a pagar e a receber','Fluxo de caixa','Pagamentos parciais e recorrentes','Pacotes terapêuticos e comissões','Inadimplência','Emissão de NFS-e por provedor integrador']},
   relatorios:{etapa:9,i:'relatorios',texto:'Indicadores clínicos, comerciais e financeiros.',itens:['Desempenho clínico','Conversão comercial','Agenda e ocupação','Financeiro','Desempenho por profissional','Desempenho por serviço']},
   equipe:{etapa:10,i:'pacientes',texto:'Profissionais, especialidades e permissões de acesso por clínica.',itens:['Perfil único por profissional','Especialidades e modalidades','Permissões por perfil','Várias clínicas','Pacientes compartilhados conforme permissão','Registro de atividades']},
   configuracoes:{etapa:10,i:'admin',texto:'Dados da clínica, serviços, modalidades e modelos.',itens:['Dados da clínica e local de atendimento','Serviços, duração e valores','Modalidades terapêuticas','Modelos de documento','Preferências de agenda','Privacidade e LGPD']}
 };
-export const EM_BREVE = Object.keys(MODULOS);
+export const EM_BREVE = Object.keys(MODULOS).filter(k => !MODULOS[k].feito);
 
 export function vEmBreve(k){
   const m = MODULOS[k];
@@ -23,7 +23,7 @@ export function vEmBreve(k){
 
 export function vAdministracao(){
   return `<div class="head"><div><h1>Administração</h1><p>Equipe, configurações da clínica e relacionamento com pacientes</p></div></div>
-  <div class="adm">${['equipe','configuracoes','crm'].map(k=>{const m=MODULOS[k]; return `<a class="adm-c" href="#${k}"><span class="tico acc">${ic(m.i)}</span><span class="grow"><b>${LABEL[k]}</b><small>${m.texto}</small></span><span class="pill">etapa ${m.etapa}</span></a>`;}).join('')}</div>
+  <div class="adm">${['equipe','configuracoes','crm'].map(k=>{const m=MODULOS[k]; return `<a class="adm-c" href="#${k}"><span class="tico acc">${ic(m.i)}</span><span class="grow"><b>${LABEL[k]}</b><small>${m.texto}</small></span>${m.feito?'<span class="pill ok">disponível</span>':`<span class="pill">etapa ${m.etapa}</span>`}</a>`;}).join('')}</div>
   <div class="grid g2" style="margin-top:20px">
     <div class="card" id="dados"><div class="card-h"><h2>Dados e cópia de segurança</h2><span class="tico sm acc">${ic('escudo')}</span></div>
       <div class="ac-s" style="margin-bottom:14px"><div><small>Pacientes</small><b>${db.patients.length}</b></div><div><small>Atendimentos</small><b>${db.patients.reduce((n,p)=>n+p.atendimentos.length,0)}</b></div><div><small>Agendamentos</small><b>${db.appts.length}</b></div></div>
