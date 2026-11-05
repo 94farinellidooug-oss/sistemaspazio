@@ -1,6 +1,6 @@
 // Verifica no navegador a proposta navegável da etapa 5 (proposta/etapa-5), com dados fictícios:
-// prescrição em linhas (lado, agulhas, técnica, tempo e situação), motivo do não realizado, verificação
-// de segurança por linha com a técnica dela, evolução por queixa escolhida pelo profissional, aviso de
+// lista curta de pontos (lado bilateral ou unilateral e situação), orientações para casa com impressão,
+// verificação de segurança, evolução por queixa escolhida pelo profissional, aviso de
 // linhas ainda planejadas, retificação com motivo obrigatório e celular sem rolagem horizontal.
 // Uso: node tests/proposta-etapa5.mjs   (requer Playwright e Chromium)
 import { createRequire } from 'node:module';
@@ -22,36 +22,38 @@ const tem = async (sel, txt) => (await p.locator(sel, txt ? { hasText: txt } : {
 const rx = c => `.rx:has(.rx-c:text-is("${c}"))`;
 
 await p.goto(URL_ + '#/plano'); await p.waitForSelector('#rx-l');
-// Prescrição em linhas
-ok(await p.locator('#rx-l .rx').count() === 5 && await p.locator('#pr-l .rx').count() === 1, 'cinco pontos e um procedimento sem ponto');
-ok(await p.locator(`${rx('VB20')} select[data-k="lado"]`).inputValue() === 'bil' && await p.locator(`${rx('VG20')} select[data-k="lado"]`).inputValue() === 'med', 'lado bilateral por padrão e linha média para VG');
-ok(await p.locator(`${rx('VB20')} input[data-k="agulhas"]`).inputValue() === '2' && await p.locator(`${rx('VG20')} input[data-k="agulhas"]`).inputValue() === '1', 'agulhas pelo lado');
-await p.selectOption(`${rx('F3')} select[data-k="lado"]`, 'esq'); await espera();
-ok(await p.locator(`${rx('F3')} input[data-k="agulhas"]`).inputValue() === '1', 'mudar o lado ajusta as agulhas');
-ok(await tem(`${rx('VB20')} .rx-c`) && await tem(`${rx('VB20')}`, 'do mapa corporal') && await tem(`${rx('B23')}`, 'indicado para a região'), 'cada linha diz de onde veio o ponto');
-// Segurança por linha, com a técnica da linha
-ok(await tem(`${rx('B23')} .notice.crit`, 'anticoagulante') && !(await tem(`${rx('F3')} .notice.crit`)), 'aviso de anticoagulante só na linha com ventosa');
-await p.selectOption(`${rx('B23')} select[data-k="tec"]`, 'Acupuntura'); await espera();
-ok(!(await tem(`${rx('B23')} .notice.crit`)), 'trocar a técnica da linha tira o aviso');
-await p.selectOption(`${rx('B23')} select[data-k="tec"]`, 'Ventosa'); await espera();
-ok(await tem(`${rx('VB20')} .notice`, 'Fengchi') && await tem('#rx-seg .notice', 'Fengchi'), 'cautela da ficha na linha e no resumo de segurança');
-// Situação de cada linha
+// Lista curta: cada ponto só com lado (bilateral ou unilateral) e situação
+ok(await p.locator('#rx-l .rx').count() === 5, 'cinco pontos na lista');
+ok(await p.locator('#rx-l input[type="number"], #rx-l select').count() === 0, 'sem campos de agulhas, técnica ou tempo por ponto');
+ok(await tem(`${rx('VB20')} [data-a="lado"][data-l="bil"].on`) && await tem(`${rx('C7')} [data-a="lado"][data-l="uni"].on`) && await tem(`${rx('VG20')} .rx-med`, 'linha média'), 'lado bilateral ou unilateral; VG na linha média');
+await clicar(`${rx('F3')} [data-a="lado"][data-l="uni"]`);
+ok(await tem(`${rx('F3')} [data-a="lado"][data-l="uni"].on`), 'mudar o lado com um toque');
+ok(await tem(`${rx('VB20')} .rx-w`) && await tem('#rx-seg .notice', 'Fengchi') && await tem('#rx-seg .notice.crit', 'anticoagulante'), 'cautela no ponto e verificação de segurança com as técnicas');
+await clicar('[data-a="tec"][data-t="Ventosa"]');
+ok(!(await tem('#rx-seg .notice.crit')), 'tirar a ventosa tira o aviso do anticoagulante');
 await clicar(`${rx('VB20')} [data-a="st"][data-s="real"]`);
-ok(await tem(`${rx('VB20')}.real`) && await tem('[data-cont="real"]', 'Realizado 1'), 'marcar linha como realizada');
+ok(await tem(`${rx('VB20')}.real`) && await tem('[data-cont="real"]', 'Realizado 1'), 'marcar ponto como realizado');
 await clicar(`${rx('C7')} [data-a="st"][data-s="nao"]`);
-ok(await tem(`${rx('C7')} .rx-falta`, 'Escreva o motivo'), 'não realizado pede o motivo');
-await p.fill(`${rx('C7')} input[data-k="motivo"]`, 'Paciente preferiu não aplicar hoje'); await espera();
-ok(await p.locator(`${rx('C7')} .rx-falta`).isHidden(), 'com motivo, o aviso some');
+ok(await tem(`${rx('C7')}.nao`) && await p.locator(`${rx('C7')} .rx-mot`).getAttribute('placeholder') === 'Motivo (opcional)', 'não realizado com motivo opcional');
+await p.fill(`${rx('C7')} .rx-mot`, 'Paciente preferiu não aplicar hoje'); await espera();
 await clicar('[data-a="todos-real"]');
-ok(await p.locator('#rx-l .rx.real').count() === 4 && await tem(`${rx('C7')}.nao`) && await tem('#pr-l .rx.real'), 'marcar todos só muda as planejadas');
-// Incluir e tirar
-await p.fill('#rx-c', 'e36'); await p.selectOption('#rx-t', 'Moxabustão'); await clicar('#f-rx button');
-ok(await tem(rx('E36')) && await p.locator(`${rx('E36')} select[data-k="tec"]`).inputValue() === 'Moxabustão' && await tem(`${rx('E36')}.plan`), 'incluir ponto à mão com a técnica escolhida');
+ok(await p.locator('#rx-l .rx.real').count() === 4 && await tem(`${rx('C7')}.nao`), 'todos realizados só muda os planejados');
+await p.fill('#rx-c', 'e36'); await clicar('#f-rx button');
+ok(await tem(`${rx('E36')}.plan`) && await tem(`${rx('E36')} [data-a="lado"][data-l="bil"].on`), 'ponto incluído entra bilateral e planejado');
 await p.fill('#rx-c', 'E36'); await clicar('#f-rx button');
 ok(await p.locator(rx('E36')).count() === 1, 'não repete ponto');
 await clicar(`${rx('E36')} [data-a="rx-rm"]`);
-ok(!(await tem(rx('E36'))), 'tirar ponto da prescrição');
-await p.fill('#orient', 'Compressa morna na nuca'); await espera();
+ok(!(await tem(rx('E36'))), 'tirar ponto');
+// Orientações para casa com impressão
+await p.evaluate(() => { window.__imp = 0; window.print = () => { window.__imp++; }; });
+await clicar('[data-a="imprimir"]');
+ok(await p.evaluate(() => window.__imp) === 0, 'sem orientações, não imprime');
+await p.fill('#orient', 'Compressa morna na nuca à noite'); await espera();
+await clicar('[data-a="imprimir"]');
+ok(await p.evaluate(() => window.__imp) === 1 && await tem('#imp', 'Compressa morna') && await tem('#imp', 'Marina Costa') && await tem('#imp', 'Mauren Turcatti') && !(await tem('#imp', 'VB20')), 'imprime folha só com as orientações, paciente, data e profissional');
+await p.emulateMedia({ media:'print' });
+ok(await p.locator('#imp').isVisible() && !(await p.locator('.app').isVisible()), 'na impressão só aparece a folha do paciente');
+await p.emulateMedia({ media:'screen' });
 
 // Evolução
 await p.goto(URL_ + '#/evolucao'); await espera();
@@ -61,10 +63,12 @@ await clicar('[data-a="sit"][data-q="q1"][data-s="melhora"]'); await clicar('[da
 ok(await tem('[data-q="q1"] .chip.on', 'Melhora') && await tem('[data-q="q3"] .chip.on', 'Resolvida') && await tem('#ev-q', '1 sem situação'), 'profissional escolhe a situação de cada queixa');
 await clicar('[data-a="sit"][data-q="q1"][data-s="melhora"]');
 ok(!(await tem('[data-q="q1"] .chip.on')), 'tocar de novo desmarca');
-ok(await tem('#ev-feito', 'VB20') && await tem('#ev-feito .nao', 'Paciente preferiu não aplicar hoje') && !(await tem('#ev-plan')), 'feito hoje e não realizado vêm da prescrição');
+ok(await tem('#ev-feito', 'VB20') && await tem('#ev-feito .nao', 'Paciente preferiu não aplicar hoje') && !(await tem('#ev-plan')), 'feito hoje e não realizado vêm da lista de pontos');
 await p.goto(URL_ + '#/plano'); await espera(); await clicar(`${rx('F3')} [data-a="st"][data-s="plan"]`);
 await p.goto(URL_ + '#/evolucao'); await espera();
-ok(await tem('#ev-plan', '1 linha ainda planejada'), 'avisa linhas ainda planejadas antes de finalizar');
+ok(await tem('#ev-plan', '1 ponto ainda planejado'), 'avisa pontos ainda planejados antes de finalizar');
+await clicar('[data-a="finalizar"]');
+ok(!(await tem('#toast', 'motivo')), 'finalizar com pontos planejados só avisa, não bloqueia');
 
 // Prontuário e retificação
 await p.goto(URL_ + '#/prontuario'); await espera();
