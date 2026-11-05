@@ -10,7 +10,7 @@
     "build": "node tools/build.mjs",
     "dev": "node tools/servidor.mjs",
     "test:layout": "node tests/layout.mjs sistema && node tests/layout.mjs dist",
-    "test:proposta": "node tests/layout.mjs proposta && node tests/proposta-etapa3.mjs && node tests/proposta-etapa4.mjs"
+    "test:proposta": "node tests/layout.mjs proposta && node tests/proposta-etapa3.mjs && node tests/proposta-etapa4.mjs && node tests/proposta-etapa5.mjs"
   },
   "engines": {
     "node": ">=18"
