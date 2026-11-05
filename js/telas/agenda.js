@@ -6,7 +6,7 @@ import { ui } from '../estado.js';
 import { ic } from '../componentes/icones.js';
 import { btnWa } from './whatsapp.js';
 import { lembreteDe } from '../dados/whatsapp.js';
-import { TODAY, addDays, brl, esc, fmt } from '../util.js';
+import { TODAY, addDays, brl, esc, fmt, horaLocal } from '../util.js';
 
 // Usado pelo Painel: início da semana atual (off = 0), anterior (-1) etc.
 export function weekStart(off){ const d=new Date(); const wd=(d.getDay()+6)%7; return addDays(-wd+off*7); }
@@ -35,7 +35,7 @@ function lembretes(){
   if (!L.length) return '';
   const falta = L.filter(a => !lembreteDe(patient(a.pid), a.id)).length;
   return `<div class="card" id="lembretes"><div class="card-h"><h2>Lembretes de amanhã<small>um toque abre o WhatsApp com a mensagem pronta</small></h2><span class="pill ${falta ? 'warn' : 'ok'}" id="lem-falta">${falta ? `${falta} a enviar` : 'todos enviados'}</span></div>
-    <div class="hor-l">${L.map(a => { const p = patient(a.pid), m = lembreteDe(p, a.id); return `<div class="hor lem" data-lem="${a.id}"><div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div><div class="hor-p"><b>${esc(p.name)}</b><small>${esc(a.tipo)}</small>${m ? `<small class="wa-ok">${ic('check')}mensagem aberta às ${m.em.slice(11,16)}</small>` : ''}</div><div class="hor-a">${btnWa('lembrete', a.pid, a.id)}</div></div>`; }).join('')}</div></div>`;
+    <div class="hor-l">${L.map(a => { const p = patient(a.pid), m = lembreteDe(p, a.id); return `<div class="hor lem" data-lem="${a.id}"><div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div><div class="hor-p"><b>${esc(p.name)}</b><small>${esc(a.tipo)}</small>${m ? `<small class="wa-ok">${ic('check')}mensagem aberta às ${horaLocal(m.em)}</small>` : ''}</div><div class="hor-a">${btnWa('lembrete', a.pid, a.id)}</div></div>`; }).join('')}</div></div>`;
 }
 
 export function vAgenda(){

@@ -5,6 +5,8 @@ export const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDa
 export const addDays = (n, base) => { const d = base ? new Date(base+'T12:00:00') : new Date(); d.setDate(d.getDate()+n); return iso(d); };
 export const TODAY = addDays(0);
 export const fmt = s => s.split('-').reverse().join('/');
+// Hora local (hh:mm) de um instante ISO, como ficou registrado.
+export const horaLocal = iso => new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 export const uid = () => Math.random().toString(36).slice(2,9);
 export const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 export const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
