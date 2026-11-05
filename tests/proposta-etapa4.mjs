@@ -176,7 +176,7 @@ ok(fx.includes(PT.E36.loc) && fx.includes(PT.E36.acoes) && fx.includes('Ficha ex
 ok(fx.includes('Obra') && fx.includes('Edição') && fx.includes('Página'), 'ficha mostra obra, edição e página');
 await clicar('[data-a="revisar"][data-c="E36"]');
 const rv = await p.locator('.ficha').innerText();
-ok(rv.includes('revisado') && rv.includes('Mauren Turcatti') && /às \d\d:\d\d/.test(rv), 'revisão da posição registra quem e quando');
+ok(rv.includes('revisado') && rv.includes('Maicon Farinelli') && /às \d\d:\d\d/.test(rv), 'revisão da posição registra quem e quando');
 ok(await p.locator('svg.atlas .ptp.rev[data-pt="E36"]').count() > 0, 'posição revisada marcada no mapa');
 await p.fill('[data-nota="E36"]', 'Nota particular de teste');
 // Ficha pendente

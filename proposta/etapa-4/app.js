@@ -9,7 +9,7 @@ import { CAUT, MER, PT } from '../../js/conhecimento/pontos.js';
 import { esc, fmt, initials } from '../../js/util.js';
 
 /* ---------- Paciente, profissional e atendimentos fictícios ---------- */
-const PROF = 'Mauren Turcatti';
+const PROF = 'Maicon Farinelli';
 const P = { name:'Marina Costa', idade:35 };
 const HOJE = '2026-11-03';
 const ATS = [

@@ -874,3 +874,74 @@ input[type=checkbox]{accent-color:var(--brand)}
   .fx-panel.aberta>.card{box-shadow:0 -6px 28px rgba(30,30,20,.22);border-radius:16px 16px 12px 12px}
   .vs-p{grid-template-columns:minmax(0,1fr)}
 }
+/* ---------- Etapa 5 · Plano e evolução (proposta aprovada em 05/11) ---------- */
+.rx-res{display:flex;flex-wrap:wrap;gap:6px}
+.rx-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.78rem;color:var(--muted);margin:0 0 8px}
+.rx-leg span{display:inline-flex;align-items:center;gap:4px}
+.rx-leg .ic{width:13px;height:13px}
+.rx-l{display:grid;gap:6px}
+.rx{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:8px;padding:6px 6px 6px 10px;border:1px solid var(--line);border-left:4px solid var(--line-2);border-radius:10px;background:var(--surface);min-width:0}
+.rx.real{border-left-color:var(--ok)}
+.rx.nao{border-left-color:var(--crit)}
+.rx-p{display:flex;align-items:center;gap:8px;min-width:0}
+.rx-c{min-width:44px;font-size:.9rem;color:var(--accent)}
+.rx-nm{font-size:.84rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.rx-w{display:inline-flex;color:var(--warn)}
+.rx-w .ic{width:15px;height:15px}
+.rx-med,.rx-ro{font-size:.78rem;color:var(--muted);padding:0 8px;white-space:nowrap}
+.rx-seg{display:inline-flex;border:1px solid var(--line-2);border-radius:8px;overflow:hidden}
+.rx-seg button{display:inline-flex;align-items:center;gap:5px;border:0;border-right:1px solid var(--line-2);background:var(--surface);color:var(--muted);font:inherit;font-size:.8rem;font-weight:500;padding:6px 10px;min-height:32px;cursor:pointer}
+.rx-seg button:last-child{border-right:0}
+.rx-seg button .ic{width:14px;height:14px}
+.rx-seg button.on{background:var(--accent-soft);color:var(--accent)}
+.rx-seg.st button.on.plan{background:var(--surface-2);color:var(--ink)}
+.rx-seg.st button.on.real{background:var(--ok);color:#fff}
+.rx-seg.st button.on.nao{background:var(--crit);color:#fff}
+.rx-x{padding:4px 6px}
+.rx-mot,.rx-mt{grid-column:1/-1}
+.rx-mot{font:inherit;font-size:.84rem;padding:6px 9px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
+.rx-a{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-top:12px}
+.rx-a .nq{flex:1 1 220px;min-width:0}
+.rx.corr{grid-template-columns:minmax(0,1fr);gap:10px;padding:12px;border-left-color:var(--accent);background:var(--accent-soft)}
+.rx-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.rx-f{display:grid;gap:4px;min-width:0}
+.rx-f.full{grid-column:1/-1}
+.rx-f select,.rx-f input{width:100%;min-width:0;font:inherit;font-size:.88rem;padding:7px 9px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink)}
+.rx-ba{display:flex;flex-wrap:wrap;gap:8px}
+.ret-l{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px;font-size:.86rem}
+.ret-l li{display:grid;gap:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;overflow-wrap:anywhere}
+.ret-l s{color:var(--muted)}
+.qx-l{display:grid;gap:10px}
+.qx{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px}
+.qx-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 12px}
+.qx-v{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;font-size:.88rem}
+.qx-d{font-weight:600;padding:1px 7px;border-radius:999px;background:var(--surface-2)}
+.qx-d.cai{color:var(--ok);background:var(--ok-soft)}
+.qx-d.sobe{color:var(--crit);background:var(--crit-soft)}
+.qx-s{display:flex;flex-wrap:wrap;gap:6px}
+.qx-s .chip{padding:5px 11px;font-size:.84rem}
+.ev-l{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.88rem}
+.ev-l li{display:flex;gap:8px;align-items:flex-start;overflow-wrap:anywhere}
+.ev-l .ic{width:15px;height:15px;color:var(--ok);flex:none;margin-top:2px}
+.ev-l.nao .ic{color:var(--crit)}
+#ev-plan{margin-top:12px}
+#ev-plan .btn{padding:0 4px;vertical-align:baseline}
+@media (max-width:560px){
+  .rx{display:flex;flex-wrap:wrap;row-gap:6px}
+  .rx-p{flex:1 1 calc(100% - 52px)}
+  .rx-x{order:1}
+  .rx-seg,.rx-med,.rx-ro{order:2}
+  .rx-mot,.rx-mt{order:3;flex:1 1 100%}
+  .rx.corr{display:grid}
+}
+/* Folha impressa para o paciente */
+#imp{display:none}
+@media print{
+  body > :not(#imp){display:none !important}
+  #imp{display:block;color:#000;font-size:12pt;padding:10mm}
+  .imp-h{display:flex;gap:12px;align-items:center;border-bottom:1px solid #999;padding-bottom:8px;margin-bottom:16px}
+  .imp-h svg{width:32px;height:32px}
+  .imp-h small{display:block;color:#444}
+  .imp-t{line-height:1.6}
+  .imp-a{margin-top:28px;color:#444}
+}

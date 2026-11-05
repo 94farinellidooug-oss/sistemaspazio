@@ -1122,6 +1122,77 @@ input[type=checkbox]{accent-color:var(--brand)}
   .fx-panel.aberta>.card{box-shadow:0 -6px 28px rgba(30,30,20,.22);border-radius:16px 16px 12px 12px}
   .vs-p{grid-template-columns:minmax(0,1fr)}
 }
+/* ---------- Etapa 5 · Plano e evolução (proposta aprovada em 05/11) ---------- */
+.rx-res{display:flex;flex-wrap:wrap;gap:6px}
+.rx-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.78rem;color:var(--muted);margin:0 0 8px}
+.rx-leg span{display:inline-flex;align-items:center;gap:4px}
+.rx-leg .ic{width:13px;height:13px}
+.rx-l{display:grid;gap:6px}
+.rx{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:8px;padding:6px 6px 6px 10px;border:1px solid var(--line);border-left:4px solid var(--line-2);border-radius:10px;background:var(--surface);min-width:0}
+.rx.real{border-left-color:var(--ok)}
+.rx.nao{border-left-color:var(--crit)}
+.rx-p{display:flex;align-items:center;gap:8px;min-width:0}
+.rx-c{min-width:44px;font-size:.9rem;color:var(--accent)}
+.rx-nm{font-size:.84rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.rx-w{display:inline-flex;color:var(--warn)}
+.rx-w .ic{width:15px;height:15px}
+.rx-med,.rx-ro{font-size:.78rem;color:var(--muted);padding:0 8px;white-space:nowrap}
+.rx-seg{display:inline-flex;border:1px solid var(--line-2);border-radius:8px;overflow:hidden}
+.rx-seg button{display:inline-flex;align-items:center;gap:5px;border:0;border-right:1px solid var(--line-2);background:var(--surface);color:var(--muted);font:inherit;font-size:.8rem;font-weight:500;padding:6px 10px;min-height:32px;cursor:pointer}
+.rx-seg button:last-child{border-right:0}
+.rx-seg button .ic{width:14px;height:14px}
+.rx-seg button.on{background:var(--accent-soft);color:var(--accent)}
+.rx-seg.st button.on.plan{background:var(--surface-2);color:var(--ink)}
+.rx-seg.st button.on.real{background:var(--ok);color:#fff}
+.rx-seg.st button.on.nao{background:var(--crit);color:#fff}
+.rx-x{padding:4px 6px}
+.rx-mot,.rx-mt{grid-column:1/-1}
+.rx-mot{font:inherit;font-size:.84rem;padding:6px 9px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
+.rx-a{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-top:12px}
+.rx-a .nq{flex:1 1 220px;min-width:0}
+.rx.corr{grid-template-columns:minmax(0,1fr);gap:10px;padding:12px;border-left-color:var(--accent);background:var(--accent-soft)}
+.rx-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.rx-f{display:grid;gap:4px;min-width:0}
+.rx-f.full{grid-column:1/-1}
+.rx-f select,.rx-f input{width:100%;min-width:0;font:inherit;font-size:.88rem;padding:7px 9px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink)}
+.rx-ba{display:flex;flex-wrap:wrap;gap:8px}
+.ret-l{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px;font-size:.86rem}
+.ret-l li{display:grid;gap:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;overflow-wrap:anywhere}
+.ret-l s{color:var(--muted)}
+.qx-l{display:grid;gap:10px}
+.qx{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px}
+.qx-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 12px}
+.qx-v{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;font-size:.88rem}
+.qx-d{font-weight:600;padding:1px 7px;border-radius:999px;background:var(--surface-2)}
+.qx-d.cai{color:var(--ok);background:var(--ok-soft)}
+.qx-d.sobe{color:var(--crit);background:var(--crit-soft)}
+.qx-s{display:flex;flex-wrap:wrap;gap:6px}
+.qx-s .chip{padding:5px 11px;font-size:.84rem}
+.ev-l{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.88rem}
+.ev-l li{display:flex;gap:8px;align-items:flex-start;overflow-wrap:anywhere}
+.ev-l .ic{width:15px;height:15px;color:var(--ok);flex:none;margin-top:2px}
+.ev-l.nao .ic{color:var(--crit)}
+#ev-plan{margin-top:12px}
+#ev-plan .btn{padding:0 4px;vertical-align:baseline}
+@media (max-width:560px){
+  .rx{display:flex;flex-wrap:wrap;row-gap:6px}
+  .rx-p{flex:1 1 calc(100% - 52px)}
+  .rx-x{order:1}
+  .rx-seg,.rx-med,.rx-ro{order:2}
+  .rx-mot,.rx-mt{order:3;flex:1 1 100%}
+  .rx.corr{display:grid}
+}
+/* Folha impressa para o paciente */
+#imp{display:none}
+@media print{
+  body > :not(#imp){display:none !important}
+  #imp{display:block;color:#000;font-size:12pt;padding:10mm}
+  .imp-h{display:flex;gap:12px;align-items:center;border-bottom:1px solid #999;padding-bottom:8px;margin-bottom:16px}
+  .imp-h svg{width:32px;height:32px}
+  .imp-h small{display:block;color:#444}
+  .imp-t{line-height:1.6}
+  .imp-a{margin-top:28px;color:#444}
+}
 </style>
 
 
@@ -1134,6 +1205,7 @@ input[type=checkbox]{accent-color:var(--brand)}
   </div>
 </div>
 <div id="camada"></div>
+<div id="imp" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 <div class="tip" id="tip" role="tooltip" hidden></div>
 
@@ -1323,6 +1395,20 @@ function alternarQueixa(p, id, em){
 // Evolução de uma queixa: intensidade em cada atendimento finalizado em que ela foi medida.
 const serieQueixa = (p, id) => p.atendimentos.filter(a => a.status === 'finalizado' && a.evolucao.intensidades[id] != null)
   .map(a => ({ data: a.data, valor: a.evolucao.intensidades[id] }));
+
+// Troca o nome do profissional gravado nos registros (avaliações, revisões de posição e correções da
+// prescrição). Pedido do Maicon em 05/11/2026: os registros feitos como "Mauren Turcatti" são dele.
+// Só troca o nome exato; devolve quantos campos mudaram.
+function trocarNomeProfissional(db, de, para){
+  let n = 0;
+  const t = (o, k) => { if (o && o[k] === de) { o[k] = para; n++; } };
+  db.patients.forEach(p => {
+    (p.avaliacoes || []).forEach(v => t(v, 'prof'));
+    (p.atendimentos || []).forEach(a => (a.retificacoes || []).forEach(r => t(r, 'por')));
+  });
+  Object.values(db.biblioteca?.revisoes || {}).forEach(r => { t(r, 'por'); (r.hist || []).forEach(h => t(h, 'por')); });
+  return n;
+}
 // Na primeira abertura, os dados do protótipo (chave spazio-v1) são convertidos para o v2.
 // A chave spazio-v1 nunca é alterada nem apagada: fica como cópia de segurança.
 
@@ -1334,7 +1420,7 @@ const lerJSON = k => { try{ return JSON.parse(ler(k)); }catch(e){ return undefin
 
 function carregar(){
   const bruto = ler(KEY), v2 = lerJSON(KEY);
-  if(ehV2(v2)) return hidratar(v2);
+  if(ehV2(v2)){ if(trocarNomeProfissional(v2, 'Mauren Turcatti', 'Maicon Farinelli')) gravar(KEY, JSON.stringify(v2)); return hidratar(v2); }
   // Dados v2 ilegíveis não são descartados: ficam guardados à parte antes de qualquer outra coisa.
   if(bruto !== null) gravar(KEY+'-ilegivel', bruto);
   const v1 = lerJSON(KEY_V1);
@@ -1360,7 +1446,7 @@ function importar(texto){
 }
 // ov: camada aberta (busca, notif, perfil, atalhos); q/bi: texto e item escolhido na busca global;
 // lidas: notificações já vistas nesta sessão; dia: dia escolhido no calendário do Painel; crumbs: migalhas.
-const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', week:0, pq:'', menuMini:false, menuAberto:false,
+const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', week:0, pq:'', menuMini:false, menuAberto:false,
   ov:null, q:'', bi:0, lidas:new Set(), dia:null, crumbs:[],
   // Mapa corporal do atendimento (etapa 4A): vista, face, ampliação, ferramenta, marcação selecionada e camadas de comparação.
   // Biblioteca clínica (etapa 4B): área (central, particular, atlas), ficha aberta e estado do Atlas.
@@ -1696,9 +1782,9 @@ function barrasEl(st, base){
 const delta = (a,b) => { if(a==null||b==null) return ''; const d=b-a; return `<span class="delta ${d<0?'bom':d>0?'ruim':''}">${d<0?'▼':d>0?'▲':'='} ${Math.abs(d)}</span>`; };
 // Fonte: MARTINS, Ednéa Iara Souza. Atlas dos Pontos de Acupuntura: guia de localização. GEN/Roca.
 // Seção "Indicações" de cada ponto, lida por palavras de região. Só o código do ponto e a página do livro;
-// nenhum texto do livro foi copiado. Cada linha foi conferida e aprovada ("sim") por Mauren em 04/11/2026.
+// nenhum texto do livro foi copiado. Cada linha foi conferida e aprovada ("sim") por Maicon em 04/11/2026.
 // [código, página no livro]
-const FONTE_INDICACOES = { obra:'Atlas dos Pontos de Acupuntura: guia de localização', autora:'Ednéa Iara Souza Martins', editora:'GEN/Roca', aprovadoPor:'Mauren', aprovadoEm:'2026-11-04' };
+const FONTE_INDICACOES = { obra:'Atlas dos Pontos de Acupuntura: guia de localização', autora:'Ednéa Iara Souza Martins', editora:'GEN/Roca', aprovadoPor:'Maicon', aprovadoEm:'2026-11-04' };
 const REGIOES_CORPO = ["Cabeça", "Face e dentes", "Olhos", "Ouvido", "Nariz", "Boca e garganta", "Pescoço e nuca", "Ombro", "Braço e cotovelo", "Punho e mão", "Tórax", "Abdome", "Costas", "Lombar e sacro", "Quadril e nádega", "Nervo ciático", "Coxa", "Joelho", "Perna", "Tornozelo e pé"];
 const INDICADOS_REGIAO = {
   "Cabeça":[["P6",62],["P7",64],["P9",68],["IG2",82],["IG3",84],["IG5",88],["IG7",92],["IG8",94],["IG9",96],["IG11",100],["IG17",112],["E1",128],["E8",142],["E9",144],["E10",146],["E40",206],["E41",208],["E42",210],["BP3",228],["BP8",238],["C2",274],["C5",280],["C6",282],["ID1",296],["ID2",298],["ID3",300],["ID4",302],["ID5",304],["ID6",306],["ID8",310],["B2",342],["B3",344],["B5",348],["B6",350],["B7",352],["B8",354],["B10",358],["B11",360],["B12",362],["B18",374],["B22",382],["B27",392],["B37",412],["B58",454],["B59",456],["B60",458],["B64",466],["B65",468],["B67",472],["R1",480],["R2",482],["CS2",542],["CS6",550],["CS7",552],["TA1",564],["TA3",568],["TA5",572],["TA9",580],["TA10",582],["TA12",586],["TA16",594],["TA19",600],["TA21",604],["TA22",606],["TA23",608],["VB1",618],["VB3",622],["VB5",626],["VB6",628],["VB7",630],["VB9",634],["VB10",636],["VB11",638],["VB12",640],["VB13",642],["VB14",644],["VB15",646],["VB17",650],["VB18",652],["VB19",654],["VB20",656],["VB21",658],["VB36",688],["VB39",694],["VB41",698],["F1",712],["F2",714],["F3",716],["F4",718],["F7",724],["VG13",820],["VG14",822],["VG15",824],["VG16",826],["VG17",828],["VG18",830],["VG19",832],["VG20",834],["VG21",836],["VG24",842]],
@@ -2278,6 +2364,75 @@ function revisarPosicao(d, c, ok, por, em){
   r.hist.unshift({ acao: ok ? 'Posição marcada como revisada' : 'Revisão retirada', por, em });
   return r;
 }
+//
+// Os pontos continuam em a.plano.pontos (lista de códigos), que é o que o cálculo, a verificação de
+// segurança e a exportação v1 leem. Para cada ponto o profissional registra só:
+//   lado: 'bil' (bilateral) | 'uni' (unilateral) | 'med' (linha média, VC e VG)
+//   status: 'plan' (planejado) | 'real' (realizado) | 'nao' (não realizado), com motivo opcional.
+// Fica em a.plano.rx = {[código]:{lado, status, motivo}}, criado só quando algo é marcado: ponto sem
+// registro é bilateral (linha média para VC e VG) e planejado. a.plano.orient guarda as orientações
+// para casa. a.evolucao.situacoes = {[queixa]: 'melhora'|'estavel'|'piora'|'resolvida'|'nova'} é
+// escolha do profissional: nada é calculado nem sugerido a partir das intensidades.
+// Depois de finalizado, mudar o lado ou a situação de um ponto é uma correção: exige motivo e fica em
+// a.retificacoes com o valor anterior, o novo, quem, quando e o motivo.
+
+const LADOS_RX = [['bil','Bilateral'],['uni','Unilateral'],['med','Linha média']];
+const STATUS_RX = [['plan','Planejado'],['real','Realizado'],['nao','Não realizado']];
+const SITUACOES_QUEIXA = [['melhora','Melhora'],['estavel','Estável'],['piora','Piora'],['resolvida','Resolvida'],['nova','Nova']];
+const nomeRx = (L, k) => (L.find(x => x[0] === k) || ['', '—'])[1];
+const linhaMedia = c => /^V[CG]\d+$/.test(c);
+
+const linhaRx = (a, c) => ({ lado: linhaMedia(c) ? 'med' : 'bil', status: 'plan', motivo: '', ...(a.plano.rx?.[c] || {}) });
+const linhasRx = a => a.plano.pontos.map(c => [c, linhaRx(a, c)]);
+function gravarRx(a, c, campos){
+  if (!a.plano.pontos.includes(c)) return null;
+  const r = (a.plano.rx ||= {})[c] ||= {};
+  Object.assign(r, campos);
+  return linhaRx(a, c);
+}
+function definirLado(a, c, lado){
+  if (linhaMedia(c) || !['bil','uni'].includes(lado)) return null;
+  return gravarRx(a, c, { lado });
+}
+function definirStatus(a, c, status){
+  if (!STATUS_RX.some(s => s[0] === status)) return null;
+  return gravarRx(a, c, status === 'nao' ? { status } : { status, motivo: '' });
+}
+function definirMotivo(a, c, motivo){
+  if (linhaRx(a, c).status !== 'nao') return null;
+  return gravarRx(a, c, { motivo: String(motivo || '') });
+}
+// Marca como realizados só os pontos ainda planejados.
+function todosRealizados(a){
+  const L = a.plano.pontos.filter(c => linhaRx(a, c).status === 'plan');
+  L.forEach(c => gravarRx(a, c, { status: 'real' }));
+  return L;
+}
+// Ao tirar um ponto do plano, o registro dele sai junto.
+function esquecerPonto(a, c){
+  if (a.plano.rx) delete a.plano.rx[c];
+}
+const contagemRx = a => STATUS_RX.map(([k, n]) => [k, n, linhasRx(a).filter(([, l]) => l.status === k).length]);
+
+function definirSituacao(a, idQueixa, sit){
+  const S = a.evolucao.situacoes ||= {};
+  if (!sit || S[idQueixa] === sit) delete S[idQueixa];
+  else if (SITUACOES_QUEIXA.some(s => s[0] === sit)) S[idQueixa] = sit;
+  return S[idQueixa] || '';
+}
+
+// Correção de um ponto num atendimento finalizado. Devolve as mudanças [campo, antes, depois] ou null.
+function corrigirPonto(a, c, { lado, status }, motivo, por, em){
+  const m = String(motivo || '').trim();
+  if (a.status !== 'finalizado' || !m || !a.plano.pontos.includes(c)) return null;
+  const antes = linhaRx(a, c), depois = { lado: linhaMedia(c) ? 'med' : lado || antes.lado, status: status || antes.status };
+  if (!['bil','uni','med'].includes(depois.lado) || !STATUS_RX.some(s => s[0] === depois.status)) return null;
+  const mud = [['Lado', 'lado', LADOS_RX], ['Situação', 'status', STATUS_RX]].filter(([, k]) => antes[k] !== depois[k]).map(([n, k, L]) => [n, nomeRx(L, antes[k]), nomeRx(L, depois[k])]);
+  if (!mud.length) return null;
+  gravarRx(a, c, depois.status === 'nao' ? depois : { ...depois, motivo: '' });
+  (a.retificacoes ||= []).unshift({ em, por, ponto: c, mud, motivo: m });
+  return mud;
+}
 // Não cria números: se um dado não existe, o indicador não aparece.
 
 const ALERTA_NOME = {gestante:'Gestante',anticoagulante:'Anticoagulante',marcapasso:'Marcapasso'};
@@ -2709,7 +2864,7 @@ function proximosMarca(p, a, m){
     ${L.length ? L.map(linha).join('') : '<p class="muted sm">Nenhum ponto com posição perto deste local ainda. Mais pontos entram com o Atlas.</p>'}
     <p class="muted sm px-n">Pela posição aproximada no mapa, não é indicação para a queixa.</p></div>`;
 }
-// Pontos que o livro indica para a região escrita na marcação (tabela conferida por Mauren).
+// Pontos que o livro indica para a região escrita na marcação (tabela conferida por Maicon).
 const fonteInd = () => { const F = FONTE_INDICACOES; return `${esc(F.autora)}, <i>${esc(F.obra)}</i> (${esc(F.editora)}), seção Indicações. Lista conferida por ${esc(F.aprovadoPor)} em ${fmt(F.aprovadoEm)}.`; };
 function indicadosMarca(p, a, m){
   const R = regioesDoTexto(m.regiao), P = a.plano.pontos;
@@ -2818,15 +2973,38 @@ function eMapa(p, a){
       <div class="card"><div class="field"><label class="lbl" for="at-mapa">Observações do mapa corporal</label><textarea id="at-mapa" data-atf="mapa" placeholder="Cicatrizes, áreas sensíveis, outras observações...">${esc(a.mapa?.nota || '')}</textarea></div></div>
     </aside></div>`;
 }
+// Etapa 5: cada ponto numa linha curta, só com lado e situação ao lado (proposta aprovada em 05/11).
+const ICONE_RX = { plan:'relogio', real:'check', nao:'x' };
+function linhaPonto(p, a, c, l){
+  const d = PT[c], w = pointWarnings([c], p, []), rasc = a.status === 'rascunho', C = ui.rxCorr;
+  const cab = `<div class="rx-p"><b class="mono rx-c">${esc(c)}</b><span class="rx-nm">${d ? esc(d.pinyin) : '<span class="muted">ficha pendente</span>'}</span>${w.length ? `<span class="rx-w" data-tip="${esc(w.map(x => x[1]).join(' · '))}" aria-label="Cautela">${ic('alerta')}</span>` : ''}</div>`;
+  if (!rasc && C && C.c === c) return `<form class="rx corr" id="f-rx-corr" data-c="${esc(c)}">${cab}
+      <div class="rx-g">${linhaMedia(c) ? '' : `<label class="rx-f"><span class="lbl">Lado</span><select data-rxc="lado">${LADOS_RX.slice(0, 2).map(([k, n]) => `<option value="${k}" ${C.lado === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`}
+        <label class="rx-f"><span class="lbl">Situação</span><select data-rxc="status">${STATUS_RX.map(([k, n]) => `<option value="${k}" ${C.status === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label class="rx-f full"><span class="lbl">Motivo da correção (obrigatório)</span><input data-rxc="motivo" value="${esc(C.motivo)}" placeholder="Ex.: esqueci de marcar como realizado" required></label></div>
+      <small class="muted">Antes: ${nomeRx(LADOS_RX, l.lado).toLowerCase()} · ${nomeRx(STATUS_RX, l.status).toLowerCase()}</small>
+      <div class="rx-ba"><button class="btn sm pri">${ic('check')}Salvar correção</button><button type="button" class="btn sm" data-act="at-rx-corrx">Cancelar</button></div></form>`;
+  if (!rasc) return `<div class="rx ${l.status}" data-rx="${esc(c)}">${cab}<span class="rx-ro">${nomeRx(LADOS_RX, l.lado)}</span><span class="pill ${l.status === 'real' ? 'ok' : l.status === 'nao' ? 'crit' : ''}">${nomeRx(STATUS_RX, l.status)}</span><button class="btn ghost sm" data-act="at-rx-corr" data-c="${esc(c)}">${ic('editar')}Corrigir</button>${l.status === 'nao' && l.motivo ? `<small class="rx-mt muted">${esc(l.motivo)}</small>` : ''}</div>`;
+  return `<div class="rx ${l.status}" data-rx="${esc(c)}">${cab}
+    ${l.lado === 'med' ? '<span class="rx-med">linha média</span>' : `<div class="rx-seg" role="group" aria-label="Lado de ${esc(c)}">${LADOS_RX.slice(0, 2).map(([k, n]) => `<button class="${l.lado === k ? 'on' : ''}" data-act="at-rx-lado" data-c="${esc(c)}" data-l="${k}" aria-pressed="${l.lado === k}">${n}</button>`).join('')}</div>`}
+    <div class="rx-seg st" role="group" aria-label="Situação de ${esc(c)}">${STATUS_RX.map(([k, n]) => `<button class="${k}${l.status === k ? ' on' : ''}" data-act="at-rx-st" data-c="${esc(c)}" data-s="${k}" aria-pressed="${l.status === k}" aria-label="${n}" data-tip="${n}">${ic(ICONE_RX[k])}</button>`).join('')}</div>
+    <button class="btn ghost sm rx-x" data-act="at-pt" data-c="${esc(c)}" aria-label="Tirar ${esc(c)} do plano">${ic('x')}</button>
+    ${l.status === 'nao' ? `<input class="rx-mot" data-rxmot="${esc(c)}" value="${esc(l.motivo)}" placeholder="Motivo (opcional)" aria-label="Motivo de ${esc(c)} não ter sido feito">` : ''}</div>`;
+}
 function ePlano(p,a){
-  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, ac=evaluate(av.signs).filter(h=>av.status[h.p.id]==='aceito'), P=a.plano.pontos, w=pointWarnings(P,p,a.plano.tec);
+  const av=avaliacaoEditavel(p,a)||{signs:[],status:{}}, ac=evaluate(av.signs).filter(h=>av.status[h.p.id]==='aceito'), P=a.plano.pontos, w=pointWarnings(P,p,a.plano.tec), rasc=a.status==='rascunho', L=linhasRx(a), R=a.retificacoes||[];
   return `<div class="grid g-side"><div class="grid" style="align-content:start">
-    <div class="card"><div class="card-h"><h3>Pontos do plano</h3><span class="pill acc">${P.length}</span></div>
-      ${P.length?`<div class="chips">${P.map(c=>`<button class="chip on mono" data-act="at-pt" data-c="${esc(c)}" title="Remover">${esc(c)} ✕</button>`).join('')}</div>`:'<p class="muted sm">Escolha nas sugestões ao lado ou digite abaixo.</p>'}
-      <form id="f-at-pt" class="nq"><label class="so-leitor" for="at-pt-c">Código do ponto</label><input id="at-pt-c" class="mono" placeholder="Ex.: E36, BP6" required><button class="btn sm">${ic('mais')}Incluir</button></form>
-      <div class="lbl" style="margin:16px 0 8px">Técnicas</div><div class="chips">${TECNICAS.map(t=>`<button class="chip ${a.plano.tec.includes(t)?'on':''}" data-act="at-tec" data-t="${t}" aria-pressed="${a.plano.tec.includes(t)}">${t}</button>`).join('')}</div></div>
+    <div class="card" id="rx-card"><div class="card-h"><h3>Pontos do plano<small>${P.length} ponto${P.length===1?'':'s'}</small></h3>${P.length?`<div class="rx-res">${contagemRx(a).map(([k,n,q])=>`<span class="pill ${k==='real'?'ok':k==='nao'?'crit':''}" data-cont="${k}">${n} ${q}</span>`).join('')}</div>`:''}</div>
+      ${P.length?`<div class="rx-leg" aria-hidden="true">${STATUS_RX.map(([k,n])=>`<span>${ic(ICONE_RX[k])}${n}</span>`).join('')}</div>`:''}
+      <div class="rx-l" id="rx-l">${L.map(([c,l])=>linhaPonto(p,a,c,l)).join('')||'<p class="muted sm">Escolha nas sugestões ao lado, no mapa corporal ou digite abaixo.</p>'}</div>
+      <div class="rx-a"><form id="f-at-pt" class="nq"><label class="so-leitor" for="at-pt-c">Código do ponto</label><input id="at-pt-c" class="mono" placeholder="Ex.: E36, BP6" required><button class="btn sm">${ic('mais')}Incluir</button></form>
+        ${rasc&&L.some(([,l])=>l.status==='plan')?`<button class="btn sm" data-act="at-rx-todos">${ic('check')}Todos realizados</button>`:''}</div>
+      <div class="lbl" style="margin:16px 0 8px">Técnicas</div><div class="chips">${TECNICAS.map(t=>`<button class="chip ${a.plano.tec.includes(t)?'on':''}" data-act="at-tec" data-t="${t}" aria-pressed="${a.plano.tec.includes(t)}">${t}</button>`).join('')}</div>
+      ${R.length?`<details class="mais" id="rx-ret"><summary>${ic('historico')}Correções depois de finalizar (${R.length})</summary><ul class="ret-l">${R.map(r=>`<li><b class="mono">${esc(r.ponto)}</b> · ${r.mud.map(([k,x,y])=>`${k}: <s>${esc(x)}</s> → <b>${esc(y)}</b>`).join('; ')}<small class="muted">${esc(r.por)} · ${fmt(r.em.slice(0,10))} às ${hhmm(r.em)} · motivo: ${esc(r.motivo)}</small></li>`).join('')}</ul></details>`:''}</div>
     <div class="card seg" id="at-seg"><div class="card-h"><h3>${ic('escudo')} Verificação de segurança</h3>${w.length?`<span class="pill crit">${w.length}</span>`:'<span class="pill ok">ok</span>'}</div>
-      ${w.length?w.map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:8px">${ic(k==='crit'?'escudo':'alerta')}<div><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div></div>`).join(''):`<div class="vazio">${ic('okc')}Nenhuma contraindicação encontrada para os pontos e técnicas escolhidos.</div>`}</div></div>
+      ${w.length?w.map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:8px">${ic(k==='crit'?'escudo':'alerta')}<div><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div></div>`).join(''):`<div class="vazio">${ic('okc')}Nenhuma contraindicação encontrada para os pontos e técnicas escolhidos.</div>`}</div>
+    <div class="card" id="orient-card"><div class="field"><label class="lbl" for="at-orient">Orientações para casa <span class="pill">opcional</span></label><textarea id="at-orient" data-atorient="1" placeholder="Ex.: compressa morna na nuca à noite">${esc(a.plano.orient||'')}</textarea></div>
+      <button class="btn sm" data-act="at-imprimir" style="margin-top:10px">${ic('doc')}Imprimir para o paciente</button><small class="muted" style="display:block;margin-top:6px">Sai uma folha só com as orientações, o nome do paciente, a data e o seu nome.</small></div></div>
     <div class="grid" style="align-content:start">${(()=>{ const L=encaminhados(av,'plano'); return `<div class="card"><div class="card-h"><h3>Trazido pelo profissional</h3><span class="muted sm">só o que foi marcado como "Plano"</span></div>
       ${L.length?L.map(([c,nome,I])=>I.map(it=>`<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${nome}</small></div><button class="btn sm ghost" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="plano">${ic('x')}Retirar</button></div>`).join('')).join(''):`<p class="muted sm">Nada encaminhado. Marque "Plano" num achado da avaliação para ele aparecer aqui.</p>`}</div>`; })()}
     ${dicasTratamento(p,a)}
@@ -2841,7 +3019,28 @@ function eEvolucao(p,a){
     ${linhas(series,labels,{label:'Intensidade das queixas por atendimento'})}
     <div class="qsum">${series.map(s=>{ const v=s.vals.filter(x=>x!=null); return `<div><i style="background:${s.cor}"></i><span>${esc(s.nome)}</span><b>${v[0]} → ${v.at(-1)}</b>${v.length>1?delta(v[0],v.at(-1)):'<span class="pill acc">1ª medida</span>'}</div>`; }).join('')}</div>
     <p class="muted sm">Os valores de hoje vêm da etapa Anamnese.</p></div>
-    <div class="card"><div class="field"><label class="lbl" for="at-nota">Evolução e observações</label><textarea id="at-nota" data-atf="nota" placeholder="Como o paciente respondeu, o que mudou desde o último atendimento...">${esc(a.evolucao.nota)}</textarea></div></div></div>`;
+    <div class="grid" style="align-content:start">${situacoesQueixas(p,a,lista)}${feitoHoje(a)}
+    <div class="card"><div class="field"><label class="lbl" for="at-nota">Evolução e observações</label><textarea id="at-nota" data-atf="nota" placeholder="Como o paciente respondeu, o que mudou desde o último atendimento...">${esc(a.evolucao.nota)}</textarea></div></div></div></div>`;
+}
+// Situação de cada queixa: escolha do profissional. A diferença só mostra os números da Anamnese.
+function situacoesQueixas(p,a,lista){
+  const i=lista.indexOf(a), Q=p.queixas.filter(q=>a.evolucao.intensidades[q.id]!=null), S=a.evolucao.situacoes||{};
+  if(!Q.length) return '';
+  const sem=Q.filter(q=>!S[q.id]).length;
+  return `<div class="card" id="ev-q"><div class="card-h"><h3>Queixas neste atendimento<small>situação escolhida por você</small></h3>${sem?`<span class="pill warn">${sem} sem situação</span>`:'<span class="pill ok">todas com situação</span>'}</div>
+    <div class="qx-l">${Q.map(q=>{ const hoje=a.evolucao.intensidades[q.id], ant=lista.slice(0,i).map(x=>x.evolucao.intensidades[q.id]).filter(v=>v!=null).at(-1), dif=ant==null?null:hoje-ant;
+      return `<div class="qx" data-q="${esc(q.id)}"><div class="qx-h"><b>${esc(q.descricao)}</b><span class="qx-v">${ant==null?'<span class="pill acc">1º registro</span>':`<span class="muted">anterior</span> <b>${ant}</b>`} <span class="muted">hoje</span> <b>${hoje}</b>${dif==null?'':` <span class="qx-d ${dif<0?'cai':dif>0?'sobe':''}">${dif>0?'+':''}${dif}</span>`}</span></div>
+        <div class="qx-s" role="group" aria-label="Situação de ${esc(q.descricao)}">${SITUACOES_QUEIXA.map(([k,n])=>`<button class="chip ${S[q.id]===k?'on':''}" data-act="at-sit" data-q="${esc(q.id)}" data-s="${k}" aria-pressed="${S[q.id]===k}">${n}</button>`).join('')}</div></div>`; }).join('')}</div>
+    <p class="muted sm">O sistema não escolhe a situação por você.</p></div>`;
+}
+// O que foi feito, a partir da lista de pontos do Plano. Pontos ainda planejados só geram aviso.
+function feitoHoje(a){
+  const L=linhasRx(a); if(!L.length) return '';
+  const feitos=L.filter(([,l])=>l.status==='real'), nao=L.filter(([,l])=>l.status==='nao'), plan=L.filter(([,l])=>l.status==='plan'), n=plan.length, s=n>1?'s':'';
+  return `<div class="card" id="ev-feito"><div class="card-h"><h3>Feito ${a.status==='rascunho'?'hoje':'neste atendimento'}<small>vem da lista de pontos do Plano</small></h3><span class="pill ok">${feitos.length}</span></div>
+    ${feitos.length?`<ul class="ev-l">${feitos.map(([c,l])=>`<li>${ic('check')}<span><b class="mono">${esc(c)}</b> · ${nomeRx(LADOS_RX,l.lado).toLowerCase()}</span></li>`).join('')}</ul>`:'<p class="muted sm">Nenhum ponto marcado como realizado.</p>'}
+    ${nao.length?`<div class="lbl" style="margin-top:10px">Não realizado</div><ul class="ev-l nao">${nao.map(([c,l])=>`<li>${ic('x')}<span><b class="mono">${esc(c)}</b>${l.motivo?' · '+esc(l.motivo):''}</span></li>`).join('')}</ul>`:''}
+    ${n&&a.status==='rascunho'?`<div class="notice" id="ev-plan">${ic('alerta')}<div><b>${n} ponto${s} ainda planejado${s}.</b> Se finalizar assim, fica${n>1?'m':''} registrado${s} como planejado${s}, sem dizer se foi feito. <button class="btn sm ghost" data-act="at-ir-plano">Voltar ao plano</button></div></div>`:''}</div>`;
 }
 function eDocumentos(p,a,H){
   const D=[['doc','Registro do atendimento',a.status==='finalizado'?'Disponível no prontuário':'Entra no prontuário ao finalizar','ok','prontuario'],['agenda','Agendar retorno','Abre a agenda com o paciente escolhido','acc','retorno'],
@@ -2937,7 +3136,7 @@ const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Bibliotec
 // Item do menu que fica marcado em cada tela.
 const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', equipe:'administracao', configuracoes:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
-const PROF = {nome:'Mauren Turcatti', papel:'Profissional responsável'};
+const PROF = {nome:'Maicon Farinelli', papel:'Profissional responsável'};
 
 const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 // Itens da busca global: [grupo, ícone, título, detalhe, atributos do link].
@@ -3204,7 +3403,7 @@ function listaTodos(){
 }
 
 /* ---------- Ficha do ponto (Central e Atlas) ---------- */
-// Regiões do corpo em que o livro indica o ponto, com a página. Só as linhas aprovadas por Mauren.
+// Regiões do corpo em que o livro indica o ponto, com a página. Só as linhas aprovadas por Maicon.
 const indRegioes = c => { const L = regioesDoPonto(c), F = FONTE_INDICACOES;
   return L.length ? `<span class="ind-r">${L.map(([r, pg]) => `<span class="pill">${esc(r)} · p. ${pg}</span>`).join('')}</span><small class="muted ind-f">${esc(F.autora)}, ${esc(F.obra)} (${esc(F.editora)}) · conferido por ${esc(F.aprovadoPor)} em ${fmt(F.aprovadoEm)}</small>` : '<span class="muted">Nenhuma região aprovada na tabela.</span>'; };
 // Revisão da posição (etapa 4C): quem conferiu e quando, com histórico. A posição continua aproximada.
@@ -3396,6 +3595,10 @@ document.addEventListener('input',ev=>{
   else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
   else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
+  if(t.dataset.rxmot||t.dataset.atorient){ const x=atendimentoAberto(); if(!x) return;
+    if(t.dataset.rxmot){ if(x.a.status==='rascunho'&&definirMotivo(x.a,t.dataset.rxmot,t.value)) mudou(`plano terapêutico: motivo de ${t.dataset.rxmot} não realizado`,false); }
+    else { x.a.plano.orient=t.value; mudou('plano terapêutico: orientações para casa',false); } return; }
+  if(t.dataset.rxc){ if(ui.rxCorr) ui.rxCorr[t.dataset.rxc]=t.value; return; }
   if(t.dataset.mk&&t.tagName!=='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)) mudou(`mapa corporal: ${({procedimento:'procedimento',regiao:'região',nota:'anotação'})[t.dataset.mk]||t.dataset.mk} da marcação`,false); if(t.dataset.mk==='regiao'){ const x=atendimentoAberto(), m=x&&marcasDe(x.a).find(y=>y.id===ui.mapa.sel), e=document.getElementById('mk-ind'); if(m&&e) e.outerHTML=indicadosMarca(x.p,x.a,m); } return; }
   // Ambiente de atendimento: salva a cada alteração, sem redesenhar a tela enquanto se digita.
   const x=(t.dataset.atq||t.dataset.atan||t.dataset.atf||t.dataset.vnota||t.dataset.atp||t.dataset.atr||t.dataset.atln)&&atendimentoAberto(); if(!x) return;
@@ -3417,7 +3620,7 @@ function sessionWarn(){
   document.getElementById('ns-warn').innerHTML=pointWarnings(codes,p,tec).map(([k,m])=>`<div class="notice ${k==='crit'?'crit':''}" style="margin-bottom:6px"><b>${k==='crit'?'Atenção':'Cautela'}</b> ${esc(m)}</div>`).join('');
 }
 // Ambiente de atendimento: troca de etapa, alterações com salvamento automático e histórico.
-function irEtapa(i){ const x=atendimentoAberto(); if(!x) return; ui.etapa=Math.max(0,Math.min(7,i));
+function irEtapa(i){ const x=atendimentoAberto(); if(!x) return; ui.etapa=Math.max(0,Math.min(7,i)); ui.rxCorr=null;
   if(x.a.status==='rascunho'&&!x.a.etapas.includes(ui.etapa)){ x.a.etapas.push(ui.etapa); save(); }
   render(); scrollTo(0,0); }
 // Correção de uma versão já registrada: guarda os valores de antes, uma vez por abertura do atendimento.
@@ -3428,6 +3631,11 @@ function mudou(acao, redesenhar=true){ const x=atendimentoAberto(); if(!x) retur
   if(x.a.status==='finalizado'&&ui.avFoto){ const av=avaliacaoEditavel(x.p,x.a); if(av&&av.id===ui.avFoto.id&&JSON.stringify(fotoVersao(av))!==JSON.stringify(ui.avFoto.foto)){ registrarCorrecao(av,ui.avFoto.foto,em); ui.avFoto=null; } }
   if(x.a.status==='finalizado'&&/avalia/.test(acao)){ const av=avaliacaoEditavel(x.p,x.a); if(av) registrarAlteracao(av,'avaliação alterada após finalizar o atendimento',em); }
   save(); if(redesenhar) render(true); else { const e=document.getElementById('autosave'); if(e) e.innerHTML=textoSalvo(x.a); } }
+// Folha para o paciente: só as orientações para casa, o nome, a data e o profissional. Nada clínico.
+function imprimirOrientacoes(p,A){
+  const o=(A.plano.orient||'').trim(); if(!o){ toast('Escreva as orientações antes de imprimir','info'); return; }
+  document.getElementById('imp').innerHTML=`<div class="imp-h">${LOGO}<div><b>Orientações para casa</b><small>${esc(p.name)} · ${fmt(A.data)}</small></div></div><div class="imp-t">${esc(o).replace(/\n/g,'<br>')}</div><div class="imp-a">${esc(PROF.nome)}</div>`;
+  window.print(); }
 const catNome = c => CATEGORIAS.find(x=>x[0]===c)?.[1]||c;
 function acaoAtendimento(a,t){
   const x=atendimentoAberto(); if(!x) return; const {p}=x, A=x.a, av0=avaliacaoEditavel(p,A), av=travada(p,A,av0)?null:av0;
@@ -3444,7 +3652,15 @@ function acaoAtendimento(a,t){
   else if(a.startsWith('at-mv-')||a.startsWith('at-mk-')){ acaoMapa(a,t,A); }
   else if(a==='at-aba'){ ui.avAba=Number(t.dataset.i); render(true); document.querySelector('.ab-bar')?.scrollIntoView({block:'nearest'}); }
   else if(a==='at-hip'&&av){ const id=t.dataset.p; av.status[id]=av.status[id]===t.dataset.st?'':t.dataset.st; mudou('avaliação energética: hipóteses'); }
-  else if(a==='at-pt'){ alterna(A.plano.pontos,t.dataset.c); mudou('plano terapêutico: pontos'); }
+  else if(a==='at-pt'){ alterna(A.plano.pontos,t.dataset.c); if(!A.plano.pontos.includes(t.dataset.c)) esquecerPonto(A,t.dataset.c); mudou('plano terapêutico: pontos'); }
+  else if(a==='at-rx-lado'){ if(A.status==='rascunho'&&definirLado(A,t.dataset.c,t.dataset.l)) mudou(`plano terapêutico: lado de ${t.dataset.c}`); }
+  else if(a==='at-rx-st'){ if(A.status==='rascunho'&&definirStatus(A,t.dataset.c,t.dataset.s)) mudou(`plano terapêutico: ${t.dataset.c} ${({plan:'planejado',real:'realizado',nao:'não realizado'})[t.dataset.s]}`); }
+  else if(a==='at-rx-todos'){ if(A.status==='rascunho'&&todosRealizados(A).length){ mudou('plano terapêutico: pontos planejados marcados como realizados'); toast('Pontos planejados marcados como realizados'); } }
+  else if(a==='at-rx-corr'){ const l=linhaRx(A,t.dataset.c); ui.rxCorr={c:t.dataset.c,lado:l.lado,status:l.status,motivo:''}; render(true); }
+  else if(a==='at-rx-corrx'){ ui.rxCorr=null; render(true); }
+  else if(a==='at-sit'){ definirSituacao(A,t.dataset.q,t.dataset.s); mudou('evolução: situação da queixa'); }
+  else if(a==='at-ir-plano'){ irEtapa(5); }
+  else if(a==='at-imprimir'){ imprimirOrientacoes(p,A); }
   else if(a==='at-tec'){ alterna(A.plano.tec,t.dataset.t); mudou('plano terapêutico: técnicas'); }
   else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
   else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
@@ -3484,7 +3700,7 @@ function acaoMapa(a,t,A){
   else if(a==='at-mv-plano'){ M.plano=!M.plano; render(true); }
   else if(a==='at-mv-ptf'){ M.pt=null; render(true); }
   else if(a==='at-mv-ptv'){ M.pt=t.dataset.c; render(true); }
-  else if(a==='at-mv-ptx'){ const c=t.dataset.c; if(A.status!=='rascunho'||!c) return; const L=A.plano.pontos, tinha=L.includes(c); tinha?L.splice(L.indexOf(c),1):L.push(c);
+  else if(a==='at-mv-ptx'){ const c=t.dataset.c; if(A.status!=='rascunho'||!c) return; const L=A.plano.pontos, tinha=L.includes(c); tinha?(L.splice(L.indexOf(c),1),esquecerPonto(A,c)):L.push(c);
     if(tinha) toast(`${c} retirado do plano`,'info'); else toast(`${c} incluído no plano`);
     mudou(`plano terapêutico: pontos (${c} ${tinha?'retirado':'indicado'} no mapa corporal)`); }
   else if(a==='at-mk-sel'){ const x=marcasDe(A).find(y=>y.id===t.dataset.id); if(!x) return; M.sel=x.id; M.pt=null; M.rm=false; M.vista=x.vista; if(FACES[x.vista]) M.face[x.vista]=x.face; render(true); }
@@ -3543,6 +3759,9 @@ document.addEventListener('change',ev=>{
 });
 document.addEventListener('submit',ev=>{
   ev.preventDefault(); const f=ev.target, v=id=>document.getElementById(id).value;
+  if(f.id==='f-rx-corr'){ const x=atendimentoAberto(), C=ui.rxCorr; if(!x||!C) return; if(!C.motivo.trim()){ toast('Escreva o motivo da correção','info'); return; }
+    const em=new Date().toISOString(), mud=corrigirPonto(x.a,C.c,C,C.motivo,PROF.nome,em); if(!mud){ toast('Nada mudou neste ponto','info'); return; }
+    ui.rxCorr=null; mudou(`plano terapêutico: correção de ${C.c} (${mud.map(([k,a,b])=>`${k.toLowerCase()}: ${a} → ${b}`).join('; ')}). Motivo: ${C.motivo.trim()}`); toast('Correção registrada'); return; }
   if(f.id==='f-part'){ const d=Object.fromEntries(new FormData(f)); if(adicionarFichaParticular(db,d,new Date().toISOString(),uid())){ save(); render(true); toast('Ficha adicionada à Particular'); } return; }
   if(f.id==='f-patient'){
     const cpf=document.getElementById('np-cpf');

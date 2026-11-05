@@ -54,7 +54,7 @@ async function verificar(browser, url, nome) {
   ok(await tem('.fx-panel .ficha', 'Zusanli') && await tem('.fx-panel .fx-dl', '3 cun abaixo do E35') && await tem('.fx-panel .fx-dl', 'Estômago (E)') && await tem('.fx-panel .fx-pos', 'Aproximada'), `${nome}: ficha existente com meridiano, número, localização, ações e posição`);
   await p.click('[data-act="bib-pt"][data-c="E37"]'); await espera();
   ok(await tem('.fx-panel .ficha', 'Nome pendente') && await tem('.fx-panel .fx-pend-t', 'ficha pendente') && await tem('.fx-panel .fx-pos', 'Sem posição no mapa'), `${nome}: ponto sem conteúdo aparece como ficha pendente`);
-  ok(await tem('.fx-panel .fx-dl', 'Joelho · p. 200') && await tem('.fx-panel .ind-f', 'conferido por Mauren'), `${nome}: ficha mostra as regiões indicadas pelo livro, com página e aprovação`);
+  ok(await tem('.fx-panel .fx-dl', 'Joelho · p. 200') && await tem('.fx-panel .ind-f', 'conferido por Maicon'), `${nome}: ficha mostra as regiões indicadas pelo livro, com página e aprovação`);
   // Anotação particular na ficha
   await p.click('[data-act="bib-pt"][data-c="E36"]'); await espera();
   await p.fill('[data-bibnota="E36"]', 'Nota da clínica para teste'); await espera();
@@ -65,7 +65,7 @@ async function verificar(browser, url, nome) {
   ok(await tem('#fx-pos', 'posição não revisada') && await p.locator('#fx-pos [data-act="bib-rev"][data-ok="1"]').count() === 1, `${nome}: posição começa como não revisada`);
   await p.click('#fx-pos [data-act="bib-rev"][data-ok="1"]'); await espera();
   d = await dados();
-  ok(d.biblioteca?.revisoes?.E36?.ok === true && d.biblioteca.revisoes.E36.por === 'Mauren Turcatti' && /^\d{4}-\d{2}-\d{2}T/.test(d.biblioteca.revisoes.E36.em) && await tem('#rev-ok', 'posição revisada') && await tem('#fx-pos', 'Revisada por Mauren Turcatti'), `${nome}: marcar posição como revisada grava quem e quando`);
+  ok(d.biblioteca?.revisoes?.E36?.ok === true && d.biblioteca.revisoes.E36.por === 'Maicon Farinelli' && /^\d{4}-\d{2}-\d{2}T/.test(d.biblioteca.revisoes.E36.em) && await tem('#rev-ok', 'posição revisada') && await tem('#fx-pos', 'Revisada por Maicon Farinelli'), `${nome}: marcar posição como revisada grava quem e quando`);
   await p.click('#fx-pos [data-act="bib-rev"][data-ok="0"]'); await espera();
   d = await dados();
   ok(d.biblioteca.revisoes.E36.ok === false && d.biblioteca.revisoes.E36.hist.length === 2 && d.biblioteca.revisoes.E36.hist[0].acao === 'Revisão retirada' && await tem('#fx-pos', 'Histórico da revisão (2)'), `${nome}: retirar a revisão fica no histórico`);

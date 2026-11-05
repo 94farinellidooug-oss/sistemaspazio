@@ -9,7 +9,7 @@ import { pointWarnings } from '../../js/raciocinio/seguranca.js';
 import { esc, fmt, initials } from '../../js/util.js';
 
 /* ---------- Paciente, profissional e atendimentos fictícios ---------- */
-const PROF = 'Mauren Turcatti';
+const PROF = 'Maicon Farinelli';
 const P = { name:'Marina Costa', idade:35, alerts:{ gestante:false, anticoagulante:true, marcapasso:false } };
 const HOJE = '2026-11-05';
 const ETAPAS = [['anamnese','Anamnese'],['avaliacao','Avaliação energética'],['pentagrama','Pentagrama'],['sintese','Síntese clínica'],['mapa','Mapa corporal'],['plano','Plano e prescrição'],['evolucao','Evolução'],['documentos','Documentos']];

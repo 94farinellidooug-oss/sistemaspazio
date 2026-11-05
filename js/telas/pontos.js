@@ -52,7 +52,7 @@ export function listaTodos(){
 }
 
 /* ---------- Ficha do ponto (Central e Atlas) ---------- */
-// Regiões do corpo em que o livro indica o ponto, com a página. Só as linhas aprovadas por Mauren.
+// Regiões do corpo em que o livro indica o ponto, com a página. Só as linhas aprovadas por Maicon.
 const indRegioes = c => { const L = regioesDoPonto(c), F = FONTE_INDICACOES;
   return L.length ? `<span class="ind-r">${L.map(([r, pg]) => `<span class="pill">${esc(r)} · p. ${pg}</span>`).join('')}</span><small class="muted ind-f">${esc(F.autora)}, ${esc(F.obra)} (${esc(F.editora)}) · conferido por ${esc(F.aprovadoPor)} em ${fmt(F.aprovadoEm)}</small>` : '<span class="muted">Nenhuma região aprovada na tabela.</span>'; };
 // Revisão da posição (etapa 4C): quem conferiu e quando, com histórico. A posição continua aproximada.

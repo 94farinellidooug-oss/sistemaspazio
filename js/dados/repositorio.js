@@ -2,7 +2,7 @@
 // Na primeira abertura, os dados do protótipo (chave spazio-v1) são convertidos para o v2.
 // A chave spazio-v1 nunca é alterada nem apagada: fica como cópia de segurança.
 import { seed } from './exemplos.js';
-import { ehV1, ehV2, hidratar, migrarV1, paraV1 } from './migracao.js';
+import { ehV1, ehV2, hidratar, migrarV1, paraV1, trocarNomeProfissional } from './migracao.js';
 
 export const KEY='musubi-v2';
 export const KEY_V1='spazio-v1';
@@ -12,7 +12,7 @@ const lerJSON = k => { try{ return JSON.parse(ler(k)); }catch(e){ return undefin
 
 function carregar(){
   const bruto = ler(KEY), v2 = lerJSON(KEY);
-  if(ehV2(v2)) return hidratar(v2);
+  if(ehV2(v2)){ if(trocarNomeProfissional(v2, 'Mauren Turcatti', 'Maicon Farinelli')) gravar(KEY, JSON.stringify(v2)); return hidratar(v2); }
   // Dados v2 ilegíveis não são descartados: ficam guardados à parte antes de qualquer outra coisa.
   if(bruto !== null) gravar(KEY+'-ilegivel', bruto);
   const v1 = lerJSON(KEY_V1);
