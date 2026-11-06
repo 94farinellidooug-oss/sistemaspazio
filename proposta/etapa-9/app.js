@@ -41,8 +41,19 @@ function vRelatorios(){
   const forma = FORMA.map(([f, p]) => [f, Math.round(rec * p)]); forma[0][1] += rec - forma.reduce((n, x) => n + x[1], 0); const mf = Math.max(...forma.map(x => x[1]));
   const cmp = Math.max(2, Math.round(at / 4)), ev = [['melhorou', 'Melhorou', Math.round(cmp * .68), 'sobe', 'ok'], ['igual', 'Sem mudança', Math.round(cmp * .24), 'linha', 'neutro'], ['piorou', 'Piorou', 0, 'desce', 'warn']];
   ev[2][2] = Math.max(0, cmp - ev[0][2] - ev[1][2]);
-  return `<div class="chips p9-per" role="group" aria-label="Período">${PER.map(([k, l]) => `<button class="chip ${S.per === k ? 'on' : ''}" data-a="per" data-k="${k}" aria-pressed="${S.per === k}">${l}</button>`).join('')}</div>
+  // Dicas de gestão (nada clínico), cada uma com o botão que leva à ação. Só aparecem quando há o que fazer.
+  const dicas = [
+    ['retomar', 'tel', '8 pacientes sem vir há mais de 21 dias', 'Sem nada agendado. Um contato pelo WhatsApp costuma trazer de volta.', 'Ver em Relacionamento', 'Relacionamento'],
+    ['receber', 'dinheiro', `${brl(640)} em atendimentos ainda não pagos`, '4 atendimentos feitos esperando o recebimento.', 'Abrir Financeiro', 'Financeiro'],
+    ...(falt > soma(A, 'falt') && A.length ? [['faltas', 'alerta', `As faltas subiram: ${falt} em ${nome}`, 'Mandar o lembrete do dia seguinte pelo WhatsApp ajuda a reduzir as faltas.', 'Ver lembretes de amanhã', 'Agenda']] : []),
+    ['pacotes', 'camadas', '2 pacotes perto do fim', 'Helena Souza (9 de 10) e Marina Costa (4 de 5). Bom momento para oferecer a renovação.', 'Ver pacotes', 'Financeiro'],
+    ['livres', 'cal', '14 horários livres nos próximos 7 dias', 'Dá para oferecer a quem está para retomar ou a quem procurou e ainda não é paciente.', 'Abrir Agenda', 'Agenda']
+  ];
+  return `<div class="p9-bar"><div class="chips p9-per" role="group" aria-label="Período">${PER.map(([k, l]) => `<button class="chip ${S.per === k ? 'on' : ''}" data-a="per" data-k="${k}" aria-pressed="${S.per === k}">${l}</button>`).join('')}</div>
+    <button class="btn sm" data-a="imprimir">${ic('baixar')}Imprimir ou salvar em PDF</button></div>
   <div class="tiles rel-t4">${tile('at', 'Atendimentos', n0(at), compara(at, soma(A, 'at')))}${tile('rec', 'Recebido', brl(rec), compara(rec, soma(A, 'rec')))}${tile('falt', 'Faltas', `${falt} <span class="muted sm">· ${pf}%</span>`, compara(falt, soma(A, 'falt'), true))}${tile('novos', 'Pacientes novos', n0(novos), compara(novos, soma(A, 'novos')))}</div>
+  <div class="card" id="r-dicas"><div class="card-h"><h2>O que dá para fazer agora<small>dicas tiradas dos seus números para aumentar ou recuperar o faturamento</small></h2><span class="pill acc">${dicas.length}</span></div>
+    <div class="dicas">${dicas.map(([k, i, t, d, b, ir]) => `<div class="dica" data-d="${k}"><span class="tico sm acc">${ic(i)}</span><div class="grow"><b>${t}</b><small>${d}</small></div><button class="btn sm" data-a="ir" data-to="${ir}">${b}</button></div>`).join('')}</div></div>
   <div class="grid g2 rel-g">
     <div class="card" id="r-mes"><div class="card-h"><h2>Atendimentos por mês<small>${S.per === 'ano' ? 'este ano' : 'últimos 6 meses'}; ${I.length > 1 ? 'os meses do período' : 'o mês escolhido'} em destaque</small></h2></div>
       <div class="rel-c" role="img" aria-label="Atendimentos por mês">${meses.map(i => `<div class="rel-col ${I.includes(i) ? 'on' : ''}" data-tip="${MES_L[M[i].m]}${i === 11 ? ' (até hoje)' : ''}: ${M[i].at} atendimentos, ${M[i].falt} faltas"><b>${M[i].at}</b><span style="height:${Math.round(M[i].at / mx * 100)}%"></span><small>${MES[M[i].m]}</small></div>`).join('')}</div>
@@ -55,6 +66,14 @@ function vRelatorios(){
       <div class="rel-ev">${ev.map(([k, l, q, i, c]) => `<div class="ev-i ${c}" data-ev="${k}"><span class="tico sm">${ic(i)}</span><span class="grow">${l}</span><b>${q}</b><small class="muted">${Math.round(q / cmp * 100)}%</small></div>`).join('')}</div>
       <p class="muted sm" style="margin-top:10px">Só mostra o que foi registrado na evolução; não é avaliação clínica.</p></div>
   </div>`;
+}
+
+// Imprimir ou salvar em PDF: a folha leva o período, os números, as dicas e os quadros (sem botões).
+function imprimir(){
+  const P = PER.find(p => p[0] === S.per), v = document.getElementById('view').cloneNode(true);
+  v.querySelectorAll('.p9-bar, .et-h, button, details').forEach(x => x.remove());
+  document.getElementById('imp').innerHTML = `<div class="imp-h">${LOGO}<div><b>Spazio Stabilità · Relatórios</b><small>${P[1]} · impresso em 05/11/2026 por Maicon Farinelli</small></div></div><div class="rel-imp">${v.innerHTML}</div>`;
+  window.print();
 }
 
 /* ---------- Estrutura ---------- */
@@ -78,8 +97,11 @@ addEventListener('scroll', () => { tip.hidden = true; }, { passive:true });
 document.addEventListener('click', ev => {
   const t = ev.target.closest('[data-a]'); if (!t) return; const a = t.dataset.a;
   if (a === 'per') { S.per = t.dataset.k; render(true); }
+  else if (a === 'imprimir') { imprimir(); }
+  else if (a === 'ir') { toast(`No sistema, este botão abre ${t.dataset.to}`, 'info'); }
   else if (a === 'menu-abrir') { S.aberto = !S.aberto; render(true); }
   else if (a === 'fora') { ev.preventDefault(); toast('Nesta proposta só os Relatórios são navegáveis', 'info'); }
 });
+addEventListener('afterprint', () => { document.getElementById('imp').innerHTML = ''; });
 addEventListener('hashchange', () => { S.aberto = false; render(); });
 render();
