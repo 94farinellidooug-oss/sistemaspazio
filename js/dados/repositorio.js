@@ -20,7 +20,15 @@ function carregar(){
   return hidratar(migrarV1(seed(), new Date().toISOString(), 'exemplos'));
 }
 export let db = carregar();
-export const save = () => { gravar(KEY, JSON.stringify(db)); };
+// Depois de gravar no aparelho, avisa quem estiver ouvindo (a sincronia com o servidor, etapa 10).
+let ouvinteSalvar = null;
+export const ouvirSalvar = fn => { ouvinteSalvar = fn; };
+export const save = () => { gravar(KEY, JSON.stringify(db)); if(ouvinteSalvar) ouvinteSalvar(); };
+// Troca todos os dados pelos que vieram do servidor (ou por uma clínica vazia), sem avisar a sincronia.
+export function trocarDados(doc){ db = hidratar(JSON.parse(JSON.stringify(doc))); gravar(KEY, JSON.stringify(db)); }
+export const dadosVazios = () => hidratar(migrarV1({ patients:[], appts:[] }, new Date().toISOString(), 'nova-clinica'));
+// Quanta coisa tem neste aparelho (para o primeiro acesso dizer o que vai junto).
+export const resumoDados = () => ({ pacientes:db.patients.filter(p=>!p.exemplo).length, exemplos:db.patients.some(p=>p.exemplo), atendimentos:db.patients.reduce((n,p)=>n+p.atendimentos.length,0), horarios:db.appts.length });
 export const patient = id => db.patients.find(p=>p.id===id);
 // Substitui todos os dados pelos exemplos (botão "Restaurar exemplos").
 export function restaurarExemplos(){ db = hidratar(migrarV1(seed(), new Date().toISOString(), 'exemplos')); save(); }

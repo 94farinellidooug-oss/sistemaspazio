@@ -1170,3 +1170,35 @@ input[type=checkbox]{accent-color:var(--brand)}
   .rel-imp .card-h h2{font-size:11pt}
   .rel-imp .rel-c{height:140px}
 }
+
+/* Etapa 10 · Conta no servidor: tela de acesso e selo de salvo no topo */
+#acesso{position:fixed;inset:0;z-index:60;background:var(--bg);overflow:auto}
+body.com-acesso{overflow:hidden}
+.acesso-f{min-height:100%;display:grid;place-items:center;padding:24px 16px}
+.acesso-card{width:min(440px,100%);padding:28px;display:grid;gap:14px}
+.acesso-card h1{font-size:1.35rem;margin:4px 0 0}
+.acesso-card > p.muted{margin:-6px 0 4px}
+.acesso-h{display:flex;align-items:center;gap:10px}
+.acesso-2{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:12px}
+.acesso-l{display:flex;justify-content:flex-end;margin-top:-6px}
+.acesso-c{display:flex;align-items:center;gap:8px}
+.acesso-card .senha-c{position:relative;display:block}
+.acesso-card .senha-c input{padding-right:84px}
+.acesso-card .senha-c .btn{position:absolute;right:4px;top:50%;transform:translateY(-50%)}
+.acesso-card .largo{width:100%;justify-content:center;padding:11px}
+.acesso-card .lnk{background:none;border:0;padding:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.acesso-card .lnk.suave{color:var(--muted);font-weight:500}
+.acesso-card p.sm{margin:0;text-align:center}
+.erro-a{color:var(--crit);font-size:.88rem;margin:0}
+.acesso-opc{display:grid;gap:8px}
+.acesso-opc p{margin:0;font-size:.88rem}
+.acesso-opc label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line-2);border-radius:var(--r-sm);cursor:pointer}
+.acesso-opc label.on{border-color:var(--accent);background:var(--accent-soft)}
+.acesso-opc input{margin-top:3px;accent-color:var(--accent)}
+.acesso-opc small{display:block;color:var(--muted);font-size:.82rem;margin-top:2px}
+.selo-nuvem{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 10px;font-size:.78rem;font-weight:500;color:var(--muted);cursor:pointer}
+.selo-nuvem .ic{width:14px;height:14px}
+.selo-nuvem.ok .ic{color:var(--ok)}
+.selo-nuvem.warn{color:var(--warn);border-color:var(--warn-soft);background:var(--warn-soft)}
+@media (max-width:560px){ .selo-nuvem span{display:none} .selo-nuvem{padding:6px} }
+.pf-conta{padding:6px 10px 8px;border-bottom:1px solid var(--line);margin-bottom:4px;line-height:1.4;word-break:break-all}

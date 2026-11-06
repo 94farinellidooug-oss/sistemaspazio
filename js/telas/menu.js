@@ -6,6 +6,7 @@ import { db } from '../dados/repositorio.js';
 import { notificacoes } from '../dados/indicadores.js';
 import { ui } from '../estado.js';
 import { esc, initials } from '../util.js';
+import { menuConta, seloConta } from './conta.js';
 
 // [rota, rótulo, ícone]
 export const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
@@ -54,7 +55,7 @@ export function renderNav(route){
     <a class="tb-logo" href="#painel">${LOGO}<b>Musubi</b></a>
     <nav class="migalha" aria-label="Caminho">${crumbs.map(([h,t],i)=>h&&i<crumbs.length-1?`<a ${h.startsWith('#')?`href="${h}"`:h}>${esc(t)}</a>`:`<span>${esc(t)}</span>`).join(ic('dir'))}</nav>
     <button class="busca-g" data-act="busca" aria-label="Busca global (Ctrl K)">${ic('busca')}<span>Buscar pacientes, pontos e telas</span><kbd>Ctrl K</kbd></button>
-    <div class="tb-r">
+    <div class="tb-r">${seloConta()}
       <button class="ib so-cel" data-act="busca" aria-label="Buscar" data-tip="Buscar">${ic('busca')}</button>
       <button class="ib" data-act="atalhos" aria-label="Atalhos de teclado" data-tip="Atalhos de teclado (?)">${ic('teclado')}</button>
       <div class="dd"><button class="ib" data-act="notif" aria-label="Notificações: ${nl} novas" aria-expanded="${ui.ov==='notif'}" data-tip="Notificações">${ic('sino')}${nl?`<span class="badge">${nl}</span>`:''}</button>
@@ -64,7 +65,7 @@ export function renderNav(route){
       <div class="dd"><button class="perfil-b" data-act="perfil" aria-expanded="${ui.ov==='perfil'}" aria-label="Perfil do profissional"><span class="avatar">${initials(PROF.nome)}</span><span class="pf-n">${PROF.nome.split(' ')[0]}</span>${ic('baixo')}</button>
         ${ui.ov==='perfil'?`<div class="dd-p pf" role="menu"><div class="pf-h"><span class="avatar lg">${initials(PROF.nome)}</span><div><b>${PROF.nome}</b><small class="muted">${PROF.papel}</small></div></div>
           <a class="pf-i" href="#configuracoes">${ic('admin')}Preferências</a><button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
-          <button class="pf-i sair" data-act="aviso" data-m="Sair: disponível quando houver login (etapa 10).">${ic('sair')}Sair</button></div>`:''}</div>
+          ${menuConta()}</div>`:''}</div>
     </div>`;
   document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+
     NAV.map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+

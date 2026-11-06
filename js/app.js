@@ -20,6 +20,7 @@ import { TIPOS_MARCA, LADOS_MARCA, adicionarMarca, editarMarca, marcasDe, remove
 import { cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { PROF, listaBusca, renderNav } from './telas/menu.js';
+import { entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
 import { notificacoes } from './dados/indicadores.js';
 import { LOGO, ic } from './componentes/icones.js';
 import { FACES, MERIDIANOS, TAM, VASOS_ATLAS, ladoDe, regiaoDoToque } from './componentes/corpo.js';
@@ -131,6 +132,9 @@ document.addEventListener('click',ev=>{
   else if(a==='msg-orig'){ if(voltarMensagemWa(db,t.dataset.k)){ save(); render(true); toast('Mensagem de volta ao texto original'); } }
   else if(a==='ler-todas'){ notificacoes().forEach(n=>ui.lidas.add(n.k)); ui.ov=null; render(true); toast('Notificações marcadas como lidas'); }
   else if(a==='aviso'){ ui.ov=null; render(true); toast(t.dataset.m,'info'); }
+  else if(a==='sair'){ ui.ov=null; sairDaConta(); }
+  else if(a==='conta-entrar'){ entrarNaConta(); }
+  else if(a==='nuvem-tentar'){ tentarDeNovoConta(); }
   else if(a==='dia'){ ui.dia=t.dataset.d; render(true); }
   else if(a==='rolar'){ const d=document.getElementById(t.dataset.to); d?.scrollIntoView({behavior:'smooth',block:'start'}); d?.querySelector('input')?.focus({preventScroll:true}); }
   else if(a==='serie'){ const on=t.getAttribute('aria-pressed')!=='false'; t.setAttribute('aria-pressed',String(!on)); t.closest('.card').querySelectorAll(`.chart .se[data-s="${t.dataset.s}"]`).forEach(g=>g.classList.toggle('oculta',on)); }
@@ -426,4 +430,6 @@ document.addEventListener('submit',ev=>{
     save(); ui.bookPid=null; ui.remarcar=null; ui.agForm=null; ui.agDia=date; render(true);
   }
 });
+ligarAcesso();
+iniciarConta(manter => render(manter));
 render();
