@@ -3,7 +3,7 @@
 // sem internet, criar a clínica levando os dados, baixar, salvar com versão, conflito entre aparelhos
 // (guarda cópia e traz a do servidor), pedido de contato da página de apresentação.
 // As regras de acesso do próprio banco são testadas em tests/banco.sh.  Uso: node tests/nuvem.mjs
-import { criarNuvem, criarSincronia, KEY_SESSAO } from '../js/dados/nuvem.js';
+import { criarNuvem, criarSincronia, juntarDocs, KEY_SESSAO } from '../js/dados/nuvem.js';
 import { servidor } from './lib/supabase-falso.mjs';
 
 let falhas = 0;
@@ -47,6 +47,20 @@ const lk = N3.sessaoDoLink('#access_token=abc&refresh_token=rt-u9-1&expires_in=3
 ok(lk.tipo === 'signup' && N3.sessao().access_token === 'abc', 'link do e-mail conecta a pessoa');
 ok(N3.sessaoDoLink('#/agenda') === null, 'endereço comum não é confundido com o link');
 
+// Juntar alterações feitas ao mesmo tempo
+{ const base = { v:2, config:{ clinica:{ nome:'Spazio', cidade:'Caxias' } }, patients:[{ id:'p1', name:'Ana', sessions:[{ id:'s1', n:1 }] }, { id:'p2', name:'Bia' }, { id:'p3', name:'Caio' }], appts:[] };
+  const meu = structuredClone(base), deles = structuredClone(base);
+  meu.patients[0].sessions.push({ id:'s2', n:2 }); meu.patients[1].name = 'Bia Souza'; meu.patients.push({ id:'p4', name:'Davi' }); meu.patients = meu.patients.filter(p => p.id !== 'p3');
+  deles.appts.push({ id:'a1', pid:'p1' }); deles.patients[0].phone = '(54) 9'; deles.config.clinica.cidade = 'Caxias do Sul';
+  const J = juntarDocs(base, meu, deles);
+  ok(J.patients[0].sessions.length === 2 && J.patients[0].phone === '(54) 9', 'junta sessão nova (aqui) e telefone (lá) no mesmo paciente');
+  ok(J.patients.find(p => p.id === 'p2').name === 'Bia Souza' && J.patients.some(p => p.id === 'p4') && !J.patients.some(p => p.id === 'p3'), 'mantém edição, paciente novo e exclusão deste aparelho');
+  ok(J.appts.length === 1 && J.config.clinica.cidade === 'Caxias do Sul' && J.config.clinica.nome === 'Spazio', 'mantém horário novo e configuração do outro aparelho');
+  const lá = structuredClone(base); lá.patients[2].name = 'Caio Lima';
+  ok(juntarDocs(base, meu, lá).patients.find(p => p.id === 'p3')?.name === 'Caio Lima', 'apagado aqui mas editado lá: não some');
+  const a2 = structuredClone(base), b2 = structuredClone(base); a2.patients[1].name = 'Bia A'; b2.patients[1].name = 'Bia B';
+  ok(juntarDocs(base, a2, b2).patients[1].name === 'Bia A', 'mesmo campo mudado dos dois lados: vale o deste aparelho'); }
+
 // Sincronia entre aparelhos
 const timers = new Map(); let tid = 0; const relogioFalso = { definir:fn => { timers.set(++tid, fn); return tid; }, limpar:id => timers.delete(id) };
 const rodar = async () => { while (timers.size) { const [id, fn] = timers.entries().next().value; timers.delete(id); await fn(); } };
@@ -62,18 +76,21 @@ const B = criarNuvem({ url:'https://x.supabase.co', chave:'pub', f:S.fetch, mem:
 await B.salvar(c, { v:2, patients:[{ id:'p1' }, { id:'p2' }, { id:'celular' }] }, 2);
 local.patients.push({ id:'computador' }); A.marcar(); await rodar();
 const conf = estados.at(-1);
-ok(conf[0] === 'conflito' && JSON.parse(memA.getItem(conf[1].copia)).patients.at(-1).id === 'computador', 'conflito: guarda cópia do que estava neste aparelho');
-ok(local.patients.at(-1).id === 'celular' && A.versao() === 3, 'e traz o que o outro aparelho salvou');
+ok(estados.some(([e]) => e === 'juntado') && JSON.parse(memA.getItem(estados.find(([e]) => e === 'juntado')[1].copia)).patients.at(-1).id === 'computador', 'salvaram ao mesmo tempo: guarda uma cópia de segurança neste aparelho');
+ok(['celular', 'computador'].every(id => local.patients.some(p => p.id === id)) && A.versao() === 4 && ['celular', 'computador'].every(id => S.dados[c].doc.patients.some(p => p.id === id)) && A.estado() === 'salvo', 'e junta as duas alterações (a do outro aparelho e a deste) no servidor');
+// Outra pessoa salva; este aparelho traz ao atualizar
+await B.salvar(c, { ...structuredClone(S.dados[c].doc), patients:[...S.dados[c].doc.patients, { id:'recepcao' }] }, 4);
+ok(await A.atualizar() && local.patients.some(p => p.id === 'recepcao') && A.versao() === 5 && !(await A.atualizar()), 'atualizar traz o que outra pessoa salvou (e não faz nada se não mudou)');
 
 S.offline = true; local.patients.push({ id:'sem-internet' }); A.marcar(); await rodar();
 ok(A.estado() === 'offline' && A.pendente(), 'sem internet fica pendente');
 S.offline = false; A.tentarDeNovo(); await rodar();
-ok(A.estado() === 'salvo' && S.dados[c].doc.patients.at(-1).id === 'sem-internet', 'quando volta a internet, envia o que ficou pendente');
+ok(A.estado() === 'salvo' && S.dados[c].doc.patients.some(p => p.id === 'sem-internet'), 'quando volta a internet, envia o que ficou pendente');
 
 // Outra conta não salva na clínica
 S.usuarios['outra@y.com'] = { id:'u9', senha:'segredo123', nome:'Outra' };
 const O = criarNuvem({ url:'https://x.supabase.co', chave:'pub', f:S.fetch, mem:memoria() }); await O.entrar('outra@y.com', 'segredo123');
-e = await erro(O.salvar(c, {}, 4));
+e = await erro(O.salvar(c, {}, 9));
 ok(e?.message === 'Sua conta não tem acesso a esta clínica.' && (await O.baixar(c)) === undefined || (await O.baixar(c)) === null, 'outra conta: sem acesso e sem dados');
 
 // Página de apresentação e sair
