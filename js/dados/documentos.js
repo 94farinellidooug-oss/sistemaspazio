@@ -11,7 +11,9 @@ import { finalizados } from './atendimento.js';
 import { LADOS_RX, SITUACOES_QUEIXA, linhasRx, nomeRx } from './prescricao.js';
 import { fmt } from '../util.js';
 
-export const CLINICA = 'Spazio Stabilità';
+// Nome que sai nos documentos, relatórios e mensagens. Muda em Configurações (dados/config.js).
+export let CLINICA = 'Spazio Stabilità';
+export const definirNomeClinica = n => { CLINICA = n || CLINICA; };
 // Modelos que vêm com o sistema: [chave, nome, ícone, pede assinatura do paciente, texto com os dados entre chaves]
 export const MODELOS_DOC = [
   ['termo', 'Termo de consentimento', 'assinatura', true, 'Eu, {paciente}, declaro que fui informado(a) por {profissional} sobre o tratamento com acupuntura e técnicas associadas, seus objetivos e possíveis reações, e que tive minhas dúvidas esclarecidas.\n\nInformei corretamente minhas condições de saúde e os medicamentos em uso, e sei que posso interromper o tratamento quando quiser.'],

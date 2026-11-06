@@ -1202,3 +1202,32 @@ body.com-acesso{overflow:hidden}
 .selo-nuvem.warn{color:var(--warn);border-color:var(--warn-soft);background:var(--warn-soft)}
 @media (max-width:560px){ .selo-nuvem span{display:none} .selo-nuvem{padding:6px} }
 .pf-conta{padding:6px 10px 8px;border-bottom:1px solid var(--line);margin-bottom:4px;line-height:1.4;word-break:break-all}
+
+/* Etapa 10 · Configurações (proposta/etapa-10/sistema.css) */
+.cf-max{max-width:760px}
+.cf-g{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+@media (max-width:1000px){ .cf-g{grid-template-columns:minmax(0,1fr)} }
+.cf-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;align-items:center}
+.cf-obs{margin-top:12px}
+.cf-senha{margin-top:12px}
+.erro-c{color:var(--crit);font-size:.86rem;margin:10px 0 0}
+.cf-mais{margin:14px 0 6px}
+.cf-mais summary{cursor:pointer;font-size:.86rem;color:var(--accent);font-weight:500;margin-bottom:12px}
+.cf-serv{display:grid;gap:10px}
+.cf-s{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:var(--r-sm)}
+.cf-s.off{opacity:.6}
+.cf-sh{border:0;padding:0 11px;font-size:.74rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.cf-s:not(.cf-sh) .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.cf-s .field{gap:0}
+.cf-sw{display:inline-flex;align-items:center;gap:8px;font-size:.88rem;font-weight:500;white-space:nowrap;align-self:center;cursor:pointer}
+.cf-sw input{width:17px;height:17px;accent-color:var(--accent)}
+@media (max-width:620px){ .cf-sh{display:none} .cf-s:not(.cf-sh) .lbl{position:static;width:auto;height:auto;clip:auto} .cf-s .field{gap:6px} .cf-s{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .cf-sn{grid-column:1/-1} }
+.cf-hor{display:grid;gap:4px}
+.cf-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 4px;border-top:1px solid var(--line)}
+.cf-hor .cf-h:first-child{border-top:0}
+.cf-h .cf-sw{min-width:110px}
+.cf-h.off .cf-sw{color:var(--muted)}
+.cf-hh{display:inline-flex;align-items:center;gap:8px}
+.cf-hh input{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:6px 8px;font:inherit;font-size:.9rem;color:var(--ink)}
+.cf-pausa{margin-top:8px;border-top:1px dashed var(--line-2);padding-top:12px}
+#cf-hor-resumo{margin-top:10px}

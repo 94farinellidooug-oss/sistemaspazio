@@ -6,7 +6,7 @@ import { db } from '../dados/repositorio.js';
 import { notificacoes } from '../dados/indicadores.js';
 import { ui } from '../estado.js';
 import { esc, initials } from '../util.js';
-import { menuConta, seloConta } from './conta.js';
+import { conta, menuConta, seloConta } from './conta.js';
 
 // [rota, rótulo, ícone]
 export const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
@@ -64,12 +64,12 @@ export function renderNav(route){
           <div class="dd-f muted sm">Geradas a partir da agenda, dos alertas e dos prontuários.</div></div>`:''}</div>
       <div class="dd"><button class="perfil-b" data-act="perfil" aria-expanded="${ui.ov==='perfil'}" aria-label="Perfil do profissional"><span class="avatar">${initials(PROF.nome)}</span><span class="pf-n">${PROF.nome.split(' ')[0]}</span>${ic('baixo')}</button>
         ${ui.ov==='perfil'?`<div class="dd-p pf" role="menu"><div class="pf-h"><span class="avatar lg">${initials(PROF.nome)}</span><div><b>${PROF.nome}</b><small class="muted">${PROF.papel}</small></div></div>
-          <a class="pf-i" href="#configuracoes">${ic('admin')}Preferências</a><button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
+          <a class="pf-i" href="#configuracoes" data-cf="ir" data-k="conta">${ic('escudo')}Minha conta</a>${conta.modo!=='nuvem'||conta.clinica?.perfil==='adm'?`<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="clinica">${ic('admin')}Configurações da clínica</a>`:''}<button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
           ${menuConta()}</div>`:''}</div>
     </div>`;
   document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+
     NAV.map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+
-    `<div class="foot"><button class="toggle reset" data-act="reset" aria-label="Restaurar exemplos" data-tip="${ui.menuMini?'Restaurar exemplos':''}">${ic('retorno')}<span class="tx">Restaurar exemplos</span></button>
+    `<div class="foot">${conta.modo==='nuvem'?'':`<button class="toggle reset" data-act="reset" aria-label="Restaurar exemplos" data-tip="${ui.menuMini?'Restaurar exemplos':''}">${ic('retorno')}<span class="tx">Restaurar exemplos</span></button>`}
      <button class="toggle" data-act="menu-mini" aria-label="${ui.menuMini?'Expandir menu':'Recolher menu'}" data-tip="${ui.menuMini?'Expandir menu ( [ )':''}">${ic(ui.menuMini?'abrir_menu':'fechar_menu')}<span class="tx">Recolher menu</span><kbd class="tx">[</kbd></button></div>`;
   camada();
 }

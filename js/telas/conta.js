@@ -5,6 +5,8 @@
 // a não ser que o modo servidor seja escolhido (musubi-modo = nuvem).
 import { criarNuvem, criarSincronia } from '../dados/nuvem.js';
 import { dadosVazios, db, ouvirSalvar, resumoDados, trocarDados } from '../dados/repositorio.js';
+import { definirNomeClinica } from '../dados/documentos.js';
+import { PROF } from './menu.js';
 import { LOGO, ic } from '../componentes/icones.js';
 import { esc } from '../util.js';
 
@@ -15,7 +17,8 @@ const gravarC = (k, v) => { try { v == null ? localStorage.removeItem(k) : local
 const voltarAoSite = () => location.origin + location.pathname;
 
 // Estado da conta: modo 'local' (sem conta) ou 'nuvem'; tela de acesso aberta (ou null); clínica atual.
-export const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true };
+export const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false };
+export const PERFIL_NOME = { adm:'Administrador', prof:'Profissional', rec:'Recepção' };
 let aoMudarConta = () => {};
 
 const modoInicial = () => {
@@ -58,6 +61,12 @@ function ligarSincronia(){
 async function abrirClinica(c){
   conta.clinica = c; gravarC(KEY_CLINICA, c.id); ligarSincronia();
   await conta.sinc.iniciar(); gravarC(KEY_CACHE_DE, c.id);
+  // Quem entrou assina os registros; a clínica sem nome salvo nas Configurações usa o nome do cadastro.
+  const u = conta.nuvem.sessao()?.user;
+  if (u?.nome) PROF.nome = u.nome;
+  PROF.papel = PERFIL_NOME[c.perfil] || PROF.papel;
+  if (!db.config?.clinica?.nome && c.nome) definirNomeClinica(c.nome);
+  try { conta.dono = await conta.nuvem.souDono(); } catch (e) { conta.dono = false; }
   fecharAcesso(); aoMudarConta();
 }
 let avisoH = null;
@@ -85,6 +94,22 @@ export const sairDaConta = async () => {
   if (lerC(KEY_CACHE_DE)) { trocarDados(dadosVazios()); gravarC(KEY_CACHE_DE, null); }
   location.reload();
 };
+
+/* ---------- Usado em Configurações (Sua conta e dados da clínica) ---------- */
+export const contaAtual = () => {
+  const u = conta.modo === 'nuvem' ? conta.nuvem?.sessao()?.user : null;
+  return { nuvem:!!u, nome:u?.nome || PROF.nome, email:u?.email || '', perfil:conta.clinica?.perfil || 'adm', clinica:conta.clinica?.nome || '' };
+};
+// Cada uma devolve '' quando deu certo, ou a mensagem de erro em português.
+const tentarC = async fn => { try { await fn(); return ''; } catch (e) { return e.message || 'Não foi possível agora. Tente de novo.'; } };
+export const salvarNomeConta = nome => tentarC(async () => { await conta.nuvem.mudarNome(nome); PROF.nome = nome.trim(); });
+export const mudarEmailConta = email => tentarC(() => conta.nuvem.mudarEmail(email, voltarAoSite()));
+export const trocarSenhaConta = senha => tentarC(() => conta.nuvem.trocarSenha(senha));
+export const sairDosOutrosConta = () => tentarC(() => conta.nuvem.sairDosOutros());
+export const clinicaNoServidor = D => conta.modo === 'nuvem' && conta.clinica?.id ? tentarC(async () => {
+  await conta.nuvem.mudarClinica(conta.clinica.id, D); conta.clinica.nome = D.nome;
+  const c = conta.clinicas.find(x => x.id === conta.clinica.id); if (c) Object.assign(c, { nome:D.nome, cidade:D.cidade, uf:D.uf });
+}) : Promise.resolve('');
 
 /* ---------- Tela de acesso ---------- */
 const campoA = (nome, rot, tipo = 'text', extra = '') => `<label class="field"><span class="lbl">${rot}</span><input name="${nome}" type="${tipo}" ${extra} required></label>`;
@@ -147,6 +172,7 @@ async function enviarAcesso(f){
     if (t === 'clinica') {
       const levar = !lerC(KEY_CACHE_DE) && conta.levar && (resumoDados().pacientes > 0 || resumoDados().horarios > 0);
       const doc = levar ? db : dadosVazios();
+      (doc.config ||= {}).clinica = { ...(doc.config.clinica || {}), nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf') };
       const id = await conta.nuvem.criarClinica({ nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf'), nomePessoa:conta.nuvem.sessao().user.nome || '' }, doc);
       await abrirClinica({ id, nome:v('clinica').trim(), perfil:'adm' });
     }

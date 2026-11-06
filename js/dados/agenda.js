@@ -10,9 +10,15 @@ import { addDays, fmt } from '../util.js';
 
 // [serviço, minutos, valor]
 export const SERVICOS = [['Acupuntura', 60, 180], ['Acupuntura e moxabustão', 60, 200], ['Auriculoterapia', 30, 90], ['Ventosaterapia', 45, 150], ['Massoterapia', 60, 160], ['Avaliação inicial', 90, 220]];
-export const servicoDe = tipo => SERVICOS.find(s => s[0] === tipo) || [tipo, 60, 0];
+// Todos os serviços, inclusive os fora de uso (para os horários antigos continuarem com duração e valor).
+// SERVICOS fica só com os em uso. As duas listas mudam no lugar quando a clínica salva em Configurações.
+export const TODOS_SERVICOS = SERVICOS.slice();
+export const servicoDe = tipo => TODOS_SERVICOS.find(s => s[0] === tipo) || [tipo, 60, 0];
 export const SITUACOES_HORARIO = [['agendado', 'Agendado', 'relogio'], ['confirmado', 'Confirmado', 'check'], ['atendido', 'Atendido', 'okc'], ['faltou', 'Faltou', 'x']];
 export const INICIO_DIA = 8 * 60, FIM_DIA = 19 * 60;
+// Horário de atendimento (Configurações). dias: segunda a domingo, {aberto, ini, fim}; pausa: {tem, ini, fim}.
+// O padrão é o de antes das Configurações: todos os dias das 8h às 19h, sem intervalo.
+export const HORARIO = { dias:Array.from({ length:7 }, () => ({ aberto:true, ini:'08:00', fim:'19:00' })), pausa:{ tem:false, ini:'12:00', fim:'13:00' } };
 
 export const ativo = a => a.st !== 'desmarcado';
 export const situacaoHorario = a => a.done ? 'atendido' : a.st || 'agendado';
@@ -47,7 +53,10 @@ export function remarcar(a, date, time, tipo){
 // Horários livres do dia, de hora em hora, onde cabe o serviço sem encostar em outro.
 export function horariosLivres(L, d, tipo, ignorar){
   const dur = servicoDe(tipo)[1], oc = horariosDoDia(L, d).filter(a => a.id !== ignorar).map(a => [minutosAg(a.time), minutosAg(a.time) + servicoDe(a.tipo)[1]]), R = [];
-  for (let m = INICIO_DIA; m + dur <= FIM_DIA; m += 60) if (!oc.some(([i, f]) => m < f && m + dur > i)) R.push(hhmmAg(m));
+  const H = HORARIO.dias[(new Date(d + 'T12:00:00').getDay() + 6) % 7];
+  if (!H?.aberto) return R;
+  if (HORARIO.pausa.tem) oc.push([minutosAg(HORARIO.pausa.ini), minutosAg(HORARIO.pausa.fim)]);
+  for (let m = minutosAg(H.ini); m + dur <= minutosAg(H.fim); m += 60) if (!oc.some(([i, f]) => m < f && m + dur > i)) R.push(hhmmAg(m));
   return R;
 }
 // Horário que encosta em outro já marcado no mesmo dia (para avisar, sem impedir).
