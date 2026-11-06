@@ -52,8 +52,6 @@ function vRelatorios(){
   return `<div class="p9-bar"><div class="chips p9-per" role="group" aria-label="Período">${PER.map(([k, l]) => `<button class="chip ${S.per === k ? 'on' : ''}" data-a="per" data-k="${k}" aria-pressed="${S.per === k}">${l}</button>`).join('')}</div>
     <button class="btn sm" data-a="imprimir">${ic('baixar')}Imprimir ou salvar em PDF</button></div>
   <div class="tiles rel-t4">${tile('at', 'Atendimentos', n0(at), compara(at, soma(A, 'at')))}${tile('rec', 'Recebido', brl(rec), compara(rec, soma(A, 'rec')))}${tile('falt', 'Faltas', `${falt} <span class="muted sm">· ${pf}%</span>`, compara(falt, soma(A, 'falt'), true))}${tile('novos', 'Pacientes novos', n0(novos), compara(novos, soma(A, 'novos')))}</div>
-  <div class="card" id="r-dicas"><div class="card-h"><h2>O que dá para fazer agora<small>dicas tiradas dos seus números para aumentar ou recuperar o faturamento</small></h2><span class="pill acc">${dicas.length}</span></div>
-    <div class="dicas">${dicas.map(([k, i, t, d, b, ir]) => `<div class="dica" data-d="${k}"><span class="tico sm acc">${ic(i)}</span><div class="grow"><b>${t}</b><small>${d}</small></div><button class="btn sm" data-a="ir" data-to="${ir}">${b}</button></div>`).join('')}</div></div>
   <div class="grid g2 rel-g">
     <div class="card" id="r-mes"><div class="card-h"><h2>Atendimentos por mês<small>${S.per === 'ano' ? 'este ano' : 'últimos 6 meses'}; ${I.length > 1 ? 'os meses do período' : 'o mês escolhido'} em destaque</small></h2></div>
       <div class="rel-c" role="img" aria-label="Atendimentos por mês">${meses.map(i => `<div class="rel-col ${I.includes(i) ? 'on' : ''}" data-tip="${MES_L[M[i].m]}${i === 11 ? ' (até hoje)' : ''}: ${M[i].at} atendimentos, ${M[i].falt} faltas"><b>${M[i].at}</b><span style="height:${Math.round(M[i].at / mx * 100)}%"></span><small>${MES[M[i].m]}</small></div>`).join('')}</div>
@@ -65,7 +63,9 @@ function vRelatorios(){
     <div class="card" id="r-ev"><div class="card-h"><h2>Como as queixas evoluíram<small>${cmp} pacientes atendidos em ${nome}, comparando a intensidade da queixa principal na primeira consulta e na última</small></h2></div>
       <div class="rel-ev">${ev.map(([k, l, q, i, c]) => `<div class="ev-i ${c}" data-ev="${k}"><span class="tico sm">${ic(i)}</span><span class="grow">${l}</span><b>${q}</b><small class="muted">${Math.round(q / cmp * 100)}%</small></div>`).join('')}</div>
       <p class="muted sm" style="margin-top:10px">Só mostra o que foi registrado na evolução; não é avaliação clínica.</p></div>
-  </div>`;
+  </div>
+  <div class="card" id="r-dicas"><div class="card-h"><h2>O que dá para fazer agora<small>dicas tiradas dos seus números para aumentar ou recuperar o faturamento</small></h2><span class="pill acc">${dicas.length}</span></div>
+    <div class="dicas">${dicas.map(([k, i, t, d, b, ir]) => `<div class="dica" data-d="${k}"><span class="tico sm acc">${ic(i)}</span><div class="grow"><b>${t}</b><small>${d}</small></div><button class="btn sm" data-a="ir" data-to="${ir}">${b}</button></div>`).join('')}</div></div>`;
 }
 
 // Imprimir ou salvar em PDF: a folha leva o período, os números, as dicas e os quadros (sem botões).

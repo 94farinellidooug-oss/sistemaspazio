@@ -44,7 +44,7 @@
   .rel-c{gap:4px}
 }
 /* O que dá para fazer agora */
-#r-dicas{margin-bottom:16px}
+#r-dicas{margin-top:16px}
 .dicas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:8px}
 .dica{display:flex;flex-wrap:wrap;align-items:flex-start;align-content:flex-start;gap:8px 10px;padding:10px;border:1px solid var(--line);border-radius:10px;min-width:0}
 .dica .grow{flex:1 1 calc(100% - 50px);min-width:0}
@@ -57,7 +57,7 @@
   .rel-imp .card,.rel-imp .tile{box-shadow:none;border:1px solid #ccc;break-inside:avoid;padding:10px 12px}
   .rel-imp .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
   .rel-imp .rel-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .rel-imp #r-dicas{margin-bottom:10px}
+  .rel-imp #r-dicas{margin-top:10px}
   .rel-imp .dicas{grid-template-columns:1fr 1fr}
   .rel-imp .card-h h2{font-size:11pt}
   .rel-imp .rel-c{height:120px;margin-bottom:24px}

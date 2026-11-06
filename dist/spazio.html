@@ -1352,6 +1352,72 @@ input[type=checkbox]{accent-color:var(--brand)}
 .fin-l .hor-p .lk{max-width:100%}
 .pac.fim{opacity:.6}
 #np-serv{align-self:center}
+
+/* Etapa 9 · Relatórios */
+.p9-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.rel-t4 .tile{display:block;cursor:default}
+.rel-t4 .tile small{display:block;color:var(--muted);font-size:.78rem}
+.rel-t4 .tile b.num{display:block;font-size:1.45rem;margin:4px 0 2px}
+.rel-t4 .tile b.num .sm{font-size:.85rem;font-weight:500}
+.cmp{display:inline-flex !important;align-items:center;gap:4px}
+.cmp .ic{width:13px;height:13px}
+.cmp.bom{color:var(--ok) !important}
+.cmp.ruim{color:var(--warn) !important}
+.rel-g{align-items:start;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:900px){ .rel-g{grid-template-columns:minmax(0,1fr)} }
+/* Colunas por mês: uma série, cor da marca; meses fora do período mais claros */
+.rel-c{display:flex;align-items:stretch;gap:8px;height:190px}
+.rel-col{flex:1;display:flex;flex-direction:column;min-width:0;cursor:default}
+.rel-cb{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-height:0;border-bottom:1px solid var(--line)}
+.rel-col span{display:block;width:min(34px,70%);background:var(--accent-line);border-radius:4px 4px 0 0}
+.rel-col.on span{background:var(--accent)}
+.rel-col b{font-size:.74rem;font-weight:600;color:var(--muted);margin-bottom:3px;font-variant-numeric:tabular-nums}
+.rel-col.on b{color:var(--ink)}
+.rel-col small{font-size:.72rem;color:var(--muted);text-align:center;padding-top:4px}
+.rel-c + .rel-tab{margin-top:10px}
+.rel-tab summary{cursor:pointer;font-size:.84rem;color:var(--muted)}
+.rel-tab table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:8px}
+.rel-tab th,.rel-tab td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
+.rel-tab td:not(:first-child),.rel-tab th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+/* Barras horizontais: nome, barra, valor */
+.rel-l{display:grid;gap:10px}
+.rel-b{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 10px;font-size:.88rem}
+.rel-b .rel-t{grid-column:1/-1;grid-row:2}
+.rel-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rel-t{height:10px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.rel-t span{display:block;height:100%;background:var(--accent);border-radius:0 4px 4px 0}
+.rel-v{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rel-v .muted{font-weight:400;font-size:.8rem;margin-left:4px}
+/* Evolução das queixas: cor de situação sempre com ícone e texto */
+.rel-ev{display:grid;gap:8px}
+.ev-i{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.ev-i b{font-size:1.05rem;font-variant-numeric:tabular-nums}
+.ev-i.ok .tico{color:var(--ok)}
+.ev-i.warn .tico{color:var(--warn)}
+.ev-i.neutro .tico{color:var(--muted)}
+@media (max-width:560px){
+  .rel-t4 .tile b.num{font-size:1.15rem}
+  .rel-c{gap:4px}
+}
+/* O que dá para fazer agora */
+#r-dicas{margin-top:16px}
+.dicas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:8px}
+.dica{display:flex;flex-wrap:wrap;align-items:flex-start;align-content:flex-start;gap:8px 10px;padding:10px;border:1px solid var(--line);border-radius:10px;min-width:0}
+.dica .grow{flex:1 1 calc(100% - 50px);min-width:0}
+.dica b{display:block;font-size:.9rem}
+.dica small{display:block;color:var(--muted);font-size:.8rem;line-height:1.35}
+.dica .btn{flex:none;margin-left:42px}
+/* Folha impressa */
+@media print{
+  .rel-imp{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:10pt}
+  .rel-imp .card,.rel-imp .tile{box-shadow:none;border:1px solid #ccc;break-inside:avoid;padding:10px 12px}
+  .rel-imp .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+  .rel-imp .rel-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rel-imp #r-dicas{margin-top:10px}
+  .rel-imp .dicas{grid-template-columns:1fr 1fr}
+  .rel-imp .card-h h2{font-size:11pt}
+  .rel-imp .rel-c{height:140px}
+}
 </style>
 
 
@@ -1609,7 +1675,7 @@ function importar(texto){
 }
 // ov: camada aberta (busca, notif, perfil, atalhos); q/bi: texto e item escolhido na busca global;
 // lidas: notificações já vistas nesta sessão; dia: dia escolhido no calendário do Painel; crumbs: migalhas.
-const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, docPid:null, docMod:null, docEd:null, docAss:null, wa:null, finRec:null, finPac:null, finDesf:null, finDespX:null, relOcultos:false, novoInt:null, cadPrevio:null, pq:'', menuMini:false, menuAberto:false,
+const ui = { pid:'p1', editPid:null, atId:null, etapa:0, avAba:0, atCmp:false, rxCorr:null, tab:'resumo', assess:null, el:null, sheng:true, ke:true, ptQ:'', ptMer:'', agDia:null, agForm:null, remarcar:null, docPid:null, docMod:null, docEd:null, docAss:null, wa:null, finRec:null, finPac:null, finDesf:null, finDespX:null, relPer:'passado', relOcultos:false, novoInt:null, cadPrevio:null, pq:'', menuMini:false, menuAberto:false,
   ov:null, q:'', bi:0, lidas:new Set(), dia:null, crumbs:[],
   // Mapa corporal do atendimento (etapa 4A): vista, face, ampliação, ferramenta, marcação selecionada e camadas de comparação.
   // Biblioteca clínica (etapa 4B): área (central, particular, atlas), ficha aberta e estado do Atlas.
@@ -2812,6 +2878,126 @@ function vFinanceiro(){
     <div class="card" id="f-nota"><h2>Nota fiscal</h2><p class="muted sm">A emissão automática da nota de serviço (NFS-e) entra na etapa 10, junto com o servidor e o login. Por enquanto, em cada recebimento o botão <b>Dados da nota</b> copia paciente, CPF, serviço, valor e data, prontos para colar no emissor.</p></div>
   </div></div>`;
 }
+// do que já é registrado (agenda, financeiro e atendimentos); nada é gravado e nada muda na exportação v1.
+//
+// Atendimento do mês = horário atendido na agenda, mais o atendimento finalizado no prontuário em um dia
+// sem horário atendido daquele paciente (para contar também o que foi registrado sem agenda).
+// As dicas são de gestão, nunca clínicas.
+
+const MESES_REL = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const mesRel = d => d.slice(0, 7);
+const somarMes = (m, n) => { const [a, b] = m.split('-').map(Number), t = a * 12 + (b - 1) + n; return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, '0')}`; };
+const faixa = (fim, n) => Array.from({ length: n }, (_, i) => somarMes(fim, i - n + 1));
+const nomeMesRel = m => MESES_REL[Number(m.slice(5, 7)) - 1];
+
+// [chave, rótulo]
+const PERIODOS_REL = [['mes', 'Este mês'], ['passado', 'Mês passado'], ['tri', 'Últimos 3 meses'], ['ano', 'Este ano']];
+// Meses do período, meses do período anterior (para comparar) e como chamar cada um.
+function periodoRel(k, hoje){
+  const m = mesRel(hoje), r = PERIODOS_REL.find(p => p[0] === k) || PERIODOS_REL[1];
+  if (r[0] === 'mes') return { k: 'mes', rotulo: r[1], meses: [m], ant: [somarMes(m, -1)], em: `em ${nomeMesRel(m)} (até hoje)`, antA: `a ${nomeMesRel(somarMes(m, -1))}`, antEm: `em ${nomeMesRel(somarMes(m, -1))}` };
+  if (r[0] === 'tri') return { k: 'tri', rotulo: r[1], meses: faixa(m, 3), ant: faixa(somarMes(m, -3), 3), em: 'nos últimos 3 meses', antA: 'aos 3 meses antes', antEm: 'nos 3 meses antes' };
+  if (r[0] === 'ano') return { k: 'ano', rotulo: r[1], meses: faixa(m, Number(m.slice(5, 7))), ant: [], em: `em ${m.slice(0, 4)}`, antA: '', antEm: '' };
+  const p = somarMes(m, -1);
+  return { k: 'passado', rotulo: r[1], meses: [p], ant: [somarMes(p, -1)], em: `em ${nomeMesRel(p)}`, antA: `a ${nomeMesRel(somarMes(p, -1))}`, antEm: `em ${nomeMesRel(somarMes(p, -1))}` };
+}
+
+// Atendimentos até hoje: [{pid, date, tipo|null, valor}]
+function atendidosRel(db, hoje){
+  const L = db.appts.filter(a => a.done && ativo(a) && a.date <= hoje).map(a => ({ pid: a.pid, date: a.date, tipo: a.tipo, valor: a.valor || 0 }));
+  const tem = new Set(L.map(a => a.pid + a.date));
+  db.patients.forEach(p => p.sessions.forEach(s => { if (s.date <= hoje && !tem.has(p.id + s.date)) { L.push({ pid: p.id, date: s.date, tipo: null, valor: 0 }); tem.add(p.id + s.date); } }));
+  return L;
+}
+const faltasRel = (db, hoje) => db.appts.filter(a => a.st === 'faltou' && a.date <= hoje);
+const recebidoRel = (db, M) => { const F = db.financeiro; if (!F) return 0;
+  return F.recebimentos.filter(r => M.includes(mesRel(r.data))).reduce((n, r) => n + r.valor, 0) + F.pacotes.filter(k => M.includes(mesRel(k.em))).reduce((n, k) => n + k.valor, 0); };
+// Primeiro atendimento de cada paciente.
+const primeiros = L => L.reduce((o, a) => { if (!o[a.pid] || a.date < o[a.pid]) o[a.pid] = a.date; return o; }, {});
+
+// Números de um conjunto de meses.
+function numerosRel(db, hoje, M, L, F, P1){
+  const at = L.filter(a => M.includes(mesRel(a.date))).length, falt = F.filter(a => M.includes(mesRel(a.date))).length;
+  return { at, falt, pf: at + falt ? Math.round(falt / (at + falt) * 100) : 0, rec: Math.round(recebidoRel(db, M) * 100) / 100, novos: Object.values(P1).filter(d => M.includes(mesRel(d))).length };
+}
+
+function relatorio(db, hoje, k){
+  const P = periodoRel(k, hoje), L = atendidosRel(db, hoje), F = faltasRel(db, hoje), P1 = primeiros(L), dentro = a => P.meses.includes(mesRel(a.date));
+  const num = numerosRel(db, hoje, P.meses, L, F, P1), ant = P.ant.length ? numerosRel(db, hoje, P.ant, L, F, P1) : null;
+  // Atendimentos por mês: o ano até agora, ou os últimos 6 meses.
+  const meses = (P.k === 'ano' ? P.meses : faixa(mesRel(hoje), 6)).map(m => ({ m, at: L.filter(a => mesRel(a.date) === m).length, falt: F.filter(a => mesRel(a.date) === m).length, rec: recebidoRel(db, [m]), on: P.meses.includes(m) }));
+  const porServ = {}; L.filter(dentro).forEach(a => { const s = a.tipo || 'Registrado sem agenda'; (porServ[s] ||= { s, q: 0, v: 0 }).q++; porServ[s].v += a.valor; });
+  const servicos = Object.values(porServ).sort((a, b) => b.q - a.q || a.s.localeCompare(b.s));
+  const formas = {}; (db.financeiro?.recebimentos || []).filter(r => P.meses.includes(mesRel(r.data))).forEach(r => { formas[r.forma] = (formas[r.forma] || 0) + r.valor; });
+  const pac = (db.financeiro?.pacotes || []).filter(k => P.meses.includes(mesRel(k.em))).reduce((n, k) => n + k.valor, 0);
+  const porForma = Object.entries(formas).map(([f, v]) => ({ f, v })).sort((a, b) => b.v - a.v).concat(pac ? [{ f: 'Pacotes', v: pac }] : []);
+  // Evolução: pacientes atendidos no período com a queixa principal registrada em pelo menos 2 atendimentos.
+  const ev = { melhorou: 0, igual: 0, piorou: 0, total: 0 };
+  db.patients.forEach(p => { const S = p.sessions.filter(s => s.date <= hoje && s.eva != null);
+    if (S.length < 2 || !S.some(s => P.meses.includes(mesRel(s.date)))) return;
+    const d = S.at(-1).eva - S[0].eva; ev.total++; ev[d < 0 ? 'melhorou' : d > 0 ? 'piorou' : 'igual']++; });
+  return { P, num, ant, meses, servicos, porForma, ev, dicas: dicasRel(db, hoje, num, ant, P) };
+}
+
+// Dicas de gestão do que dá para fazer agora; só entram as que têm o que fazer.
+function dicasRel(db, hoje, num, ant, P){
+  const D = [], nome = id => db.patients.find(p => p.id === id)?.name || '';
+  const ret = paraRetomar(db, hoje).filter(x => !x.oculto).length;
+  if (ret) D.push({ k: 'retomar', ic: 'tel', t: `${ret} paciente${ret > 1 ? 's' : ''} sem vir há mais de 21 dias`, d: 'Sem nada agendado. Um contato pelo WhatsApp costuma trazer de volta.', b: 'Ver em Relacionamento', ir: 'crm' });
+  const cob = coberturaPacotes(db), pend = aReceber(db, hoje), v = pend.reduce((n, a) => n + faltaDe(db, a, cob), 0);
+  if (v > 0) D.push({ k: 'receber', ic: 'dinheiro', t: `${v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em atendimentos ainda não pagos`, d: `${pend.length} atendimento${pend.length > 1 ? 's' : ''} feito${pend.length > 1 ? 's' : ''} esperando o recebimento.`, b: 'Abrir Financeiro', ir: 'financeiro' });
+  if (ant && num.falt > ant.falt) D.push({ k: 'faltas', ic: 'alerta', t: `As faltas subiram: ${num.falt} ${P.em}`, d: 'Mandar o lembrete do dia seguinte pelo WhatsApp ajuda a reduzir as faltas.', b: 'Ver lembretes de amanhã', ir: 'agenda' });
+  const fim = (db.financeiro?.pacotes || []).map(k => ({ k, r: k.total - usosPacote(db, k, cob) })).filter(x => x.r >= 1 && x.r <= 2);
+  if (fim.length) D.push({ k: 'pacotes', ic: 'camadas', t: `${fim.length} pacote${fim.length > 1 ? 's' : ''} perto do fim`, d: `${fim.slice(0, 3).map(x => `${nome(x.k.pid)} (falta${x.r > 1 ? 'm' : ''} ${x.r})`).join(', ')}. Bom momento para oferecer a renovação.`, b: 'Ver pacotes', ir: 'financeiro' });
+  // Horários livres de uma hora nos próximos 7 dias, de segunda a sexta (o horário da clínica entra na etapa 10).
+  let liv = 0; for (let i = 0; i < 7; i++) { const d = addDays(i, hoje), w = new Date(d + 'T12:00').getDay(); if (w > 0 && w < 6) liv += horariosLivres(db.appts, d, 'Acupuntura').length; }
+  if (liv) D.push({ k: 'livres', ic: 'cal', t: `${liv} horários livres nos próximos 7 dias`, d: 'De segunda a sexta. Dá para oferecer a quem está para retomar ou a quem procurou e ainda não é paciente.', b: 'Abrir Agenda', ir: 'agenda' });
+  return D;
+}
+// recebido por forma, evolução das queixas e, no final, o que dá para fazer agora. Imprimir ou salvar em PDF.
+
+const n0 = v => v.toLocaleString('pt-BR');
+function comparaRel(v, ant, P, inverso){
+  if (ant == null) return '<small class="muted">sem período anterior para comparar</small>';
+  if (!ant) return v ? `<small class="muted">nada ${P.antEm} para comparar</small>` : `<small class="muted">igual ${P.antA}</small>`;
+  const d = Math.round((v - ant) / ant * 100), bom = inverso ? d <= 0 : d >= 0;
+  return d === 0 ? `<small class="muted">igual ${P.antA}</small>` : `<small class="cmp ${bom ? 'bom' : 'ruim'}">${ic(d > 0 ? 'sobe' : 'desce')}${Math.abs(d)}% em relação ${P.antA}</small>`;
+}
+const barraRel = (nome, v, max, txt, tip) => `<div class="rel-b" data-tip="${esc(tip)}"><span class="rel-n">${esc(nome)}</span><span class="rel-t"><span style="width:${max ? Math.max(2, Math.round(v / max * 100)) : 0}%"></span></span><b class="rel-v">${txt}</b></div>`;
+
+function vRelatorios(){
+  ui.crumbs = [[null, 'Relatórios']];
+  const R = relatorio(db, TODAY, ui.relPer || 'passado'), { P, num, ant, ev } = R, a = ant || {};
+  const tile = (k, t, v, cmp) => `<div class="tile" data-t="${k}"><div><small>${t}</small><b class="num">${v}</b>${cmp}</div></div>`;
+  const mx = Math.max(1, ...R.meses.map(m => m.at)), ms = Math.max(0, ...R.servicos.map(s => s.q)), mf = Math.max(0, ...R.porForma.map(f => f.v)), totF = R.porForma.reduce((n, f) => n + f.v, 0);
+  const mesTxt = m => `${nomeMesRel(m.m)}${m.m === TODAY.slice(0, 7) ? ' (até hoje)' : ''}`;
+  const EV = [['melhorou', 'Melhorou', 'sobe', 'ok'], ['igual', 'Sem mudança', 'linha', 'neutro'], ['piorou', 'Piorou', 'desce', 'warn']];
+  return `<div class="head"><div><h1>Relatórios</h1><p>Como a clínica está indo, a partir do que você já registra</p></div></div>
+  <div class="p9-bar"><div class="chips p9-per" role="group" aria-label="Período">${PERIODOS_REL.map(([k, l]) => `<button class="chip ${P.k === k ? 'on' : ''}" data-act="rel-per" data-k="${k}" aria-pressed="${P.k === k}">${l}</button>`).join('')}</div>
+    <button class="btn sm" data-act="rel-imp">${ic('baixar')}Imprimir ou salvar em PDF</button></div>
+  <div class="tiles rel-t4">${tile('at', 'Atendimentos', n0(num.at), comparaRel(num.at, ant && a.at, P))}${tile('rec', 'Recebido', brl(num.rec), comparaRel(num.rec, ant && a.rec, P))}${tile('falt', 'Faltas', `${num.falt} <span class="muted sm">· ${num.pf}%</span>`, comparaRel(num.falt, ant && a.falt, P, true))}${tile('novos', 'Pacientes novos', n0(num.novos), comparaRel(num.novos, ant && a.novos, P))}</div>
+  <div class="grid g2 rel-g">
+    <div class="card" id="r-mes"><div class="card-h"><h2>Atendimentos por mês<small>${P.k === 'ano' ? 'este ano' : 'últimos 6 meses'}; ${P.meses.length > 1 ? 'os meses do período' : 'o mês escolhido'} em destaque</small></h2></div>
+      <div class="rel-c" role="img" aria-label="Atendimentos por mês">${R.meses.map(m => `<div class="rel-col ${m.on ? 'on' : ''}" data-tip="${mesTxt(m)}: ${m.at} atendimento${m.at === 1 ? '' : 's'}, ${m.falt} falta${m.falt === 1 ? '' : 's'}"><div class="rel-cb"><b>${m.at}</b><span style="height:calc((100% - 20px) * ${(m.at / mx).toFixed(3)})"></span></div><small>${nomeMesRel(m.m).slice(0, 3)}</small></div>`).join('')}</div>
+      <details class="rel-tab"><summary>Ver como tabela</summary><table><thead><tr><th>Mês</th><th>Atendimentos</th><th>Faltas</th><th>Recebido</th></tr></thead><tbody>${R.meses.map(m => `<tr><td>${mesTxt(m)}</td><td>${m.at}</td><td>${m.falt}</td><td>${brl(m.rec)}</td></tr>`).join('')}</tbody></table></details></div>
+    <div class="card" id="r-serv"><div class="card-h"><h2>Por serviço<small>atendimentos ${P.em}</small></h2></div>
+      <div class="rel-l">${R.servicos.map(s => barraRel(s.s, s.q, ms, n0(s.q), `${s.s}: ${s.q} atendimento${s.q === 1 ? '' : 's'}${s.v ? `, ${brl(s.v)} combinados` : ''}`)).join('') || '<p class="muted sm">Nenhum atendimento no período.</p>'}</div></div>
+    <div class="card" id="r-forma"><div class="card-h"><h2>Recebido por forma de pagamento<small>${brl(totF)} ${P.em}</small></h2></div>
+      <div class="rel-l">${R.porForma.map(f => barraRel(f.f, f.v, mf, `${brl(f.v)} <span class="muted">${Math.round(f.v / totF * 100)}%</span>`, `${f.f}: ${brl(f.v)}`)).join('') || '<p class="muted sm">Nada recebido no período. Os recebimentos são lançados no Financeiro.</p>'}</div></div>
+    <div class="card" id="r-ev"><div class="card-h"><h2>Como as queixas evoluíram<small>${ev.total} paciente${ev.total === 1 ? '' : 's'} atendido${ev.total === 1 ? '' : 's'} ${P.em}, comparando a intensidade da queixa principal na primeira consulta e na última</small></h2></div>
+      ${ev.total ? `<div class="rel-ev">${EV.map(([k, l, i, c]) => `<div class="ev-i ${c}" data-ev="${k}"><span class="tico sm">${ic(i)}</span><span class="grow">${l}</span><b>${ev[k]}</b><small class="muted">${Math.round(ev[k] / ev.total * 100)}%</small></div>`).join('')}</div>` : '<p class="muted sm">Ainda não há pacientes com duas consultas registradas no período.</p>'}
+      <p class="muted sm" style="margin-top:10px">Só mostra o que foi registrado na evolução; não é avaliação clínica.</p></div>
+  </div>
+  <div class="card" id="r-dicas"><div class="card-h"><h2>O que dá para fazer agora<small>dicas tiradas dos seus números para aumentar ou recuperar o faturamento</small></h2><span class="pill acc">${R.dicas.length}</span></div>
+    ${R.dicas.length ? `<div class="dicas">${R.dicas.map(d => `<div class="dica" data-d="${d.k}"><span class="tico sm acc">${ic(d.ic)}</span><div class="grow"><b>${esc(d.t)}</b><small>${esc(d.d)}</small></div><a class="btn sm" href="#${d.ir}">${d.b}</a></div>`).join('')}</div>` : `<div class="vazio">${ic('okc')}Nada pendente agora.</div>`}</div>`;
+}
+
+// Folha para imprimir ou salvar em PDF: cabeçalho da clínica, período e a tela sem botões.
+function folhaRelatorio(){
+  const v = document.getElementById('view').cloneNode(true), P = relatorio(db, TODAY, ui.relPer || 'passado').P;
+  v.querySelectorAll('.head, .p9-bar, button, a.btn, details').forEach(x => x.remove());
+  return `<div class="imp-h">${LOGO}<div><b>${CLINICA} · Relatórios</b><small>${P.rotulo} · impresso em ${fmt(TODAY)} por ${esc(PROF.nome)}</small></div></div><div class="rel-imp">${v.innerHTML}</div>`;
+}
 const EL = {
   madeira:{nome:'Madeira',han:'木',cor:'var(--wood)',ang:198,zang:'Fígado',fu:'Vesícula Biliar',emocao:'Raiva',estacao:'Primavera',clima:'Vento',sentido:'Olhos',tecido:'Tendões',sabor:'Ácido',som:'Grito',espirito:'Hun',funcoes:['Armazena o Xue','Garante o livre fluxo do Qi','Nutre tendões e olhos']},
   fogo:{nome:'Fogo',han:'火',cor:'var(--fire)',ang:-90,zang:'Coração · Pericárdio',fu:'Intestino Delgado · Triplo Aquecedor',emocao:'Alegria (em excesso, agitação)',estacao:'Verão',clima:'Calor',sentido:'Língua',tecido:'Vasos',sabor:'Amargo',som:'Riso',espirito:'Shen',funcoes:['Governa o Xue e os vasos','Abriga o Shen','Manifesta-se na face']},
@@ -3973,7 +4159,7 @@ const MODULOS = {
   crm:{etapa:6,i:'tel',feito:true,texto:'Quem retomar contato e quem procurou e ainda não é paciente.'},
   mensagens:{etapa:7,i:'mensagem',feito:true,texto:'Os textos do WhatsApp: lembrete de horário, retomar contato e orientações.'},
   financeiro:{etapa:8,i:'financeiro',feito:true,texto:'Gestão financeira da clínica, separando o valor contratado do valor efetivamente recebido.',itens:['Contas a pagar e a receber','Fluxo de caixa','Pagamentos parciais e recorrentes','Pacotes terapêuticos e comissões','Inadimplência','Emissão de NFS-e por provedor integrador']},
-  relatorios:{etapa:9,i:'relatorios',texto:'Indicadores clínicos, comerciais e financeiros.',itens:['Desempenho clínico','Conversão comercial','Agenda e ocupação','Financeiro','Desempenho por profissional','Desempenho por serviço']},
+  relatorios:{etapa:9,i:'relatorios',feito:true,texto:'Indicadores clínicos, comerciais e financeiros.',itens:['Desempenho clínico','Conversão comercial','Agenda e ocupação','Financeiro','Desempenho por profissional','Desempenho por serviço']},
   equipe:{etapa:10,i:'pacientes',texto:'Profissionais, especialidades e permissões de acesso por clínica.',itens:['Perfil único por profissional','Especialidades e modalidades','Permissões por perfil','Várias clínicas','Pacientes compartilhados conforme permissão','Registro de atividades']},
   configuracoes:{etapa:10,i:'admin',texto:'Dados da clínica, serviços, modalidades e modelos.',itens:['Dados da clínica e local de atendimento','Serviços, duração e valores','Modalidades terapêuticas','Modelos de documento','Preferências de agenda','Privacidade e LGPD']}
 };
@@ -4267,7 +4453,7 @@ function vAtlas(){
     <aside class="fx-panel${A.sel || A.traj ? ' aberta' : ''}" aria-label="Ficha"><div class="card">${painel}</div></aside>
   </div>`;
 }
-const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
+const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -4292,6 +4478,7 @@ document.addEventListener('mouseover',ev=>{ const t=ev.target.closest('[data-tip
   tip.textContent=t.dataset.tip; tip.hidden=false; const b=t.getBoundingClientRect(), w=tip.offsetWidth;
   tip.style.left=Math.max(8,Math.min(innerWidth-w-8,b.left+b.width/2-w/2))+'px'; tip.style.top=(b.top-tip.offsetHeight-8<4?b.bottom+8:b.top-tip.offsetHeight-8)+'px'; });
 addEventListener('scroll',()=>{ tip.hidden=true; },{passive:true});
+addEventListener('afterprint',()=>{ if(route()==='relatorios') document.getElementById('imp').innerHTML=''; });
 addEventListener('hashchange',()=>{ if(route()!=='cadastro') ui.editPid=null; ui.menuAberto=false; ui.ov=null; tip.hidden=true; render(); scrollTo(0,0); });
 addEventListener('keydown',ev=>{
   const emCampo=ev.target.matches('input, textarea, select');
@@ -4322,6 +4509,9 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]'); if(!t||t.disabled) return;
   const a=t.dataset.act;
   if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
+  // Relatórios (etapa 9)
+  else if(a==='rel-per'){ ui.relPer=t.dataset.k; render(true); }
+  else if(a==='rel-imp'){ document.getElementById('imp').innerHTML=folhaRelatorio(); window.print(); }
   // Financeiro (etapa 8)
   else if(a==='fin-receber'){ const x=db.appts.find(z=>z.id===t.dataset.ap); ui.finRec={ap:x.id,forma:'Pix',valor:String(faltaDe(db,x)).replace('.',',')}; render(true); document.getElementById('rec-v')?.focus(); }
   else if(a==='fin-forma'){ ui.finRec.valor=document.getElementById('rec-v').value; ui.finRec.forma=t.dataset.f; render(true); }

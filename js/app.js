@@ -7,6 +7,7 @@ import { formAgenda, vAgenda } from './telas/agenda.js';
 import { docAtual, folhaDoc, ligarPad, painelAss, previaDoc, textoComCampos, vDocumentos } from './telas/documentos.js';
 import { vRelacionamento } from './telas/relacionamento.js';
 import { servicoPacote, vFinanceiro } from './telas/financeiro.js';
+import { folhaRelatorio, vRelatorios } from './telas/relatorios.js';
 import { dadosNota, desfazerRecebimento, faltaDe, financeiroDe, lerValor, novaDespesa, novoPacote, receber, removerDespesa } from './dados/financeiro.js';
 import { abrirPainelWa, painelWa, textoComCamposWa, vMensagens } from './telas/whatsapp.js';
 import { linkWa, registrarMensagem, salvarMensagemWa, voltarMensagemWa } from './dados/whatsapp.js';
@@ -32,7 +33,7 @@ import { CODIGOS } from './conhecimento/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
 import { TODAY, addDays, brl, esc, fmt, uid } from './util.js';
 
-export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
+export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -57,6 +58,7 @@ document.addEventListener('mouseover',ev=>{ const t=ev.target.closest('[data-tip
   tip.textContent=t.dataset.tip; tip.hidden=false; const b=t.getBoundingClientRect(), w=tip.offsetWidth;
   tip.style.left=Math.max(8,Math.min(innerWidth-w-8,b.left+b.width/2-w/2))+'px'; tip.style.top=(b.top-tip.offsetHeight-8<4?b.bottom+8:b.top-tip.offsetHeight-8)+'px'; });
 addEventListener('scroll',()=>{ tip.hidden=true; },{passive:true});
+addEventListener('afterprint',()=>{ if(route()==='relatorios') document.getElementById('imp').innerHTML=''; });
 addEventListener('hashchange',()=>{ if(route()!=='cadastro') ui.editPid=null; ui.menuAberto=false; ui.ov=null; tip.hidden=true; render(); scrollTo(0,0); });
 addEventListener('keydown',ev=>{
   const emCampo=ev.target.matches('input, textarea, select');
@@ -87,6 +89,9 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]'); if(!t||t.disabled) return;
   const a=t.dataset.act;
   if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
+  // Relatórios (etapa 9)
+  else if(a==='rel-per'){ ui.relPer=t.dataset.k; render(true); }
+  else if(a==='rel-imp'){ document.getElementById('imp').innerHTML=folhaRelatorio(); window.print(); }
   // Financeiro (etapa 8)
   else if(a==='fin-receber'){ const x=db.appts.find(z=>z.id===t.dataset.ap); ui.finRec={ap:x.id,forma:'Pix',valor:String(faltaDe(db,x)).replace('.',',')}; render(true); document.getElementById('rec-v')?.focus(); }
   else if(a==='fin-forma'){ ui.finRec.valor=document.getElementById('rec-v').value; ui.finRec.forma=t.dataset.f; render(true); }
