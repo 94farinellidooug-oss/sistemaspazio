@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MUSUBI · Sistema Clínico Integrativo</title>
+<meta name="description" content="Agenda, prontuário, avaliação pela Medicina Tradicional Chinesa, mapa corporal, documentos, financeiro e relatórios em um só lugar, no computador e no celular.">
+<link rel="icon" href="marca/icone-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="etapa10.css">
+<script>try{const t=localStorage.getItem('musubi-site-tema');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+</head>
+<body>
+<div class="faixa" role="note">Prévia da página de apresentação (etapa 10) para aprovação · nada é enviado · o sistema real não foi alterado</div>
+
+<header class="topo" id="topo">
+  <div class="caixa topo-in">
+    <a class="marca" href="#inicio" aria-label="MUSUBI, início">
+      <img class="logo logo-claro" src="marca/MUSUBI_logo_colorido.svg" alt="MUSUBI · Sistema Clínico Integrativo" width="181" height="50">
+      <img class="logo logo-escuro" src="marca/MUSUBI_logo_branco.svg" alt="MUSUBI · Sistema Clínico Integrativo" width="181" height="50">
+    </a>
+    <nav class="menu" id="menu" aria-label="Seções">
+      <a href="#recursos">Recursos</a><a href="#por-dentro">Por dentro</a><a href="#como">Como funciona</a><a href="#quem">Quem fez</a><a href="#perguntas">Perguntas</a>
+    </nav>
+    <div class="topo-acoes">
+      <button class="icob" data-a="tema" aria-label="Trocar tema claro ou escuro" title="Tema claro ou escuro"><span data-i="sol"></span></button>
+      <button class="btn linha" data-a="entrar">Entrar</button>
+      <a class="btn ouro so-largo" href="#contato">Quero conhecer</a>
+      <button class="icob so-cel" data-a="menu" aria-label="Abrir menu" aria-expanded="false"><span data-i="menu"></span></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero" id="inicio">
+    <div class="caixa hero-in">
+      <div class="hero-txt">
+        <span class="selo"><span data-i="estrela"></span>Sistema clínico integrativo</span>
+        <h1>Sua clínica inteira em um só lugar, <em>do agendamento à evolução do paciente.</em></h1>
+        <p class="lead">Agenda, prontuário, avaliação pela Medicina Tradicional Chinesa, mapa corporal, documentos com assinatura, financeiro e relatórios. Tudo conectado, para você atender melhor e cuidar do negócio sem planilhas.</p>
+        <div class="hero-cta">
+          <a class="btn ouro grande" href="#contato">Quero conhecer o MUSUBI</a>
+          <button class="btn linha grande" data-a="entrar">Já uso, entrar</button>
+        </div>
+        <ul class="garantias">
+          <li><span data-i="check"></span>No computador, tablet e celular</li>
+          <li><span data-i="check"></span>Nada para instalar</li>
+          <li><span data-i="check"></span>Feito por quem atende</li>
+        </ul>
+      </div>
+      <div class="hero-vis" aria-hidden="true">
+        <div class="janela"><div class="janela-b"><i></i><i></i><i></i></div><img src="telas/painel.png" alt="" width="1366" height="860"></div>
+        <div class="celular"><img src="telas/celular.png" alt="" width="780" height="1600"></div>
+        <div class="flutua f1"><span data-i="okc"></span><div><b>Atendimento finalizado</b><small>registrado com data e hora</small></div></div>
+        <div class="flutua f2"><span data-i="tel"></span><div><b>Lembrete enviado</b><small>pelo WhatsApp, em um toque</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faixa-v" aria-label="Destaques">
+    <div class="caixa faixa-v-in">
+      <div><span data-i="plano"></span><b>8 etapas guiadas</b><small>da anamnese aos documentos</small></div>
+      <div><span data-i="yin"></span><b>MTC de verdade</b><small>Pentagrama, Ba Gang e pontos</small></div>
+      <div><span data-i="tel"></span><b>Agenda + WhatsApp</b><small>lembretes e mensagens prontas</small></div>
+      <div><span data-i="relatorios"></span><b>Gestão sem planilha</b><small>financeiro e relatórios</small></div>
+    </div>
+  </section>
+
+  <section class="sec" id="recursos">
+    <div class="caixa">
+      <div class="sec-h"><span class="sobre">Recursos</span><h2>Tudo o que o dia a dia da clínica pede</h2><p>Cada parte conversa com a outra: o horário da agenda vira atendimento, o atendimento vira documento, o documento fica no prontuário e tudo aparece no financeiro e nos relatórios.</p></div>
+      <div class="mods" id="mods"></div>
+    </div>
+  </section>
+
+  <section class="sec alt" id="por-dentro">
+    <div class="caixa">
+      <div class="sec-h"><span class="sobre">Por dentro</span><h2>Veja o MUSUBI funcionando</h2><p>Telas reais do sistema, com pacientes fictícios.</p></div>
+      <div class="abas" role="tablist" aria-label="Telas do sistema" id="abas"></div>
+      <div class="tela" id="tela"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="destaques"><div class="caixa" id="spots"></div></section>
+
+  <section class="sec alt" id="como">
+    <div class="caixa">
+      <div class="sec-h"><span class="sobre">Como funciona</span><h2>Um dia de atendimento, sem papel</h2></div>
+      <ol class="passos">
+        <li><span class="n">1</span><b>Agende</b><p>Escolha paciente, serviço e horário. Os horários livres aparecem na hora, e o lembrete sai pelo WhatsApp.</p></li>
+        <li><span class="n">2</span><b>Atenda</b><p>Um toque em “Atender” abre o atendimento guiado, já com o histórico e a comparação com a primeira consulta.</p></li>
+        <li><span class="n">3</span><b>Entregue</b><p>Orientações, atestados e termos saem do modelo com os dados do paciente, com assinatura no dedo, para imprimir ou guardar.</p></li>
+        <li><span class="n">4</span><b>Acompanhe</b><p>Receba com a forma de pagamento, controle pacotes e veja nos relatórios como a clínica está indo.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sec" id="cuidado">
+    <div class="caixa">
+      <div class="sec-h"><span class="sobre">Cuidado com o paciente e com você</span><h2>Feito para dar segurança em cada registro</h2></div>
+      <div class="cuidados">
+        <div><span data-i="escudo"></span><b>Alertas de segurança</b><p>Gestantes, anticoagulantes e outras atenções aparecem antes do atendimento, no painel e no paciente.</p></div>
+        <div><span data-i="historico"></span><b>Nada se perde</b><p>Correções pedem o motivo e ficam registradas com quem fez e quando. Remarcar e desmarcar guardam o histórico.</p></div>
+        <div><span data-i="info"></span><b>Apoio, não diagnóstico</b><p>As hipóteses ajudam o raciocínio clínico; a decisão é sempre do profissional.</p></div>
+        <div><span data-i="pacientes"></span><b>Acesso por profissional</b><p>Cada profissional entra com o próprio e-mail e senha, e vê só a sua clínica.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="quem" id="quem">
+    <div class="caixa quem-in">
+      <div class="quem-simb" aria-hidden="true"><img src="marca/MUSUBI_simbolo.svg" alt="" width="220" height="220"></div>
+      <div>
+        <span class="sobre">Quem fez</span>
+        <h2>Criado dentro de uma clínica, por quem atende todos os dias</h2>
+        <p>O MUSUBI nasceu na Spazio Stabilità, em Caxias do Sul (RS), a partir da rotina de Maicon Farinelli, biomédico acupunturista. Cada tela foi pensada para o que acontece de verdade no consultório: pouco tempo entre um paciente e outro, muita informação para registrar e a vontade de acompanhar a evolução de cada pessoa.</p>
+        <p class="musubi-sig"><b>Musubi</b> (結び) é o nó japonês que une. É o que o sistema faz: une o cuidado com o paciente e a gestão da clínica.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="contato">
+    <div class="caixa contato-in">
+      <div>
+        <span class="sobre">Quero conhecer</span>
+        <h2>Veja o MUSUBI na sua rotina</h2>
+        <p>Deixe seu nome e WhatsApp. A gente chama você para mostrar o sistema e tirar as dúvidas.</p>
+        <ul class="garantias col"><li><span data-i="check"></span>Para acupunturistas, terapeutas integrativos e clínicas</li><li><span data-i="check"></span>Para um profissional ou para a equipe toda</li></ul>
+      </div>
+      <form class="form" id="f-contato" novalidate>
+        <label>Nome<input name="nome" autocomplete="name" required placeholder="Seu nome"></label>
+        <label>WhatsApp<input name="whats" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(54) 99999-9999"></label>
+        <p class="erro" id="f-erro" hidden></p>
+        <button class="btn ouro grande" type="submit">Quero conhecer</button>
+        <small class="muted">Usamos seus dados só para falar com você sobre o MUSUBI.</small>
+      </form>
+    </div>
+  </section>
+
+  <section class="sec alt" id="perguntas">
+    <div class="caixa estreita">
+      <div class="sec-h"><span class="sobre">Perguntas</span><h2>Perguntas frequentes</h2></div>
+      <div class="faq" id="faq"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="rodape">
+  <div class="caixa rodape-in">
+    <div>
+      <img class="logo logo-claro" src="marca/MUSUBI_logo_colorido.svg" alt="MUSUBI" width="160" height="44">
+      <img class="logo logo-escuro" src="marca/MUSUBI_logo_branco.svg" alt="MUSUBI" width="160" height="44">
+      <p class="muted">Sistema clínico integrativo. Caxias do Sul · RS</p>
+    </div>
+    <nav aria-label="Rodapé"><a href="#recursos">Recursos</a><a href="#como">Como funciona</a><a href="#perguntas">Perguntas</a><button class="lnk" data-a="entrar">Entrar</button></nav>
+  </div>
+</footer>
+
+<div class="modal" id="m-entrar" role="dialog" aria-modal="true" aria-labelledby="m-entrar-t" hidden>
+  <div class="modal-fundo" data-a="fechar"></div>
+  <form class="modal-c" id="f-entrar" novalidate>
+    <button type="button" class="icob fechar" data-a="fechar" aria-label="Fechar"><span data-i="x"></span></button>
+    <img class="logo logo-claro" src="marca/MUSUBI_logo_colorido.svg" alt="MUSUBI" width="150" height="41">
+    <img class="logo logo-escuro" src="marca/MUSUBI_logo_branco.svg" alt="MUSUBI" width="150" height="41">
+    <h2 id="m-entrar-t">Entrar no MUSUBI</h2>
+    <p class="muted" id="m-entrar-d">Use o e-mail e a senha da sua conta.</p>
+    <div id="m-campos">
+      <label>E-mail<input name="email" type="email" autocomplete="email" required placeholder="voce@clinica.com.br"></label>
+      <label class="senha">Senha<span class="senha-c"><input name="senha" type="password" autocomplete="current-password" required placeholder="Sua senha"><button type="button" class="lnk" data-a="ver-senha" aria-pressed="false">Mostrar</button></span></label>
+      <div class="lin"><label class="chk"><input type="checkbox" name="lembrar" checked> Manter conectado neste aparelho</label><button type="button" class="lnk" data-a="esqueci">Esqueci minha senha</button></div>
+    </div>
+    <p class="erro" id="e-erro" hidden></p>
+    <button class="btn verde grande largo" type="submit" id="e-botao">Entrar</button>
+    <p class="muted sm centro" id="m-rodape">Ainda não usa? <a href="#contato" data-a="fechar">Conheça o MUSUBI</a></p>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
