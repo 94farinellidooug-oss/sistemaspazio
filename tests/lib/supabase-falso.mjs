@@ -21,8 +21,9 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       return confirmar ? resp(200, { id:x.id, email:corpo.email }) : resp(200, novoToken({ ...x, email:corpo.email }));
     }
     if (u.pathname === '/auth/v1/recover') return resp(200, {});
+    if (u.pathname === '/auth/v1/logout' && u.searchParams.get('scope') === 'others') { S.saiuOutros = true; return resp(204); }
     if (u.pathname === '/auth/v1/logout') { delete S.tokens[auth]; return resp(204); }
-    if (u.pathname === '/auth/v1/user') { if (!eu) return resp(401, { code:'PGRST301' }); if (op.method === 'PUT') { S.usuarios[eu.email].senha = corpo.password; } return resp(200, { id:eu.id, email:eu.email, user_metadata:{ nome:eu.nome } }); }
+    if (u.pathname === '/auth/v1/user') { if (!eu) return resp(401, { code:'PGRST301' }); if (op.method === 'PUT') { const x = S.usuarios[eu.email]; if (corpo.password) x.senha = corpo.password; if (corpo.data?.nome) x.nome = eu.nome = corpo.data.nome; if (corpo.email) S.emailPedido = corpo.email; } return resp(200, { id:eu.id, email:eu.email, user_metadata:{ nome:eu.nome } }); }
     if (u.pathname === '/rest/v1/interessados') { if (op.headers.Prefer !== 'return=minimal') return resp(401, { code:'42501', message:'new row violates row-level security' }); S.interessados.push(corpo); return resp(201); }
     if (!eu) return resp(401, { code:'PGRST301', message:'JWT expired' });
     if (u.pathname === '/rest/v1/rpc/criar_clinica') { const id = 'c' + (++S.n); S.clinicas.push({ id, nome:corpo.p_nome, cidade:corpo.p_cidade, uf:corpo.p_uf, membros:[{ user:eu.id, perfil:'adm' }] }); S.dados[id] = { doc:corpo.p_doc, versao:1 }; return resp(200, id); }
@@ -34,6 +35,8 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       const d = S.dados[corpo.p_clinica]; if (d.versao !== corpo.p_versao) return resp(200, -1);
       d.doc = corpo.p_doc; d.versao++; return resp(200, d.versao);
     }
+    if (u.pathname === '/rest/v1/clinicas' && op.method === 'PATCH') { const c = S.clinicas.find(x => x.id === u.searchParams.get('id').replace('eq.', '')); if (!c?.membros.some(m => m.user === eu.id && m.perfil === 'adm')) return resp(200); Object.assign(c, corpo); return resp(204); }
+    if (u.pathname === '/rest/v1/donos') return resp(200, (S.donos || []).includes(eu.id) ? [{ user_id:eu.id }] : []);
     return resp(404, { message:'não encontrado' });
   };
   return S;

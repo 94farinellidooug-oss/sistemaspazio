@@ -20,7 +20,8 @@ import { TIPOS_MARCA, LADOS_MARCA, adicionarMarca, editarMarca, marcasDe, remove
 import { cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { PROF, listaBusca, renderNav } from './telas/menu.js';
-import { entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
+import { conta, entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
+import { ligarConfig, vConfiguracoes } from './telas/configuracoes.js';
 import { notificacoes } from './dados/indicadores.js';
 import { LOGO, ic } from './componentes/icones.js';
 import { FACES, MERIDIANOS, TAM, VASOS_ATLAS, ladoDe, regiaoDoToque } from './componentes/corpo.js';
@@ -34,7 +35,7 @@ import { CODIGOS } from './conhecimento/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
 import { TODAY, addDays, brl, esc, fmt, uid } from './util.js';
 
-export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
+export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -185,7 +186,7 @@ document.addEventListener('click',ev=>{
   else if(a==='menu-fechar'){ ui.menuAberto=false; render(true); }
   else if(a==='ir'){ ui.pid=t.dataset.pid; if(t.dataset.to==='avaliacao') ui.assess=null; if(t.dataset.to==='pentagrama') ui.el=null; irPara(t.dataset.to); }
   else if(a==='exportar'){ baixar(t.dataset.f==='v1'?exportarV1():exportarV2(), `${t.dataset.f==='v1'?'spazio-v1':'musubi'}-dados-${TODAY}.json`); toast('Arquivo exportado'); }
-  else if(a==='reset'){ restaurarExemplos(); ui.assess=null; ui.pid='p1'; toast('Dados de exemplo restaurados'); render(); }
+  else if(a==='reset'){ if(conta.modo==='nuvem'){ toast('Com a conta, os exemplos não substituem os dados da clínica','info'); return; } restaurarExemplos(); ui.assess=null; ui.pid='p1'; toast('Dados de exemplo restaurados'); render(); }
 });
 document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
 document.addEventListener('input',ev=>{
@@ -431,5 +432,6 @@ document.addEventListener('submit',ev=>{
   }
 });
 ligarAcesso();
+ligarConfig(save, manter => render(manter), toast);
 iniciarConta(manter => render(manter));
 render();

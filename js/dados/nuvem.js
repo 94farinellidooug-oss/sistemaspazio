@@ -71,11 +71,19 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     },
     completarUsuario:async () => { const u = await chamar('/auth/v1/user', { token:await token() }); sessao.user = { id:u.id, email:u.email, nome:u.user_metadata?.nome || '' }; gravarSessao(sessao); return sessao.user; },
     trocarSenha:async senha => { await chamar('/auth/v1/user', { metodo:'PUT', corpo:{ password:senha }, token:await token() }); return true; },
+    // Nome que sai nos registros e documentos (fica na conta, vale para todas as clínicas).
+    mudarNome:async nome => { await chamar('/auth/v1/user', { metodo:'PUT', corpo:{ data:{ nome:nome.trim() } }, token:await token() }); sessao.user.nome = nome.trim(); gravarSessao(sessao); return sessao.user; },
+    // O servidor manda um link para o e-mail novo; só muda depois que a pessoa abrir o link.
+    mudarEmail:async (email, voltarPara) => { await chamar('/auth/v1/user' + (voltarPara ? '?redirect_to=' + encodeURIComponent(voltarPara) : ''), { metodo:'PUT', corpo:{ email:email.trim() }, token:await token() }); return true; },
+    sairDosOutros:async () => { await chamar('/auth/v1/logout?scope=others', { metodo:'POST', token:await token() }); return true; },
     sair:async () => { const t = sessao?.access_token; sessao = null; gravarSessao(null); if (t) { try { await chamar('/auth/v1/logout', { metodo:'POST', token:t }); } catch (e) {} } },
     minhasClinicas:async () => (await rest(`membros?select=perfil,nome,clinicas(id,nome,cidade,uf)&user_id=eq.${sessao.user.id}&ativo=is.true`) || [])
       .filter(m => m.clinicas).map(m => ({ id:m.clinicas.id, nome:m.clinicas.nome, cidade:m.clinicas.cidade, uf:m.clinicas.uf, perfil:m.perfil })),
     criarClinica:async ({ nome, cidade, uf, nomePessoa }, doc) => rest('rpc/criar_clinica', { metodo:'POST', corpo:{ p_nome:nome, p_cidade:cidade, p_uf:uf, p_nome_pessoa:nomePessoa, p_doc:doc } }),
     baixar:async clinica => { const L = await rest(`dados?select=doc,versao&clinica_id=eq.${clinica}`); return L?.[0] || null; },
+    // Nome, cidade e estado da clínica (só o administrador consegue: regra clinicas_mudar).
+    mudarClinica:async (clinica, { nome, cidade, uf, whats }) => { await rest(`clinicas?id=eq.${clinica}`, { metodo:'PATCH', corpo:{ nome, cidade, uf, whats }, cab:{ Prefer:'return=minimal' } }); return true; },
+    souDono:async () => ((await rest(`donos?select=user_id&user_id=eq.${sessao.user.id}`)) || []).length > 0,
     salvar:async (clinica, doc, versao) => rest('rpc/salvar_dados', { metodo:'POST', corpo:{ p_clinica:clinica, p_doc:doc, p_versao:versao } }),
     // Página de apresentação: pedido de contato sem login (a lista só o dono do MUSUBI lê).
     pedirContato:async (nome, whats) => { await chamar('/rest/v1/interessados', { metodo:'POST', corpo:{ nome:nome.trim(), whats:whats.trim() }, cab:{ Prefer:'return=minimal' } }); return true; }
