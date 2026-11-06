@@ -61,10 +61,18 @@ async function conectar(completar){
     else { conta.erro = e.message; conta.ocupado = false; conta.tela = conta.tela || 'entrar'; desenharAcesso(); }
   }
 }
+// Traz as alterações de outras pessoas da equipe: ao voltar para a aba e a cada 45 segundos com a aba aberta.
+let atualizacaoLigada = false;
+function ligarAtualizacao(){
+  if (atualizacaoLigada || typeof document === 'undefined') return; atualizacaoLigada = true;
+  const vai = () => { if (document.visibilityState === 'visible' && conta.modo === 'nuvem' && !document.querySelector('input:focus, textarea:focus, select:focus')) conta.sinc?.atualizar(); };
+  document.addEventListener('visibilitychange', vai); addEventListener('focus', vai); setInterval(vai, 45000);
+}
 function ligarSincronia(){
   conta.sinc = criarSincronia({ nuvem:conta.nuvem, clinica:conta.clinica.id, obter:() => db, aplicar:doc => { trocarDados(doc); },
-    aoMudar:(e, x) => { conta.estado = e; if (e === 'conflito') avisoConta('Outro aparelho salvou antes. Abrimos a versão mais nova; o que estava aqui ficou guardado como cópia neste aparelho.'); aoMudarConta(true); } });
+    aoMudar:(e, x) => { conta.estado = e; if (e === 'juntado') avisoConta('Outra pessoa salvou ao mesmo tempo. Juntamos as duas alterações.'); aoMudarConta(true); } });
   ouvirSalvar(() => conta.sinc.marcar());
+  ligarAtualizacao();
 }
 async function abrirClinica(c){
   conta.clinica = c; gravarC(KEY_CLINICA, c.id); ligarSincronia();
@@ -94,7 +102,7 @@ function avisoConta(m){ const t = document.getElementById('toast'); if (!t) retu
 // Selo no topo: está tudo salvo no servidor?
 export function seloConta(){
   if (conta.modo !== 'nuvem' || !conta.sinc) return '';
-  const E = { salvo:['okc', 'Salvo', 'ok'], salvando:['carregando', 'Salvando…', ''], carregando:['carregando', 'Abrindo…', ''], offline:['alerta', 'Sem internet', 'warn'], erro:['alerta', 'Não salvou', 'warn'], conflito:['okc', 'Atualizado', 'ok'] }[conta.estado] || ['okc', 'Salvo', 'ok'];
+  const E = { salvo:['okc', 'Salvo', 'ok'], salvando:['carregando', 'Salvando…', ''], carregando:['carregando', 'Abrindo…', ''], offline:['alerta', 'Sem internet', 'warn'], erro:['alerta', 'Não salvou', 'warn'], juntado:['okc', 'Salvo', 'ok'], atualizado:['okc', 'Salvo', 'ok'] }[conta.estado] || ['okc', 'Salvo', 'ok'];
   const dica = conta.estado === 'offline' ? 'Sem conexão: o que você fizer fica neste aparelho e é enviado quando a internet voltar' : conta.estado === 'erro' ? 'O servidor não aceitou; toque para tentar de novo' : 'Tudo guardado no servidor';
   const T = conta.sit?.tipo === 'teste' ? `<a class="selo-teste" href="#configuracoes" data-cf="ir" data-k="conta" data-tip="Seu pacote: ${planoDe(conta.assin?.plano).nome}">${ic('relogio')}<span>${rotuloSituacao(conta.sit)}</span></a>` : '';
   return T + `<button class="selo-nuvem ${E[2]}" data-act="nuvem-tentar" data-tip="${dica}" aria-label="${E[1]}. ${dica}">${ic(E[0])}<span>${E[1]}</span></button>`;

@@ -114,20 +114,59 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
 // Mantém o documento da clínica igual no aparelho e no servidor. marcar() depois de cada mudança:
 // espera um pouco e envia. Se outro aparelho salvou antes, guarda uma cópia do que estava aqui,
 // traz a versão do servidor e avisa. Sem internet, fica pendente e tenta de novo depois.
+// Junta o trabalho de duas pessoas (ou dois aparelhos) que mexeram ao mesmo tempo: compara cada uma com a
+// última versão em comum (base). O que só um lado mudou entra; listas com id (pacientes, horários, sessões…)
+// juntam item por item; item apagado de um lado sai, a não ser que o outro lado tenha mexido nele.
+// Se os dois mudaram o mesmo campo, vale o deste aparelho.
+const igualJ = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const objJ = v => !!v && typeof v === 'object' && !Array.isArray(v);
+const listaComId = v => Array.isArray(v) && v.every(x => objJ(x) && x.id != null);
+export function juntarDocs(base, meu, deles){
+  if (igualJ(meu, base) || igualJ(meu, deles)) return deles;
+  if (igualJ(deles, base)) return meu;
+  if (objJ(meu) && objJ(deles)) {
+    const B = objJ(base) ? base : {}, r = {};
+    for (const k of new Set([...Object.keys(deles), ...Object.keys(meu)])) {
+      const tinha = k in B;
+      if (!(k in meu) && tinha) { if (!igualJ(deles[k], B[k])) r[k] = deles[k]; continue; }
+      if (!(k in deles) && tinha) { if (!igualJ(meu[k], B[k])) r[k] = meu[k]; continue; }
+      if (!(k in meu)) { r[k] = deles[k]; continue; }
+      if (!(k in deles)) { r[k] = meu[k]; continue; }
+      r[k] = juntarDocs(B[k], meu[k], deles[k]);
+    }
+    return r;
+  }
+  if (listaComId(meu) && listaComId(deles) && (meu.length || deles.length)) {
+    const B = new Map((listaComId(base) ? base : []).map(x => [x.id, x])), M = new Map(meu.map(x => [x.id, x])), D = new Map(deles.map(x => [x.id, x])), r = [];
+    for (const id of [...D.keys(), ...[...M.keys()].filter(i => !D.has(i))]) {
+      const b = B.get(id), m = M.get(id), d = D.get(id);
+      if (m && d) r.push(juntarDocs(b, m, d));
+      else if (m) { if (!b || !igualJ(m, b)) r.push(m); }
+      else if (!b || !igualJ(d, b)) r.push(d);
+    }
+    return r;
+  }
+  return meu;
+}
+
 export function criarSincronia({ nuvem, clinica, obter, aplicar, aoMudar = () => {}, mem = localStorage, espera = 1500, relogio = { definir:(fn, ms) => setTimeout(fn, ms), limpar:h => clearTimeout(h) }, agora = () => new Date().toISOString() }){
-  let versao = 0, pendente = false, enviando = false, h = null, estado = 'carregando';
+  let versao = 0, pendente = false, enviando = false, h = null, estado = 'carregando', base = null;
+  const copiar = d => JSON.parse(JSON.stringify(d));
   const mudar = (e, extra) => { estado = e; aoMudar(e, extra); };
   const enviar = async () => {
     h = null; if (enviando) { pendente = true; return; }
     enviando = true; pendente = false; mudar('salvando');
     try {
-      const v = await nuvem.salvar(clinica, obter(), versao);
-      if (v > 0) { versao = v; mudar('salvo'); }
+      const enviado = copiar(obter()), v = await nuvem.salvar(clinica, enviado, versao);
+      if (v > 0) { versao = v; base = enviado; mudar(pendente ? 'salvando' : 'salvo'); }
       else {
+        // Outra pessoa salvou antes: junta as duas versões e manda de novo (nada se perde).
         const copia = 'musubi-v2-conflito-' + agora();
         try { mem.setItem(copia, JSON.stringify(obter())); } catch (e) {}
-        const r = await nuvem.baixar(clinica); versao = r.versao; aplicar(r.doc);
-        mudar('conflito', { copia });
+        const r = await nuvem.baixar(clinica), junto = base ? juntarDocs(base, obter(), r.doc) : r.doc;
+        versao = r.versao; base = copiar(r.doc); aplicar(junto);
+        if (!igualJ(junto, r.doc)) pendente = true;
+        mudar('juntado', { copia });
       }
     } catch (e) { pendente = true; mudar(e.codigo === 'offline' ? 'offline' : 'erro', { msg:e.message }); }
     finally { enviando = false; if (pendente && estado !== 'offline' && estado !== 'erro') marcar(); }
@@ -135,7 +174,17 @@ export function criarSincronia({ nuvem, clinica, obter, aplicar, aoMudar = () =>
   const marcar = () => { pendente = true; if (h) relogio.limpar(h); h = relogio.definir(enviar, espera); };
   return {
     estado:() => estado, versao:() => versao, pendente:() => pendente,
-    iniciar:async () => { const r = await nuvem.baixar(clinica); if (!r) throw new Error('Clínica sem dados no servidor.'); versao = r.versao; aplicar(r.doc); mudar('salvo'); return r; },
+    iniciar:async () => { const r = await nuvem.baixar(clinica); if (!r) throw new Error('Clínica sem dados no servidor.'); versao = r.versao; base = copiar(r.doc); aplicar(r.doc); mudar('salvo'); return r; },
+    // Traz o que outra pessoa salvou (ao voltar para a aba e de tempos em tempos), juntando com o que há aqui.
+    atualizar:async () => {
+      if (enviando || h || estado === 'carregando') return false;
+      let r; try { r = await nuvem.baixar(clinica); } catch (e) { return false; }
+      if (!r || r.versao <= versao || enviando || h) return false;
+      const junto = base ? juntarDocs(base, obter(), r.doc) : r.doc;
+      versao = r.versao; base = copiar(r.doc); aplicar(junto);
+      if (!igualJ(junto, r.doc)) marcar();
+      mudar('atualizado'); return true;
+    },
     marcar, agora:enviar,
     tentarDeNovo:() => { if (pendente) marcar(); }
   };
