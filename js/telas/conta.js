@@ -7,6 +7,7 @@ import { criarNuvem, criarSincronia } from '../dados/nuvem.js';
 import { dadosNovaClinica, dadosVazios, db, ouvirSalvar, resumoDados, trocarDados } from '../dados/repositorio.js';
 import { definirNomeClinica } from '../dados/documentos.js';
 import { PROF } from './menu.js';
+import { PLANOS, planoDe, precoTxt, rotuloSituacao, situacaoAssinatura } from '../dados/planos.js';
 import { LOGO, ic } from '../componentes/icones.js';
 import { esc } from '../util.js';
 
@@ -17,7 +18,7 @@ const gravarC = (k, v) => { try { v == null ? localStorage.removeItem(k) : local
 const voltarAoSite = () => location.origin + location.pathname;
 
 // Estado da conta: modo 'local' (sem conta) ou 'nuvem'; tela de acesso aberta (ou null); clínica atual.
-export const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false };
+export const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false, plano:'profissional', assin:null, sit:null };
 export const PERFIL_NOME = { adm:'Administrador', prof:'Profissional', rec:'Recepção' };
 let aoMudarConta = () => {};
 
@@ -67,6 +68,10 @@ async function abrirClinica(c){
   PROF.papel = PERFIL_NOME[c.perfil] || PROF.papel;
   if (!db.config?.clinica?.nome && c.nome) definirNomeClinica(c.nome);
   try { conta.dono = await conta.nuvem.souDono(); } catch (e) { conta.dono = false; }
+  try { conta.assin = await conta.nuvem.assinatura(c.id); } catch (e) { conta.assin = null; }
+  conta.sit = situacaoAssinatura(conta.assin);
+  // Teste terminado sem acesso grátis nem pagamento: os dados ficam guardados, o sistema pede para continuar.
+  if (conta.sit.tipo === 'vencido' && !conta.dono) { conta.plano = conta.assin?.plano || conta.plano; abrirAcesso('vencido'); aoMudarConta(); return; }
   fecharAcesso(); aoMudarConta();
 }
 let avisoH = null;
@@ -77,7 +82,8 @@ export function seloConta(){
   if (conta.modo !== 'nuvem' || !conta.sinc) return '';
   const E = { salvo:['okc', 'Salvo', 'ok'], salvando:['carregando', 'Salvando…', ''], carregando:['carregando', 'Abrindo…', ''], offline:['alerta', 'Sem internet', 'warn'], erro:['alerta', 'Não salvou', 'warn'], conflito:['okc', 'Atualizado', 'ok'] }[conta.estado] || ['okc', 'Salvo', 'ok'];
   const dica = conta.estado === 'offline' ? 'Sem conexão: o que você fizer fica neste aparelho e é enviado quando a internet voltar' : conta.estado === 'erro' ? 'O servidor não aceitou; toque para tentar de novo' : 'Tudo guardado no servidor';
-  return `<button class="selo-nuvem ${E[2]}" data-act="nuvem-tentar" data-tip="${dica}" aria-label="${E[1]}. ${dica}">${ic(E[0])}<span>${E[1]}</span></button>`;
+  const T = conta.sit?.tipo === 'teste' ? `<a class="selo-teste" href="#configuracoes" data-cf="ir" data-k="conta" data-tip="Seu pacote: ${planoDe(conta.assin?.plano).nome}">${ic('relogio')}<span>${rotuloSituacao(conta.sit)}</span></a>` : '';
+  return T + `<button class="selo-nuvem ${E[2]}" data-act="nuvem-tentar" data-tip="${dica}" aria-label="${E[1]}. ${dica}">${ic(E[0])}<span>${E[1]}</span></button>`;
 }
 // Parte da conta no menu do perfil.
 export function menuConta(){
@@ -96,6 +102,7 @@ export const sairDaConta = async () => {
 };
 
 /* ---------- Usado em Configurações (Sua conta e dados da clínica) ---------- */
+export const situacaoConta = () => conta.modo === 'nuvem' && conta.sit ? { ...conta.sit, plano:planoDe(conta.assin?.plano), rotulo:rotuloSituacao(conta.sit) } : null;
 export const contaAtual = () => {
   const u = conta.modo === 'nuvem' ? conta.nuvem?.sessao()?.user : null;
   return { nuvem:!!u, nome:u?.nome || PROF.nome, email:u?.email || '', perfil:conta.clinica?.perfil || 'adm', clinica:conta.clinica?.nome || '' };
@@ -112,14 +119,17 @@ export const clinicaNoServidor = D => conta.modo === 'nuvem' && conta.clinica?.i
 }) : Promise.resolve('');
 
 /* ---------- Tela de acesso ---------- */
+const escolherPlano = rot => `<div class="acesso-opc acesso-plano" role="radiogroup" aria-label="Pacote"><p><b>${rot}</b></p>${PLANOS.map(p => `<label class="${conta.plano === p.k ? 'on' : ''}"><input type="radio" name="plano" value="${p.k}" data-ac="plano" ${conta.plano === p.k ? 'checked' : ''}><span><b>${p.nome} <span class="acesso-preco">${precoTxt(p)}</span></b><small>${p.resumo}</small></span></label>`).join('')}</div>`;
 const campoA = (nome, rot, tipo = 'text', extra = '') => `<label class="field"><span class="lbl">${rot}</span><input name="${nome}" type="${tipo}" ${extra} required></label>`;
 function htmlAcesso(){
   const t = conta.tela, carregando = conta.ocupado && !conta.erro;
   const TIT = { entrar:['Entrar no MUSUBI', 'Use o e-mail e a senha da sua conta.'], criar:['Criar sua conta', 'Comece com o seu e-mail e uma senha.'], esqueci:['Criar uma nova senha', 'Informe o seu e-mail. Mandamos um link para criar a nova senha.'],
-    'nova-senha':['Escolha a nova senha', 'Pelo menos 8 caracteres.'], clinica:['Conte sobre a clínica', 'Atende sozinho? Use o seu nome. O resto dá para ajustar depois.'] }[t] || ['', ''];
+    'nova-senha':['Escolha a nova senha', 'Pelo menos 8 caracteres.'], clinica:['Conte sobre a clínica', 'Atende sozinho? Use o seu nome. O resto dá para ajustar depois.'],
+    vencido:['O teste grátis terminou', `Os dados${conta.clinica?.nome ? ' de ' + conta.clinica.nome : ''} continuam guardados. Para seguir usando, escolha o pacote e deixe o seu WhatsApp: a gente chama você para combinar.`],
+    aguardando:['Pedido enviado', ''] }[t] || ['', ''];
   const R = resumoDados(), temDados = !lerC(KEY_CACHE_DE) && (R.pacientes > 0 || R.horarios > 0);
   const corpo = carregando ? `<p class="muted acesso-c">${ic('carregando')}Abrindo a sua clínica…</p>`
-    : conta.msg && ['enviado', 'confirmar'].includes(conta.tela) ? ''
+    : conta.msg && ['enviado', 'confirmar', 'aguardando'].includes(conta.tela) ? ''
     : t === 'entrar' ? `${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}<label class="field"><span class="lbl">Senha</span><span class="senha-c"><input name="senha" type="password" autocomplete="current-password" required><button type="button" class="btn ghost sm" data-ac="ver">Mostrar</button></span></label>
         <div class="acesso-l"><button type="button" class="lnk" data-ac="esqueci">Esqueci minha senha</button></div>`
     : t === 'criar' ? `${campoA('nome', 'Seu nome', 'text', 'autocomplete="name"')}${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}${campoA('senha', 'Crie uma senha', 'password', 'autocomplete="new-password" minlength="8"')}`
@@ -128,18 +138,20 @@ function htmlAcesso(){
     : t === 'clinica' ? `${campoA('clinica', 'Nome da clínica')}<div class="acesso-2">${campoA('cidade', 'Cidade')}<label class="field"><span class="lbl">Estado</span><select name="uf">${UFS_BR.map(u => `<option ${u === 'RS' ? 'selected' : ''}>${u}</option>`).join('')}</select></label></div>
         ${temDados ? `<div class="acesso-opc" role="radiogroup" aria-label="Dados deste aparelho"><p><b>Encontramos dados neste aparelho:</b> ${R.pacientes} paciente${R.pacientes === 1 ? '' : 's'}${R.exemplos ? ' (além dos exemplos)' : ''}, ${R.atendimentos} atendimento${R.atendimentos === 1 ? '' : 's'} e ${R.horarios} horário${R.horarios === 1 ? '' : 's'} na agenda.</p>
           <label class="${conta.levar ? 'on' : ''}"><input type="radio" name="levar" value="1" data-ac="levar" ${conta.levar ? 'checked' : ''}><span><b>Levar para a minha conta</b><small>Tudo passa a ficar no servidor e aparece em qualquer aparelho. Recomendado.</small></span></label>
-          <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa com pacientes de exemplo (WhatsApp e CPF 0000…) para conhecer o sistema. Dá para excluir depois.</small></span></label></div>` : ''}` : '';
-  const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Entrar no MUSUBI' }[t];
+          <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa com pacientes de exemplo (WhatsApp e CPF 0000…) para conhecer o sistema. Dá para excluir depois.</small></span></label></div>` : ''}
+        ${escolherPlano('Escolha o pacote: 7 dias grátis com tudo o que ele tem')}`
+    : t === 'vencido' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
+  const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Quero continuar' }[t];
   const rodape = t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p>`
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
-    : t === 'clinica' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
+    : ['clinica', 'vencido', 'aguardando'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
   return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>
     <div class="acesso-h">${LOGO}<b>Musubi</b></div>
     <h1>${conta.tela === 'confirmar' ? 'Confira o seu e-mail' : conta.tela === 'enviado' ? 'Link enviado' : TIT[0]}</h1>
     <p class="muted">${esc(conta.msg || TIT[1])}</p>
     ${corpo}
     <p class="erro-a" role="alert" ${conta.erro ? '' : 'hidden'}>${esc(conta.erro)}</p>
-    ${carregando || ['confirmar', 'enviado'].includes(t) ? '' : `<button class="btn pri largo" type="submit" ${conta.ocupado ? 'disabled' : ''}>${conta.ocupado ? 'Aguarde…' : botao}</button>`}
+    ${carregando || ['confirmar', 'enviado', 'aguardando'].includes(t) ? '' : `<button class="btn pri largo" type="submit" ${conta.ocupado ? 'disabled' : ''}>${conta.ocupado ? 'Aguarde…' : botao}</button>`}
     ${['confirmar', 'enviado'].includes(t) ? `<button class="btn largo" type="button" data-ac="entrar">Voltar para entrar</button>` : rodape}
   </form></div>`;
 }
@@ -147,8 +159,11 @@ function desenharAcesso(){
   const el = document.getElementById('acesso'); if (!el) return;
   el.hidden = !conta.tela; document.body.classList.toggle('com-acesso', !!conta.tela);
   if (!conta.tela) { el.innerHTML = ''; return; }
-  const foco = document.activeElement?.name;
+  const foco = document.activeElement?.name, antes = {};
+  el.querySelectorAll('input:not([type=radio]), select').forEach(i => { if (i.name && i.type !== 'password') antes[i.name] = i.value; });
   el.innerHTML = htmlAcesso();
+  if (conta.tela === conta.telaDesenhada) el.querySelectorAll('input:not([type=radio]), select').forEach(i => { if (i.name in antes) i.value = antes[i.name]; });
+  conta.telaDesenhada = conta.tela;
   const i = (foco && el.querySelector(`[name="${foco}"]`)) || el.querySelector('input');
   if (i && !conta.ocupado) i.focus();
 }
@@ -159,7 +174,8 @@ async function enviarAcesso(f){
     : t === 'criar' ? (!v('nome').trim() ? 'Escreva o seu nome.' : !okEmail(v('email')) ? 'Confira o e-mail.' : v('senha').length < 8 ? 'A senha precisa de pelo menos 8 caracteres.' : '')
     : t === 'esqueci' ? (!okEmail(v('email')) ? 'Confira o e-mail.' : '')
     : t === 'nova-senha' ? (v('senha').length < 8 ? 'A senha precisa de pelo menos 8 caracteres.' : '')
-    : t === 'clinica' ? (!v('clinica').trim() ? 'Escreva o nome da clínica.' : !v('cidade').trim() ? 'Escreva a cidade.' : '') : '';
+    : t === 'clinica' ? (!v('clinica').trim() ? 'Escreva o nome da clínica.' : !v('cidade').trim() ? 'Escreva a cidade.' : '')
+    : t === 'vencido' ? (String(v('whats')).replace(/\D/g, '').length < 10 ? 'Confira o WhatsApp, com o DDD.' : '') : '';
   if (falta) { conta.erro = falta; desenharAcesso(); return; }
   conta.erro = ''; conta.ocupado = true; desenharAcesso();
   try {
@@ -173,8 +189,13 @@ async function enviarAcesso(f){
       const levar = !lerC(KEY_CACHE_DE) && conta.levar && (resumoDados().pacientes > 0 || resumoDados().horarios > 0);
       const doc = levar ? db : dadosNovaClinica();
       (doc.config ||= {}).clinica = { ...(doc.config.clinica || {}), nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf') };
-      const id = await conta.nuvem.criarClinica({ nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf'), nomePessoa:conta.nuvem.sessao().user.nome || '' }, doc);
+      const id = await conta.nuvem.criarClinica({ nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf'), nomePessoa:conta.nuvem.sessao().user.nome || '', plano:conta.plano }, doc);
       await abrirClinica({ id, nome:v('clinica').trim(), perfil:'adm' });
+    }
+    if (t === 'vencido') {
+      const u = conta.nuvem.sessao()?.user || {}, P = planoDe(conta.plano);
+      await conta.nuvem.pedirContato(`${u.nome || u.email || 'Cliente'} · ${conta.clinica?.nome || ''} · quer o ${P.nome}`.slice(0, 120), v('whats'));
+      abrirAcesso('aguardando', `Recebemos o seu pedido do pacote ${P.nome} (${precoTxt(P)}). A gente chama você no WhatsApp ${v('whats').trim()} para combinar. Os seus dados continuam guardados.`);
     }
   } catch (e) { conta.erro = e.message; conta.ocupado = false; desenharAcesso(); }
 }
@@ -189,5 +210,8 @@ export function ligarAcesso(){
     else if (a === 'local') { gravarC(KEY_MODO, 'local'); conta.modo = 'local'; fecharAcesso(); aoMudarConta(); }
     else if (a === 'sair') sairDaConta();
   });
-  el.addEventListener('change', ev => { if (ev.target.dataset.ac === 'levar') { conta.levar = ev.target.value === '1'; desenharAcesso(); } });
+  el.addEventListener('change', ev => {
+    if (ev.target.dataset.ac === 'levar') { conta.levar = ev.target.value === '1'; desenharAcesso(); }
+    if (ev.target.dataset.ac === 'plano') { conta.plano = ev.target.value; desenharAcesso(); }
+  });
 }

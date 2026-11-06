@@ -260,7 +260,7 @@ details[open]>summary>.ic:last-child{transform:rotate(180deg)}
 .tg small{display:block;color:var(--muted)}
 .lgpd{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;cursor:pointer}
 .lgpd input{accent-color:var(--brand);margin-top:3px}
-.cad-p{position:sticky;top:20px}
+.cad-lado{position:sticky;top:20px;display:grid;gap:16px;align-content:start}
 .cad-pv{display:grid;justify-items:center;text-align:center;gap:6px;padding:20px 0 6px}
 
 /* Biblioteca */
@@ -292,7 +292,7 @@ details[open]>summary>.ic:last-child{transform:rotate(180deg)}
 
 @media (max-width:820px){
   .ag-l,.cad{grid-template-columns:1fr}
-  .cad-p{position:static}
+  .cad-lado{position:static}
   .busca{min-width:0;flex:1}
   .tab{overflow-x:auto}.tr-h,.tr-r{min-width:560px}
   .sw-g{grid-template-columns:repeat(2,1fr)}
@@ -1245,3 +1245,36 @@ body.com-acesso{overflow:hidden}
 .brand .logo-m{width:32px;height:32px}
 .imp-h .logo-m{width:32px;height:32px}
 .acesso-h .logo-m{width:36px;height:36px}
+
+/* Etapa 10 · pacotes e teste grátis */
+.acesso-plano .acesso-preco{font-weight:500;color:var(--muted);font-size:.82rem;margin-left:4px}
+.selo-teste{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--accent-line,var(--line));background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:4px 10px;font-size:.78rem;font-weight:600;text-decoration:none;white-space:nowrap}
+.selo-teste .ic{width:14px;height:14px}
+@media (max-width:560px){ .selo-teste{display:none} }
+.cf-planos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:620px){ .cf-planos{grid-template-columns:minmax(0,1fr)} }
+.cf-plano{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px}
+.cf-plano.on{border-color:var(--accent);background:var(--accent-soft)}
+.cf-plano b,.cf-plano small{display:block}
+.cf-plano ul{margin:8px 0 0;padding-left:18px;font-size:.82rem;color:var(--muted);display:grid;gap:2px}
+#cf-pacote{grid-column:1/-1}
+
+/* Etapa 10 · Painel do MUSUBI (dono) */
+.pd-adm{margin-bottom:12px;border-color:var(--accent-line)}
+.pd-n{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.pd-n .card{padding:14px}
+.pd-n small{display:block;color:var(--muted);font-size:.78rem}
+.pd-n b{font-size:1.4rem}
+@media (max-width:900px){ .pd-n{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.pd-busca{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:7px 10px;font:inherit;font-size:.86rem;color:var(--ink);min-width:0;width:min(280px,100%)}
+#pd-cl .card-h{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:flex-start}
+.pd-c,.pd-i{flex-wrap:wrap;row-gap:8px}
+.pd-c .grow small,.pd-i .grow small{display:block}
+.pd-c .grow{flex-basis:calc(100% - 50px)}
+.pd-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-left:50px;width:calc(100% - 50px)}
+.pd-ctl select{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:6px 8px;font-size:.84rem;color:var(--ink)}
+.pd-g{width:100%;margin-left:50px;width:calc(100% - 50px);border:1px solid var(--accent-line);background:var(--accent-soft);border-radius:var(--r-sm);padding:12px}
+.pd-i.st-novo .pd-ctl select{border-color:var(--accent);color:var(--accent);font-weight:600}
+@media (min-width:761px){ .pd-i .pd-ctl{margin:0;width:auto} }
+@media (max-width:560px){ .tb-r > [data-act=atalhos]{display:none} }
+.cad-lado:has(.cad-exc.on){position:static}

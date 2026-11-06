@@ -87,5 +87,14 @@ ok(!N.sessao() && mem.getItem(KEY_SESSAO) === null, 'sair apaga a sessão do apa
 e = await erro(N.baixar(c));
 ok(e?.codigo === 'sem_login', 'depois de sair, pede para entrar de novo');
 
+// Servidor ainda sem 002_planos.sql: criar clínica com pacote cai para a função antiga; sem assinatura = liberado
+{ const S2 = servidor({ chave:'pub' }), f0 = S2.fetch;
+  S2.fetch = async (u, op) => { if (op.body?.includes('p_plano')) return { ok:false, status:404, text:async () => JSON.stringify({ code:'PGRST202', message:'Could not find the function' }) };
+    if (u.includes('/rest/v1/assinaturas')) return { ok:false, status:404, text:async () => JSON.stringify({ code:'PGRST205', message:'Could not find the table' }) }; return f0(u, op); };
+  const A = criarNuvem({ url:'https://x.supabase.co', chave:'pub', f:S2.fetch, mem:memoria() });
+  await A.entrar('maicon@x.com', 'segredo123');
+  const id = await A.criarClinica({ nome:'X', cidade:'Y', uf:'RS', nomePessoa:'M', plano:'essencial' }, { v:2 });
+  ok(!!id && S2.clinicas.length === 1 && await A.assinatura(id) === null, 'servidor sem os pacotes: cria a clínica mesmo assim e não bloqueia'); }
+
 console.log(falhas ? `\n${falhas} verificações falharam.` : '\nTodas as regras da ligação com o servidor passaram.');
 process.exit(falhas ? 1 : 0);

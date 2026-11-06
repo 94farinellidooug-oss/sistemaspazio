@@ -509,7 +509,7 @@ details[open]>summary>.ic:last-child{transform:rotate(180deg)}
 .tg small{display:block;color:var(--muted)}
 .lgpd{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;cursor:pointer}
 .lgpd input{accent-color:var(--brand);margin-top:3px}
-.cad-p{position:sticky;top:20px}
+.cad-lado{position:sticky;top:20px;display:grid;gap:16px;align-content:start}
 .cad-pv{display:grid;justify-items:center;text-align:center;gap:6px;padding:20px 0 6px}
 
 /* Biblioteca */
@@ -541,7 +541,7 @@ details[open]>summary>.ic:last-child{transform:rotate(180deg)}
 
 @media (max-width:820px){
   .ag-l,.cad{grid-template-columns:1fr}
-  .cad-p{position:static}
+  .cad-lado{position:static}
   .busca{min-width:0;flex:1}
   .tab{overflow-x:auto}.tr-h,.tr-r{min-width:560px}
   .sw-g{grid-template-columns:repeat(2,1fr)}
@@ -1494,6 +1494,39 @@ body.com-acesso{overflow:hidden}
 .brand .logo-m{width:32px;height:32px}
 .imp-h .logo-m{width:32px;height:32px}
 .acesso-h .logo-m{width:36px;height:36px}
+
+/* Etapa 10 · pacotes e teste grátis */
+.acesso-plano .acesso-preco{font-weight:500;color:var(--muted);font-size:.82rem;margin-left:4px}
+.selo-teste{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--accent-line,var(--line));background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:4px 10px;font-size:.78rem;font-weight:600;text-decoration:none;white-space:nowrap}
+.selo-teste .ic{width:14px;height:14px}
+@media (max-width:560px){ .selo-teste{display:none} }
+.cf-planos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:620px){ .cf-planos{grid-template-columns:minmax(0,1fr)} }
+.cf-plano{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px}
+.cf-plano.on{border-color:var(--accent);background:var(--accent-soft)}
+.cf-plano b,.cf-plano small{display:block}
+.cf-plano ul{margin:8px 0 0;padding-left:18px;font-size:.82rem;color:var(--muted);display:grid;gap:2px}
+#cf-pacote{grid-column:1/-1}
+
+/* Etapa 10 · Painel do MUSUBI (dono) */
+.pd-adm{margin-bottom:12px;border-color:var(--accent-line)}
+.pd-n{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.pd-n .card{padding:14px}
+.pd-n small{display:block;color:var(--muted);font-size:.78rem}
+.pd-n b{font-size:1.4rem}
+@media (max-width:900px){ .pd-n{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.pd-busca{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:7px 10px;font:inherit;font-size:.86rem;color:var(--ink);min-width:0;width:min(280px,100%)}
+#pd-cl .card-h{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:flex-start}
+.pd-c,.pd-i{flex-wrap:wrap;row-gap:8px}
+.pd-c .grow small,.pd-i .grow small{display:block}
+.pd-c .grow{flex-basis:calc(100% - 50px)}
+.pd-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-left:50px;width:calc(100% - 50px)}
+.pd-ctl select{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:6px 8px;font-size:.84rem;color:var(--ink)}
+.pd-g{width:100%;margin-left:50px;width:calc(100% - 50px);border:1px solid var(--accent-line);background:var(--accent-soft);border-radius:var(--r-sm);padding:12px}
+.pd-i.st-novo .pd-ctl select{border-color:var(--accent);color:var(--accent);font-weight:600}
+@media (min-width:761px){ .pd-i .pd-ctl{margin:0;width:auto} }
+@media (max-width:560px){ .tb-r > [data-act=atalhos]{display:none} }
+.cad-lado:has(.cad-exc.on){position:static}
 </style>
 
 
@@ -2660,7 +2693,22 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     sair:async () => { const t = sessao?.access_token; sessao = null; gravarSessao(null); if (t) { try { await chamar('/auth/v1/logout', { metodo:'POST', token:t }); } catch (e) {} } },
     minhasClinicas:async () => (await rest(`membros?select=perfil,nome,clinicas(id,nome,cidade,uf)&user_id=eq.${sessao.user.id}&ativo=is.true`) || [])
       .filter(m => m.clinicas).map(m => ({ id:m.clinicas.id, nome:m.clinicas.nome, cidade:m.clinicas.cidade, uf:m.clinicas.uf, perfil:m.perfil })),
-    criarClinica:async ({ nome, cidade, uf, nomePessoa }, doc) => rest('rpc/criar_clinica', { metodo:'POST', corpo:{ p_nome:nome, p_cidade:cidade, p_uf:uf, p_nome_pessoa:nomePessoa, p_doc:doc } }),
+    criarClinica:async ({ nome, cidade, uf, nomePessoa, plano }, doc) => {
+      const corpo = { p_nome:nome, p_cidade:cidade, p_uf:uf, p_nome_pessoa:nomePessoa, p_doc:doc };
+      if (!plano) return rest('rpc/criar_clinica', { metodo:'POST', corpo });
+      // Servidor ainda sem 002_planos.sql: a função não aceita o pacote; cria sem ele.
+      try { return await rest('rpc/criar_clinica', { metodo:'POST', corpo:{ ...corpo, p_plano:plano } }); }
+      catch (e) { if (e.codigo === 'PGRST202' || e.status === 404) return rest('rpc/criar_clinica', { metodo:'POST', corpo }); throw e; }
+    },
+    // Pacote e prazos da clínica (supabase/002_planos.sql). null quando o servidor ainda não tem a tabela.
+    assinatura:async clinica => { try { return (await rest(`assinaturas?select=plano,teste_ate,gratis_ate,gratis_sempre,gratis_motivo,pago_ate&clinica_id=eq.${clinica}`))?.[0] || null; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    // Painel do MUSUBI (só para quem está na tabela donos; o servidor recusa os outros).
+    painelDono:async () => (await rest('rpc/painel_dono', { metodo:'POST', corpo:{} })) || [],
+    darGratis:async (clinica, ate, motivo = '', tirar = false) => rest('rpc/dar_gratis', { metodo:'POST', corpo:{ p_clinica:clinica, p_ate:ate, p_motivo:motivo, p_tirar:tirar } }),
+    mudarPlano:async (clinica, plano) => rest('rpc/mudar_plano', { metodo:'POST', corpo:{ p_clinica:clinica, p_plano:plano } }),
+    estenderTeste:async (clinica, dias) => rest('rpc/estender_teste', { metodo:'POST', corpo:{ p_clinica:clinica, p_dias:dias } }),
+    interessados:async () => (await rest('interessados?select=id,nome,whats,situacao,criado_em&order=criado_em.desc')) || [],
+    mudarInteressado:async (id, situacao) => rest(`interessados?id=eq.${id}`, { metodo:'PATCH', corpo:{ situacao }, cab:{ Prefer:'return=minimal' } }),
     baixar:async clinica => { const L = await rest(`dados?select=doc,versao&clinica_id=eq.${clinica}`); return L?.[0] || null; },
     // Nome, cidade e estado da clínica (só o administrador consegue: regra clinicas_mudar).
     mudarClinica:async (clinica, { nome, cidade, uf, whats }) => { await rest(`clinicas?id=eq.${clinica}`, { metodo:'PATCH', corpo:{ nome, cidade, uf, whats }, cab:{ Prefer:'return=minimal' } }); return true; },
@@ -2700,6 +2748,40 @@ function criarSincronia({ nuvem, clinica, obter, aplicar, aoMudar = () => {}, me
     tentarDeNovo:() => { if (pendente) marcar(); }
   };
 }
+// em 05/11, para ajustar depois). Toda clínica nova tem 7 dias grátis com as funções do pacote escolhido;
+// o dono do MUSUBI pode dar acesso grátis (com prazo ou sem prazo) pelo Painel do MUSUBI.
+const PLANOS = [
+  { k:'essencial', nome:'Essencial', preco:79, resumo:'Para começar a organizar a clínica.',
+    itens:['Agenda', 'Pacientes e prontuário', 'Documentos editáveis', 'WhatsApp com mensagem pronta', 'Financeiro básico'] },
+  { k:'profissional', nome:'Profissional', preco:149, resumo:'O MUSUBI completo para quem atende com MTC.', destaque:true,
+    itens:['Tudo do Essencial', 'Avaliação MTC e pentagrama', 'Mapa corporal e pontos indicados', 'Dicas de vasos e estações', 'Evolução comparada', 'Relatórios'] },
+  { k:'clinica', nome:'Clínica', preco:299, aPartir:true, resumo:'Para equipes com mais de um profissional.',
+    itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até um limite)'] }
+];
+const planoDe = k => PLANOS.find(p => p.k === k) || PLANOS[1];
+const precoTxt = p => `${p.aPartir ? 'a partir de ' : ''}R$ ${p.preco}/mês`;
+const DIAS_TESTE = 7;
+
+const DIA = 86400000;
+// Situação da assinatura: {tipo:'gratis'|'pago'|'teste'|'vencido', dias (que faltam), ate (iso), sempre}.
+// Sem assinatura (servidor antigo, ou sem conta) conta como liberado.
+function situacaoAssinatura(a, agora = Date.now()){
+  if (!a) return { tipo:'gratis', sempre:true, dias:null, ate:null };
+  const t = d => d ? new Date(d).getTime() : 0, dias = d => Math.max(0, Math.ceil((t(d) - agora) / DIA));
+  if (a.gratis_sempre) return { tipo:'gratis', sempre:true, dias:null, ate:null, motivo:a.gratis_motivo || '' };
+  if (t(a.gratis_ate) > agora) return { tipo:'gratis', sempre:false, dias:dias(a.gratis_ate), ate:a.gratis_ate, motivo:a.gratis_motivo || '' };
+  if (t(a.pago_ate) > agora) return { tipo:'pago', dias:dias(a.pago_ate), ate:a.pago_ate };
+  if (t(a.teste_ate) > agora) return { tipo:'teste', dias:dias(a.teste_ate), ate:a.teste_ate };
+  return { tipo:'vencido', dias:0, ate:a.teste_ate };
+}
+// Texto curto da situação (painel do dono e topo do sistema).
+function rotuloSituacao(s){
+  const d = n => `${n} dia${n === 1 ? '' : 's'}`, data = iso => new Date(iso).toLocaleDateString('pt-BR');
+  return s.tipo === 'gratis' ? (s.sempre ? 'Grátis sem prazo' : `Grátis até ${data(s.ate)}`)
+    : s.tipo === 'pago' ? `Pago até ${data(s.ate)}`
+    : s.tipo === 'teste' ? `Teste: falta${s.dias === 1 ? '' : 'm'} ${d(s.dias)}`
+    : 'Teste terminou';
+}
 // primeiro acesso da clínica (levando os dados deste aparelho ou começando do zero); depois disso,
 // mantém os dados iguais no aparelho e no servidor e mostra no topo se está tudo salvo.
 // No computador de desenvolvimento e no arquivo aberto do disco o sistema segue sem conta, como antes,
@@ -2712,7 +2794,7 @@ const gravarC = (k, v) => { try { v == null ? localStorage.removeItem(k) : local
 const voltarAoSite = () => location.origin + location.pathname;
 
 // Estado da conta: modo 'local' (sem conta) ou 'nuvem'; tela de acesso aberta (ou null); clínica atual.
-const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false };
+const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false, plano:'profissional', assin:null, sit:null };
 const PERFIL_NOME = { adm:'Administrador', prof:'Profissional', rec:'Recepção' };
 let aoMudarConta = () => {};
 
@@ -2762,6 +2844,10 @@ async function abrirClinica(c){
   PROF.papel = PERFIL_NOME[c.perfil] || PROF.papel;
   if (!db.config?.clinica?.nome && c.nome) definirNomeClinica(c.nome);
   try { conta.dono = await conta.nuvem.souDono(); } catch (e) { conta.dono = false; }
+  try { conta.assin = await conta.nuvem.assinatura(c.id); } catch (e) { conta.assin = null; }
+  conta.sit = situacaoAssinatura(conta.assin);
+  // Teste terminado sem acesso grátis nem pagamento: os dados ficam guardados, o sistema pede para continuar.
+  if (conta.sit.tipo === 'vencido' && !conta.dono) { conta.plano = conta.assin?.plano || conta.plano; abrirAcesso('vencido'); aoMudarConta(); return; }
   fecharAcesso(); aoMudarConta();
 }
 let avisoH = null;
@@ -2772,7 +2858,8 @@ function seloConta(){
   if (conta.modo !== 'nuvem' || !conta.sinc) return '';
   const E = { salvo:['okc', 'Salvo', 'ok'], salvando:['carregando', 'Salvando…', ''], carregando:['carregando', 'Abrindo…', ''], offline:['alerta', 'Sem internet', 'warn'], erro:['alerta', 'Não salvou', 'warn'], conflito:['okc', 'Atualizado', 'ok'] }[conta.estado] || ['okc', 'Salvo', 'ok'];
   const dica = conta.estado === 'offline' ? 'Sem conexão: o que você fizer fica neste aparelho e é enviado quando a internet voltar' : conta.estado === 'erro' ? 'O servidor não aceitou; toque para tentar de novo' : 'Tudo guardado no servidor';
-  return `<button class="selo-nuvem ${E[2]}" data-act="nuvem-tentar" data-tip="${dica}" aria-label="${E[1]}. ${dica}">${ic(E[0])}<span>${E[1]}</span></button>`;
+  const T = conta.sit?.tipo === 'teste' ? `<a class="selo-teste" href="#configuracoes" data-cf="ir" data-k="conta" data-tip="Seu pacote: ${planoDe(conta.assin?.plano).nome}">${ic('relogio')}<span>${rotuloSituacao(conta.sit)}</span></a>` : '';
+  return T + `<button class="selo-nuvem ${E[2]}" data-act="nuvem-tentar" data-tip="${dica}" aria-label="${E[1]}. ${dica}">${ic(E[0])}<span>${E[1]}</span></button>`;
 }
 // Parte da conta no menu do perfil.
 function menuConta(){
@@ -2791,6 +2878,7 @@ const sairDaConta = async () => {
 };
 
 /* ---------- Usado em Configurações (Sua conta e dados da clínica) ---------- */
+const situacaoConta = () => conta.modo === 'nuvem' && conta.sit ? { ...conta.sit, plano:planoDe(conta.assin?.plano), rotulo:rotuloSituacao(conta.sit) } : null;
 const contaAtual = () => {
   const u = conta.modo === 'nuvem' ? conta.nuvem?.sessao()?.user : null;
   return { nuvem:!!u, nome:u?.nome || PROF.nome, email:u?.email || '', perfil:conta.clinica?.perfil || 'adm', clinica:conta.clinica?.nome || '' };
@@ -2807,14 +2895,17 @@ const clinicaNoServidor = D => conta.modo === 'nuvem' && conta.clinica?.id ? ten
 }) : Promise.resolve('');
 
 /* ---------- Tela de acesso ---------- */
+const escolherPlano = rot => `<div class="acesso-opc acesso-plano" role="radiogroup" aria-label="Pacote"><p><b>${rot}</b></p>${PLANOS.map(p => `<label class="${conta.plano === p.k ? 'on' : ''}"><input type="radio" name="plano" value="${p.k}" data-ac="plano" ${conta.plano === p.k ? 'checked' : ''}><span><b>${p.nome} <span class="acesso-preco">${precoTxt(p)}</span></b><small>${p.resumo}</small></span></label>`).join('')}</div>`;
 const campoA = (nome, rot, tipo = 'text', extra = '') => `<label class="field"><span class="lbl">${rot}</span><input name="${nome}" type="${tipo}" ${extra} required></label>`;
 function htmlAcesso(){
   const t = conta.tela, carregando = conta.ocupado && !conta.erro;
   const TIT = { entrar:['Entrar no MUSUBI', 'Use o e-mail e a senha da sua conta.'], criar:['Criar sua conta', 'Comece com o seu e-mail e uma senha.'], esqueci:['Criar uma nova senha', 'Informe o seu e-mail. Mandamos um link para criar a nova senha.'],
-    'nova-senha':['Escolha a nova senha', 'Pelo menos 8 caracteres.'], clinica:['Conte sobre a clínica', 'Atende sozinho? Use o seu nome. O resto dá para ajustar depois.'] }[t] || ['', ''];
+    'nova-senha':['Escolha a nova senha', 'Pelo menos 8 caracteres.'], clinica:['Conte sobre a clínica', 'Atende sozinho? Use o seu nome. O resto dá para ajustar depois.'],
+    vencido:['O teste grátis terminou', `Os dados${conta.clinica?.nome ? ' de ' + conta.clinica.nome : ''} continuam guardados. Para seguir usando, escolha o pacote e deixe o seu WhatsApp: a gente chama você para combinar.`],
+    aguardando:['Pedido enviado', ''] }[t] || ['', ''];
   const R = resumoDados(), temDados = !lerC(KEY_CACHE_DE) && (R.pacientes > 0 || R.horarios > 0);
   const corpo = carregando ? `<p class="muted acesso-c">${ic('carregando')}Abrindo a sua clínica…</p>`
-    : conta.msg && ['enviado', 'confirmar'].includes(conta.tela) ? ''
+    : conta.msg && ['enviado', 'confirmar', 'aguardando'].includes(conta.tela) ? ''
     : t === 'entrar' ? `${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}<label class="field"><span class="lbl">Senha</span><span class="senha-c"><input name="senha" type="password" autocomplete="current-password" required><button type="button" class="btn ghost sm" data-ac="ver">Mostrar</button></span></label>
         <div class="acesso-l"><button type="button" class="lnk" data-ac="esqueci">Esqueci minha senha</button></div>`
     : t === 'criar' ? `${campoA('nome', 'Seu nome', 'text', 'autocomplete="name"')}${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}${campoA('senha', 'Crie uma senha', 'password', 'autocomplete="new-password" minlength="8"')}`
@@ -2823,18 +2914,20 @@ function htmlAcesso(){
     : t === 'clinica' ? `${campoA('clinica', 'Nome da clínica')}<div class="acesso-2">${campoA('cidade', 'Cidade')}<label class="field"><span class="lbl">Estado</span><select name="uf">${UFS_BR.map(u => `<option ${u === 'RS' ? 'selected' : ''}>${u}</option>`).join('')}</select></label></div>
         ${temDados ? `<div class="acesso-opc" role="radiogroup" aria-label="Dados deste aparelho"><p><b>Encontramos dados neste aparelho:</b> ${R.pacientes} paciente${R.pacientes === 1 ? '' : 's'}${R.exemplos ? ' (além dos exemplos)' : ''}, ${R.atendimentos} atendimento${R.atendimentos === 1 ? '' : 's'} e ${R.horarios} horário${R.horarios === 1 ? '' : 's'} na agenda.</p>
           <label class="${conta.levar ? 'on' : ''}"><input type="radio" name="levar" value="1" data-ac="levar" ${conta.levar ? 'checked' : ''}><span><b>Levar para a minha conta</b><small>Tudo passa a ficar no servidor e aparece em qualquer aparelho. Recomendado.</small></span></label>
-          <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa com pacientes de exemplo (WhatsApp e CPF 0000…) para conhecer o sistema. Dá para excluir depois.</small></span></label></div>` : ''}` : '';
-  const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Entrar no MUSUBI' }[t];
+          <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa com pacientes de exemplo (WhatsApp e CPF 0000…) para conhecer o sistema. Dá para excluir depois.</small></span></label></div>` : ''}
+        ${escolherPlano('Escolha o pacote: 7 dias grátis com tudo o que ele tem')}`
+    : t === 'vencido' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
+  const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Quero continuar' }[t];
   const rodape = t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p>`
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
-    : t === 'clinica' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
+    : ['clinica', 'vencido', 'aguardando'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
   return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>
     <div class="acesso-h">${LOGO}<b>Musubi</b></div>
     <h1>${conta.tela === 'confirmar' ? 'Confira o seu e-mail' : conta.tela === 'enviado' ? 'Link enviado' : TIT[0]}</h1>
     <p class="muted">${esc(conta.msg || TIT[1])}</p>
     ${corpo}
     <p class="erro-a" role="alert" ${conta.erro ? '' : 'hidden'}>${esc(conta.erro)}</p>
-    ${carregando || ['confirmar', 'enviado'].includes(t) ? '' : `<button class="btn pri largo" type="submit" ${conta.ocupado ? 'disabled' : ''}>${conta.ocupado ? 'Aguarde…' : botao}</button>`}
+    ${carregando || ['confirmar', 'enviado', 'aguardando'].includes(t) ? '' : `<button class="btn pri largo" type="submit" ${conta.ocupado ? 'disabled' : ''}>${conta.ocupado ? 'Aguarde…' : botao}</button>`}
     ${['confirmar', 'enviado'].includes(t) ? `<button class="btn largo" type="button" data-ac="entrar">Voltar para entrar</button>` : rodape}
   </form></div>`;
 }
@@ -2842,8 +2935,11 @@ function desenharAcesso(){
   const el = document.getElementById('acesso'); if (!el) return;
   el.hidden = !conta.tela; document.body.classList.toggle('com-acesso', !!conta.tela);
   if (!conta.tela) { el.innerHTML = ''; return; }
-  const foco = document.activeElement?.name;
+  const foco = document.activeElement?.name, antes = {};
+  el.querySelectorAll('input:not([type=radio]), select').forEach(i => { if (i.name && i.type !== 'password') antes[i.name] = i.value; });
   el.innerHTML = htmlAcesso();
+  if (conta.tela === conta.telaDesenhada) el.querySelectorAll('input:not([type=radio]), select').forEach(i => { if (i.name in antes) i.value = antes[i.name]; });
+  conta.telaDesenhada = conta.tela;
   const i = (foco && el.querySelector(`[name="${foco}"]`)) || el.querySelector('input');
   if (i && !conta.ocupado) i.focus();
 }
@@ -2854,7 +2950,8 @@ async function enviarAcesso(f){
     : t === 'criar' ? (!v('nome').trim() ? 'Escreva o seu nome.' : !okEmail(v('email')) ? 'Confira o e-mail.' : v('senha').length < 8 ? 'A senha precisa de pelo menos 8 caracteres.' : '')
     : t === 'esqueci' ? (!okEmail(v('email')) ? 'Confira o e-mail.' : '')
     : t === 'nova-senha' ? (v('senha').length < 8 ? 'A senha precisa de pelo menos 8 caracteres.' : '')
-    : t === 'clinica' ? (!v('clinica').trim() ? 'Escreva o nome da clínica.' : !v('cidade').trim() ? 'Escreva a cidade.' : '') : '';
+    : t === 'clinica' ? (!v('clinica').trim() ? 'Escreva o nome da clínica.' : !v('cidade').trim() ? 'Escreva a cidade.' : '')
+    : t === 'vencido' ? (String(v('whats')).replace(/\D/g, '').length < 10 ? 'Confira o WhatsApp, com o DDD.' : '') : '';
   if (falta) { conta.erro = falta; desenharAcesso(); return; }
   conta.erro = ''; conta.ocupado = true; desenharAcesso();
   try {
@@ -2868,8 +2965,13 @@ async function enviarAcesso(f){
       const levar = !lerC(KEY_CACHE_DE) && conta.levar && (resumoDados().pacientes > 0 || resumoDados().horarios > 0);
       const doc = levar ? db : dadosNovaClinica();
       (doc.config ||= {}).clinica = { ...(doc.config.clinica || {}), nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf') };
-      const id = await conta.nuvem.criarClinica({ nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf'), nomePessoa:conta.nuvem.sessao().user.nome || '' }, doc);
+      const id = await conta.nuvem.criarClinica({ nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf'), nomePessoa:conta.nuvem.sessao().user.nome || '', plano:conta.plano }, doc);
       await abrirClinica({ id, nome:v('clinica').trim(), perfil:'adm' });
+    }
+    if (t === 'vencido') {
+      const u = conta.nuvem.sessao()?.user || {}, P = planoDe(conta.plano);
+      await conta.nuvem.pedirContato(`${u.nome || u.email || 'Cliente'} · ${conta.clinica?.nome || ''} · quer o ${P.nome}`.slice(0, 120), v('whats'));
+      abrirAcesso('aguardando', `Recebemos o seu pedido do pacote ${P.nome} (${precoTxt(P)}). A gente chama você no WhatsApp ${v('whats').trim()} para combinar. Os seus dados continuam guardados.`);
     }
   } catch (e) { conta.erro = e.message; conta.ocupado = false; desenharAcesso(); }
 }
@@ -2884,7 +2986,10 @@ function ligarAcesso(){
     else if (a === 'local') { gravarC(KEY_MODO, 'local'); conta.modo = 'local'; fecharAcesso(); aoMudarConta(); }
     else if (a === 'sair') sairDaConta();
   });
-  el.addEventListener('change', ev => { if (ev.target.dataset.ac === 'levar') { conta.levar = ev.target.value === '1'; desenharAcesso(); } });
+  el.addEventListener('change', ev => {
+    if (ev.target.dataset.ac === 'levar') { conta.levar = ev.target.value === '1'; desenharAcesso(); }
+    if (ev.target.dataset.ac === 'plano') { conta.plano = ev.target.value; desenharAcesso(); }
+  });
 }
 // e as camadas que abrem por cima da tela (busca e atalhos de teclado).
 
@@ -2892,9 +2997,9 @@ function ligarAcesso(){
 const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
   ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
 const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', atendimento:'Atendimento', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
-  crm:'Relacionamento', mensagens:'Modelos de mensagens', equipe:'Equipe e permissões', configuracoes:'Configurações'};
+  crm:'Relacionamento', mensagens:'Modelos de mensagens', equipe:'Equipe e permissões', configuracoes:'Configurações', musubi:'Painel do MUSUBI'};
 // Item do menu que fica marcado em cada tela.
-const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', mensagens:'administracao', equipe:'administracao', configuracoes:'administracao'};
+const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', mensagens:'administracao', equipe:'administracao', configuracoes:'administracao', musubi:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
 const PROF = {nome:'Maicon Farinelli', papel:'Profissional responsável'};
 
@@ -2944,7 +3049,7 @@ function renderNav(route){
           <div class="dd-f muted sm">Geradas a partir da agenda, dos alertas e dos prontuários.</div></div>`:''}</div>
       <div class="dd"><button class="perfil-b" data-act="perfil" aria-expanded="${ui.ov==='perfil'}" aria-label="Perfil do profissional"><span class="avatar">${initials(PROF.nome)}</span><span class="pf-n">${PROF.nome.split(' ')[0]}</span>${ic('baixo')}</button>
         ${ui.ov==='perfil'?`<div class="dd-p pf" role="menu"><div class="pf-h"><span class="avatar lg">${initials(PROF.nome)}</span><div><b>${PROF.nome}</b><small class="muted">${PROF.papel}</small></div></div>
-          <a class="pf-i" href="#configuracoes" data-cf="ir" data-k="conta">${ic('escudo')}Minha conta</a>${conta.modo!=='nuvem'||conta.clinica?.perfil==='adm'?`<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="clinica">${ic('admin')}Configurações da clínica</a>`:''}<button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
+          ${conta.dono?`<a class="pf-i" href="#musubi">${ic('estrela')}Painel do MUSUBI</a>`:''}<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="conta">${ic('escudo')}Minha conta</a>${conta.modo!=='nuvem'||conta.clinica?.perfil==='adm'?`<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="clinica">${ic('admin')}Configurações da clínica</a>`:''}<button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
           ${menuConta()}</div>`:''}</div>
     </div>`;
   document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+
@@ -4675,9 +4780,9 @@ function vCadastro(){
         :`<label class="lgpd"><input type="checkbox" id="np-lgpd" ${p?'':'required'}> <span>O paciente autorizou o tratamento dos dados de saúde para fins de atendimento (consentimento LGPD).${p?'':' *'}</span></label>`}</section>
       <div class="at-f" style="margin-top:0">${p?`<button type="button" class="btn" data-act="open" data-pid="${p.id}">Cancelar</button>`:'<a class="btn" href="#pacientes">Cancelar</a>'}<button class="btn pri">${ic('check')}${p?'Salvar alterações':'Cadastrar e abrir prontuário'}</button></div>
     </div>
-    ${p?excluirHtml(p):''}
-    <aside class="card cad-p"><div class="lbl">Pré-visualização</div><div class="cad-pv"><span class="avatar xl" id="pv-av">${p?initials(p.name):'?'}</span><b id="pv-n">${p?esc(p.name):'Nome do paciente'}</b><small class="muted" id="pv-q">${p?esc(p.queixa):'Queixa principal'}</small></div>
+    <div class="cad-lado"><aside class="card cad-p"><div class="lbl">Pré-visualização</div><div class="cad-pv"><span class="avatar xl" id="pv-av">${p?initials(p.name):'?'}</span><b id="pv-n">${p?esc(p.name):'Nome do paciente'}</b><small class="muted" id="pv-q">${p?esc(p.queixa):'Queixa principal'}</small></div>
       <div class="lbl" style="margin-top:16px">Próximo passo</div><p class="sm muted" style="margin-top:6px">${p?'As alterações aparecem no perfil e no prontuário. Sessões, avaliações e anamnese não são alteradas.':'Depois de cadastrar, o perfil abre na anamnese. O botão <b>Novo atendimento</b> registra a primeira consulta.'}</p></aside>
+      ${p?excluirHtml(p):''}</div>
   </form>`;
 }
 // Atualiza a pré-visualização enquanto o formulário é preenchido.
@@ -4719,6 +4824,7 @@ function vEmBreve(k){
 
 function vAdministracao(){
   return `<div class="head"><div><h1>Administração</h1><p>Equipe, configurações da clínica e relacionamento com pacientes</p></div></div>
+  ${conta.dono?`<a class="adm-c pd-adm" href="#musubi"><span class="tico acc">${ic('estrela')}</span><span class="grow"><b>Painel do MUSUBI</b><small>Clínicas que usam o sistema, pacotes, acesso grátis e interessados. Só a sua conta vê.</small></span><span class="pill acc">dono</span></a>`:''}
   <div class="adm">${['equipe','configuracoes','crm','mensagens'].map(k=>{const m=MODULOS[k]; return `<a class="adm-c" href="#${k}"><span class="tico acc">${ic(m.i)}</span><span class="grow"><b>${LABEL[k]}</b><small>${m.texto}</small></span>${m.feito?'<span class="pill ok">disponível</span>':`<span class="pill">etapa ${m.etapa}</span>`}</a>`;}).join('')}</div>
   <div class="grid g2" style="margin-top:20px">
     <div class="card" id="dados"><div class="card-h"><h2>Dados e cópia de segurança</h2><span class="tico sm acc">${ic('escudo')}</span></div>
@@ -4810,7 +4916,14 @@ function cfConta(){
       <p class="erro-c" id="cf-ct-erro" hidden></p>
       <div class="cf-acoes"><button class="btn pri" type="submit" ${cf.ocupado ? 'disabled' : ''}>${ic('check')}Salvar</button><button class="btn" type="button" data-cf="senha" ${cf.senha ? 'hidden' : ''}>${ic('escudo')}Trocar senha</button></div>
       <p class="muted sm cf-obs">Entrou como <b>${esc({ adm:'Administrador', prof:'Profissional', rec:'Recepção' }[C.perfil] || '')}</b>${C.clinica ? ` em ${esc(C.clinica)}` : ''}.</p></form>
-    ${seg}</div>`;
+    ${seg}${cfPacote()}</div>`;
+}
+// Pacote da clínica: qual é, quanto tempo falta e o que cada pacote tem.
+function cfPacote(){
+  const S = situacaoConta(); if (!S) return '';
+  return `<div class="card" id="cf-pacote"><div class="card-h"><h2>Seu pacote<small>${esc(S.rotulo)}</small></h2><span class="pill ${S.tipo === 'vencido' ? 'warn' : 'acc'}">${esc(S.plano.nome)}</span></div>
+    <div class="cf-planos">${PLANOS.map(p => `<div class="cf-plano ${p.k === S.plano.k ? 'on' : ''}"><b>${p.nome}</b><small class="muted">${precoTxt(p)}</small><ul>${p.itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>
+    <p class="muted sm cf-obs">${S.tipo === 'teste' ? 'Durante o teste você usa tudo o que o pacote tem. ' : ''}O pagamento pelo site (Pix, boleto e cartão) entra em breve; para trocar de pacote, fale com o MUSUBI.</p></div>`;
 }
 
 /* ---------- Eventos ---------- */
@@ -4880,6 +4993,106 @@ function ligarConfig(s, r, t){
     const f = ev.target; if (f.id !== 'cf-clinica' && f.id !== 'cf-conta') return;
     ev.preventDefault(); if (cf.ocupado) return;
     if (f.id === 'cf-clinica') enviarClinica(f); else enviarConta(f);
+  });
+}
+// Mostra todas as clínicas com o pacote, a situação (teste, grátis, pago, vencido), quem usa e números gerais
+// (nunca os dados dos pacientes), permite dar ou tirar acesso grátis, trocar o pacote e dar mais dias de teste,
+// e lista os interessados da página de apresentação. Pagamentos entram com o serviço de cobrança.
+
+const pd = { aba:'clinicas', lista:null, inter:null, erro:'', carregando:false, gratis:null, busca:'' };
+let pdApp = { render:() => {}, toast:() => {} };
+const SITU_INT = [['novo', 'Novo'], ['chamei', 'Já chamei'], ['cliente', 'Virou cliente'], ['nao', 'Não quis']];
+const PRAZOS = [['30', '30 dias'], ['90', '90 dias'], ['365', '1 ano'], ['sempre', 'Sem prazo']];
+const dataBR = iso => iso ? new Date(iso).toLocaleDateString('pt-BR') : '';
+const quando = iso => { if (!iso) return 'nunca'; const d = Math.floor((Date.now() - new Date(iso)) / 864e5); return d <= 0 ? 'hoje' : d === 1 ? 'ontem' : `há ${d} dias`; };
+const zap = w => { const d = String(w).replace(/\D/g, ''); return d ? 'https://wa.me/' + (d.length <= 11 ? '55' + d : d) : ''; };
+
+const ehDono = () => conta.modo === 'nuvem' && conta.dono;
+
+async function carregarPd(){
+  if (pd.carregando) return; pd.carregando = true; pd.erro = ''; pdApp.render(true);
+  try { const [L, I] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados()]); pd.lista = L; pd.inter = I; }
+  catch (e) { pd.erro = e.message; }
+  pd.carregando = false; pdApp.render(true);
+}
+
+function vPainelDono(){
+  if (!ehDono()) return `<div class="head"><div><h1>Painel do MUSUBI</h1><p>Só a conta dona do MUSUBI abre esta página.</p></div></div>`;
+  if (!pd.lista && !pd.carregando && !pd.erro) setTimeout(carregarPd);
+  const L = pd.lista || [], I = pd.inter || [], S = L.map(c => situacaoAssinatura(c));
+  const n = t => S.filter(s => s.tipo === t).length, novos = I.filter(i => i.situacao === 'novo').length;
+  const cab = `<div class="head"><div><h1>Painel do MUSUBI</h1><p>Clínicas que usam o sistema, pacotes e interessados</p></div><button class="btn" data-pd="atualizar" ${pd.carregando ? 'disabled' : ''}>${ic('retorno')}${pd.carregando ? 'Atualizando…' : 'Atualizar'}</button></div>`;
+  if (pd.erro) return cab + `<div class="notice">${ic('alerta')}<span>${esc(pd.erro)}</span></div>`;
+  if (!pd.lista) return cab + `<p class="muted">${ic('carregando')} Carregando…</p>`;
+  return cab + `<div class="pd-n">
+      <div class="card"><small>Clínicas</small><b>${L.length}</b></div>
+      <div class="card"><small>Em teste</small><b>${n('teste')}</b></div>
+      <div class="card"><small>Grátis ou pagas</small><b>${n('gratis') + n('pago')}</b></div>
+      <div class="card"><small>Teste terminou</small><b>${n('vencido')}</b></div>
+      <div class="card"><small>Interessados novos</small><b>${novos}</b></div></div>
+    <div class="tabs" role="tablist">${[['clinicas', 'Clínicas', 'admin'], ['interessados', `Interessados${novos ? ` (${novos})` : ''}`, 'sino'], ['pagamentos', 'Pagamentos', 'dinheiro']].map(([k, l, i]) => `<button role="tab" data-pd="aba" data-k="${k}" class="${pd.aba === k ? 'on' : ''}" aria-selected="${pd.aba === k}">${ic(i)}${l}</button>`).join('')}</div>
+    ${pd.aba === 'clinicas' ? pdClinicas(L) : pd.aba === 'interessados' ? pdInteressados(I) : pdPagamentos()}`;
+}
+
+function pdClinicas(L){
+  const q = pd.busca.trim().toLowerCase(), F = L.filter(c => !q || [c.nome, c.cidade, c.email_dono].join(' ').toLowerCase().includes(q));
+  return `<div class="card" id="pd-cl"><div class="card-h"><h2>Clínicas<small>${L.length} no total · a mais nova primeiro</small></h2><input class="pd-busca" data-pd="busca" type="search" placeholder="Buscar por nome, cidade ou e-mail" value="${esc(pd.busca)}" aria-label="Buscar clínica"></div>
+    <div class="list">${F.map(c => { const s = situacaoAssinatura(c), aberto = pd.gratis === c.id;
+      return `<div class="row pd-c" data-c="${c.id}"><span class="tico sm acc">${ic('local')}</span>
+        <div class="grow"><b>${esc(c.nome)}</b><small class="muted">${esc([c.cidade, c.uf].filter(Boolean).join(' - '))}${c.email_dono ? ' · ' + esc(c.email_dono) : ''}</small>
+          <small class="muted">${c.pessoas_ativas} pessoa${c.pessoas_ativas === 1 ? '' : 's'} com acesso${c.pessoas > c.pessoas_ativas ? ` (${c.pessoas - c.pessoas_ativas} sem acesso)` : ''} · ${c.pacientes} paciente${c.pacientes === 1 ? '' : 's'} · usou ${quando(c.ultimo_uso)} · desde ${dataBR(c.criado_em)}</small>
+          ${s.tipo === 'gratis' && s.motivo ? `<small class="muted">Grátis: ${esc(s.motivo)}</small>` : ''}</div>
+        <div class="pd-ctl"><span class="pill ${s.tipo === 'vencido' ? 'warn' : s.tipo === 'teste' ? '' : 'ok'}">${rotuloSituacao(s)}</span>
+          <label><span class="so-leitor">Pacote de ${esc(c.nome)}</span><select data-pd="plano" data-c="${c.id}">${PLANOS.map(p => `<option value="${p.k}" ${p.k === (c.plano || 'profissional') ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></label>
+          ${s.tipo === 'gratis' ? `<button class="btn sm ghost" data-pd="tirar" data-c="${c.id}">Tirar acesso grátis</button>` : `<button class="btn sm" data-pd="gratis" data-c="${c.id}">${ic('mais')}Dar acesso grátis</button>`}
+          ${s.tipo === 'teste' || s.tipo === 'vencido' ? `<button class="btn sm ghost" data-pd="mais7" data-c="${c.id}">+7 dias de teste</button>` : ''}</div>
+        ${aberto ? `<form class="pd-g" id="pd-g" novalidate><div class="form">
+            <label class="field"><span class="lbl">Por quanto tempo</span><select name="prazo">${PRAZOS.map(([k, l]) => `<option value="${k}" ${k === '90' ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+            <label class="field"><span class="lbl">Motivo (só você vê)</span><input name="motivo" placeholder="Ex.: testar o sistema" autocomplete="off"></label></div>
+          <div class="cf-acoes"><button class="btn pri" type="submit">${ic('check')}Dar acesso grátis</button><button class="btn ghost" type="button" data-pd="gratis-fechar">Cancelar</button></div></form>` : ''}</div>`; }).join('') || '<p class="muted sm">Nenhuma clínica encontrada.</p>'}</div>
+    <p class="muted sm cf-obs">Os dados dos pacientes de cada clínica não aparecem aqui: só os números gerais.</p></div>`;
+}
+
+function pdInteressados(I){
+  return `<div class="card" id="pd-int"><div class="card-h"><h2>Interessados<small>quem pediu para conhecer ou para continuar depois do teste</small></h2></div>
+    <div class="list">${I.map(i => `<div class="row pd-i st-${i.situacao}"><span class="avatar">${esc(String(i.nome).trim()[0] || '?').toUpperCase()}</span>
+      <div class="grow"><b>${esc(i.nome)}</b><small class="muted">${esc(i.whats)} · ${dataBR(i.criado_em)}</small></div>
+      <div class="pd-ctl">${zap(i.whats) ? `<a class="btn sm wa" href="${zap(i.whats)}" target="_blank" rel="noopener">${ic('mensagem')}WhatsApp</a>` : ''}
+        <label><span class="so-leitor">Situação de ${esc(i.nome)}</span><select data-pd="situ" data-i="${i.id}">${SITU_INT.map(([k, l]) => `<option value="${k}" ${i.situacao === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div></div>`).join('') || '<p class="muted sm">Ninguém pediu contato ainda.</p>'}</div></div>`;
+}
+
+function pdPagamentos(){
+  return `<div class="card cf-max" id="pd-pag"><div class="card-h"><h2>Pagamentos</h2></div>
+    <p class="sm">Os pacotes já estão no sistema: ${PLANOS.map(p => `<b>${p.nome}</b> (${precoTxt(p)})`).join(', ')}, com 7 dias grátis para toda clínica nova.</p>
+    <p class="muted sm cf-obs">A cobrança automática (Pix, boleto e cartão, mensal ou anual) entra quando escolhermos o serviço de cobrança. Aí cada pagamento aparece aqui sozinho, e quem atrasar recebe aviso antes de o acesso ser limitado, sem perder os dados.</p></div>`;
+}
+
+const pdFaz = async (fn, ok) => { try { await fn(); pdApp.toast(ok); await carregarPd(); } catch (e) { pdApp.toast(e.message, 'info'); } };
+
+function ligarPainelDono(r, t){
+  pdApp = { render:r, toast:t };
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-pd]'); if (!b || b.matches('input, select')) return; const a = b.dataset.pd, c = b.dataset.c;
+    const nome = () => pd.lista?.find(x => x.id === c)?.nome || '';
+    if (a === 'atualizar') carregarPd();
+    else if (a === 'aba') { pd.aba = b.dataset.k; pdApp.render(true); }
+    else if (a === 'gratis') { pd.gratis = c; pdApp.render(true); document.querySelector('#pd-g [name=motivo]')?.focus(); }
+    else if (a === 'gratis-fechar') { pd.gratis = null; pdApp.render(true); }
+    else if (a === 'tirar') pdFaz(() => conta.nuvem.darGratis(c, null, '', true), `Acesso grátis de ${nome()} retirado`);
+    else if (a === 'mais7') pdFaz(() => conta.nuvem.estenderTeste(c, 7), `${nome()} ganhou mais 7 dias de teste`);
+  });
+  document.addEventListener('change', ev => {
+    const t = ev.target; if (!t.dataset?.pd) return;
+    if (t.dataset.pd === 'plano') pdFaz(() => conta.nuvem.mudarPlano(t.dataset.c, t.value), `Pacote trocado para ${planoDe(t.value).nome}`);
+    if (t.dataset.pd === 'situ') pdFaz(() => conta.nuvem.mudarInteressado(t.dataset.i, t.value), 'Situação salva');
+  });
+  document.addEventListener('input', ev => { if (ev.target.dataset?.pd === 'busca') { pd.busca = ev.target.value; pdApp.render(true); const i = document.querySelector('.pd-busca'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } });
+  document.addEventListener('submit', ev => {
+    if (ev.target.id !== 'pd-g') return; ev.preventDefault();
+    const f = ev.target, prazo = f.elements.prazo.value, c = pd.gratis, nome = pd.lista?.find(x => x.id === c)?.nome || '';
+    const ate = prazo === 'sempre' ? null : new Date(Date.now() + Number(prazo) * 864e5).toISOString();
+    pd.gratis = null;
+    pdFaz(() => conta.nuvem.darGratis(c, ate, f.elements.motivo.value.trim()), `${nome} com acesso grátis ${prazo === 'sempre' ? 'sem prazo' : 'por ' + PRAZOS.find(p => p[0] === prazo)[1]}`);
   });
 }
 function vPacientes(){
@@ -5149,7 +5362,7 @@ function vAtlas(){
     <aside class="fx-panel${A.sel || A.traj ? ' aberta' : ''}" aria-label="Ficha"><div class="card">${painel}</div></aside>
   </div>`;
 }
-const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
+const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -5557,6 +5770,7 @@ document.addEventListener('submit',ev=>{
 });
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
+ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
 iniciarConta(manter => render(manter));
 render();
 </script>
