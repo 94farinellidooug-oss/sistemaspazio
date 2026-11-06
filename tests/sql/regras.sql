@@ -57,4 +57,40 @@ select pg_temp.como(null);
 set role anon;
 do $$ begin perform public.criar_clinica('a','b','c','d','{}'); raise exception 'anon criou clínica'; exception when insufficient_privilege then raise notice 'ok    sem login não cria clínica'; end $$;
 reset role;
+
+-- Pacotes e teste grátis (002_planos.sql)
+select pg_temp.checar((select plano from assinaturas where clinica_id = :'c1') = 'profissional' and (select teste_ate from assinaturas where clinica_id = :'c1') between now() + interval '6 days 23 hours' and now() + interval '7 days 1 hour', 'clínica nova: Profissional com 7 dias de teste');
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select public.criar_clinica('Clínica Sol', 'Pelotas', 'RS', 'Outra', '{"v":2}'::jsonb, 'essencial') as c2 \gset
+select pg_temp.checar((select plano from assinaturas where clinica_id = :'c2') = 'essencial', 'quem cria escolhe o pacote');
+select pg_temp.checar((select count(*) from assinaturas) = 1, 'cada clínica só vê a própria assinatura');
+update assinaturas set teste_ate = now() + interval '1 year', gratis_sempre = true;
+select pg_temp.checar((select not gratis_sempre and teste_ate < now() + interval '8 days' from assinaturas), 'administrador não muda o próprio teste nem dá acesso grátis a si');
+do $$ begin perform public.painel_dono(); raise exception 'FALHA: conta comum abriu o painel';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    conta comum não abre o Painel do MUSUBI'; end $$;
+do $$ begin perform public.dar_gratis((select id from clinicas limit 1), null, 'eu'); raise exception 'FALHA: conta comum deu acesso grátis';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    conta comum não dá acesso grátis'; end $$;
+do $$ begin perform public.criar_clinica('X', '', '', '', '{}'::jsonb, 'ouro'); raise exception 'FALHA: aceitou pacote inexistente';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    pacote inexistente é recusado'; end $$;
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select pg_temp.checar((select count(*) from public.painel_dono()) = 2 and (select count(*) from clinicas) = 2, 'dono vê todas as clínicas no painel');
+select pg_temp.checar((select pessoas_ativas from public.painel_dono() where id = :'c2') = 1 and (select email_dono from public.painel_dono() where id = :'c2') = 'outra@y.com' and (select plano from public.painel_dono() where id = :'c2') = 'essencial', 'painel mostra pessoas, e-mail de quem criou e pacote');
+select pg_temp.checar((select count(*) from dados) = 1, 'dono NÃO lê os dados dos pacientes de outras clínicas');
+select public.dar_gratis(:'c2', null, 'Teste do Rafael');
+select pg_temp.checar((select gratis_sempre and gratis_motivo = 'Teste do Rafael' from public.painel_dono() where id = :'c2'), 'dono dá acesso grátis sem prazo');
+select public.dar_gratis(:'c2', now() + interval '30 days', 'Mais um mês');
+select pg_temp.checar((select not gratis_sempre and gratis_ate > now() + interval '29 days' from public.painel_dono() where id = :'c2'), 'dono dá acesso grátis com prazo');
+select public.dar_gratis(:'c2', null, '', true);
+select pg_temp.checar((select not gratis_sempre and gratis_ate is null from public.painel_dono() where id = :'c2'), 'dono tira o acesso grátis');
+select public.mudar_plano(:'c2', 'clinica');
+select public.estender_teste(:'c2', 7);
+select pg_temp.checar((select plano = 'clinica' and teste_ate > now() + interval '13 days' from public.painel_dono() where id = :'c2'), 'dono troca o pacote e dá mais dias de teste');
+reset role;
+select pg_temp.como(null);
+set role anon;
+do $$ begin perform public.painel_dono(); raise exception 'anon abriu o painel'; exception when insufficient_privilege then raise notice 'ok    sem login não abre o painel'; end $$;
+reset role;
 \echo 'Todas as regras do banco passaram.'

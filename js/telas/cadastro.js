@@ -44,9 +44,9 @@ export function vCadastro(){
         :`<label class="lgpd"><input type="checkbox" id="np-lgpd" ${p?'':'required'}> <span>O paciente autorizou o tratamento dos dados de saúde para fins de atendimento (consentimento LGPD).${p?'':' *'}</span></label>`}</section>
       <div class="at-f" style="margin-top:0">${p?`<button type="button" class="btn" data-act="open" data-pid="${p.id}">Cancelar</button>`:'<a class="btn" href="#pacientes">Cancelar</a>'}<button class="btn pri">${ic('check')}${p?'Salvar alterações':'Cadastrar e abrir prontuário'}</button></div>
     </div>
-    ${p?excluirHtml(p):''}
-    <aside class="card cad-p"><div class="lbl">Pré-visualização</div><div class="cad-pv"><span class="avatar xl" id="pv-av">${p?initials(p.name):'?'}</span><b id="pv-n">${p?esc(p.name):'Nome do paciente'}</b><small class="muted" id="pv-q">${p?esc(p.queixa):'Queixa principal'}</small></div>
+    <div class="cad-lado"><aside class="card cad-p"><div class="lbl">Pré-visualização</div><div class="cad-pv"><span class="avatar xl" id="pv-av">${p?initials(p.name):'?'}</span><b id="pv-n">${p?esc(p.name):'Nome do paciente'}</b><small class="muted" id="pv-q">${p?esc(p.queixa):'Queixa principal'}</small></div>
       <div class="lbl" style="margin-top:16px">Próximo passo</div><p class="sm muted" style="margin-top:6px">${p?'As alterações aparecem no perfil e no prontuário. Sessões, avaliações e anamnese não são alteradas.':'Depois de cadastrar, o perfil abre na anamnese. O botão <b>Novo atendimento</b> registra a primeira consulta.'}</p></aside>
+      ${p?excluirHtml(p):''}</div>
   </form>`;
 }
 // Atualiza a pré-visualização enquanto o formulário é preenchido.

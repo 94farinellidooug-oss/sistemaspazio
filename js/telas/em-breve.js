@@ -25,6 +25,7 @@ export function vEmBreve(k){
 
 export function vAdministracao(){
   return `<div class="head"><div><h1>Administração</h1><p>Equipe, configurações da clínica e relacionamento com pacientes</p></div></div>
+  ${conta.dono?`<a class="adm-c pd-adm" href="#musubi"><span class="tico acc">${ic('estrela')}</span><span class="grow"><b>Painel do MUSUBI</b><small>Clínicas que usam o sistema, pacotes, acesso grátis e interessados. Só a sua conta vê.</small></span><span class="pill acc">dono</span></a>`:''}
   <div class="adm">${['equipe','configuracoes','crm','mensagens'].map(k=>{const m=MODULOS[k]; return `<a class="adm-c" href="#${k}"><span class="tico acc">${ic(m.i)}</span><span class="grow"><b>${LABEL[k]}</b><small>${m.texto}</small></span>${m.feito?'<span class="pill ok">disponível</span>':`<span class="pill">etapa ${m.etapa}</span>`}</a>`;}).join('')}</div>
   <div class="grid g2" style="margin-top:20px">
     <div class="card" id="dados"><div class="card-h"><h2>Dados e cópia de segurança</h2><span class="tico sm acc">${ic('escudo')}</span></div>

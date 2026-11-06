@@ -23,6 +23,7 @@ import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { PROF, listaBusca, renderNav } from './telas/menu.js';
 import { conta, entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
 import { ligarConfig, vConfiguracoes } from './telas/configuracoes.js';
+import { ligarPainelDono, vPainelDono } from './telas/painel-dono.js';
 import { notificacoes } from './dados/indicadores.js';
 import { LOGO, ic } from './componentes/icones.js';
 import { FACES, MERIDIANOS, TAM, VASOS_ATLAS, ladoDe, regiaoDoToque } from './componentes/corpo.js';
@@ -36,7 +37,7 @@ import { CODIGOS } from './conhecimento/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
 import { TODAY, addDays, brl, esc, fmt, uid } from './util.js';
 
-export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
+export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -444,5 +445,6 @@ document.addEventListener('submit',ev=>{
 });
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
+ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
 iniciarConta(manter => render(manter));
 render();

@@ -12,9 +12,9 @@ import { conta, menuConta, seloConta } from './conta.js';
 export const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
   ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
 export const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', atendimento:'Atendimento', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
-  crm:'Relacionamento', mensagens:'Modelos de mensagens', equipe:'Equipe e permissões', configuracoes:'Configurações'};
+  crm:'Relacionamento', mensagens:'Modelos de mensagens', equipe:'Equipe e permissões', configuracoes:'Configurações', musubi:'Painel do MUSUBI'};
 // Item do menu que fica marcado em cada tela.
-const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', mensagens:'administracao', equipe:'administracao', configuracoes:'administracao'};
+const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', mensagens:'administracao', equipe:'administracao', configuracoes:'administracao', musubi:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
 export const PROF = {nome:'Maicon Farinelli', papel:'Profissional responsável'};
 
@@ -64,7 +64,7 @@ export function renderNav(route){
           <div class="dd-f muted sm">Geradas a partir da agenda, dos alertas e dos prontuários.</div></div>`:''}</div>
       <div class="dd"><button class="perfil-b" data-act="perfil" aria-expanded="${ui.ov==='perfil'}" aria-label="Perfil do profissional"><span class="avatar">${initials(PROF.nome)}</span><span class="pf-n">${PROF.nome.split(' ')[0]}</span>${ic('baixo')}</button>
         ${ui.ov==='perfil'?`<div class="dd-p pf" role="menu"><div class="pf-h"><span class="avatar lg">${initials(PROF.nome)}</span><div><b>${PROF.nome}</b><small class="muted">${PROF.papel}</small></div></div>
-          <a class="pf-i" href="#configuracoes" data-cf="ir" data-k="conta">${ic('escudo')}Minha conta</a>${conta.modo!=='nuvem'||conta.clinica?.perfil==='adm'?`<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="clinica">${ic('admin')}Configurações da clínica</a>`:''}<button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
+          ${conta.dono?`<a class="pf-i" href="#musubi">${ic('estrela')}Painel do MUSUBI</a>`:''}<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="conta">${ic('escudo')}Minha conta</a>${conta.modo!=='nuvem'||conta.clinica?.perfil==='adm'?`<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="clinica">${ic('admin')}Configurações da clínica</a>`:''}<button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
           ${menuConta()}</div>`:''}</div>
     </div>`;
   document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+

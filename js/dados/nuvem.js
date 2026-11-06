@@ -79,7 +79,22 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     sair:async () => { const t = sessao?.access_token; sessao = null; gravarSessao(null); if (t) { try { await chamar('/auth/v1/logout', { metodo:'POST', token:t }); } catch (e) {} } },
     minhasClinicas:async () => (await rest(`membros?select=perfil,nome,clinicas(id,nome,cidade,uf)&user_id=eq.${sessao.user.id}&ativo=is.true`) || [])
       .filter(m => m.clinicas).map(m => ({ id:m.clinicas.id, nome:m.clinicas.nome, cidade:m.clinicas.cidade, uf:m.clinicas.uf, perfil:m.perfil })),
-    criarClinica:async ({ nome, cidade, uf, nomePessoa }, doc) => rest('rpc/criar_clinica', { metodo:'POST', corpo:{ p_nome:nome, p_cidade:cidade, p_uf:uf, p_nome_pessoa:nomePessoa, p_doc:doc } }),
+    criarClinica:async ({ nome, cidade, uf, nomePessoa, plano }, doc) => {
+      const corpo = { p_nome:nome, p_cidade:cidade, p_uf:uf, p_nome_pessoa:nomePessoa, p_doc:doc };
+      if (!plano) return rest('rpc/criar_clinica', { metodo:'POST', corpo });
+      // Servidor ainda sem 002_planos.sql: a função não aceita o pacote; cria sem ele.
+      try { return await rest('rpc/criar_clinica', { metodo:'POST', corpo:{ ...corpo, p_plano:plano } }); }
+      catch (e) { if (e.codigo === 'PGRST202' || e.status === 404) return rest('rpc/criar_clinica', { metodo:'POST', corpo }); throw e; }
+    },
+    // Pacote e prazos da clínica (supabase/002_planos.sql). null quando o servidor ainda não tem a tabela.
+    assinatura:async clinica => { try { return (await rest(`assinaturas?select=plano,teste_ate,gratis_ate,gratis_sempre,gratis_motivo,pago_ate&clinica_id=eq.${clinica}`))?.[0] || null; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    // Painel do MUSUBI (só para quem está na tabela donos; o servidor recusa os outros).
+    painelDono:async () => (await rest('rpc/painel_dono', { metodo:'POST', corpo:{} })) || [],
+    darGratis:async (clinica, ate, motivo = '', tirar = false) => rest('rpc/dar_gratis', { metodo:'POST', corpo:{ p_clinica:clinica, p_ate:ate, p_motivo:motivo, p_tirar:tirar } }),
+    mudarPlano:async (clinica, plano) => rest('rpc/mudar_plano', { metodo:'POST', corpo:{ p_clinica:clinica, p_plano:plano } }),
+    estenderTeste:async (clinica, dias) => rest('rpc/estender_teste', { metodo:'POST', corpo:{ p_clinica:clinica, p_dias:dias } }),
+    interessados:async () => (await rest('interessados?select=id,nome,whats,situacao,criado_em&order=criado_em.desc')) || [],
+    mudarInteressado:async (id, situacao) => rest(`interessados?id=eq.${id}`, { metodo:'PATCH', corpo:{ situacao }, cab:{ Prefer:'return=minimal' } }),
     baixar:async clinica => { const L = await rest(`dados?select=doc,versao&clinica_id=eq.${clinica}`); return L?.[0] || null; },
     // Nome, cidade e estado da clínica (só o administrador consegue: regra clinicas_mudar).
     mudarClinica:async (clinica, { nome, cidade, uf, whats }) => { await rest(`clinicas?id=eq.${clinica}`, { metodo:'PATCH', corpo:{ nome, cidade, uf, whats }, cab:{ Prefer:'return=minimal' } }); return true; },

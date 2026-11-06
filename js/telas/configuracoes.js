@@ -5,8 +5,9 @@
 import { ic } from '../componentes/icones.js';
 import { db } from '../dados/repositorio.js';
 import { DIAS_SEMANA, DURACOES, UFS, configDe, resumoHorario, salvarClinica, salvarHorario, salvarServicos } from '../dados/config.js';
-import { clinicaNoServidor, contaAtual, mudarEmailConta, sairDosOutrosConta, salvarNomeConta, trocarSenhaConta } from './conta.js';
+import { clinicaNoServidor, contaAtual, situacaoConta, mudarEmailConta, sairDosOutrosConta, salvarNomeConta, trocarSenhaConta } from './conta.js';
 import { esc } from '../util.js';
+import { PLANOS, precoTxt } from '../dados/planos.js';
 
 const cf = { aba:'clinica', senha:false, ocupado:false };
 let cfApp = { save:() => {}, render:() => {}, toast:() => {} };
@@ -80,7 +81,14 @@ function cfConta(){
       <p class="erro-c" id="cf-ct-erro" hidden></p>
       <div class="cf-acoes"><button class="btn pri" type="submit" ${cf.ocupado ? 'disabled' : ''}>${ic('check')}Salvar</button><button class="btn" type="button" data-cf="senha" ${cf.senha ? 'hidden' : ''}>${ic('escudo')}Trocar senha</button></div>
       <p class="muted sm cf-obs">Entrou como <b>${esc({ adm:'Administrador', prof:'Profissional', rec:'Recepção' }[C.perfil] || '')}</b>${C.clinica ? ` em ${esc(C.clinica)}` : ''}.</p></form>
-    ${seg}</div>`;
+    ${seg}${cfPacote()}</div>`;
+}
+// Pacote da clínica: qual é, quanto tempo falta e o que cada pacote tem.
+function cfPacote(){
+  const S = situacaoConta(); if (!S) return '';
+  return `<div class="card" id="cf-pacote"><div class="card-h"><h2>Seu pacote<small>${esc(S.rotulo)}</small></h2><span class="pill ${S.tipo === 'vencido' ? 'warn' : 'acc'}">${esc(S.plano.nome)}</span></div>
+    <div class="cf-planos">${PLANOS.map(p => `<div class="cf-plano ${p.k === S.plano.k ? 'on' : ''}"><b>${p.nome}</b><small class="muted">${precoTxt(p)}</small><ul>${p.itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>
+    <p class="muted sm cf-obs">${S.tipo === 'teste' ? 'Durante o teste você usa tudo o que o pacote tem. ' : ''}O pagamento pelo site (Pix, boleto e cartão) entra em breve; para trocar de pacote, fale com o MUSUBI.</p></div>`;
 }
 
 /* ---------- Eventos ---------- */
