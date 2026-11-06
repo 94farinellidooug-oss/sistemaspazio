@@ -20,6 +20,10 @@ export const PRECOS = { essencial:7900, profissional:14900, clinica:29900 };
 export const NOMES = { essencial:'Essencial', profissional:'Profissional', clinica:'Clínica' };
 export const valorDe = (plano, periodo) => PRECOS[plano] * (periodo === 'anual' ? 10 : 1);
 export const VALOR_TESTE = 100; // R$ 1,00, o mínimo da InfinitePay
+// Número do pedido curto, só letras e números (até 25, como o identificador do Pix): alguns bancos recusam o Pix com hífen ou longo.
+export const numeroPedido = id => ('MSB' + String(id).replace(/[^0-9a-z]/gi, '')).slice(0, 25);
+// Textos sem acento nem símbolos, para o banco ler o Pix sem problema.
+const semAcento = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '-');
 
 const CORS = { 'Access-Control-Allow-Origin':'*', 'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods':'POST, OPTIONS' };
 const resp = (status, corpo) => new Response(JSON.stringify(corpo), { status, headers:{ ...CORS, 'Content-Type':'application/json' } });
@@ -80,11 +84,11 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
       const M = (await banco(`membros?select=perfil&clinica_id=eq.${clinica}&user_id=eq.${u.id}&ativo=is.true`)) || [];
       if (M[0]?.perfil !== 'adm') return erro(403, 'sem_acesso', 'Só o administrador da clínica faz o pagamento.');
       if (teste && !((await banco(`donos?select=user_id&user_id=eq.${u.id}`)) || []).length) return erro(403, 'sem_acesso', 'Só o dono do MUSUBI faz o pagamento de teste.');
-      const valor = teste ? VALOR_TESTE : valorDe(plano, periodo), order_nsu = 'musubi-' + novoId();
+      const valor = teste ? VALOR_TESTE : valorDe(plano, periodo), order_nsu = numeroPedido(novoId());
       await banco('pagamentos', { metodo:'POST', corpo:{ clinica_id:clinica, plano, periodo, valor, order_nsu, pedido_por:u.id }, cab:{ Prefer:'return=minimal' } });
       const r = await f(`${INFINITEPAY}/links`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({
         handle:HANDLE, order_nsu,
-        items:[{ description:teste ? 'MUSUBI · teste de pagamento' : `MUSUBI ${NOMES[plano]} · ${periodo === 'anual' ? '12 meses' : '1 mês'}`, price:valor, quantity:1 }],
+        items:[{ description:semAcento(teste ? 'MUSUBI - teste de pagamento' : `MUSUBI ${NOMES[plano]} - ${periodo === 'anual' ? '12 meses' : '1 mes'}`), price:valor, quantity:1 }],
         redirect_url:`${SITE}/spazio.html`, webhook_url:`${SB}/functions/v1/cobranca?aviso=1`,
         customer:u.email ? { email:u.email } : undefined
       }) });

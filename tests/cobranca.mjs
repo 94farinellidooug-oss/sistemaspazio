@@ -1,6 +1,6 @@
 // Testa a função cobranca (supabase/functions/cobranca) sem rede: banco, login e InfinitePay simulados.
 // Uso: node tests/cobranca.mjs
-import { criarCobranca, PRECOS, valorDe } from '../supabase/functions/cobranca/index.ts';
+import { criarCobranca, PRECOS, valorDe, numeroPedido } from '../supabase/functions/cobranca/index.ts';
 import { PLANOS } from '../js/dados/planos.js';
 
 let falhas = 0;
@@ -35,6 +35,7 @@ function cenario({ handle = 'spazio', resposta = { url:'https://checkout.infinit
   return { S, h, pedir };
 }
 
+{ const n = numeroPedido('3f2a9c1e-7b4d-4e8a-9f10-2c3d4e5f6a7b'); ok(/^[0-9A-Za-z]{1,25}$/.test(n) && n.startsWith('MSB'), 'número do pedido curto, só letras e números (aceito pelos bancos no Pix)'); }
 ok(PLANOS.every(p => PRECOS[p.k] === p.preco * 100), 'preços da função iguais aos da página e do sistema');
 ok(valorDe('profissional', 'anual') === 149000, 'anual = 10 meses (2 meses grátis)');
 
@@ -50,21 +51,21 @@ ok(valorDe('profissional', 'anual') === 149000, 'anual = 10 meses (2 meses grát
   r = await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal', valor:1 }, 'tk-u1');
   const j = await r.json();
   ok(r.status === 200 && j.url === 'https://checkout.infinitepay.io/spazio/abc' && j.valor === 14900, 'administrador recebe o link de pagamento');
-  ok(S.pagamentos.length === 1 && S.pagamentos[0].valor === 14900 && S.pagamentos[0].order_nsu === 'musubi-id1' && S.pagamentos[0].link === j.url, 'pedido guardado com o valor do servidor (não o do navegador) e o link');
+  ok(S.pagamentos.length === 1 && S.pagamentos[0].valor === 14900 && S.pagamentos[0].order_nsu === 'MSBid1' && S.pagamentos[0].link === j.url, 'pedido guardado com o valor do servidor (não o do navegador) e o link');
   const L = S.links[0];
-  ok(L.handle === 'spazio' && L.items[0].price === 14900 && L.items[0].description.includes('Profissional') && L.order_nsu === 'musubi-id1', 'link pedido à InfinitePay com a InfiniteTag, valor e número do pedido');
+  ok(L.handle === 'spazio' && L.items[0].price === 14900 && L.items[0].description.includes('Profissional') && /^[\x20-\x7e]+$/.test(L.items[0].description) && L.order_nsu === 'MSBid1', 'link pedido à InfinitePay com a InfiniteTag, valor e número do pedido');
   ok(L.redirect_url === 'https://sistemaspazio.vercel.app/spazio.html' && L.webhook_url === 'https://sb.test/functions/v1/cobranca?aviso=1' && L.customer.email === 'adm@x.com', 'volta para o sistema e avisa a função');
 
   // Aviso da InfinitePay
-  r = await pedir({ order_nsu:'musubi-id1', transaction_nsu:'tx1', invoice_slug:'abc', amount:14900, paid_amount:14900, receipt_url:'https://recibo/1' }, null, '?aviso=1');
+  r = await pedir({ order_nsu:'MSBid1', transaction_nsu:'tx1', invoice_slug:'abc', amount:14900, paid_amount:14900, receipt_url:'https://recibo/1' }, null, '?aviso=1');
   ok(r.status === 200 && S.checks.length === 1 && S.checks[0].chave === 'inchk_teste' && S.checks[0].corpo.slug === 'abc' && S.checks[0].corpo.handle === 'spazio', 'aviso é conferido na InfinitePay com a chave');
   ok(S.registros.length === 1 && S.registros[0].p_forma === 'pix' && S.registros[0].p_recibo === 'https://recibo/1' && S.pagamentos[0].situacao === 'pago', 'pagamento confirmado é registrado');
-  r = await pedir({ order_nsu:'musubi-id1', transaction_nsu:'tx1', invoice_slug:'abc' }, null, '?aviso=1');
+  r = await pedir({ order_nsu:'MSBid1', transaction_nsu:'tx1', invoice_slug:'abc' }, null, '?aviso=1');
   ok(r.status === 200 && S.checks.length === 1, 'aviso repetido não confere de novo');
   r = await pedir({ order_nsu:'nao-existe', transaction_nsu:'tx', invoice_slug:'x' }, null, '?aviso=1');
   ok(r.status === 400, 'aviso de pedido desconhecido é recusado');
   // Volta do comprador
-  r = await pedir({ acao:'conferir', order_nsu:'musubi-id1', transaction_nsu:'tx1', slug:'abc' }, 'tk-u1');
+  r = await pedir({ acao:'conferir', order_nsu:'MSBid1', transaction_nsu:'tx1', slug:'abc' }, 'tk-u1');
   ok((await r.json()).pago === true, 'na volta ao sistema, conferir mostra pago');
 }
 { const { S, pedir } = cenario({ check:{ success:true, paid:true, amount:100, paid_amount:100, capture_method:'pix' } });
@@ -72,7 +73,7 @@ ok(valorDe('profissional', 'anual') === 149000, 'anual = 10 meses (2 meses grát
   let r = await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'anual', teste:true }, 'tk-u1');
   const j = await r.json();
   ok(r.status === 200 && j.valor === 100 && S.pagamentos[0].valor === 100 && S.pagamentos[0].periodo === 'mensal' && S.links[0].items[0].price === 100 && S.links[0].items[0].description.includes('teste'), 'dono faz pagamento de teste de R$ 1,00 (sempre mensal)');
-  await pedir({ order_nsu:'musubi-id1', transaction_nsu:'tx1', invoice_slug:'abc' }, null, '?aviso=1');
+  await pedir({ order_nsu:'MSBid1', transaction_nsu:'tx1', invoice_slug:'abc' }, null, '?aviso=1');
   ok(S.registros.length === 1 && S.pagamentos[0].situacao === 'pago', 'pagamento de teste confirmado é registrado');
   S.donos = [];
   r = await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal', teste:true }, 'tk-u1');
@@ -80,12 +81,12 @@ ok(valorDe('profissional', 'anual') === 149000, 'anual = 10 meses (2 meses grát
 }
 { const { S, pedir } = cenario({ check:{ success:true, paid:false, amount:14900 } });
   await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u1');
-  const r = await pedir({ order_nsu:'musubi-id1', transaction_nsu:'tx1', invoice_slug:'abc', paid_amount:14900 }, null, '?aviso=1');
+  const r = await pedir({ order_nsu:'MSBid1', transaction_nsu:'tx1', invoice_slug:'abc', paid_amount:14900 }, null, '?aviso=1');
   ok(r.status === 200 && !S.registros.length && S.pagamentos[0].situacao === 'aberto', 'aviso falso (InfinitePay diz não pago) não libera nada');
 }
 { const { S, pedir } = cenario({ check:{ success:true, paid:true, amount:100, paid_amount:100 } });
   await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'anual' }, 'tk-u1');
-  await pedir({ order_nsu:'musubi-id1', transaction_nsu:'tx1', invoice_slug:'abc' }, null, '?aviso=1');
+  await pedir({ order_nsu:'MSBid1', transaction_nsu:'tx1', invoice_slug:'abc' }, null, '?aviso=1');
   ok(!S.registros.length, 'pagamento de valor menor que o pedido não libera');
 }
 { const { S, pedir } = cenario({ handle:'' });
