@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/comparar.mjs && node tests/migracao.mjs && node tests/atendimento.mjs && node tests/agenda.mjs && node tests/documentos.mjs && node tests/relacionamento.mjs && node tests/whatsapp.mjs && node tests/financeiro.mjs && node tests/relatorios.mjs",
+    "test": "node tests/comparar.mjs && node tests/migracao.mjs && node tests/atendimento.mjs && node tests/agenda.mjs && node tests/documentos.mjs && node tests/relacionamento.mjs && node tests/whatsapp.mjs && node tests/financeiro.mjs && node tests/relatorios.mjs && node tests/nuvem.mjs",
     "test:navegador": "node tests/navegador.mjs && node tests/compatibilidade.mjs && node tests/interface.mjs && node tests/pacientes.mjs && node tests/atendimento-ui.mjs && node tests/biblioteca-ui.mjs && node tests/agenda-ui.mjs && node tests/documentos-ui.mjs && node tests/relacionamento-ui.mjs && node tests/whatsapp-ui.mjs && node tests/financeiro-ui.mjs && node tests/relatorios-ui.mjs && node tests/layout.mjs sistema",
     "test:tudo": "npm test && npm run build && npm run test:navegador",
     "referencia": "node tests/gerar-referencia.mjs",
