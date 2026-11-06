@@ -1366,14 +1366,15 @@ input[type=checkbox]{accent-color:var(--brand)}
 .rel-g{align-items:start;grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (max-width:900px){ .rel-g{grid-template-columns:minmax(0,1fr)} }
 /* Colunas por mês: uma série, cor da marca; meses fora do período mais claros */
-.rel-c{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:18px;border-bottom:1px solid var(--line)}
-.rel-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:0;position:relative;cursor:default}
+.rel-c{display:flex;align-items:stretch;gap:8px;height:190px}
+.rel-col{flex:1;display:flex;flex-direction:column;min-width:0;cursor:default}
+.rel-cb{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-height:0;border-bottom:1px solid var(--line)}
 .rel-col span{display:block;width:min(34px,70%);background:var(--accent-line);border-radius:4px 4px 0 0}
 .rel-col.on span{background:var(--accent)}
 .rel-col b{font-size:.74rem;font-weight:600;color:var(--muted);margin-bottom:3px;font-variant-numeric:tabular-nums}
 .rel-col.on b{color:var(--ink)}
-.rel-col small{position:absolute;bottom:-20px;font-size:.72rem;color:var(--muted)}
-.rel-c + .rel-tab{margin-top:28px}
+.rel-col small{font-size:.72rem;color:var(--muted);text-align:center;padding-top:4px}
+.rel-c + .rel-tab{margin-top:10px}
 .rel-tab summary{cursor:pointer;font-size:.84rem;color:var(--muted)}
 .rel-tab table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:8px}
 .rel-tab th,.rel-tab td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
@@ -1415,7 +1416,7 @@ input[type=checkbox]{accent-color:var(--brand)}
   .rel-imp #r-dicas{margin-top:10px}
   .rel-imp .dicas{grid-template-columns:1fr 1fr}
   .rel-imp .card-h h2{font-size:11pt}
-  .rel-imp .rel-c{height:120px;margin-bottom:24px}
+  .rel-imp .rel-c{height:140px}
 }
 </style>
 
@@ -2977,7 +2978,7 @@ function vRelatorios(){
   <div class="tiles rel-t4">${tile('at', 'Atendimentos', n0(num.at), comparaRel(num.at, ant && a.at, P))}${tile('rec', 'Recebido', brl(num.rec), comparaRel(num.rec, ant && a.rec, P))}${tile('falt', 'Faltas', `${num.falt} <span class="muted sm">· ${num.pf}%</span>`, comparaRel(num.falt, ant && a.falt, P, true))}${tile('novos', 'Pacientes novos', n0(num.novos), comparaRel(num.novos, ant && a.novos, P))}</div>
   <div class="grid g2 rel-g">
     <div class="card" id="r-mes"><div class="card-h"><h2>Atendimentos por mês<small>${P.k === 'ano' ? 'este ano' : 'últimos 6 meses'}; ${P.meses.length > 1 ? 'os meses do período' : 'o mês escolhido'} em destaque</small></h2></div>
-      <div class="rel-c" role="img" aria-label="Atendimentos por mês">${R.meses.map(m => `<div class="rel-col ${m.on ? 'on' : ''}" data-tip="${mesTxt(m)}: ${m.at} atendimento${m.at === 1 ? '' : 's'}, ${m.falt} falta${m.falt === 1 ? '' : 's'}"><b>${m.at}</b><span style="height:${Math.round(m.at / mx * 100)}%"></span><small>${nomeMesRel(m.m).slice(0, 3)}</small></div>`).join('')}</div>
+      <div class="rel-c" role="img" aria-label="Atendimentos por mês">${R.meses.map(m => `<div class="rel-col ${m.on ? 'on' : ''}" data-tip="${mesTxt(m)}: ${m.at} atendimento${m.at === 1 ? '' : 's'}, ${m.falt} falta${m.falt === 1 ? '' : 's'}"><div class="rel-cb"><b>${m.at}</b><span style="height:calc((100% - 20px) * ${(m.at / mx).toFixed(3)})"></span></div><small>${nomeMesRel(m.m).slice(0, 3)}</small></div>`).join('')}</div>
       <details class="rel-tab"><summary>Ver como tabela</summary><table><thead><tr><th>Mês</th><th>Atendimentos</th><th>Faltas</th><th>Recebido</th></tr></thead><tbody>${R.meses.map(m => `<tr><td>${mesTxt(m)}</td><td>${m.at}</td><td>${m.falt}</td><td>${brl(m.rec)}</td></tr>`).join('')}</tbody></table></details></div>
     <div class="card" id="r-serv"><div class="card-h"><h2>Por serviço<small>atendimentos ${P.em}</small></h2></div>
       <div class="rel-l">${R.servicos.map(s => barraRel(s.s, s.q, ms, n0(s.q), `${s.s}: ${s.q} atendimento${s.q === 1 ? '' : 's'}${s.v ? `, ${brl(s.v)} combinados` : ''}`)).join('') || '<p class="muted sm">Nenhum atendimento no período.</p>'}</div></div>
