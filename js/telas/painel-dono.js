@@ -4,7 +4,7 @@
 // lista os interessados da página de apresentação e os pagamentos feitos pela InfinitePay.
 import { ic } from '../componentes/icones.js';
 import { PLANOS, planoDe, precoTxt, rotuloSituacao, situacaoAssinatura } from '../dados/planos.js';
-import { conta } from './conta.js';
+import { conta, pagarConta, situacaoConta } from './conta.js';
 import { esc } from '../util.js';
 
 const pd = { aba:'clinicas', lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'' };
@@ -74,12 +74,13 @@ const reaisPd = c => (c / 100).toLocaleString('pt-BR', { style:'currency', curre
 function pdPagamentos(L, G){
   const pagos = G.filter(g => g.situacao === 'pago'), mes = new Date().toISOString().slice(0, 7);
   const doMes = pagos.filter(g => String(g.pago_em || '').slice(0, 7) === mes), nomeC = id => L.find(c => c.id === id)?.nome || 'Clínica';
-  return `<div class="card" id="pd-pag"><div class="card-h"><h2>Pagamentos<small>pela InfinitePay: Pix ou cartão, mensal ou anual (2 meses grátis)</small></h2></div>
+  return `<div class="card" id="pd-pag"><div class="card-h"><h2>Pagamentos<small>pela InfinitePay: Pix ou cartão, mensal ou anual (2 meses grátis)</small></h2><button class="btn sm" data-pd="teste" ${pd.testando ? 'disabled' : ''}>${ic('dinheiro')}${pd.testando ? 'Abrindo…' : 'Testar pagamento (R$ 1,00)'}</button></div>
+    <p class="muted sm cf-obs" id="pd-teste-obs">O teste abre um pagamento real de R$ 1,00 para a sua própria clínica, que vai para a sua conta InfinitePay. Serve para conferir que o pagamento é confirmado e libera o acesso sozinho (soma 1 mês ao pacote da sua clínica).</p>
     <div class="pd-n pd-n3"><div class="card"><small>Recebido este mês</small><b>${reaisPd(doMes.reduce((t, g) => t + (g.valor_pago || g.valor), 0))}</b></div>
       <div class="card"><small>Pagamentos confirmados</small><b>${pagos.length}</b></div>
       <div class="card"><small>Não concluídos</small><b>${G.length - pagos.length}</b></div></div>
     <div class="list">${G.map(g => `<div class="row pd-g-l"><span class="tico sm ${g.situacao === 'pago' ? 'acc' : ''}">${ic('dinheiro')}</span>
-      <div class="grow"><b>${esc(nomeC(g.clinica_id))}</b><small class="muted">${esc(planoDe(g.plano).nome)} · ${g.periodo === 'anual' ? 'anual' : 'mensal'} · ${dataBR(g.pago_em || g.criado_em)}${g.forma ? ' · ' + (FORMA_PD[g.forma] || esc(g.forma)) : ''}</small></div>
+      <div class="grow"><b>${esc(nomeC(g.clinica_id))}</b><small class="muted">${g.valor === 100 ? 'Teste de pagamento' : `${esc(planoDe(g.plano).nome)} · ${g.periodo === 'anual' ? 'anual' : 'mensal'}`} · ${dataBR(g.pago_em || g.criado_em)}${g.forma ? ' · ' + (FORMA_PD[g.forma] || esc(g.forma)) : ''}</small></div>
       <b>${reaisPd(g.valor)}</b><span class="pill ${g.situacao === 'pago' ? 'ok' : ''}">${g.situacao === 'pago' ? 'Pago' : 'Não concluído'}</span>${g.recibo ? `<a class="btn sm ghost" href="${esc(g.recibo)}" target="_blank" rel="noopener">Recibo</a>` : ''}</div>`).join('') || '<p class="muted sm">Nenhum pagamento ainda.</p>'}</div>
     <p class="muted sm cf-obs">Pacotes: ${PLANOS.map(p => `<b>${p.nome}</b> (${precoTxt(p)})`).join(', ')}. O pagamento confirmado pela InfinitePay libera o acesso da clínica sozinho. "Não concluído" é quem abriu o pagamento e não terminou.</p></div>`;
 }
@@ -96,6 +97,7 @@ export function ligarPainelDono(r, t){
     else if (a === 'gratis') { pd.gratis = c; pdApp.render(true); document.querySelector('#pd-g [name=motivo]')?.focus(); }
     else if (a === 'gratis-fechar') { pd.gratis = null; pdApp.render(true); }
     else if (a === 'tirar') pdFaz(() => conta.nuvem.darGratis(c, null, '', true), `Acesso grátis de ${nome()} retirado`);
+    else if (a === 'teste') { pd.testando = true; pdApp.render(true); pagarConta(situacaoConta()?.plano.k || 'profissional', 'mensal', true).then(e => { if (e) { pd.testando = false; pdApp.render(true); pdApp.toast(e, 'info'); } }); }
     else if (a === 'mais7') pdFaz(() => conta.nuvem.estenderTeste(c, 7), `${nome()} ganhou mais 7 dias de teste`);
   });
   document.addEventListener('change', ev => {
