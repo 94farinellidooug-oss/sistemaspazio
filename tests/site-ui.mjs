@@ -36,6 +36,7 @@ ok(!(await p.locator('.faixa').count()), 'sem a faixa de prévia');
 ok((await logoVisivel(p)).join() === 'MUSUBI_logo_colorido.svg', 'tema claro: logo colorido');
 ok(await carregou(p), 'logos e telas carregam');
 ok(await p.locator('#mods .mod').count() === 9 && await p.locator('#spots .spot').count() === 3 && await p.locator('#faq details').count() === 6, 'recursos, destaques e perguntas');
+ok(await p.locator('#quem .sobre', { hasText:'Por trás do MUSUBI' }).count() === 1 && await p.locator('#quem', { hasText:'idealizado pelo Biomédico e Acupunturista Maicon Farinelli' }).count() === 1, 'seção Por trás do MUSUBI com o texto do Maicon');
 ok(await p.locator('#planos-l .plano').count() === 3 && await p.locator('#planos-l', { hasText:'R$ 79' }).count() && await p.locator('#planos-l', { hasText:'R$ 149' }).count() && await p.locator('#planos-l', { hasText:'a partir de R$ 299' }).count(), 'três pacotes com os valores');
 await p.click('[data-a="tema"]');
 ok((await logoVisivel(p)).join() === 'MUSUBI_logo_branco.svg' && await p.evaluate(() => localStorage.getItem('musubi-tema')) === 'dark', 'tema escuro escolhido: logo branco, salvo junto com o do sistema');
@@ -51,7 +52,7 @@ ok((await p.getAttribute('#tela img', 'src')).endsWith('financeiro.png'), 'abas 
 await p.click('.hero [data-a="entrar"]'); await p.waitForTimeout(80);
 ok(await p.locator('#m-entrar').isVisible() && await p.evaluate(() => document.activeElement.name) === 'email', '"Já uso, entrar" abre o acesso com o foco no e-mail');
 await p.click('#e-botao');
-ok(await p.locator('#e-erro', { hasText:'Confira o e-mail' }).isVisible(), 'e-mail inválido avisa');
+ok(await p.locator('#e-erro', { hasText:'Verifique o e-mail' }).isVisible(), 'e-mail inválido avisa');
 await p.fill('#f-entrar [name=email]', 'maicon@x.com'); await p.click('#e-botao');
 ok(await p.locator('#e-erro', { hasText:'senha' }).isVisible(), 'sem senha avisa');
 await p.fill('#f-entrar [name=senha]', 'errada1'); await p.click('#e-botao'); await p.waitForTimeout(200);
@@ -59,7 +60,7 @@ ok(await p.locator('#e-erro', { hasText:'E-mail ou senha incorretos' }).isVisibl
 await p.click('[data-a="esqueci"]');
 ok(!(await p.locator('#f-entrar [name=senha]').isVisible()) && await p.locator('#e-botao', { hasText:'Enviar link' }).isVisible(), 'esqueci minha senha pede só o e-mail');
 await p.click('#e-botao'); await p.waitForTimeout(200);
-ok(await p.locator('#m-entrar-t', { hasText:'Confira o seu e-mail' }).isVisible() && S.chamadas.some(c => c.caminho.startsWith('/auth/v1/recover')), 'pede o link de nova senha ao servidor');
+ok(await p.locator('#m-entrar-t', { hasText:'Verifique o seu e-mail' }).isVisible() && S.chamadas.some(c => c.caminho.startsWith('/auth/v1/recover')), 'pede o link de nova senha ao servidor');
 await p.keyboard.press('Escape');
 ok(await p.locator('#m-entrar').isHidden(), 'Esc fecha');
 await p.click('.topo [data-a="entrar"]');
@@ -96,7 +97,7 @@ await p.fill('#f-contato [name=nome]', 'Ana <b>Souza</b>'); await p.fill('#f-con
 await p.click('#f-contato button[type=submit]');
 ok(await p.locator('#f-erro', { hasText:'DDD' }).isVisible(), 'WhatsApp incompleto avisa');
 S.offline = true; await p.fill('#f-contato [name=whats]', '(54) 99999-1234'); await p.click('#f-contato button[type=submit]'); await p.waitForTimeout(200);
-ok(await p.locator('#f-erro', { hasText:'Tente de novo' }).isVisible() && !S.interessados.length, 'sem servidor avisa e deixa tentar de novo');
+ok(await p.locator('#f-erro', { hasText:'Tente novamente' }).isVisible() && !S.interessados.length, 'sem servidor avisa e deixa tentar de novo');
 S.offline = false; await p.click('#f-contato button[type=submit]'); await p.waitForTimeout(200);
 ok(await p.locator('.enviado-ok', { hasText:'Obrigado, Ana' }).isVisible() && !(await p.locator('.enviado-ok b b').count()), 'contato enviado, sem HTML do nome');
 ok(S.interessados.length === 1 && S.interessados[0].whats === '(54) 99999-1234', 'o pedido vai para os Interessados');
