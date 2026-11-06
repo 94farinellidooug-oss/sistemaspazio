@@ -1,5 +1,5 @@
 // Página de apresentação do MUSUBI (etapa 10, aprovada na prévia do PR #42): primeira página do site.
-// "Entrar" usa a conta do servidor e abre o sistema; "Quero conhecer" vai para os Interessados do Painel do MUSUBI;
+// "Entrar" usa a conta do servidor e abre o sistema; "Solicitar demonstração" vai para os Interessados do Painel do MUSUBI;
 // "Começar 7 dias grátis" abre a criação de conta já com o pacote escolhido.
 import { ICONES } from '../js/componentes/icones.js';
 import { PLANOS, precoTxt, DIAS_TESTE } from '../js/dados/planos.js';
@@ -11,44 +11,44 @@ const pintarIcones = (raiz = document) => raiz.querySelectorAll('[data-i]').forE
 
 // [ícone, título, texto]
 const MODULOS = [
-  ['agenda', 'Agenda', 'A semana em um olhar, horários livres na hora, confirmar, remarcar e desmarcar sem perder o histórico.'],
-  ['pacientes', 'Pacientes e prontuário', 'Cadastro com o mínimo de campos, alertas de segurança e todos os atendimentos do paciente em ordem.'],
-  ['plano', 'Atendimento guiado', 'Anamnese, avaliação, síntese, mapa corporal, plano, evolução e documentos, uma etapa de cada vez.'],
-  ['yin', 'Avaliação pela MTC', 'Língua, pulso e sinais organizados em Ba Gang e nos cinco elementos, com o Pentagrama atualizando sozinho.'],
-  ['corpo', 'Mapa corporal e pontos', 'Marque dor e sintomas no corpo, veja os pontos do plano e consulte a biblioteca de pontos com a referência.'],
-  ['assinatura', 'Documentos com assinatura', 'Orientações, atestados e termos a partir de modelos seus, assinados com o dedo na tela.'],
-  ['tel', 'WhatsApp', 'Lembrete da consulta e mensagens prontas que você edita, enviadas pelo seu WhatsApp em um toque.'],
-  ['financeiro', 'Financeiro', 'Receba com a forma de pagamento, aceite pagamento parcial, venda pacotes e lance despesas que se repetem.'],
-  ['relatorios', 'Relatórios', 'Atendimentos, recebido, faltas e pacientes novos, comparados ao período anterior, com dicas do que fazer.']
+  ['agenda', 'Agenda', 'Visão semanal, horários disponíveis por serviço, confirmação, remarcação e cancelamento com histórico preservado.'],
+  ['pacientes', 'Pacientes e prontuário', 'Cadastro objetivo, alertas de segurança e histórico completo de atendimentos de cada paciente.'],
+  ['plano', 'Atendimento guiado', 'Anamnese, avaliação, síntese, mapa corporal, plano terapêutico, evolução e documentos, em etapas organizadas.'],
+  ['yin', 'Avaliação pela MTC', 'Língua, pulso e sinais organizados em Ba Gang e nos cinco elementos, com o Pentagrama atualizado automaticamente.'],
+  ['corpo', 'Mapa corporal e pontos', 'Registro de dor e sintomas no mapa corporal, pontos do plano terapêutico e biblioteca de pontos com referência bibliográfica.'],
+  ['assinatura', 'Documentos com assinatura', 'Orientações, atestados e termos gerados a partir de modelos próprios, com assinatura digital na tela.'],
+  ['tel', 'WhatsApp', 'Lembretes de consulta e mensagens padronizadas e editáveis, enviadas pelo WhatsApp da clínica.'],
+  ['financeiro', 'Financeiro', 'Recebimentos por forma de pagamento, pagamentos parciais, venda de pacotes e despesas recorrentes.'],
+  ['relatorios', 'Relatórios', 'Atendimentos, receitas, faltas e novos pacientes comparados ao período anterior, com indicadores de gestão.']
 ];
 // [chave, aba, imagem, legenda]
 const TELAS = [
-  ['painel', 'Painel', 'painel', 'O dia em uma tela: próximo paciente, alertas de segurança, quem precisa de acompanhamento e a agenda.'],
-  ['agenda', 'Agenda', 'agenda', 'Semana, situação de cada horário ao lado, horários livres e o botão Atender.'],
-  ['avaliacao', 'Avaliação', 'avaliacao', 'Toque nos sinais de língua, pulso e sintomas; o Ba Gang e os cinco elementos se posicionam sozinhos.'],
-  ['pentagrama', 'Pentagrama', 'pentagrama', 'Ciclos de geração e de controle com o excesso e a deficiência da avaliação do paciente.'],
-  ['mapa', 'Mapa corporal', 'mapa', 'Dor, irradiação e limitação marcadas no corpo, os pontos do plano e a comparação entre atendimentos.'],
-  ['biblioteca', 'Biblioteca', 'biblioteca', 'Pontos, meridianos e conteúdos de consulta, com a sua biblioteca particular ao lado.'],
-  ['documentos', 'Documentos', 'documentos', 'Modelos com os dados do paciente, para imprimir, salvar em PDF ou guardar no prontuário.'],
-  ['financeiro', 'Financeiro', 'financeiro', 'O que falta receber, pacotes com as sessões usadas e as despesas do mês.'],
-  ['relatorios', 'Relatórios', 'relatorios', 'Como a clínica está indo, por mês, por serviço e por forma de pagamento.']
+  ['painel', 'Painel', 'painel', 'Visão geral do dia: próximo paciente, alertas de segurança, pacientes que precisam de acompanhamento e agenda.'],
+  ['agenda', 'Agenda', 'agenda', 'Agenda semanal com a situação de cada horário, horários disponíveis e acesso direto ao atendimento.'],
+  ['avaliacao', 'Avaliação', 'avaliacao', 'Registro dos sinais de língua, pulso e sintomas, com Ba Gang e cinco elementos calculados automaticamente.'],
+  ['pentagrama', 'Pentagrama', 'pentagrama', 'Ciclos de geração e de controle com os excessos e deficiências identificados na avaliação.'],
+  ['mapa', 'Mapa corporal', 'mapa', 'Dor, irradiação e limitação funcional registradas no corpo, com pontos indicados e comparação entre atendimentos.'],
+  ['biblioteca', 'Biblioteca', 'biblioteca', 'Pontos, meridianos e conteúdos de consulta, com uma biblioteca particular para cada profissional.'],
+  ['documentos', 'Documentos', 'documentos', 'Modelos preenchidos com os dados do paciente, para imprimir, salvar em PDF ou arquivar no prontuário.'],
+  ['financeiro', 'Financeiro', 'financeiro', 'Valores a receber, pacotes com sessões utilizadas e despesas do mês.'],
+  ['relatorios', 'Relatórios', 'relatorios', 'Desempenho da clínica por mês, por serviço e por forma de pagamento.']
 ];
 // [imagem, sobre, título, texto, itens]
 const DESTAQUES = [
-  ['avaliacao', 'Atendimento', 'Um atendimento que guia, sem engessar', 'As etapas seguem a ordem do raciocínio clínico. A primeira consulta vira a avaliação basal, e as seguintes mostram, lado a lado, o que mudou.',
-    ['Salva sozinho enquanto você escreve', 'Comparação da primeira consulta com a atual', 'Vasos extraordinários e estação do ano como dicas no plano']],
-  ['agenda', 'Agenda e WhatsApp', 'Menos faltas, mais horários ocupados', 'Veja os horários livres de cada serviço, confirme pelo WhatsApp com a mensagem pronta e marque quem foi atendido ou faltou.',
-    ['Lembrete do dia seguinte em um toque', 'Remarcar guarda de onde veio', 'Quem está sem vir há mais de 21 dias aparece para você chamar']],
-  ['relatorios', 'Gestão', 'Saiba como a clínica está indo, sem planilha', 'Os relatórios saem do que você já registra: nada para preencher a mais. No final, dicas práticas para recuperar e aumentar o faturamento.',
-    ['Comparação com o período anterior', 'Recebido por forma de pagamento e pacotes', 'Imprimir ou salvar em PDF']]
+  ['avaliacao', 'Atendimento', 'Atendimento estruturado, com liberdade clínica', 'As etapas seguem a ordem do raciocínio clínico. A primeira consulta registra a avaliação basal, e as seguintes mostram a evolução lado a lado.',
+    ['Salvamento automático durante o registro', 'Comparação entre a avaliação inicial e a atual', 'Vasos extraordinários e estação do ano como apoio ao plano terapêutico']],
+  ['agenda', 'Agenda e WhatsApp', 'Menos faltas, melhor aproveitamento da agenda', 'Horários disponíveis por serviço, confirmação pelo WhatsApp com mensagem padronizada e registro de comparecimento.',
+    ['Lembrete da consulta do dia seguinte', 'Remarcações com histórico de origem', 'Pacientes sem retorno há mais de 21 dias em destaque']],
+  ['relatorios', 'Gestão', 'Indicadores da clínica, sem planilhas', 'Os relatórios são gerados a partir dos registros do dia a dia, sem preenchimento adicional, e trazem recomendações práticas para a gestão.',
+    ['Comparação com o período anterior', 'Receitas por forma de pagamento e pacotes', 'Impressão ou exportação em PDF']]
 ];
 const PERGUNTAS = [
-  ['Preciso instalar alguma coisa?', 'Não. O MUSUBI abre no navegador do computador, do tablet ou do celular. É só entrar com o seu e-mail e senha.'],
-  ['Serve para outras terapias além da acupuntura?', 'Sim. Agenda, cadastro, documentos, WhatsApp, financeiro e relatórios servem para qualquer atendimento, e os serviços e preços são os da sua clínica. A avaliação pela Medicina Tradicional Chinesa fica à disposição de quem usa.'],
-  ['Posso usar com a minha equipe?', 'Sim. Cada profissional entra com o próprio acesso, e cada registro mostra quem fez e quando.'],
-  ['O sistema faz diagnóstico?', 'Não. As hipóteses e sugestões ajudam o raciocínio clínico, e a decisão é sempre do profissional.'],
-  ['Emite nota fiscal?', 'O financeiro já organiza os dados da nota de cada atendimento. A emissão da nota de serviço pelo sistema, na cidade de cada clínica, está nos próximos passos.'],
-  ['Como faço para conhecer?', 'Deixe seu nome e WhatsApp no formulário acima. A gente chama você para mostrar o sistema na prática.']
+  ['É necessário instalar algum programa?', 'Não. O MUSUBI funciona no navegador do computador, do tablet ou do celular. O acesso é feito com e-mail e senha.'],
+  ['O sistema atende outras terapias além da acupuntura?', 'Sim. Agenda, cadastro, documentos, WhatsApp, financeiro e relatórios atendem qualquer especialidade, com os serviços e valores da própria clínica. A avaliação pela Medicina Tradicional Chinesa fica disponível para quem utiliza.'],
+  ['É possível usar com uma equipe?', 'Sim. Cada profissional tem o seu próprio acesso, e todos os registros identificam o autor, a data e a hora.'],
+  ['O sistema faz diagnóstico?', 'Não. As hipóteses e sugestões apoiam o raciocínio clínico; a decisão é sempre do profissional.'],
+  ['O sistema emite nota fiscal?', 'O financeiro já organiza os dados da nota de cada atendimento. A emissão da nota fiscal de serviço pelo sistema, no município de cada clínica, está em desenvolvimento.'],
+  ['Como agendar uma demonstração?', 'Preencha o formulário acima com seu nome e WhatsApp. Nossa equipe entrará em contato para apresentar o sistema.']
 ];
 
 // No site o sistema é o spazio.html; no computador (testes), o index.html.
@@ -69,7 +69,7 @@ function montar(){
   $('#planos-l').innerHTML = PLANOS.map(p => `<article class="plano ${p.destaque ? 'dest' : ''}">${p.destaque ? '<span class="plano-selo">Recomendado</span>' : ''}<h3>${p.nome}</h3>
     <p class="plano-preco"><b>${precoTxt(p).replace('/mês', '')}</b><small>/mês</small></p><p class="muted">${p.resumo}</p>
     <ul class="garantias col">${p.itens.map(x => `<li>${ic('check')}${x}</li>`).join('')}</ul>
-    <button class="btn ${p.destaque ? 'ouro' : 'linha'} largo" data-a="plano" data-k="${p.k}">Começar ${DIAS_TESTE} dias grátis</button></article>`).join('');
+    <button class="btn ${p.destaque ? 'ouro' : 'linha'} largo" data-a="plano" data-k="${p.k}">Experimentar ${DIAS_TESTE} dias grátis</button></article>`).join('');
   $('#faq').innerHTML = PERGUNTAS.map(([q, r]) => `<details><summary>${q}${ic('baixo')}</summary><p>${r}</p></details>`).join('');
   mostrarTela('painel');
   pintarIcones();
@@ -103,13 +103,13 @@ function abrirEntrar(){
 function fecharEntrar(){ $('#m-entrar').hidden = true; document.body.classList.remove('travado'); antes?.focus?.(); }
 function modoEntrar(){
   const f = $('#f-entrar'); f.classList.remove('esqueci', 'enviado'); $('#e-erro').hidden = true;
-  $('#m-entrar-t').textContent = 'Entrar no MUSUBI'; $('#m-entrar-d').textContent = 'Use o e-mail e a senha da sua conta.';
+  $('#m-entrar-t').textContent = 'Entrar no MUSUBI'; $('#m-entrar-d').textContent = 'Informe o e-mail e a senha da sua conta.';
   $('#e-botao').textContent = 'Entrar'; $('#e-botao').disabled = false;
-  $('#m-rodape').innerHTML = 'Ainda não usa? <a href="#contato" data-a="fechar">Conheça o MUSUBI</a>';
+  $('#m-rodape').innerHTML = 'Ainda não tem conta? <a href="#planos" data-a="fechar">Experimente por 7 dias</a>';
 }
 function modoEsqueci(){
   modo = 'esqueci'; const f = $('#f-entrar'); f.classList.add('esqueci'); $('#e-erro').hidden = true;
-  $('#m-entrar-t').textContent = 'Criar uma nova senha'; $('#m-entrar-d').textContent = 'Informe o seu e-mail. Mandamos um link para você criar uma nova senha.';
+  $('#m-entrar-t').textContent = 'Criar uma nova senha'; $('#m-entrar-d').textContent = 'Informe o seu e-mail para receber o link de criação de uma nova senha.';
   $('#e-botao').textContent = 'Enviar link';
   $('#m-rodape').innerHTML = '<button type="button" class="lnk" data-a="voltar">Voltar para entrar</button>';
   f.email.focus();
@@ -117,15 +117,15 @@ function modoEsqueci(){
 const emailOk = v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
 async function enviarEntrar(e){
   e.preventDefault(); const f = e.target, erro = $('#e-erro');
-  const msg = !emailOk(f.email.value) ? 'Confira o e-mail.' : modo === 'entrar' && !f.senha.value ? 'Digite a sua senha.' : '';
+  const msg = !emailOk(f.email.value) ? 'Verifique o e-mail informado.' : modo === 'entrar' && !f.senha.value ? 'Informe a sua senha.' : '';
   erro.textContent = msg; erro.hidden = !msg;
   if (msg) { (msg.includes('e-mail') ? f.email : f.senha).focus(); return; }
   const b = $('#e-botao'), txt = b.textContent; b.disabled = true; b.textContent = modo === 'esqueci' ? 'Enviando…' : 'Entrando…';
   try {
     if (modo === 'esqueci') {
       await nuvem.esqueci(f.email.value, urlSistema());
-      f.classList.add('enviado'); $('#m-entrar-t').textContent = 'Confira o seu e-mail';
-      $('#m-entrar-d').textContent = `Se ${f.email.value.trim()} tiver uma conta, o link para criar a nova senha chega em alguns minutos. Confira também a caixa de spam.`;
+      f.classList.add('enviado'); $('#m-entrar-t').textContent = 'Verifique o seu e-mail';
+      $('#m-entrar-d').textContent = `Se ${f.email.value.trim()} tiver uma conta, você receberá o link para criar uma nova senha em alguns minutos. Verifique também a caixa de spam.`;
       b.disabled = false; b.textContent = txt; return;
     }
     await nuvem.entrar(f.email.value, f.senha.value);
@@ -140,13 +140,13 @@ async function enviarEntrar(e){
 async function enviarContato(e){
   e.preventDefault(); const f = e.target, erro = $('#f-erro');
   const dig = f.whats.value.replace(/\D/g, '');
-  const msg = !f.nome.value.trim() ? 'Escreva o seu nome.' : dig.length < 10 || dig.length > 13 ? 'Confira o WhatsApp, com o DDD.' : '';
+  const msg = !f.nome.value.trim() ? 'Informe o seu nome.' : dig.length < 10 || dig.length > 13 ? 'Informe o WhatsApp com DDD.' : '';
   erro.textContent = msg; erro.hidden = !msg;
   if (msg) { (msg.includes('nome') ? f.nome : f.whats).focus(); return; }
   const b = f.querySelector('[type=submit]'); b.disabled = true; b.textContent = 'Enviando…';
   try { await nuvem.pedirContato(f.nome.value.slice(0, 120), f.whats.value.slice(0, 30)); }
-  catch (er) { erro.textContent = er.codigo === 'offline' ? 'Sem conexão. Confira a internet e tente de novo.' : 'Não conseguimos enviar agora. Tente de novo em instantes.'; erro.hidden = false; b.disabled = false; b.textContent = 'Quero conhecer'; return; }
-  f.innerHTML = `<div class="enviado-ok">${ic('okc')}<b>Obrigado, ${escHtml(f.nome.value.trim().split(' ')[0])}!</b><p>Vamos chamar você no WhatsApp para mostrar o MUSUBI.</p></div>`;
+  catch (er) { erro.textContent = er.codigo === 'offline' ? 'Sem conexão. Verifique a internet e tente novamente.' : 'Não foi possível enviar agora. Tente novamente em instantes.'; erro.hidden = false; b.disabled = false; b.textContent = 'Solicitar demonstração'; return; }
+  f.innerHTML = `<div class="enviado-ok">${ic('okc')}<b>Obrigado, ${escHtml(f.nome.value.trim().split(' ')[0])}!</b><p>Solicitação recebida. Nossa equipe entrará em contato pelo WhatsApp em breve.</p></div>`;
 }
 
 // Menu do celular
