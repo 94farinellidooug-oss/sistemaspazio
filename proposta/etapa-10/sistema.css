@@ -111,3 +111,10 @@
 .p10-opc label.on{border-color:var(--accent);background:var(--accent-soft)}
 .p10-opc input{margin-top:3px;accent-color:var(--accent)}
 .p10-opc small{display:block;color:var(--muted);font-size:.82rem;margin-top:2px}
+.p10-ck{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--line-2);cursor:pointer;position:relative;background:var(--surface)}
+.p10-ck input{position:absolute;inset:0;opacity:0;cursor:pointer;margin:0}
+.p10-ck.sim{background:var(--accent-soft);border-color:var(--accent-line);color:var(--ok)}
+.p10-ck:has(input:focus-visible){outline:2px solid var(--brand);outline-offset:2px}
+.p10-tr .fixo{opacity:.6}
+#eq-p .card-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.p10-perfis .lbl{margin-bottom:2px}

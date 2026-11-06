@@ -20,7 +20,7 @@ const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domi
 const SITU = [['novo', 'Novo', 'acc'], ['chamei', 'Já chamei', 'warn'], ['cliente', 'Virou cliente', 'ok'], ['nao', 'Não quis', '']];
 
 const S = {
-  aberto:false, conta:false, pa:{}, aba:'clinica', convite:false, filtro:'todos', passo:1, levar:true,
+  aberto:false, conta:false, pa:{}, perm:PERM.map(r => r.slice(1)), aba:'clinica', convite:false, filtro:'todos', passo:1, levar:true,
   clinica:'spazio',
   clinicas:[{ id:'spazio', nome:'Spazio Stabilità', perfil:'adm' }, { id:'equilibrio', nome:'Clínica Equilíbrio', perfil:'prof' }],
   dados:{ nome:'Spazio Stabilità', cidade:'Caxias do Sul', uf:'RS', whats:'(54) 99999-0000', end:'', doc:'' },
@@ -43,6 +43,7 @@ const S = {
 const nId = (() => { let n = 10; return p => p + (++n); })();
 const clin = () => S.clinicas.find(c => c.id === S.clinica);
 const eu = () => S.equipe.find(u => u.voce);
+const mudouPerm = () => S.perm.some((r, i) => r.some((x, j) => x !== PERM[i][j + 1]));
 const perfilDe = k => PERFIS.find(p => p[0] === k);
 
 /* ---------- Administração ---------- */
@@ -77,10 +78,13 @@ function vEquipe(){
         <label class="p10-perfil"><span class="sr">Perfil de ${esc(u.nome)}</span><select data-a="perfil" data-u="${u.id}" ${u.voce ? 'disabled title="Você é o administrador desta clínica"' : ''}>${PERFIS.map(([k, n]) => `<option value="${k}" ${u.perfil === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         ${u.voce ? '' : `<button class="btn sm ghost" data-a="${u.st === 'off' ? 'reativar' : 'tirar'}" data-u="${u.id}">${u.st === 'off' ? 'Devolver acesso' : 'Tirar acesso'}</button>`}</div></div>`).join('')}</div>
       <p class="muted sm p10-obs">Tirar o acesso não apaga nada: os atendimentos e registros continuam com o nome de quem fez.</p></div>
-    <div class="card" id="eq-p"><div class="card-h"><h2>O que cada perfil abre<small>perfis prontos, sem nada para configurar</small></h2></div>
+    <div class="card" id="eq-p"><div class="card-h"><h2>O que cada perfil abre<small>começa no padrão; marque o que cada perfil abre nesta clínica</small></h2>${mudouPerm() ? `<button class="btn sm" data-a="perm-padrao">${ic('retorno')}Voltar ao padrão</button>` : ''}</div>
       <div class="p10-tab" role="table" aria-label="Permissões por perfil"><div class="p10-tr p10-th" role="row"><span role="columnheader"></span>${PERFIS.map(([, n]) => `<span role="columnheader"><span class="p10-lg">${n}</span><span class="p10-ct" aria-hidden="true">${{ Administrador:'Admin.', Profissional:'Prof.', 'Recepção':'Recep.' }[n]}</span></span>`).join('')}</div>
-      ${PERM.map(([o, ...v]) => `<div class="p10-tr" role="row"><span role="rowheader">${o}</span>${v.map((x, i) => `<span role="cell" class="${x ? 'sim' : 'nao'}" aria-label="${PERFIS[i][1]}: ${x ? 'sim' : 'não'}">${ic(x ? 'check' : 'x')}</span>`).join('')}</div>`).join('')}</div>
-      <div class="p10-perfis">${PERFIS.map(([k, n, d]) => `<p><b>${n}:</b> ${d}</p>`).join('')}</div></div>
+      ${PERM.map(([o], r) => `<div class="p10-tr" role="row"><span role="rowheader">${o}</span>${S.perm[r].map((x, i) => i === 0
+        ? `<span role="cell" class="sim fixo" title="O administrador sempre abre tudo" aria-label="Administrador: sempre">${ic('check')}</span>`
+        : `<span role="cell"><label class="p10-ck ${x ? 'sim' : 'nao'}"><input type="checkbox" data-a="perm" data-r="${r}" data-i="${i}" ${x ? 'checked' : ''} aria-label="${PERFIS[i][1]} abre ${o}">${ic(x ? 'check' : 'x')}</label></span>`).join('')}</div>`).join('')}</div>
+      <p class="muted sm p10-obs">O administrador sempre abre tudo, para a clínica nunca ficar sem quem cuide da equipe. Vale para todas as pessoas com o mesmo perfil nesta clínica.</p>
+      <div class="p10-perfis"><small class="lbl">No padrão</small>${PERFIS.map(([k, n, d]) => `<p><b>${n}:</b> ${d}</p>`).join('')}</div></div>
   </div>`;
 }
 
@@ -237,6 +241,7 @@ document.addEventListener('click', ev => {
   else if (a === 'senha') toast('Mandamos um link para o seu e-mail para criar a nova senha');
   else if (a === 'sair-todos') toast('Os outros aparelhos vão pedir a senha de novo');
   else if (a === 'baixar') toast('Na versão final, o arquivo é baixado aqui', 'info');
+  else if (a === 'perm-padrao') { S.perm = PERM.map(r => r.slice(1)); render(true); toast('Permissões de volta ao padrão'); }
   else if (a === 'filtro') { S.filtro = t.dataset.k; render(true); }
   else if (a === 'chamar') { ev.preventDefault(); const i = S.inter.find(x => x.id === t.dataset.i); if (i.st === 'novo') i.st = 'chamei'; render(true); toast(`No sistema, abre o WhatsApp com ${i.nome}`, 'info'); }
   else if (a === 'voltar') { const f = document.getElementById('f-primeiro'); ['clinica', 'cidade', 'uf'].forEach(k => { if (f[k]) S.pa[k] = f[k].value; }); S.passo--; render(); }
@@ -252,6 +257,7 @@ document.addEventListener('change', ev => {
   else if (a === 'hora') { const h = S.hor[t.dataset.d]; h[t.dataset.k] = t.value; if (h.fim <= h.ini) { toast('O fim precisa ser depois do início', 'info'); } document.getElementById('hor-resumo').textContent = resumoHorario(); }
   else if (a === 'pausa') { S.pausa.tem = t.checked; render(true); }
   else if (a === 'pausa-h') { S.pausa[t.dataset.k] = t.value; document.getElementById('hor-resumo').textContent = resumoHorario(); }
+  else if (a === 'perm') { const r = +t.dataset.r, i = +t.dataset.i; S.perm[r][i] = t.checked ? 1 : 0; render(true); toast(`${PERFIS[i][1]} ${t.checked ? 'agora abre' : 'não abre mais'}: ${PERM[r][0]}`); }
   else if (a === 'situ') { S.inter.find(x => x.id === t.dataset.i).st = t.value; render(true); }
   else if (a === 'levar') { S.levar = t.value === '1'; render(true); }
 });
