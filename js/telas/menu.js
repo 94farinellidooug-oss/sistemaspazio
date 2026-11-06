@@ -6,7 +6,8 @@ import { db } from '../dados/repositorio.js';
 import { notificacoes } from '../dados/indicadores.js';
 import { ui } from '../estado.js';
 import { esc, initials } from '../util.js';
-import { conta, menuConta, pode, seloConta } from './conta.js';
+import { conta, menuConta, pode, podeVer, seloConta } from './conta.js';
+import { PERM_ROTA } from '../dados/equipe.js';
 import { RECURSO_ROTA } from '../dados/planos.js';
 
 // [rota, rótulo, ícone]
@@ -69,7 +70,7 @@ export function renderNav(route){
           ${menuConta()}</div>`:''}</div>
     </div>`;
   document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+
-    NAV.map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${RECURSO_ROTA[k]&&!pode(RECURSO_ROTA[k])?`<span class="nav-bloq" data-tip="Não incluído no seu pacote">${ic('cadeado')}</span>`:''}${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+
+    NAV.filter(([k])=>podeVer(PERM_ROTA[k])).map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${RECURSO_ROTA[k]&&!pode(RECURSO_ROTA[k])?`<span class="nav-bloq" data-tip="Não incluído no seu pacote">${ic('cadeado')}</span>`:''}${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+
     `<div class="foot">${conta.modo==='nuvem'?'':`<button class="toggle reset" data-act="reset" aria-label="Restaurar exemplos" data-tip="${ui.menuMini?'Restaurar exemplos':''}">${ic('retorno')}<span class="tx">Restaurar exemplos</span></button>`}
      <button class="toggle" data-act="menu-mini" aria-label="${ui.menuMini?'Expandir menu':'Recolher menu'}" data-tip="${ui.menuMini?'Expandir menu ( [ )':''}">${ic(ui.menuMini?'abrir_menu':'fechar_menu')}<span class="tx">Recolher menu</span><kbd class="tx">[</kbd></button></div>`;
   camada();

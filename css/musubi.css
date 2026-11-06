@@ -1299,3 +1299,32 @@ body.com-acesso{overflow:hidden}
 .card.bloq h2{margin:0 0 6px}
 .card.bloq p{margin:0 0 10px}
 @media (max-width:620px){ .card.bloq{flex-direction:column} }
+
+/* Etapa 10: Equipe e permissões */
+.eq-g{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:start}
+@media (max-width:980px){ .eq-g{grid-template-columns:minmax(0,1fr)} }
+.eq-u .eq-ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.eq-u.off b{color:var(--muted)}
+.eq-u .grow{min-width:0}
+.eq-u .grow b,.eq-u .grow small{display:block}
+.eq-u select{min-width:130px}
+@media (max-width:620px){ .eq-u{flex-wrap:wrap} .eq-u .eq-ctl{width:100%;justify-content:flex-start} }
+.eq-conv,.eq-aviso{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;background:var(--surface)}
+.eq-aviso p{margin:6px 0 10px}
+.eq-link input{width:100%;margin-bottom:10px;font-size:.82rem}
+.eq-tab{display:grid;gap:2px}
+.eq-tr{display:grid;grid-template-columns:minmax(0,1fr) repeat(3,92px);align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--line)}
+.eq-tr span[role=cell]{display:flex;justify-content:center}
+.eq-th{font-size:.76rem;color:var(--muted);font-weight:600;text-align:center}
+.eq-ct{display:none}
+@media (max-width:1280px){ .eq-tr{grid-template-columns:minmax(0,1fr) repeat(3,58px)} .eq-lg{display:none} .eq-ct{display:inline} }
+@media (max-width:420px){ .eq-tr{grid-template-columns:minmax(0,1fr) repeat(3,46px)} }
+.eq-tr .fixo{color:var(--accent)}
+.eq-ck{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;border:1.5px solid var(--line-2);cursor:pointer}
+.eq-ck input{position:absolute;opacity:0;width:1px;height:1px}
+.eq-ck.sim{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.eq-ck.nao{color:var(--muted)}
+.eq-ck:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.eq-perfis{margin-top:12px}
+.eq-perfis p{margin:4px 0;font-size:.86rem}
+.acesso-conv{display:flex;gap:8px;text-align:left}

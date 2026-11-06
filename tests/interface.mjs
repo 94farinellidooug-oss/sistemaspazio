@@ -13,7 +13,7 @@ let falhas = 0;
 const ok = (cond, msg) => { console.log(`${cond ? 'ok   ' : 'FALHA'} ${msg}`); if (!cond) falhas++; };
 const MENU = ['Painel', 'Agenda', 'Pacientes', 'Biblioteca clínica', 'Financeiro', 'Documentos', 'Relatórios', 'Administração'];
 const ROTAS = ['painel', 'agenda', 'pacientes', 'cadastro', 'prontuario', 'avaliacao', 'pentagrama', 'pontos', 'biblioteca', 'financeiro', 'documentos', 'relatorios', 'administracao', 'crm', 'equipe', 'configuracoes'];
-const EM_BREVE = ['equipe']; // Configurações saiu do "em breve" na etapa 10 (tests/configuracoes-ui.mjs)
+const EM_BREVE = []; // Configurações (etapa 10) e Equipe (tests/equipe-ui.mjs) saíram do "em breve"
 
 async function verificar(browser, url, nome) {
   const erros = [];

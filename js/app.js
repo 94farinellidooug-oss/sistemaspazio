@@ -22,9 +22,11 @@ import { cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cada
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { LABEL, PROF, listaBusca, renderNav } from './telas/menu.js';
 import { RECURSO_ROTA } from './dados/planos.js';
-import { bloqueio, pode, conta, entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
+import { bloqueio, pode, podeVer, semPermissao, conta, entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
 import { ligarConfig, vConfiguracoes } from './telas/configuracoes.js';
 import { ligarPainelDono, vPainelDono } from './telas/painel-dono.js';
+import { esquecerEquipe, ligarEquipe, vEquipe } from './telas/equipe.js';
+import { PERM_ROTA } from './dados/equipe.js';
 import { notificacoes } from './dados/indicadores.js';
 import { LOGO, ic } from './componentes/icones.js';
 import { FACES, MERIDIANOS, TAM, VASOS_ATLAS, ladoDe, regiaoDoToque } from './componentes/corpo.js';
@@ -38,13 +40,14 @@ import { CODIGOS } from './conhecimento/pontos.js';
 import { vProntuario } from './telas/prontuario.js';
 import { TODAY, addDays, brl, esc, fmt, uid } from './util.js';
 
-export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
+export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,equipe:vEquipe,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
 export function render(keepScroll){
   const r=route(), y=scrollY, v=document.getElementById('view');
-  ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
+  if(r==='equipe'&&ultimaRota!=='equipe') esquecerEquipe();
+  ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=!podeVer(PERM_ROTA[r])?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${semPermissao()}`:rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
   v.innerHTML=html;
   if(ui.ov==='ass'){ document.getElementById('camada').innerHTML=painelAss(); ligarPad(); }
   if(ui.ov==='wa'){ const c=document.getElementById('camada'); c.innerHTML=painelWa(); if(!c.innerHTML) ui.ov=null; }
@@ -93,7 +96,7 @@ document.addEventListener('click',ev=>{
   if(sa){ const pt=ev.target.closest('.ptp'), tj=ev.target.closest('.tj'); if(pt){ ui.atlas.sel=pt.dataset.pt; ui.atlas.traj=null; render(true); } else if(tj){ ui.atlas.traj=tj.dataset.tj; ui.atlas.sel=null; render(true); } return; }
   const t=ev.target.closest('[data-act]'); if(!t||t.disabled) return;
   const a=t.dataset.act;
-  if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
+  if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; if(podeVer('prontuario')) irPara('prontuario'); else { ui.editPid=t.dataset.pid; irPara('cadastro'); } }
   // Relatórios (etapa 9)
   else if(a==='rel-per'){ ui.relPer=t.dataset.k; render(true); }
   else if(a==='rel-imp'){ document.getElementById('imp').innerHTML=folhaRelatorio(); window.print(); }
@@ -451,5 +454,6 @@ try{ if(localStorage.getItem('musubi-tema')==='dark') document.documentElement.d
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
+ligarEquipe(manter => { if(route()==='equipe') render(manter); }, toast);
 iniciarConta(manter => render(manter));
 render();

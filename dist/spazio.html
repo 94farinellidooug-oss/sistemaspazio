@@ -1548,6 +1548,35 @@ body.com-acesso{overflow:hidden}
 .card.bloq h2{margin:0 0 6px}
 .card.bloq p{margin:0 0 10px}
 @media (max-width:620px){ .card.bloq{flex-direction:column} }
+
+/* Etapa 10: Equipe e permissões */
+.eq-g{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:start}
+@media (max-width:980px){ .eq-g{grid-template-columns:minmax(0,1fr)} }
+.eq-u .eq-ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.eq-u.off b{color:var(--muted)}
+.eq-u .grow{min-width:0}
+.eq-u .grow b,.eq-u .grow small{display:block}
+.eq-u select{min-width:130px}
+@media (max-width:620px){ .eq-u{flex-wrap:wrap} .eq-u .eq-ctl{width:100%;justify-content:flex-start} }
+.eq-conv,.eq-aviso{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;background:var(--surface)}
+.eq-aviso p{margin:6px 0 10px}
+.eq-link input{width:100%;margin-bottom:10px;font-size:.82rem}
+.eq-tab{display:grid;gap:2px}
+.eq-tr{display:grid;grid-template-columns:minmax(0,1fr) repeat(3,92px);align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--line)}
+.eq-tr span[role=cell]{display:flex;justify-content:center}
+.eq-th{font-size:.76rem;color:var(--muted);font-weight:600;text-align:center}
+.eq-ct{display:none}
+@media (max-width:1280px){ .eq-tr{grid-template-columns:minmax(0,1fr) repeat(3,58px)} .eq-lg{display:none} .eq-ct{display:inline} }
+@media (max-width:420px){ .eq-tr{grid-template-columns:minmax(0,1fr) repeat(3,46px)} }
+.eq-tr .fixo{color:var(--accent)}
+.eq-ck{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;border:1.5px solid var(--line-2);cursor:pointer}
+.eq-ck input{position:absolute;opacity:0;width:1px;height:1px}
+.eq-ck.sim{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.eq-ck.nao{color:var(--muted)}
+.eq-ck:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.eq-perfis{margin-top:12px}
+.eq-perfis p{margin:4px 0;font-size:.86rem}
+.acesso-conv{display:flex;gap:8px;text-align:left}
 </style>
 
 
@@ -2653,6 +2682,11 @@ const MSG_NUVEM = {
   over_request_rate_limit:'Muitas tentativas em pouco tempo. Espere um pouco e tente de novo.',
   validation_failed:'Confira o e-mail e a senha.',
   sem_acesso:'Sua conta não tem acesso a esta clínica.',
+  limite_pacote:'O pacote da clínica não comporta mais uma pessoa com esse perfil. No pacote Clínica a equipe não tem limite.',
+  ja_na_equipe:'Essa pessoa já está na equipe.',
+  ja_convidado:'Esse e-mail já foi convidado.',
+  email_invalido:'Confira o e-mail.',
+  nao_a_si_mesmo:'Você não pode mudar o seu próprio perfil.',
   sem_login:'Entre de novo para continuar.'
 };
 const ErroNuvem = class extends Error { constructor(msg, codigo, status){ super(msg); this.codigo = codigo; this.status = status; } };
@@ -2714,8 +2748,16 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     mudarEmail:async (email, voltarPara) => { await chamar('/auth/v1/user' + (voltarPara ? '?redirect_to=' + encodeURIComponent(voltarPara) : ''), { metodo:'PUT', corpo:{ email:email.trim() }, token:await token() }); return true; },
     sairDosOutros:async () => { await chamar('/auth/v1/logout?scope=others', { metodo:'POST', token:await token() }); return true; },
     sair:async () => { const t = sessao?.access_token; sessao = null; gravarSessao(null); if (t) { try { await chamar('/auth/v1/logout', { metodo:'POST', token:t }); } catch (e) {} } },
-    minhasClinicas:async () => (await rest(`membros?select=perfil,nome,clinicas(id,nome,cidade,uf)&user_id=eq.${sessao.user.id}&ativo=is.true`) || [])
-      .filter(m => m.clinicas).map(m => ({ id:m.clinicas.id, nome:m.clinicas.nome, cidade:m.clinicas.cidade, uf:m.clinicas.uf, perfil:m.perfil })),
+    minhasClinicas:async () => (await rest(`membros?select=perfil,nome,clinicas(id,nome,cidade,uf,permissoes)&user_id=eq.${sessao.user.id}&ativo=is.true`) || [])
+      .filter(m => m.clinicas).map(m => ({ id:m.clinicas.id, nome:m.clinicas.nome, cidade:m.clinicas.cidade, uf:m.clinicas.uf, perfil:m.perfil, permissoes:m.clinicas.permissoes || {} })),
+    // Equipe (supabase/004_equipe.sql). aceitarConvites: ao entrar, entra nas clínicas que convidaram este e-mail.
+    aceitarConvites:async () => { try { return await rest('rpc/aceitar_convites', { metodo:'POST', corpo:{} }); } catch (e) { if (e.status === 404 || e.codigo === 'PGRST202') return 0; throw e; } },
+    equipe:async clinica => (await rest(`membros?select=user_id,nome,email,perfil,ativo,criado_em&clinica_id=eq.${clinica}&order=criado_em.asc`)) || [],
+    convites:async clinica => { try { return (await rest(`convites?select=id,nome,email,perfil,criado_em&clinica_id=eq.${clinica}&aceito_em=is.null&order=criado_em.asc`)) || []; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    convidar:async (clinica, nome, email, perfil) => rest('rpc/convidar', { metodo:'POST', corpo:{ p_clinica:clinica, p_nome:nome.trim(), p_email:email.trim(), p_perfil:perfil } }),
+    cancelarConvite:async id => rest('rpc/cancelar_convite', { metodo:'POST', corpo:{ p_id:id } }),
+    mudarMembro:async (clinica, user, perfil, ativo) => rest('rpc/mudar_membro', { metodo:'POST', corpo:{ p_clinica:clinica, p_user:user, p_perfil:perfil, p_ativo:ativo } }),
+    salvarPermissoes:async (clinica, permissoes) => { await rest(`clinicas?id=eq.${clinica}`, { metodo:'PATCH', corpo:{ permissoes }, cab:{ Prefer:'return=minimal' } }); return true; },
     criarClinica:async ({ nome, cidade, uf, nomePessoa, plano }, doc) => {
       const corpo = { p_nome:nome, p_cidade:cidade, p_uf:uf, p_nome_pessoa:nomePessoa, p_doc:doc };
       if (!plano) return rest('rpc/criar_clinica', { metodo:'POST', corpo });
@@ -2873,12 +2915,40 @@ function rotuloSituacao(s){
     : s.tipo === 'teste' ? `Teste: falta${s.dias === 1 ? '' : 'm'} ${d(s.dias)}`
     : 'Teste terminou';
 }
+// o que Profissional e Recepção abrem nesta clínica (fica em clinicas.permissoes no servidor). O administrador
+// sempre abre tudo, para a clínica nunca ficar sem quem cuide da equipe.
+const PERFIS = [['adm', 'Administrador', 'Tudo, inclusive equipe, configurações e o financeiro completo.'],
+  ['prof', 'Profissional', 'Agenda, pacientes, atendimentos, documentos e recebimentos.'],
+  ['rec', 'Recepção', 'Agenda, cadastro e recebimentos. Não abre o prontuário.']];
+// [chave, o que, prof, rec] no padrão
+const PERMISSOES = [['agenda', 'Agenda', 1, 1], ['cadastro', 'Cadastro de pacientes', 1, 1], ['prontuario', 'Prontuário e atendimentos', 1, 0],
+  ['documentos', 'Documentos e assinatura', 1, 0], ['receber', 'Receber pagamentos', 1, 1], ['despesas', 'Despesas e resumo do mês', 0, 0],
+  ['relatorios', 'Relatórios', 0, 0], ['equipe', 'Equipe e configurações', 0, 0]];
+// Telas e a permissão que cada uma precisa
+const PERM_ROTA = { agenda:'agenda', pacientes:'cadastro', cadastro:'cadastro', prontuario:'prontuario', atendimento:'prontuario', avaliacao:'prontuario',
+  pentagrama:'prontuario', documentos:'documentos', financeiro:'receber', relatorios:'relatorios', equipe:'equipe', crm:'cadastro', mensagens:'cadastro' };
+const perfilNome = k => (PERFIS.find(p => p[0] === k) || PERFIS[1])[1];
+// Permissões guardadas: { prof:{agenda:true,...}, rec:{...} }; o que não estiver guardado segue o padrão.
+function permite(perm, perfil, chave){
+  if (perfil === 'adm' || !chave) return true;
+  const linha = PERMISSOES.find(p => p[0] === chave); if (!linha) return true;
+  const g = perm?.[perfil]?.[chave];
+  return typeof g === 'boolean' ? g : !!linha[perfil === 'rec' ? 3 : 2];
+}
+const mudouDoPadrao = perm => ['prof', 'rec'].some(f => PERMISSOES.some(([k, , p, r]) => permite(perm, f, k) !== !!(f === 'rec' ? r : p)));
+// Limite por pacote (decisão do Maicon em 06/11/2026): Essencial e Profissional, 1 profissional (quem administra
+// conta como profissional) e até 2 na recepção; Clínica sem limite. O servidor confere de novo (004_equipe.sql).
+function cabeNaEquipe(plano, membros, convites, perfil){
+  if (plano === 'clinica') return true;
+  const grupo = perfil === 'rec' ? ['rec'] : ['adm', 'prof'], limite = perfil === 'rec' ? 2 : 1;
+  return membros.filter(m => m.ativo && grupo.includes(m.perfil)).length + convites.filter(c => grupo.includes(c.perfil)).length < limite;
+}
 // primeiro acesso da clínica (levando os dados deste aparelho ou começando do zero); depois disso,
 // mantém os dados iguais no aparelho e no servidor e mostra no topo se está tudo salvo.
 // No computador de desenvolvimento e no arquivo aberto do disco o sistema segue sem conta, como antes,
 // a não ser que o modo servidor seja escolhido (musubi-modo = nuvem).
 
-const KEY_PLANO_SITE = 'musubi-plano-site', KEY_MODO = 'musubi-modo', KEY_CLINICA = 'musubi-clinica', KEY_CACHE_DE = 'musubi-v2-clinica';
+const KEY_CONVITE = 'musubi-convite', KEY_PLANO_SITE = 'musubi-plano-site', KEY_MODO = 'musubi-modo', KEY_CLINICA = 'musubi-clinica', KEY_CACHE_DE = 'musubi-v2-clinica';
 const UFS_BR = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
 const lerC = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const gravarC = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
@@ -2905,10 +2975,12 @@ function iniciarConta(render, nuvem){
     conta.retorno = { order_nsu:q.get('order_nsu'), transaction_nsu:q.get('transaction_nsu'), slug:q.get('slug') || '', receipt_url:q.get('receipt_url') || '' };
     history.replaceState(null, '', location.pathname + location.hash);
   }
+  // Convite da equipe: o link traz o e-mail convidado (para já vir preenchido) e abre "Criar sua conta".
+  if (q.get('convite')) { gravarC(KEY_CONVITE, q.get('convite')); history.replaceState(null, '', location.pathname + location.hash); }
   const lk = conta.nuvem.sessaoDoLink(location.hash);
   if (lk) { history.replaceState(null, '', location.pathname); if (lk.tipo === 'recovery') { abrirAcesso('nova-senha'); return; } }
   const pe = lerC(KEY_PLANO_SITE); if (PLANOS.some(p => p.k === pe)) conta.plano = pe;
-  if (!conta.nuvem.sessao()) { const criar = location.hash === '#criar'; if (criar) history.replaceState(null, '', location.pathname); abrirAcesso(criar ? 'criar' : 'entrar'); return; }
+  if (!conta.nuvem.sessao()) { const criar = location.hash === '#criar' || !!lerC(KEY_CONVITE); if (criar) history.replaceState(null, '', location.pathname); abrirAcesso(criar ? 'criar' : 'entrar'); return; }
   conectar(!!lk);
 }
 function abrirAcesso(tela, msg = ''){ conta.tela = tela; conta.msg = msg; conta.erro = ''; conta.ocupado = false; desenharAcesso(); }
@@ -2919,8 +2991,10 @@ async function conectar(completar){
   conta.ocupado = true; desenharAcesso();
   try {
     if (completar || !conta.nuvem.sessao().user.email) await conta.nuvem.completarUsuario();
+    try { if (await conta.nuvem.aceitarConvites()) gravarC(KEY_CONVITE, null); } catch (e) {}
     conta.clinicas = await conta.nuvem.minhasClinicas();
     if (!conta.clinicas.length) { abrirAcesso('clinica'); return; }
+    gravarC(KEY_CONVITE, null);
     await abrirClinica(conta.clinicas.find(c => c.id === lerC(KEY_CLINICA)) || conta.clinicas[0]);
   } catch (e) {
     if (e.codigo === 'sem_login') abrirAcesso('entrar', 'Entre de novo para continuar.');
@@ -2999,8 +3073,14 @@ const pagamentosConta = () => {
   if (conta.pagamentos === null) { conta.pagamentos = []; conta.nuvem.pagamentos(conta.clinica.id).then(L => { conta.pagamentos = L; aoMudarConta(true); }).catch(() => {}); }
   return conta.pagamentos;
 };
+// Permissões do perfil nesta clínica (Equipe). Sem conta (modo local) tudo fica liberado.
+const podeVer = chave => conta.modo !== 'nuvem' || !conta.clinica?.perfil || permite(conta.clinica.permissoes, conta.clinica.perfil, chave);
+const souAdm = () => conta.modo !== 'nuvem' || (conta.clinica?.perfil || 'adm') === 'adm';
 // Recursos do pacote: sem conta (modo local) tudo fica liberado.
 const pode = r => { const S = situacaoConta(); return !S || temRecurso(S.plano.k, r); };
+const semPermissao = () => `<div class="card bloq" id="sem-permissao"><span class="tico acc">${ic('cadeado')}</span><div class="grow"><h2>Seu perfil não abre esta tela</h2>
+    <p class="muted">Em ${esc(conta.clinica?.nome || 'esta clínica')} você entra como <b>${esc(PERFIL_NOME[conta.clinica?.perfil] || '')}</b>. O que cada perfil abre é escolhido pelo administrador da clínica, em Administração > Equipe e permissões.</p>
+    <a class="btn" href="#painel">${ic('painel')}Ir para o painel</a></div></div>`;
 function bloqueio(r){
   const R = RECURSOS[r], P = pacoteDoRecurso(r), S = situacaoConta(), adm = (conta.clinica?.perfil || 'adm') === 'adm';
   return `<div class="card bloq" id="bloq-${r}"><span class="tico acc">${ic('cadeado')}</span><div class="grow"><h2>${esc(R.nome)}</h2>
@@ -3039,7 +3119,7 @@ function htmlAcesso(){
     : conta.msg && ['enviado', 'confirmar', 'aguardando'].includes(conta.tela) ? ''
     : t === 'entrar' ? `${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}<label class="field"><span class="lbl">Senha</span><span class="senha-c"><input name="senha" type="password" autocomplete="current-password" required><button type="button" class="btn ghost sm" data-ac="ver">Mostrar</button></span></label>
         <div class="acesso-l"><button type="button" class="lnk" data-ac="esqueci">Esqueci minha senha</button></div>`
-    : t === 'criar' ? `${campoA('nome', 'Seu nome', 'text', 'autocomplete="name"')}${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}${campoA('senha', 'Crie uma senha', 'password', 'autocomplete="new-password" minlength="8"')}`
+    : t === 'criar' ? `${campoA('nome', 'Seu nome', 'text', 'autocomplete="name"')}${campoA('email', 'E-mail', 'email', `autocomplete="email" value="${esc(lerC(KEY_CONVITE) || '')}"`)}${campoA('senha', 'Crie uma senha', 'password', 'autocomplete="new-password" minlength="8"')}`
     : t === 'esqueci' ? campoA('email', 'E-mail', 'email', 'autocomplete="email"')
     : t === 'nova-senha' ? campoA('senha', 'Nova senha', 'password', 'autocomplete="new-password" minlength="8"')
     : t === 'clinica' ? `${campoA('clinica', 'Nome da clínica')}<div class="acesso-2">${campoA('cidade', 'Cidade')}<label class="field"><span class="lbl">Estado</span><select name="uf">${UFS_BR.map(u => `<option ${u === 'RS' ? 'selected' : ''}>${u}</option>`).join('')}</select></label></div>
@@ -3054,7 +3134,7 @@ function htmlAcesso(){
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
     : t === 'vencido' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="contato">Prefiro que a equipe entre em contato</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
     : t === 'contato' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="vencido">Voltar para o pagamento</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
-    : ['clinica', 'aguardando'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
+    : ['clinica', 'aguardando'].includes(t) ? `${t === 'clinica' && lerC(KEY_CONVITE) ? `<p class="notice sm acesso-conv">${ic('info')}<span>Recebeu um convite de uma clínica? Ele vale para o e-mail convidado. Confirme o e-mail pelo link que mandamos e <button type="button" class="lnk" data-ac="de-novo">entre de novo</button>.</span></p>` : ''}<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
   return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>
     <div class="acesso-h">${LOGO}<b>Musubi</b></div>
     <h1>${conta.tela === 'confirmar' ? 'Confira o seu e-mail' : conta.tela === 'enviado' ? 'Link enviado' : TIT[0]}</h1>
@@ -3123,6 +3203,7 @@ function ligarAcesso(){
     else if (['entrar', 'criar', 'esqueci', 'contato', 'vencido'].includes(a)) abrirAcesso(a);
     else if (a === 'local') { gravarC(KEY_MODO, 'local'); conta.modo = 'local'; fecharAcesso(); aoMudarConta(); }
     else if (a === 'sair') sairDaConta();
+    else if (a === 'de-novo') conectar(true);
   });
   el.addEventListener('change', ev => {
     if (ev.target.dataset.ac === 'levar') { conta.levar = ev.target.value === '1'; desenharAcesso(); }
@@ -3192,7 +3273,7 @@ function renderNav(route){
           ${menuConta()}</div>`:''}</div>
     </div>`;
   document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+
-    NAV.map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${RECURSO_ROTA[k]&&!pode(RECURSO_ROTA[k])?`<span class="nav-bloq" data-tip="Não incluído no seu pacote">${ic('cadeado')}</span>`:''}${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+
+    NAV.filter(([k])=>podeVer(PERM_ROTA[k])).map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${RECURSO_ROTA[k]&&!pode(RECURSO_ROTA[k])?`<span class="nav-bloq" data-tip="Não incluído no seu pacote">${ic('cadeado')}</span>`:''}${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+
     `<div class="foot">${conta.modo==='nuvem'?'':`<button class="toggle reset" data-act="reset" aria-label="Restaurar exemplos" data-tip="${ui.menuMini?'Restaurar exemplos':''}">${ic('retorno')}<span class="tx">Restaurar exemplos</span></button>`}
      <button class="toggle" data-act="menu-mini" aria-label="${ui.menuMini?'Expandir menu':'Recolher menu'}" data-tip="${ui.menuMini?'Expandir menu ( [ )':''}">${ic(ui.menuMini?'abrir_menu':'fechar_menu')}<span class="tx">Recolher menu</span><kbd class="tx">[</kbd></button></div>`;
   camada();
@@ -3574,13 +3655,13 @@ const servicoPacote = pid => { const L = db.appts.filter(a => a.pid === pid && a
   return (L.find(a => a.done) || L[0])?.tipo || SERVICOS[0][0]; };
 
 function vFinanceiro(){
-  ui.crumbs = [[null, 'Financeiro']];
+  ui.crumbs = [[null, 'Financeiro']]; const vd = podeVer('despesas');
   const mes = TODAY.slice(0, 7), nm = nomeMes(mes), R = resumoMes(db, mes, TODAY), pend = aReceber(db, TODAY), recs = recebimentosDoMes(db, mes);
   const cob = coberturaPacotes(db), desp = despesasDoMes(db, mes), P = db.financeiro?.pacotes || [], Rx = ui.finRec, NP = ui.finPac;
   const tile = (k, t, v, sub, cls = '') => `<div class="tile ${cls}" data-t="${k}"><div><small>${t}</small><b class="num">${brl(v)}</b><small>${sub}</small></div></div>`;
   const pacs = [...db.patients].sort((a, b) => a.name.localeCompare(b.name));
   return `<div class="head"><div><h1>Financeiro · ${nm} de ${mes.slice(0, 4)}</h1><p>O combinado em cada atendimento e o que entrou de fato</p></div></div>
-  <div class="tiles fin-t">${tile('rec', `Recebido em ${nm}`, R.rec, 'o que entrou de fato', 't-ok')}${tile('arec', 'A receber', R.aRec, `${R.pend} atendimento${R.pend === 1 ? '' : 's'} em aberto`, R.aRec ? 't-warn' : '')}${tile('desp', 'Despesas do mês', R.desp, `${R.nDesp} lançamento${R.nDesp === 1 ? '' : 's'}`)}${tile('saldo', 'Saldo do mês', R.saldo, 'recebido menos despesas', R.saldo < 0 ? 't-crit' : '')}</div>
+  <div class="tiles fin-t">${tile('rec', `Recebido em ${nm}`, R.rec, 'o que entrou de fato', 't-ok')}${tile('arec', 'A receber', R.aRec, `${R.pend} atendimento${R.pend === 1 ? '' : 's'} em aberto`, R.aRec ? 't-warn' : '')}${vd ? tile('desp', 'Despesas do mês', R.desp, `${R.nDesp} lançamento${R.nDesp === 1 ? '' : 's'}`) + tile('saldo', 'Saldo do mês', R.saldo, 'recebido menos despesas', R.saldo < 0 ? 't-crit' : '') : ''}</div>
   <div class="grid g-side ag-cols"><div class="grid" style="align-content:start">
     <div class="card" id="f-arec"><div class="card-h"><h2>A receber<small>atendimentos feitos que ainda não foram pagos (ou só em parte)</small></h2><span class="pill ${pend.length ? 'warn' : 'ok'}">${pend.length}</span></div>
       <div class="hor-l">${pend.map(a => { const p = patient(a.pid), pg = recebidoDe(db, a.id), aberto = Rx?.ap === a.id; return `<div class="fin-l" data-ap="${a.id}"><div class="hor-h"><b>${fmt(a.date).slice(0, 5)}</b><small>${a.date === TODAY ? 'hoje' : ''}</small></div>
@@ -3600,12 +3681,12 @@ function vFinanceiro(){
         <small class="muted full" id="np-serv">Serviço: ${esc(servicoPacote(NP.pid))}</small>
         <div class="full chips"><button class="btn sm pri">${ic('check')}Criar pacote</button><button type="button" class="btn sm ghost" data-act="fin-pac-x">Cancelar</button></div></form>`
       : `<button class="btn sm" data-act="fin-novo-pac" style="margin-top:10px">${ic('mais')}Novo pacote</button>`}</div>
-    <div class="card" id="f-desp"><div class="card-h"><h2>Despesas de ${nm}<small>o que saiu</small></h2></div>
+    ${vd ? `<div class="card" id="f-desp"><div class="card-h"><h2>Despesas de ${nm}<small>o que saiu</small></h2></div>
       <div class="hor-l">${desp.map(d => `<div class="fin-l desp" data-d="${d.id}"><div class="hor-h"><b>${fmt(d.data).slice(0, 5)}</b></div><div class="hor-p"><b>${esc(d.desc)}</b><small>${d.cat}${d.repete ? ' · todo mês' : ''}</small></div><b class="fin-v neg">${brl(d.valor)}</b>
         <div class="hor-a">${ui.finDespX === d.id ? `<button class="btn sm" data-act="fin-desp-ok" data-d="${d.id}">${d.repetida ? 'Parar de repetir' : 'Tirar mesmo'}</button><button class="btn sm ghost" data-act="fin-desp-n">Manter</button>` : `<button class="btn sm ghost" data-act="fin-desp-x" data-d="${d.id}" aria-label="Tirar despesa" data-tip="Tirar">${ic('x')}</button>`}</div></div>`).join('') || '<p class="muted sm">Nenhuma despesa lançada neste mês.</p>'}</div>
       <form id="f-nova-desp" class="ag-f" style="margin-top:12px"><label class="rx-f full"><span class="lbl">Despesa</span><input id="nd-d" placeholder="Ex.: conta de luz" autocomplete="off"></label>
         <label class="rx-f"><span class="lbl">Valor</span><input id="nd-v" inputmode="decimal" placeholder="0,00" autocomplete="off"></label><label class="rx-f"><span class="lbl">Tipo</span><select id="nd-c">${CATEGORIAS_DESP.map(c => `<option>${c}</option>`).join('')}</select></label>
-        <label class="ck full"><input type="checkbox" id="nd-r"> Repete todo mês</label><div class="full"><button class="btn sm pri">${ic('mais')}Lançar despesa</button></div></form></div>
+        <label class="ck full"><input type="checkbox" id="nd-r"> Repete todo mês</label><div class="full"><button class="btn sm pri">${ic('mais')}Lançar despesa</button></div></form></div>` : ''}
     <div class="card" id="f-nota"><h2>Nota fiscal</h2><p class="muted sm">A emissão automática da nota de serviço (NFS-e) entra na etapa 10, junto com o servidor e o login. Por enquanto, em cada recebimento o botão <b>Dados da nota</b> copia paciente, CPF, serviço, valor e data, prontos para colar no emissor.</p></div>
   </div></div>`;
 }
@@ -4951,7 +5032,7 @@ const MODULOS = {
   mensagens:{etapa:7,i:'mensagem',feito:true,texto:'Os textos do WhatsApp: lembrete de horário, retomar contato e orientações.'},
   financeiro:{etapa:8,i:'financeiro',feito:true,texto:'Gestão financeira da clínica, separando o valor contratado do valor efetivamente recebido.',itens:['Contas a pagar e a receber','Fluxo de caixa','Pagamentos parciais e recorrentes','Pacotes terapêuticos e comissões','Inadimplência','Emissão de NFS-e por provedor integrador']},
   relatorios:{etapa:9,i:'relatorios',feito:true,texto:'Indicadores clínicos, comerciais e financeiros.',itens:['Desempenho clínico','Conversão comercial','Agenda e ocupação','Financeiro','Desempenho por profissional','Desempenho por serviço']},
-  equipe:{etapa:10,i:'pacientes',texto:'Profissionais, especialidades e permissões de acesso por clínica.',itens:['Perfil único por profissional','Especialidades e modalidades','Permissões por perfil','Várias clínicas','Pacientes compartilhados conforme permissão','Registro de atividades']},
+  equipe:{etapa:10,i:'pacientes',feito:true,texto:'Quem usa o sistema nesta clínica, convites e o que cada perfil abre.',itens:['Perfil único por profissional','Especialidades e modalidades','Permissões por perfil','Várias clínicas','Pacientes compartilhados conforme permissão','Registro de atividades']},
   configuracoes:{etapa:10,i:'admin',feito:true,texto:'Dados da clínica, serviços e preços, horário de atendimento, sua conta e segurança.',itens:['Dados da clínica e local de atendimento','Serviços, duração e valores','Modalidades terapêuticas','Modelos de documento','Preferências de agenda','Privacidade e LGPD']}
 };
 const EM_BREVE = Object.keys(MODULOS).filter(k => !MODULOS[k].feito);
@@ -5263,6 +5344,110 @@ function ligarPainelDono(r, t){
     pdFaz(() => conta.nuvem.darGratis(c, ate, f.elements.motivo.value.trim()), `${nome} com acesso grátis ${prazo === 'sempre' ? 'sem prazo' : 'por ' + PRAZOS.find(p => p[0] === prazo)[1]}`);
   });
 }
+// pelo e-mail (com link para mandar pelo WhatsApp ou copiar), perfil, tirar e devolver o acesso (nada é apagado)
+// e o que cada perfil abre. Limite por pacote: Essencial e Profissional com 1 profissional e até 2 na recepção.
+
+const eq = { lista:null, convites:null, erro:'', carregando:false, convite:false, ocupado:false, aviso:null };
+let eqApp = { render:() => {}, toast:() => {} };
+const linkConvite = email => `${location.origin}${location.pathname}?convite=${encodeURIComponent(email)}`;
+const textoConvite = c => `Olá${c.nome ? ', ' + c.nome.split(' ')[0] : ''}! Você foi convidado(a) para usar o MUSUBI na ${conta.clinica?.nome || 'clínica'}. Crie a sua conta com o e-mail ${c.email} por este link: ${linkConvite(c.email)}`;
+const planoK = () => situacaoConta()?.plano.k || 'profissional';
+const regraPacote = k => k === 'clinica' ? 'Pacote Clínica: equipe sem limite.' : `Pacote ${k === 'essencial' ? 'Essencial' : 'Profissional'}: 1 profissional (você) e até 2 pessoas na recepção. No pacote Clínica a equipe não tem limite.`;
+
+async function carregarEq(){
+  if (conta.modo !== 'nuvem' || !conta.clinica?.id) return;
+  eq.carregando = true; eq.erro = '';
+  try { [eq.lista, eq.convites] = await Promise.all([conta.nuvem.equipe(conta.clinica.id), souAdm() ? conta.nuvem.convites(conta.clinica.id) : Promise.resolve([])]); }
+  catch (e) { eq.erro = e.message; }
+  eq.carregando = false; eqApp.render(true);
+}
+
+function vEquipe(){
+  if (conta.modo !== 'nuvem') return `<div class="head"><div><h1>Equipe e permissões</h1></div></div>${vazio('pacientes', 'Equipe só com conta no servidor', 'Neste aparelho o sistema funciona sem conta, para uma pessoa. Com a conta no servidor, cada pessoa da equipe entra com o próprio e-mail.')}`;
+  if (!eq.lista && !eq.carregando && !eq.erro) carregarEq();
+  const adm = souAdm(), L = eq.lista || [], C = eq.convites || [], eu = conta.nuvem?.sessao()?.user?.id, perm = conta.clinica?.permissoes || {}, k = planoK();
+  const semTabela = eq.convites === null && eq.lista;
+  const cabe = p => cabeNaEquipe(k, L, C, p);
+  const ativos = L.filter(m => m.ativo).length;
+  return `<div class="head"><div><h1>Equipe e permissões</h1><p>${ativos} pessoa${ativos === 1 ? '' : 's'} com acesso em ${esc(conta.clinica?.nome || '')}</p></div>
+    ${adm && !semTabela ? `<button class="btn pri" data-eq="convidar" ${eq.convite ? 'disabled' : ''}>${ic('mais')}Convidar pessoa</button>` : ''}</div>
+  ${eq.erro ? `<div class="notice">${ic('alerta')}<div>${esc(eq.erro)} <button class="btn sm ghost" data-eq="recarregar">Tentar de novo</button></div></div>` : ''}
+  ${semTabela && adm ? `<div class="notice">${ic('info')}<div>Para convidar pessoas, rode uma vez o arquivo <b>supabase/004_equipe.sql</b> no SQL Editor do Supabase.</div></div>` : ''}
+  <div class="grid eq-g">
+    <div class="card" id="eq-l"><div class="card-h"><h2>Quem usa o sistema<small>cada pessoa entra com o próprio e-mail e senha</small></h2></div>
+      ${eq.aviso ? `<div class="eq-aviso" id="eq-aviso"><b>${ic('okc')} Convite criado para ${esc(eq.aviso.email)}</b>
+        <p class="muted sm">Mande o link para a pessoa. Ela cria a conta com esse e-mail e, depois de confirmar o e-mail, já entra na clínica.</p>
+        <div class="eq-link"><input readonly value="${esc(linkConvite(eq.aviso.email))}" aria-label="Link do convite"></div>
+        <div class="chips"><a class="btn sm wa" href="https://wa.me/?text=${encodeURIComponent(textoConvite(eq.aviso))}" target="_blank" rel="noopener">${ic('mensagem')}Enviar pelo WhatsApp</a><button class="btn sm" data-eq="copiar">${ic('doc')}Copiar convite</button><button class="btn sm ghost" data-eq="aviso-fechar">Fechar</button></div></div>` : ''}
+      ${eq.convite ? `<form class="eq-conv" id="eq-conv" novalidate><div class="form">
+        <label class="field"><span class="lbl">Nome</span><input name="nome" required autocomplete="off"></label>
+        <label class="field"><span class="lbl">E-mail</span><input name="email" type="email" required autocomplete="off"></label>
+        <label class="field"><span class="lbl">Perfil</span><select name="perfil">${PERFIS.filter(([p]) => p !== 'adm').map(([p, n]) => `<option value="${p}" ${!cabe(p) ? 'disabled' : ''} ${p === (cabe('prof') ? 'prof' : 'rec') ? 'selected' : ''}>${n}${!cabe(p) ? ' (não cabe no pacote)' : ''}</option>`).join('')}</select></label></div>
+        <p class="erro-c" id="eq-erro" ${eq.erroConv ? '' : 'hidden'}>${esc(eq.erroConv || '')}</p>
+        <div class="cf-acoes"><button class="btn pri" type="submit" ${eq.ocupado ? 'disabled' : ''}>${ic('mail')}${eq.ocupado ? 'Criando…' : 'Criar convite'}</button><button class="btn ghost" type="button" data-eq="conv-fechar">Cancelar</button></div>
+        <small class="muted">${esc(regraPacote(k))}</small></form>` : ''}
+      ${eq.carregando && !eq.lista ? `<p class="muted sm">${ic('carregando')} Carregando a equipe…</p>` : ''}
+      <div class="list">${L.map(m => { const voce = m.user_id === eu; return `<div class="row eq-u ${m.ativo ? '' : 'off'}" data-u="${m.user_id}"><span class="avatar">${esc(initials(m.nome || m.email))}</span>
+        <div class="grow"><b>${esc(m.nome || m.email)}${voce ? ' <span class="muted sm">(você)</span>' : ''}</b><small class="muted trunc">${esc(m.email)}</small></div>
+        <div class="eq-ctl">${m.ativo ? '' : '<span class="pill">sem acesso</span>'}
+          ${adm && !voce ? `<label><span class="so-leitor">Perfil de ${esc(m.nome || m.email)}</span><select data-eq="perfil" data-u="${m.user_id}">${PERFIS.map(([p, n]) => `<option value="${p}" ${m.perfil === p ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+            <button class="btn sm ghost" data-eq="${m.ativo ? 'tirar' : 'devolver'}" data-u="${m.user_id}">${m.ativo ? 'Tirar acesso' : 'Devolver acesso'}</button>` : `<span class="pill ${m.perfil === 'adm' ? 'acc' : ''}">${perfilNome(m.perfil)}</span>`}</div></div>`; }).join('')}
+        ${C.map(c => `<div class="row eq-u conv" data-c="${c.id}"><span class="avatar">${esc(initials(c.nome || c.email))}</span>
+          <div class="grow"><b>${esc(c.nome || c.email)}</b><small class="muted trunc">${esc(c.email)} · ${perfilNome(c.perfil)}</small></div>
+          <div class="eq-ctl"><span class="pill warn">convite enviado</span>${adm ? `<button class="btn sm" data-eq="reenviar" data-c="${c.id}">Reenviar</button><button class="btn sm ghost" data-eq="cancelar" data-c="${c.id}">Cancelar</button>` : ''}</div></div>`).join('')}</div>
+      <p class="muted sm cf-obs">Tirar o acesso não apaga nada: os atendimentos e registros continuam com o nome de quem fez. ${esc(regraPacote(k))}</p></div>
+    <div class="card" id="eq-p"><div class="card-h"><h2>O que cada perfil abre<small>${adm ? 'começa no padrão; marque o que cada perfil abre nesta clínica' : 'definido pelo administrador da clínica'}</small></h2>${adm && mudouDoPadrao(perm) ? `<button class="btn sm" data-eq="padrao">${ic('retorno')}Voltar ao padrão</button>` : ''}</div>
+      <div class="eq-tab" role="table" aria-label="Permissões por perfil"><div class="eq-tr eq-th" role="row"><span role="columnheader"></span>${PERFIS.map(([, n]) => `<span role="columnheader"><span class="eq-lg">${n}</span><span class="eq-ct" aria-hidden="true">${{ Administrador:'Admin.', Profissional:'Prof.', 'Recepção':'Recep.' }[n]}</span></span>`).join('')}</div>
+      ${PERMISSOES.map(([ch, o]) => `<div class="eq-tr" role="row"><span role="rowheader">${o}</span><span role="cell" class="sim fixo" title="O administrador sempre abre tudo" aria-label="Administrador: sempre">${ic('check')}</span>${['prof', 'rec'].map(f => { const x = permite(perm, f, ch);
+        return `<span role="cell"><label class="eq-ck ${x ? 'sim' : 'nao'}"><input type="checkbox" data-eq="perm" data-f="${f}" data-k="${ch}" ${x ? 'checked' : ''} ${adm ? '' : 'disabled'} aria-label="${perfilNome(f)} abre ${o}">${ic(x ? 'check' : 'x')}</label></span>`; }).join('')}</div>`).join('')}</div>
+      <p class="muted sm cf-obs">O administrador sempre abre tudo, para a clínica nunca ficar sem quem cuide da equipe. Vale para todas as pessoas com o mesmo perfil nesta clínica.</p>
+      <div class="eq-perfis"><small class="lbl">No padrão</small>${PERFIS.map(([, n, d]) => `<p><b>${n}:</b> ${d}</p>`).join('')}</div></div>
+  </div>`;
+}
+
+const eqFaz = async (fn, ok) => { try { await fn(); if (ok) eqApp.toast(ok); } catch (e) { eqApp.toast(e.message, 'info'); } await carregarEq(); };
+
+function ligarEquipe(r, t){
+  eqApp = { render:r, toast:t };
+  document.addEventListener('click', async ev => {
+    const b = ev.target.closest('[data-eq]'); if (!b || b.matches('input, select')) return;
+    const a = b.dataset.eq, m = eq.lista?.find(x => x.user_id === b.dataset.u), c = eq.convites?.find(x => x.id === b.dataset.c);
+    if (a === 'convidar') { eq.convite = true; eq.erroConv = ''; eq.aviso = null; eqApp.render(true); document.querySelector('#eq-conv [name=nome]')?.focus(); }
+    else if (a === 'conv-fechar') { eq.convite = false; eqApp.render(true); }
+    else if (a === 'aviso-fechar') { eq.aviso = null; eqApp.render(true); }
+    else if (a === 'recarregar') { eq.erro = ''; eq.lista = null; carregarEq(); }
+    else if (a === 'copiar') { try { await navigator.clipboard.writeText(textoConvite(eq.aviso)); eqApp.toast('Convite copiado. Cole no WhatsApp ou no e-mail.'); } catch (e) { document.querySelector('#eq-aviso input')?.select(); eqApp.toast('Selecione o link e copie', 'info'); } }
+    else if (a === 'reenviar' && c) { eq.aviso = { nome:c.nome, email:c.email }; eqApp.render(true); }
+    else if (a === 'cancelar' && c) eqFaz(() => conta.nuvem.cancelarConvite(c.id), `Convite de ${c.email} cancelado`);
+    else if (a === 'tirar' && m) eqFaz(() => conta.nuvem.mudarMembro(conta.clinica.id, m.user_id, m.perfil, false), `${m.nome || m.email} não entra mais. Os registros continuam.`);
+    else if (a === 'devolver' && m) eqFaz(() => conta.nuvem.mudarMembro(conta.clinica.id, m.user_id, m.perfil, true), `${m.nome || m.email} voltou a ter acesso`);
+    else if (a === 'padrao') salvarPerm({}, 'Permissões de volta ao padrão');
+  });
+  document.addEventListener('change', ev => {
+    const t = ev.target, a = t.dataset?.eq; if (!a) return;
+    if (a === 'perfil') { const m = eq.lista?.find(x => x.user_id === t.dataset.u); if (m) eqFaz(() => conta.nuvem.mudarMembro(conta.clinica.id, m.user_id, t.value, m.ativo), `${m.nome || m.email} agora é ${perfilNome(t.value)}`); }
+    else if (a === 'perm') { const f = t.dataset.f, k = t.dataset.k, P = JSON.parse(JSON.stringify(conta.clinica?.permissoes || {}));
+      P[f] = { ...(P[f] || {}), [k]:t.checked }; salvarPerm(P, `${perfilNome(f)} ${t.checked ? 'agora abre' : 'não abre mais'}: ${PERMISSOES.find(p => p[0] === k)[1]}`); }
+  });
+  document.addEventListener('submit', async ev => {
+    if (ev.target.id !== 'eq-conv') return; ev.preventDefault();
+    const f = ev.target, nome = f.nome.value.trim(), email = f.email.value.trim(), perfil = f.perfil.value;
+    eq.erroConv = !nome ? 'Escreva o nome.' : !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? 'Confira o e-mail.' : '';
+    if (eq.erroConv) { eqApp.render(true); return; }
+    eq.ocupado = true; eqApp.render(true);
+    try { await conta.nuvem.convidar(conta.clinica.id, nome, email, perfil); eq.convite = false; eq.aviso = { nome, email:email.toLowerCase() }; eqApp.toast('Convite criado'); }
+    catch (e) { eq.erroConv = e.message; }
+    eq.ocupado = false; await carregarEq();
+  });
+}
+
+async function salvarPerm(P, msg){
+  const antes = conta.clinica.permissoes; conta.clinica.permissoes = P; eqApp.render(true);
+  try { await conta.nuvem.salvarPermissoes(conta.clinica.id, P); eqApp.toast(msg); }
+  catch (e) { conta.clinica.permissoes = antes; eqApp.render(true); eqApp.toast(e.message, 'info'); }
+}
+// Ao trocar de clínica ou sair, a lista é carregada de novo.
+const esquecerEquipe = () => { Object.assign(eq, { lista:null, convites:null, erro:'', convite:false, aviso:null }); };
 function vPacientes(){
   const n=db.patients.length;
   return `<div class="head"><div><h1>Pacientes</h1><p>${n} cadastrado${n===1?'':'s'}</p></div>
@@ -5530,13 +5715,14 @@ function vAtlas(){
     <aside class="fx-panel${A.sel || A.traj ? ' aberta' : ''}" aria-label="Ficha"><div class="card">${painel}</div></aside>
   </div>`;
 }
-const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
+const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,equipe:vEquipe,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
 function render(keepScroll){
   const r=route(), y=scrollY, v=document.getElementById('view');
-  ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
+  if(r==='equipe'&&ultimaRota!=='equipe') esquecerEquipe();
+  ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=!podeVer(PERM_ROTA[r])?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${semPermissao()}`:rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
   v.innerHTML=html;
   if(ui.ov==='ass'){ document.getElementById('camada').innerHTML=painelAss(); ligarPad(); }
   if(ui.ov==='wa'){ const c=document.getElementById('camada'); c.innerHTML=painelWa(); if(!c.innerHTML) ui.ov=null; }
@@ -5585,7 +5771,7 @@ document.addEventListener('click',ev=>{
   if(sa){ const pt=ev.target.closest('.ptp'), tj=ev.target.closest('.tj'); if(pt){ ui.atlas.sel=pt.dataset.pt; ui.atlas.traj=null; render(true); } else if(tj){ ui.atlas.traj=tj.dataset.tj; ui.atlas.sel=null; render(true); } return; }
   const t=ev.target.closest('[data-act]'); if(!t||t.disabled) return;
   const a=t.dataset.act;
-  if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; irPara('prontuario'); }
+  if(a==='open'){ ui.pid=t.dataset.pid; ui.tab='resumo'; if(podeVer('prontuario')) irPara('prontuario'); else { ui.editPid=t.dataset.pid; irPara('cadastro'); } }
   // Relatórios (etapa 9)
   else if(a==='rel-per'){ ui.relPer=t.dataset.k; render(true); }
   else if(a==='rel-imp'){ document.getElementById('imp').innerHTML=folhaRelatorio(); window.print(); }
@@ -5943,6 +6129,7 @@ try{ if(localStorage.getItem('musubi-tema')==='dark') document.documentElement.d
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
+ligarEquipe(manter => { if(route()==='equipe') render(manter); }, toast);
 iniciarConta(manter => render(manter));
 render();
 </script>
