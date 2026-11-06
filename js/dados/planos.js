@@ -9,6 +9,16 @@ export const PLANOS = [
   { k:'clinica', nome:'Clínica', preco:299, aPartir:true, resumo:'Para equipes com mais de um profissional.',
     itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até um limite)'] }
 ];
+// O que cada pacote libera (etapa 10). O Essencial fica sem a parte de MTC (avaliação energética, pentagrama,
+// síntese, mapa corporal, Biblioteca clínica e dicas de vasos e estações) e sem os relatórios. Nada é apagado:
+// ao trocar para um pacote com o recurso, tudo o que já foi registrado volta a aparecer.
+export const RECURSOS = {
+  mtc:{ nome:'Avaliação MTC, pentagrama e mapa corporal', texto:'Avaliação energética, pentagrama, síntese clínica, mapa corporal com os pontos indicados, Biblioteca clínica e dicas de vasos e estações.', planos:['profissional', 'clinica'] },
+  relatorios:{ nome:'Relatórios', texto:'Atendimentos e receita por período, por mês, por serviço e por forma de pagamento, evolução das queixas e dicas de gestão.', planos:['profissional', 'clinica'] }
+};
+export const RECURSO_ROTA = { avaliacao:'mtc', pentagrama:'mtc', pontos:'mtc', biblioteca:'mtc', relatorios:'relatorios' };
+export const temRecurso = (k, r) => !RECURSOS[r] || RECURSOS[r].planos.includes(k);
+export const pacoteDoRecurso = r => PLANOS.find(p => temRecurso(p.k, r)) || PLANOS[1];
 export const planoDe = k => PLANOS.find(p => p.k === k) || PLANOS[1];
 export const precoTxt = p => `${p.aPartir ? 'a partir de ' : ''}R$ ${p.preco}/mês`;
 export const DIAS_TESTE = 7;
