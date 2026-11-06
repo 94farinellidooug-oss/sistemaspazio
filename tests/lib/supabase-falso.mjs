@@ -57,8 +57,8 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
         if (!S.clinicas.find(x => x.id === corpo.clinica)?.membros.some(m => m.user === eu.id && m.perfil === 'adm')) return resp(403, { erro:'sem_acesso', msg:'Só o administrador da clínica faz o pagamento.' });
         if (corpo.teste && !dono()) return resp(403, { erro:'sem_acesso', msg:'Só o dono do MUSUBI faz o pagamento de teste.' });
         const n = ++S.n, periodo = corpo.teste ? 'mensal' : corpo.periodo, valor = corpo.teste ? 100 : { essencial:7900, profissional:14900, clinica:29900 }[corpo.plano] * (periodo === 'anual' ? 10 : 1);
-        S.pagamentos.unshift({ id:'g' + n, clinica_id:corpo.clinica, plano:corpo.plano, periodo, valor, order_nsu:'musubi-' + n, situacao:'aberto', forma:'', recibo:'', criado_em:new Date().toISOString(), pago_em:null });
-        return resp(200, { url:'https://checkout.infinitepay.io/teste/' + n, order_nsu:'musubi-' + n, valor });
+        S.pagamentos.unshift({ id:'g' + n, clinica_id:corpo.clinica, plano:corpo.plano, periodo, valor, order_nsu:'MSB' + n, situacao:'aberto', forma:'', recibo:'', criado_em:new Date().toISOString(), pago_em:null });
+        return resp(200, { url:'https://checkout.infinitepay.io/teste/' + n, order_nsu:'MSB' + n, valor });
       }
       if (corpo.acao === 'conferir') {
         const g = S.pagamentos.find(x => x.order_nsu === corpo.order_nsu); if (!g || corpo.transaction_nsu === 'falhou') return resp(200, { pago:false });
