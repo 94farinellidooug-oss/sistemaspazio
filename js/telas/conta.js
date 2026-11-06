@@ -11,7 +11,7 @@ import { PLANOS, planoDe, precoTxt, rotuloSituacao, situacaoAssinatura } from '.
 import { LOGO, ic } from '../componentes/icones.js';
 import { esc } from '../util.js';
 
-const KEY_MODO = 'musubi-modo', KEY_CLINICA = 'musubi-clinica', KEY_CACHE_DE = 'musubi-v2-clinica';
+const KEY_PLANO_SITE = 'musubi-plano-site', KEY_MODO = 'musubi-modo', KEY_CLINICA = 'musubi-clinica', KEY_CACHE_DE = 'musubi-v2-clinica';
 const UFS_BR = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
 const lerC = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const gravarC = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
@@ -34,7 +34,8 @@ export function iniciarConta(render, nuvem){
   conta.nuvem = nuvem || criarNuvem();
   const lk = conta.nuvem.sessaoDoLink(location.hash);
   if (lk) { history.replaceState(null, '', location.pathname); if (lk.tipo === 'recovery') { abrirAcesso('nova-senha'); return; } }
-  if (!conta.nuvem.sessao()) { abrirAcesso('entrar'); return; }
+  const pe = lerC(KEY_PLANO_SITE); if (PLANOS.some(p => p.k === pe)) conta.plano = pe;
+  if (!conta.nuvem.sessao()) { const criar = location.hash === '#criar'; if (criar) history.replaceState(null, '', location.pathname); abrirAcesso(criar ? 'criar' : 'entrar'); return; }
   conectar(!!lk);
 }
 function abrirAcesso(tela, msg = ''){ conta.tela = tela; conta.msg = msg; conta.erro = ''; conta.ocupado = false; desenharAcesso(); }
@@ -142,7 +143,7 @@ function htmlAcesso(){
         ${escolherPlano('Escolha o pacote: 7 dias grátis com tudo o que ele tem')}`
     : t === 'vencido' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
   const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Quero continuar' }[t];
-  const rodape = t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p>`
+  const rodape = t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p><p class="muted sm"><a class="lnk suave" href="inicio/index.html">Conhecer o MUSUBI</a></p>`
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
     : ['clinica', 'vencido', 'aguardando'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
   return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>

@@ -2,12 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "echo 'O site não precisa de dependências'",
-  "buildCommand": "npm run build && rm -rf site && mkdir site && cp -r css js proposta site/ && cp dist/spazio.html site/",
+  "buildCommand": "npm run build && rm -rf site && mkdir site && cp -r css js proposta inicio site/ && cp dist/spazio.html site/",
   "outputDirectory": "site",
   "redirects": [
     {
       "source": "/",
-      "destination": "/spazio.html",
+      "destination": "/inicio/",
       "permanent": false
     }
   ],
