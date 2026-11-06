@@ -59,3 +59,5 @@ jobs:
         run: node tests/proposta-etapa9.mjs
       - name: Prévia da página de apresentação (etapa 10)
         run: node tests/proposta-etapa10.mjs
+      - name: Proposta de contas, equipe e configurações (etapa 10)
+        run: node tests/proposta-etapa10-contas.mjs
