@@ -20,8 +20,9 @@ import { atendimentoAberto, indicadosMarca, textoSalvo, vAtendimento } from './t
 import { TIPOS_MARCA, LADOS_MARCA, adicionarMarca, editarMarca, marcasDe, removerMarca, CATEGORIAS, PARES_VASOS, adicionarAchadoLivre, definirVaso, ehBasal, fotoVersao, registrarCorrecao, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirAchadoLivre, definirPulso, notaCategoria, removerAchadoLivre, descartarRascunho, finalizarAtendimento, iniciarAtendimento, rascunhoDe, registrarAlteracao } from './dados/atendimento.js';
 import { cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
-import { PROF, listaBusca, renderNav } from './telas/menu.js';
-import { conta, entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
+import { LABEL, PROF, listaBusca, renderNav } from './telas/menu.js';
+import { RECURSO_ROTA } from './dados/planos.js';
+import { bloqueio, pode, conta, entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
 import { ligarConfig, vConfiguracoes } from './telas/configuracoes.js';
 import { ligarPainelDono, vPainelDono } from './telas/painel-dono.js';
 import { notificacoes } from './dados/indicadores.js';
@@ -43,7 +44,7 @@ export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'pain
 let ultimaRota='';
 export function render(keepScroll){
   const r=route(), y=scrollY, v=document.getElementById('view');
-  ui.crumbs=[]; const html=VIEWS[r](); renderNav(r);
+  ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
   v.innerHTML=html;
   if(ui.ov==='ass'){ document.getElementById('camada').innerHTML=painelAss(); ligarPad(); }
   if(ui.ov==='wa'){ const c=document.getElementById('camada'); c.innerHTML=painelWa(); if(!c.innerHTML) ui.ov=null; }

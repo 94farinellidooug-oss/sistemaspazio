@@ -7,7 +7,7 @@ import { criarNuvem, criarSincronia } from '../dados/nuvem.js';
 import { dadosNovaClinica, dadosVazios, db, ouvirSalvar, resumoDados, trocarDados } from '../dados/repositorio.js';
 import { definirNomeClinica } from '../dados/documentos.js';
 import { PROF } from './menu.js';
-import { PERIODOS_PAG, PLANOS, planoDe, precoPeriodoTxt, precoTxt, rotuloSituacao, situacaoAssinatura } from '../dados/planos.js';
+import { PERIODOS_PAG, PLANOS, RECURSOS, pacoteDoRecurso, planoDe, temRecurso, precoPeriodoTxt, precoTxt, rotuloSituacao, situacaoAssinatura } from '../dados/planos.js';
 import { LOGO, ic } from '../componentes/icones.js';
 import { esc } from '../util.js';
 
@@ -124,6 +124,14 @@ export const pagamentosConta = () => {
   if (conta.pagamentos === null) { conta.pagamentos = []; conta.nuvem.pagamentos(conta.clinica.id).then(L => { conta.pagamentos = L; aoMudarConta(true); }).catch(() => {}); }
   return conta.pagamentos;
 };
+// Recursos do pacote: sem conta (modo local) tudo fica liberado.
+export const pode = r => { const S = situacaoConta(); return !S || temRecurso(S.plano.k, r); };
+export function bloqueio(r){
+  const R = RECURSOS[r], P = pacoteDoRecurso(r), S = situacaoConta(), adm = (conta.clinica?.perfil || 'adm') === 'adm';
+  return `<div class="card bloq" id="bloq-${r}"><span class="tico acc">${ic('cadeado')}</span><div class="grow"><h2>${esc(R.nome)}</h2>
+    <p class="muted">${esc(R.texto)}</p><p>Disponível a partir do pacote <b>${esc(P.nome)}</b>. A sua clínica está no pacote <b>${esc(S?.plano.nome || '')}</b>. O que já foi registrado não se perde.</p>
+    ${adm ? `<a class="btn pri" href="#configuracoes">${ic('dinheiro')}Ver pacotes</a>` : '<p class="muted sm">Para liberar, fale com o administrador da clínica.</p>'}</div></div>`;
+}
 export const situacaoConta = () => conta.modo === 'nuvem' && conta.sit ? { ...conta.sit, plano:planoDe(conta.assin?.plano), rotulo:rotuloSituacao(conta.sit) } : null;
 export const contaAtual = () => {
   const u = conta.modo === 'nuvem' ? conta.nuvem?.sessao()?.user : null;

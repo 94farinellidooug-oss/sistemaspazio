@@ -1538,6 +1538,16 @@ body.com-acesso{overflow:hidden}
 .pd-n.pd-n3{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:620px){ .pd-n.pd-n3{grid-template-columns:minmax(0,1fr)} }
 .pd-g-l{gap:10px;flex-wrap:wrap}
+
+/* Etapa 10: recursos fora do pacote (cadeado no menu, nas etapas de MTC e aviso no lugar da tela) */
+.nav-bloq{margin-left:auto;display:inline-flex;opacity:.55}
+.nav-bloq .ic{width:14px;height:14px}
+.steps a.bloq{opacity:.55}
+.steps .sn.sb .ic{width:15px;height:15px}
+.card.bloq{display:flex;gap:16px;align-items:flex-start;padding:22px;max-width:760px}
+.card.bloq h2{margin:0 0 6px}
+.card.bloq p{margin:0 0 10px}
+@media (max-width:620px){ .card.bloq{flex-direction:column} }
 </style>
 
 
@@ -2466,6 +2476,7 @@ function pointWarnings(codes, p, tec){
 // Ícones Lucide (lucide-static 0.469.0, licença ISC: https://lucide.dev/license).
 // Gerado a partir dos SVGs oficiais; só o conteúdo interno de cada ícone, traço 24px.
 const ICONES = {
+  "cadeado":"<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /><path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", // lock
   "mensagem":"<path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\" />", // message-circle
   "painel":"<rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\" /><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\" /><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\" /><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\" />", // layout-dashboard
   "agenda":"<path d=\"M8 2v4\" /><path d=\"M16 2v4\" /><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\" /><path d=\"M3 10h18\" /><path d=\"M8 14h.01\" /><path d=\"M12 14h.01\" /><path d=\"M16 14h.01\" /><path d=\"M8 18h.01\" /><path d=\"M12 18h.01\" /><path d=\"M16 18h.01\" />", // calendar-days
@@ -2775,6 +2786,16 @@ const PLANOS = [
   { k:'clinica', nome:'Clínica', preco:299, aPartir:true, resumo:'Para equipes com mais de um profissional.',
     itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até um limite)'] }
 ];
+// O que cada pacote libera (etapa 10). O Essencial fica sem a parte de MTC (avaliação energética, pentagrama,
+// síntese, mapa corporal, Biblioteca clínica e dicas de vasos e estações) e sem os relatórios. Nada é apagado:
+// ao trocar para um pacote com o recurso, tudo o que já foi registrado volta a aparecer.
+const RECURSOS = {
+  mtc:{ nome:'Avaliação MTC, pentagrama e mapa corporal', texto:'Avaliação energética, pentagrama, síntese clínica, mapa corporal com os pontos indicados, Biblioteca clínica e dicas de vasos e estações.', planos:['profissional', 'clinica'] },
+  relatorios:{ nome:'Relatórios', texto:'Atendimentos e receita por período, por mês, por serviço e por forma de pagamento, evolução das queixas e dicas de gestão.', planos:['profissional', 'clinica'] }
+};
+const RECURSO_ROTA = { avaliacao:'mtc', pentagrama:'mtc', pontos:'mtc', biblioteca:'mtc', relatorios:'relatorios' };
+const temRecurso = (k, r) => !RECURSOS[r] || RECURSOS[r].planos.includes(k);
+const pacoteDoRecurso = r => PLANOS.find(p => temRecurso(p.k, r)) || PLANOS[1];
 const planoDe = k => PLANOS.find(p => p.k === k) || PLANOS[1];
 const precoTxt = p => `${p.aPartir ? 'a partir de ' : ''}R$ ${p.preco}/mês`;
 const DIAS_TESTE = 7;
@@ -2921,6 +2942,14 @@ const pagamentosConta = () => {
   if (conta.pagamentos === null) { conta.pagamentos = []; conta.nuvem.pagamentos(conta.clinica.id).then(L => { conta.pagamentos = L; aoMudarConta(true); }).catch(() => {}); }
   return conta.pagamentos;
 };
+// Recursos do pacote: sem conta (modo local) tudo fica liberado.
+const pode = r => { const S = situacaoConta(); return !S || temRecurso(S.plano.k, r); };
+function bloqueio(r){
+  const R = RECURSOS[r], P = pacoteDoRecurso(r), S = situacaoConta(), adm = (conta.clinica?.perfil || 'adm') === 'adm';
+  return `<div class="card bloq" id="bloq-${r}"><span class="tico acc">${ic('cadeado')}</span><div class="grow"><h2>${esc(R.nome)}</h2>
+    <p class="muted">${esc(R.texto)}</p><p>Disponível a partir do pacote <b>${esc(P.nome)}</b>. A sua clínica está no pacote <b>${esc(S?.plano.nome || '')}</b>. O que já foi registrado não se perde.</p>
+    ${adm ? `<a class="btn pri" href="#configuracoes">${ic('dinheiro')}Ver pacotes</a>` : '<p class="muted sm">Para liberar, fale com o administrador da clínica.</p>'}</div></div>`;
+}
 const situacaoConta = () => conta.modo === 'nuvem' && conta.sit ? { ...conta.sit, plano:planoDe(conta.assin?.plano), rotulo:rotuloSituacao(conta.sit) } : null;
 const contaAtual = () => {
   const u = conta.modo === 'nuvem' ? conta.nuvem?.sessao()?.user : null;
@@ -3106,7 +3135,7 @@ function renderNav(route){
           ${menuConta()}</div>`:''}</div>
     </div>`;
   document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+
-    NAV.map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+
+    NAV.map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${RECURSO_ROTA[k]&&!pode(RECURSO_ROTA[k])?`<span class="nav-bloq" data-tip="Não incluído no seu pacote">${ic('cadeado')}</span>`:''}${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+
     `<div class="foot">${conta.modo==='nuvem'?'':`<button class="toggle reset" data-act="reset" aria-label="Restaurar exemplos" data-tip="${ui.menuMini?'Restaurar exemplos':''}">${ic('retorno')}<span class="tx">Restaurar exemplos</span></button>`}
      <button class="toggle" data-act="menu-mini" aria-label="${ui.menuMini?'Expandir menu':'Recolher menu'}" data-tip="${ui.menuMini?'Expandir menu ( [ )':''}">${ic(ui.menuMini?'abrir_menu':'fechar_menu')}<span class="tx">Recolher menu</span><kbd class="tx">[</kbd></button></div>`;
   camada();
@@ -4359,7 +4388,7 @@ function vProntuario(){
   return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
     ${alerts.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}</div>`:''}</div>
-    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button><button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
+    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button>${pode('mtc')?`<button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button>`:''}<button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
     <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}`;
 }
 // alertas, preenchimento por etapa e salvamento automático. Usa, sem alterar, o raciocínio clínico
@@ -4724,7 +4753,7 @@ function ePlano(p,a){
       <button class="btn sm" data-act="at-imprimir" style="margin-top:10px">${ic('doc')}Imprimir para o paciente</button><small class="muted" style="display:block;margin-top:6px">Sai uma folha só com as orientações, o nome do paciente, a data e o seu nome.</small></div></div>
     <div class="grid" style="align-content:start">${(()=>{ const L=encaminhados(av,'plano'); return `<div class="card"><div class="card-h"><h3>Trazido pelo profissional</h3><span class="muted sm">só o que foi marcado como "Plano"</span></div>
       ${L.length?L.map(([c,nome,I])=>I.map(it=>`<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${nome}</small></div><button class="btn sm ghost" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="plano">${ic('x')}Retirar</button></div>`).join('')).join(''):`<p class="muted sm">Nada encaminhado. Marque "Plano" num achado da avaliação para ele aparecer aqui.</p>`}</div>`; })()}
-    ${dicasTratamento(p,a)}
+    ${pode('mtc')?dicasTratamento(p,a):''}
     <div class="card"><h3>Sugestões dos padrões validados</h3><p class="muted sm" style="margin-bottom:10px">Toque para incluir. A escolha é do profissional.</p>
       ${ac.length?ac.map(h=>`<div class="sug"><div class="sug-h">${elTag(h.p.el)}<b>${h.p.nome}</b></div><div class="chips">${h.p.pontos.map(([c,j])=>`<button class="chip mono ${P.includes(c)?'on':''}" data-act="at-pt" data-c="${c}" title="${esc(j)}${PT[c]?.cautela?' · '+esc(CAUT[PT[c].cautela]):''}">${c}${PT[c]?.cautela?' ⚠':''}</button>`).join('')}</div></div>`).join(''):`<div class="vazio">${ic('info')}Aceite hipóteses na avaliação para ver sugestões.</div>`}</div></div></div>`;
 }
@@ -4764,12 +4793,14 @@ function eDocumentos(p,a,H){
     ['folha','Orientações para casa','Folha para o paciente, em Documentos','acc','doc-orientacoes'],['assinatura','Termo de consentimento','Preenchido para imprimir e assinar','acc','doc-termo']];
   return `<div class="docs">${D.map(([i,t,s,k,acao])=>acao?`<button class="docc" data-act="at-doc" data-d="${acao}">${ic(i)}<b>${t}</b><small>${s}</small>${k?`<span class="pill ${k}">${k==='ok'?'automático':'disponível'}</span>`:''}</button>`
     :`<div class="docc off">${ic(i)}<b>${t}</b><small>${s}</small><span class="pill">em breve</span></div>`).join('')}</div>
-  <div class="card" style="margin-top:20px"><h3>${a.status==='finalizado'?'Etapas registradas':'Antes de finalizar'}</h3><div class="chk">${ETAPAS.slice(0,7).map(([,n],j)=>{ const ok=preenchimento(p,a,j,H)>=1; return `<a href="#atendimento" data-act="etapa" data-i="${j}" class="${ok?'ok':''}">${ic(ok?'okc':'relogio')}${n}</a>`; }).join('')}</div>
+  <div class="card" style="margin-top:20px"><h3>${a.status==='finalizado'?'Etapas registradas':'Antes de finalizar'}</h3><div class="chk">${ETAPAS.slice(0,7).map(([,n],j)=>{ if(etapaBloqueada(j)) return ''; const ok=preenchimento(p,a,j,H)>=1; return `<a href="#atendimento" data-act="etapa" data-i="${j}" class="${ok?'ok':''}">${ic(ok?'okc':'relogio')}${n}</a>`; }).join('')}</div>
     <p class="muted sm" style="margin-top:10px">${a.status==='finalizado'?'O atendimento pode ser complementado depois; cada alteração fica no histórico com data e hora.':'Etapas incompletas não impedem finalizar. O atendimento pode ser complementado depois, com data e hora de cada alteração no histórico.'}</p></div>
   <div class="card" style="margin-top:20px"><div class="card-h"><h3>Histórico de alterações</h3><span class="muted sm">${a.historico.length} registro${a.historico.length===1?'':'s'}</span></div>
     <div class="hist-alt">${[...a.historico].reverse().map(h=>`<div><span class="mono muted">${fmt(h.em.slice(0,10))} ${hhmm(h.em)}</span><span>${esc(h.acao)}</span></div>`).join('')}</div></div>`;
 }
 
+// Etapas de MTC (avaliação, pentagrama, síntese e mapa) só nos pacotes que têm o recurso.
+const etapaBloqueada = j => j>=1 && j<=4 && !pode('mtc');
 const CORPO = [eAnamnese,eAvaliacao,ePentagrama,eSintese,eMapa,ePlano,eEvolucao,eDocumentos];
 function vAtendimento(){
   const x=atendimentoAberto();
@@ -4777,7 +4808,7 @@ function vAtendimento(){
     return `<div class="head"><div><h1>Atendimento</h1></div></div>${vazio('play','Nenhum atendimento aberto','Abra o perfil de um paciente e use “Novo atendimento”.',`<a class="btn pri sm" href="#pacientes">${ic('pacientes')}Ver pacientes</a>`)}`; }
   const {p,a}=x, i=Math.max(0,Math.min(7,ui.etapa|0)), av=avaliacaoEditavel(p,a), H=evaluate(av?.signs||[]);
   const n=ordemNo(p,a), basal=n===1, al=alertasDe(p), fin=a.status==='finalizado';
-  const f=ETAPAS.map((_,j)=>preenchimento(p,a,j,H)), tot=f.reduce((s,v)=>s+v,0)/8;
+  const f=ETAPAS.map((_,j)=>preenchimento(p,a,j,H)), livres=ETAPAS.map((_,j)=>j).filter(j=>!etapaBloqueada(j)), tot=livres.reduce((s,j)=>s+f[j],0)/livres.length;
   ui.crumbs=[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,`${n}º atendimento`]];
   const anelP=(v,j,on)=>{ const r=15, c=2*Math.PI*r; return `<svg viewBox="0 0 36 36" class="sr" aria-hidden="true"><circle cx="18" cy="18" r="${r}" class="sr-b"/><circle cx="18" cy="18" r="${r}" class="sr-f" stroke-dasharray="${(v*c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 18 18)"/></svg><span class="sn">${v>=1&&!on?ic('check'):j+1}</span>`; };
   const [,l,ico]=ETAPAS[i];
@@ -4786,11 +4817,11 @@ function vAtendimento(){
       <div class="at-al">${al.length?al.map(t=>`<span class="pill crit" data-tip="Alerta de segurança do cadastro">${ic('escudo')}${t}</span>`).join(''):`<span class="pill ok">${ic('okc')}Sem alertas de segurança</span>`}</div>
       <div class="at-m">${fin?`<span class="pill ok">${ic('check')}Finalizado</span>`:''}<span class="autosave ok" id="autosave" aria-live="polite">${textoSalvo(a)}</span>
         <span class="at-pr" data-tip="${Math.round(tot*100)}% do atendimento preenchido">${anel(tot,Math.round(tot*100)+'%')}</span></div></div>
-    <nav class="steps" aria-label="Etapas do atendimento">${ETAPAS.map(([,nome],j)=>`<a href="#atendimento" data-act="etapa" data-i="${j}" class="${j===i?'on':''} ${f[j]>=1?'ok':f[j]>0?'parcial':''}" ${j===i?'aria-current="step"':''} data-tip="${nome} · ${Math.round(f[j]*100)}% preenchido">${anelP(f[j],j,j===i)}<span class="sl">${nome}</span></a>`).join('')}</nav>
+    <nav class="steps" aria-label="Etapas do atendimento">${ETAPAS.map(([,nome],j)=>`<a href="#atendimento" data-act="etapa" data-i="${j}" class="${j===i?'on':''} ${etapaBloqueada(j)?'bloq':f[j]>=1?'ok':f[j]>0?'parcial':''}" ${j===i?'aria-current="step"':''} data-tip="${nome} · ${etapaBloqueada(j)?'não incluído no seu pacote':Math.round(f[j]*100)+'% preenchido'}">${etapaBloqueada(j)?`<span class="sn sb">${ic('cadeado')}</span>`:anelP(f[j],j,j===i)}<span class="sl">${nome}</span></a>`).join('')}</nav>
   </div>
   ${fin?`<div class="notice" style="margin-bottom:16px">${ic('info')}<div>Atendimento finalizado em ${fmt(a.finalizadoEm.slice(0,10))} às ${hhmm(a.finalizadoEm)}. Você pode complementar o registro; cada alteração fica no histórico.</div></div>`:''}
   <div class="et-h"><span class="tico acc">${ic(ico)}</span><div class="grow"><h2>${l}</h2><small class="muted">Etapa ${i+1} de 8 · <kbd>Alt</kbd> <kbd>←</kbd> <kbd>→</kbd> para trocar de etapa</small></div><button class="btn sm" data-act="at-prontuario" data-pid="${p.id}">${ic('doc')}Prontuário</button></div>
-  <div class="et-c">${CORPO[i](p,a,H)}</div>
+  <div class="et-c">${etapaBloqueada(i)?bloqueio('mtc'):CORPO[i](p,a,H)}</div>
   <div class="at-f">${i?`<button class="btn" data-act="etapa" data-i="${i-1}">${ic('esq')}${ETAPAS[i-1][1]}</button>`:fin?'<span></span>':`<button class="btn ghost" data-act="at-descartar">${ic('x')}Descartar rascunho</button>`}
     ${i<7?`<button class="btn pri" data-act="etapa" data-i="${i+1}">${ETAPAS[i+1][1]}${ic('dir')}</button>`:fin?`<button class="btn pri" data-act="at-prontuario" data-pid="${p.id}">${ic('doc')}Voltar ao prontuário</button>`:`<button class="btn pri" data-act="at-finalizar">${ic('check')}Finalizar atendimento</button>`}</div>`;
 }
@@ -5448,7 +5479,7 @@ function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
 function render(keepScroll){
   const r=route(), y=scrollY, v=document.getElementById('view');
-  ui.crumbs=[]; const html=VIEWS[r](); renderNav(r);
+  ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
   v.innerHTML=html;
   if(ui.ov==='ass'){ document.getElementById('camada').innerHTML=painelAss(); ligarPad(); }
   if(ui.ov==='wa'){ const c=document.getElementById('camada'); c.innerHTML=painelWa(); if(!c.innerHTML) ui.ov=null; }

@@ -47,6 +47,21 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   const cA = S.clinicas.find(c => c.nome === 'Clínica Sol');
   ok(cA?.assin.plano === 'essencial' && await A.locator('#acesso').isHidden(), `${rot}: clínica criada no Essencial`);
   ok(await tem(A, '.selo-teste', 'Teste: faltam 7 dias'), `${rot}: topo mostra quantos dias de teste faltam`);
+  // Essencial: sem MTC e sem relatórios (cadeado no menu e aviso no lugar da tela)
+  ok(await A.locator('a[href="#relatorios"] .nav-bloq').count() > 0 && await A.locator('a[href="#biblioteca"] .nav-bloq').count() > 0 && !(await A.locator('a[href="#agenda"] .nav-bloq').count()), `${rot}: Essencial mostra cadeado em Relatórios e Biblioteca clínica`);
+  await ir(A, 'relatorios');
+  ok(await tem(A, '#bloq-relatorios', 'Profissional') && await tem(A, '#bloq-relatorios a[href="#configuracoes"]', 'Ver pacotes'), `${rot}: Relatórios fora do Essencial avisa e leva aos pacotes`);
+  await ir(A, 'avaliacao');
+  ok(await tem(A, '#bloq-mtc'), `${rot}: Avaliação energética fora do Essencial`);
+  await ir(A, 'pacientes'); await clicar(A, '[data-act=open]'); await A.waitForTimeout(200);
+  ok(!(await tem(A, '[data-act=ir][data-to=avaliacao]')), `${rot}: prontuário do Essencial sem botão de avaliação energética`);
+  await clicar(A, '[data-act=novo-atendimento]'); await A.waitForTimeout(200);
+  ok(await A.locator('.steps a.bloq').count() === 4 && !(await tem(A, '#bloq-mtc')), `${rot}: atendimento do Essencial com 4 etapas de MTC no cadeado`);
+  await clicar(A, '.steps a[data-i="1"]');
+  ok(await tem(A, '.et-c #bloq-mtc'), `${rot}: etapa de MTC mostra o aviso do pacote`);
+  await clicar(A, '.steps a[data-i="5"]');
+  ok(!(await tem(A, '.dicas')), `${rot}: plano do Essencial sem dicas de vasos e estações`);
+  await clicar(A, '.at-f [data-act=at-descartar]').catch(() => {});
   await ir(A, 'configuracoes'); await clicar(A, '[data-cf=aba][data-k=conta]');
   ok(await tem(A, '#cf-pacote .cf-plano.on', 'Essencial'), `${rot}: Minha conta mostra o pacote`);
   ok(!(await tem(A, '[href="#musubi"]')), `${rot}: quem não é dono não vê o Painel do MUSUBI`);
@@ -81,6 +96,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   const M = await aparelho('M', url);
   await entrar(M, 'maicon@x.com', 'segredo123');
   await M.fill('#acesso [name=clinica]', 'Spazio Stabilità'); await M.fill('#acesso [name=cidade]', 'Caxias do Sul'); await clicar(M, '#acesso [type=submit]'); await M.waitForTimeout(250);
+  ok(!(await M.locator('.nav-bloq').count()), `${rot}: Profissional sem cadeado no menu`);
   await clicar(M, '[data-act=perfil]');
   ok(await tem(M, '.pf-i', 'Painel do MUSUBI'), `${rot}: o dono vê o Painel do MUSUBI no menu`);
   await clicar(M, '.pf-i >> text=Painel do MUSUBI'); await M.waitForTimeout(300);

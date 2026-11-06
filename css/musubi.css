@@ -1289,3 +1289,13 @@ body.com-acesso{overflow:hidden}
 .pd-n.pd-n3{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:620px){ .pd-n.pd-n3{grid-template-columns:minmax(0,1fr)} }
 .pd-g-l{gap:10px;flex-wrap:wrap}
+
+/* Etapa 10: recursos fora do pacote (cadeado no menu, nas etapas de MTC e aviso no lugar da tela) */
+.nav-bloq{margin-left:auto;display:inline-flex;opacity:.55}
+.nav-bloq .ic{width:14px;height:14px}
+.steps a.bloq{opacity:.55}
+.steps .sn.sb .ic{width:15px;height:15px}
+.card.bloq{display:flex;gap:16px;align-items:flex-start;padding:22px;max-width:760px}
+.card.bloq h2{margin:0 0 6px}
+.card.bloq p{margin:0 0 10px}
+@media (max-width:620px){ .card.bloq{flex-direction:column} }

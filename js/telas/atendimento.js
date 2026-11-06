@@ -20,6 +20,7 @@ import { ui } from '../estado.js';
 import { bagang, elemState, evaluate } from '../raciocinio/avaliacao.js';
 import { pointWarnings } from '../raciocinio/seguranca.js';
 import { QCOR } from './prontuario.js';
+import { bloqueio, pode } from './conta.js';
 import { age, esc, fmt, initials } from '../util.js';
 
 export const TECNICAS = ['Acupuntura','Auriculoterapia','Moxabustão','Ventosa','Eletroacupuntura','Massagem Tuiná','Sangria'];
@@ -381,7 +382,7 @@ function ePlano(p,a){
       <button class="btn sm" data-act="at-imprimir" style="margin-top:10px">${ic('doc')}Imprimir para o paciente</button><small class="muted" style="display:block;margin-top:6px">Sai uma folha só com as orientações, o nome do paciente, a data e o seu nome.</small></div></div>
     <div class="grid" style="align-content:start">${(()=>{ const L=encaminhados(av,'plano'); return `<div class="card"><div class="card-h"><h3>Trazido pelo profissional</h3><span class="muted sm">só o que foi marcado como "Plano"</span></div>
       ${L.length?L.map(([c,nome,I])=>I.map(it=>`<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${nome}</small></div><button class="btn sm ghost" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="plano">${ic('x')}Retirar</button></div>`).join('')).join(''):`<p class="muted sm">Nada encaminhado. Marque "Plano" num achado da avaliação para ele aparecer aqui.</p>`}</div>`; })()}
-    ${dicasTratamento(p,a)}
+    ${pode('mtc')?dicasTratamento(p,a):''}
     <div class="card"><h3>Sugestões dos padrões validados</h3><p class="muted sm" style="margin-bottom:10px">Toque para incluir. A escolha é do profissional.</p>
       ${ac.length?ac.map(h=>`<div class="sug"><div class="sug-h">${elTag(h.p.el)}<b>${h.p.nome}</b></div><div class="chips">${h.p.pontos.map(([c,j])=>`<button class="chip mono ${P.includes(c)?'on':''}" data-act="at-pt" data-c="${c}" title="${esc(j)}${PT[c]?.cautela?' · '+esc(CAUT[PT[c].cautela]):''}">${c}${PT[c]?.cautela?' ⚠':''}</button>`).join('')}</div></div>`).join(''):`<div class="vazio">${ic('info')}Aceite hipóteses na avaliação para ver sugestões.</div>`}</div></div></div>`;
 }
@@ -421,12 +422,14 @@ function eDocumentos(p,a,H){
     ['folha','Orientações para casa','Folha para o paciente, em Documentos','acc','doc-orientacoes'],['assinatura','Termo de consentimento','Preenchido para imprimir e assinar','acc','doc-termo']];
   return `<div class="docs">${D.map(([i,t,s,k,acao])=>acao?`<button class="docc" data-act="at-doc" data-d="${acao}">${ic(i)}<b>${t}</b><small>${s}</small>${k?`<span class="pill ${k}">${k==='ok'?'automático':'disponível'}</span>`:''}</button>`
     :`<div class="docc off">${ic(i)}<b>${t}</b><small>${s}</small><span class="pill">em breve</span></div>`).join('')}</div>
-  <div class="card" style="margin-top:20px"><h3>${a.status==='finalizado'?'Etapas registradas':'Antes de finalizar'}</h3><div class="chk">${ETAPAS.slice(0,7).map(([,n],j)=>{ const ok=preenchimento(p,a,j,H)>=1; return `<a href="#atendimento" data-act="etapa" data-i="${j}" class="${ok?'ok':''}">${ic(ok?'okc':'relogio')}${n}</a>`; }).join('')}</div>
+  <div class="card" style="margin-top:20px"><h3>${a.status==='finalizado'?'Etapas registradas':'Antes de finalizar'}</h3><div class="chk">${ETAPAS.slice(0,7).map(([,n],j)=>{ if(etapaBloqueada(j)) return ''; const ok=preenchimento(p,a,j,H)>=1; return `<a href="#atendimento" data-act="etapa" data-i="${j}" class="${ok?'ok':''}">${ic(ok?'okc':'relogio')}${n}</a>`; }).join('')}</div>
     <p class="muted sm" style="margin-top:10px">${a.status==='finalizado'?'O atendimento pode ser complementado depois; cada alteração fica no histórico com data e hora.':'Etapas incompletas não impedem finalizar. O atendimento pode ser complementado depois, com data e hora de cada alteração no histórico.'}</p></div>
   <div class="card" style="margin-top:20px"><div class="card-h"><h3>Histórico de alterações</h3><span class="muted sm">${a.historico.length} registro${a.historico.length===1?'':'s'}</span></div>
     <div class="hist-alt">${[...a.historico].reverse().map(h=>`<div><span class="mono muted">${fmt(h.em.slice(0,10))} ${hhmm(h.em)}</span><span>${esc(h.acao)}</span></div>`).join('')}</div></div>`;
 }
 
+// Etapas de MTC (avaliação, pentagrama, síntese e mapa) só nos pacotes que têm o recurso.
+export const etapaBloqueada = j => j>=1 && j<=4 && !pode('mtc');
 const CORPO = [eAnamnese,eAvaliacao,ePentagrama,eSintese,eMapa,ePlano,eEvolucao,eDocumentos];
 export function vAtendimento(){
   const x=atendimentoAberto();
@@ -434,7 +437,7 @@ export function vAtendimento(){
     return `<div class="head"><div><h1>Atendimento</h1></div></div>${vazio('play','Nenhum atendimento aberto','Abra o perfil de um paciente e use “Novo atendimento”.',`<a class="btn pri sm" href="#pacientes">${ic('pacientes')}Ver pacientes</a>`)}`; }
   const {p,a}=x, i=Math.max(0,Math.min(7,ui.etapa|0)), av=avaliacaoEditavel(p,a), H=evaluate(av?.signs||[]);
   const n=ordemNo(p,a), basal=n===1, al=alertasDe(p), fin=a.status==='finalizado';
-  const f=ETAPAS.map((_,j)=>preenchimento(p,a,j,H)), tot=f.reduce((s,v)=>s+v,0)/8;
+  const f=ETAPAS.map((_,j)=>preenchimento(p,a,j,H)), livres=ETAPAS.map((_,j)=>j).filter(j=>!etapaBloqueada(j)), tot=livres.reduce((s,j)=>s+f[j],0)/livres.length;
   ui.crumbs=[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,`${n}º atendimento`]];
   const anelP=(v,j,on)=>{ const r=15, c=2*Math.PI*r; return `<svg viewBox="0 0 36 36" class="sr" aria-hidden="true"><circle cx="18" cy="18" r="${r}" class="sr-b"/><circle cx="18" cy="18" r="${r}" class="sr-f" stroke-dasharray="${(v*c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 18 18)"/></svg><span class="sn">${v>=1&&!on?ic('check'):j+1}</span>`; };
   const [,l,ico]=ETAPAS[i];
@@ -443,11 +446,11 @@ export function vAtendimento(){
       <div class="at-al">${al.length?al.map(t=>`<span class="pill crit" data-tip="Alerta de segurança do cadastro">${ic('escudo')}${t}</span>`).join(''):`<span class="pill ok">${ic('okc')}Sem alertas de segurança</span>`}</div>
       <div class="at-m">${fin?`<span class="pill ok">${ic('check')}Finalizado</span>`:''}<span class="autosave ok" id="autosave" aria-live="polite">${textoSalvo(a)}</span>
         <span class="at-pr" data-tip="${Math.round(tot*100)}% do atendimento preenchido">${anel(tot,Math.round(tot*100)+'%')}</span></div></div>
-    <nav class="steps" aria-label="Etapas do atendimento">${ETAPAS.map(([,nome],j)=>`<a href="#atendimento" data-act="etapa" data-i="${j}" class="${j===i?'on':''} ${f[j]>=1?'ok':f[j]>0?'parcial':''}" ${j===i?'aria-current="step"':''} data-tip="${nome} · ${Math.round(f[j]*100)}% preenchido">${anelP(f[j],j,j===i)}<span class="sl">${nome}</span></a>`).join('')}</nav>
+    <nav class="steps" aria-label="Etapas do atendimento">${ETAPAS.map(([,nome],j)=>`<a href="#atendimento" data-act="etapa" data-i="${j}" class="${j===i?'on':''} ${etapaBloqueada(j)?'bloq':f[j]>=1?'ok':f[j]>0?'parcial':''}" ${j===i?'aria-current="step"':''} data-tip="${nome} · ${etapaBloqueada(j)?'não incluído no seu pacote':Math.round(f[j]*100)+'% preenchido'}">${etapaBloqueada(j)?`<span class="sn sb">${ic('cadeado')}</span>`:anelP(f[j],j,j===i)}<span class="sl">${nome}</span></a>`).join('')}</nav>
   </div>
   ${fin?`<div class="notice" style="margin-bottom:16px">${ic('info')}<div>Atendimento finalizado em ${fmt(a.finalizadoEm.slice(0,10))} às ${hhmm(a.finalizadoEm)}. Você pode complementar o registro; cada alteração fica no histórico.</div></div>`:''}
   <div class="et-h"><span class="tico acc">${ic(ico)}</span><div class="grow"><h2>${l}</h2><small class="muted">Etapa ${i+1} de 8 · <kbd>Alt</kbd> <kbd>←</kbd> <kbd>→</kbd> para trocar de etapa</small></div><button class="btn sm" data-act="at-prontuario" data-pid="${p.id}">${ic('doc')}Prontuário</button></div>
-  <div class="et-c">${CORPO[i](p,a,H)}</div>
+  <div class="et-c">${etapaBloqueada(i)?bloqueio('mtc'):CORPO[i](p,a,H)}</div>
   <div class="at-f">${i?`<button class="btn" data-act="etapa" data-i="${i-1}">${ic('esq')}${ETAPAS[i-1][1]}</button>`:fin?'<span></span>':`<button class="btn ghost" data-act="at-descartar">${ic('x')}Descartar rascunho</button>`}
     ${i<7?`<button class="btn pri" data-act="etapa" data-i="${i+1}">${ETAPAS[i+1][1]}${ic('dir')}</button>`:fin?`<button class="btn pri" data-act="at-prontuario" data-pid="${p.id}">${ic('doc')}Voltar ao prontuário</button>`:`<button class="btn pri" data-act="at-finalizar">${ic('check')}Finalizar atendimento</button>`}</div>`;
 }
