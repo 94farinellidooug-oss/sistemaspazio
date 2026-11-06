@@ -1278,3 +1278,4 @@ body.com-acesso{overflow:hidden}
 @media (min-width:761px){ .pd-i .pd-ctl{margin:0;width:auto} }
 @media (max-width:560px){ .tb-r > [data-act=atalhos]{display:none} }
 .cad-lado:has(.cad-exc.on){position:static}
+:root[data-theme="dark"] .logo-m{filter:brightness(0) invert(1)} /* no escuro, o logo vai na versão branca (regra do Maicon) */

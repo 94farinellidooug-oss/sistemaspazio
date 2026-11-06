@@ -131,6 +131,7 @@ document.addEventListener('click',ev=>{
   else if(a==='ver-ponto'){ ui.ptQ=t.dataset.c; ui.ptMer=''; ui.bib='central'; irPara('biblioteca'); }
   else if(a.startsWith('bib-')||a.startsWith('atl-')){ acaoBiblioteca(a,t); }
   else if(a==='busca'||a==='notif'||a==='perfil'||a==='atalhos'){ abrir(a); }
+  else if(a==='tema'){ const escuro=document.documentElement.dataset.theme!=='dark'; definirTema(escuro?'dark':'light'); render(true); toast(escuro?'Tema escuro':'Tema claro'); }
   else if(a==='fechar'){ ui.ov=null; render(true); }
   else if(a==='fechar-ir'){ ui.ov=null; ui.wa=null; }
   else if(a==='wa'){ abrirPainelWa(t.dataset.t,t.dataset.pid,t.dataset.ap); render(true); document.getElementById('wa-t')?.focus(); }
@@ -443,6 +444,9 @@ document.addEventListener('submit',ev=>{
     save(); ui.bookPid=null; ui.remarcar=null; ui.agForm=null; ui.agDia=date; render(true);
   }
 });
+// Tema claro (padrão) ou escuro, escolhido no menu do usuário e guardado neste aparelho.
+function definirTema(t){ document.documentElement.dataset.theme=t; try{ localStorage.setItem('musubi-tema',t); }catch(e){} }
+try{ if(localStorage.getItem('musubi-tema')==='dark') document.documentElement.dataset.theme='dark'; }catch(e){}
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
