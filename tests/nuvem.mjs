@@ -4,50 +4,11 @@
 // (guarda cópia e traz a do servidor), pedido de contato da página de apresentação.
 // As regras de acesso do próprio banco são testadas em tests/banco.sh.  Uso: node tests/nuvem.mjs
 import { criarNuvem, criarSincronia, KEY_SESSAO } from '../js/dados/nuvem.js';
+import { servidor } from './lib/supabase-falso.mjs';
 
 let falhas = 0;
 const ok = (c, m) => { console.log(`${c ? 'ok   ' : 'FALHA'} ${m}`); if (!c) falhas++; };
 const memoria = () => { const m = new Map(); return { getItem:k => m.has(k) ? m.get(k) : null, setItem:(k, v) => m.set(k, String(v)), removeItem:k => m.delete(k), m }; };
-const resp = (status, corpo) => ({ ok:status < 300, status, text:async () => corpo === undefined ? '' : JSON.stringify(corpo) });
-
-// Servidor falso
-function servidor({ confirmar = false } = {}){
-  const S = { usuarios:{ 'maicon@x.com':{ id:'u1', senha:'segredo123', nome:'Maicon' } }, tokens:{}, clinicas:[], dados:{}, interessados:[], chamadas:[], offline:false, n:0 };
-  const novoToken = u => { const t = 'at' + (++S.n); S.tokens[t] = u; return { access_token:t, refresh_token:'rt-' + u.id + '-' + S.n, expires_in:3600, user:{ id:u.id, email:u.email, user_metadata:{ nome:u.nome } } }; };
-  S.fetch = async (url, op) => {
-    if (S.offline) throw new TypeError('Failed to fetch');
-    const u = new URL(url), corpo = op.body ? JSON.parse(op.body) : null, auth = (op.headers.Authorization || '').replace('Bearer ', ''), eu = S.tokens[auth];
-    S.chamadas.push({ caminho:u.pathname + u.search, op });
-    if (op.headers.apikey !== 'pub') return resp(401, { message:'Invalid API key' });
-    if (u.pathname === '/auth/v1/token' && u.searchParams.get('grant_type') === 'password') {
-      const x = S.usuarios[corpo.email]; if (!x || x.senha !== corpo.password) return resp(400, { error_code:'invalid_credentials', msg:'Invalid login credentials' });
-      return resp(200, novoToken({ ...x, email:corpo.email }));
-    }
-    if (u.pathname === '/auth/v1/token') { const id = corpo.refresh_token.split('-')[1]; const e = Object.entries(S.usuarios).find(([, v]) => v.id === id); return e ? resp(200, novoToken({ ...e[1], email:e[0] })) : resp(400, { error_code:'refresh_token_not_found' }); }
-    if (u.pathname === '/auth/v1/signup') {
-      if (S.usuarios[corpo.email]) return resp(422, { code:422, error_code:'user_already_exists', msg:'User already registered' });
-      if (corpo.password.length < 8) return resp(422, { error_code:'weak_password' });
-      const x = S.usuarios[corpo.email] = { id:'u' + (++S.n), senha:corpo.password, nome:corpo.data.nome };
-      return confirmar ? resp(200, { id:x.id, email:corpo.email }) : resp(200, novoToken({ ...x, email:corpo.email }));
-    }
-    if (u.pathname === '/auth/v1/recover') return resp(200, {});
-    if (u.pathname === '/auth/v1/logout') { delete S.tokens[auth]; return resp(204); }
-    if (u.pathname === '/rest/v1/interessados') { if (op.headers.Prefer !== 'return=minimal') return resp(401, { code:'42501', message:'new row violates row-level security' }); S.interessados.push(corpo); return resp(201); }
-    if (!eu) return resp(401, { code:'PGRST301', message:'JWT expired' });
-    if (u.pathname === '/rest/v1/rpc/criar_clinica') { const id = 'c' + (++S.n); S.clinicas.push({ id, nome:corpo.p_nome, cidade:corpo.p_cidade, uf:corpo.p_uf, membros:[{ user:eu.id, perfil:'adm' }] }); S.dados[id] = { doc:corpo.p_doc, versao:1 }; return resp(200, id); }
-    const membro = c => S.clinicas.find(x => x.id === c)?.membros.some(m => m.user === eu.id);
-    if (u.pathname === '/rest/v1/membros') return resp(200, S.clinicas.filter(c => c.membros.some(m => m.user === eu.id)).map(c => ({ perfil:'adm', nome:'', clinicas:{ id:c.id, nome:c.nome, cidade:c.cidade, uf:c.uf } })));
-    if (u.pathname === '/rest/v1/dados') { const c = u.searchParams.get('clinica_id').replace('eq.', ''); return resp(200, membro(c) ? [S.dados[c]] : []); }
-    if (u.pathname === '/rest/v1/rpc/salvar_dados') {
-      if (!membro(corpo.p_clinica)) return resp(400, { code:'P0001', message:'sem_acesso' });
-      const d = S.dados[corpo.p_clinica]; if (d.versao !== corpo.p_versao) return resp(200, -1);
-      d.doc = corpo.p_doc; d.versao++; return resp(200, d.versao);
-    }
-    return resp(404, { message:'não encontrado' });
-  };
-  return S;
-}
-
 let S = servidor(), relogio = 1e6, mem = memoria();
 let N = criarNuvem({ url:'https://x.supabase.co', chave:'pub', f:S.fetch, mem, agora:() => relogio });
 const erro = async p => { try { await p; return null; } catch (e) { return e; } };

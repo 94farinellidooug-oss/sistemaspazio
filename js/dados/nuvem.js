@@ -85,7 +85,7 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
 // Mantém o documento da clínica igual no aparelho e no servidor. marcar() depois de cada mudança:
 // espera um pouco e envia. Se outro aparelho salvou antes, guarda uma cópia do que estava aqui,
 // traz a versão do servidor e avisa. Sem internet, fica pendente e tenta de novo depois.
-export function criarSincronia({ nuvem, clinica, obter, aplicar, aoMudar = () => {}, mem = localStorage, espera = 1500, relogio = { definir:setTimeout, limpar:clearTimeout }, agora = () => new Date().toISOString() }){
+export function criarSincronia({ nuvem, clinica, obter, aplicar, aoMudar = () => {}, mem = localStorage, espera = 1500, relogio = { definir:(fn, ms) => setTimeout(fn, ms), limpar:h => clearTimeout(h) }, agora = () => new Date().toISOString() }){
   let versao = 0, pendente = false, enviando = false, h = null, estado = 'carregando';
   const mudar = (e, extra) => { estado = e; aoMudar(e, extra); };
   const enviar = async () => {

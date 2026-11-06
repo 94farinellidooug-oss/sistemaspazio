@@ -1418,6 +1418,38 @@ input[type=checkbox]{accent-color:var(--brand)}
   .rel-imp .card-h h2{font-size:11pt}
   .rel-imp .rel-c{height:140px}
 }
+
+/* Etapa 10 · Conta no servidor: tela de acesso e selo de salvo no topo */
+#acesso{position:fixed;inset:0;z-index:60;background:var(--bg);overflow:auto}
+body.com-acesso{overflow:hidden}
+.acesso-f{min-height:100%;display:grid;place-items:center;padding:24px 16px}
+.acesso-card{width:min(440px,100%);padding:28px;display:grid;gap:14px}
+.acesso-card h1{font-size:1.35rem;margin:4px 0 0}
+.acesso-card > p.muted{margin:-6px 0 4px}
+.acesso-h{display:flex;align-items:center;gap:10px}
+.acesso-2{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:12px}
+.acesso-l{display:flex;justify-content:flex-end;margin-top:-6px}
+.acesso-c{display:flex;align-items:center;gap:8px}
+.acesso-card .senha-c{position:relative;display:block}
+.acesso-card .senha-c input{padding-right:84px}
+.acesso-card .senha-c .btn{position:absolute;right:4px;top:50%;transform:translateY(-50%)}
+.acesso-card .largo{width:100%;justify-content:center;padding:11px}
+.acesso-card .lnk{background:none;border:0;padding:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.acesso-card .lnk.suave{color:var(--muted);font-weight:500}
+.acesso-card p.sm{margin:0;text-align:center}
+.erro-a{color:var(--crit);font-size:.88rem;margin:0}
+.acesso-opc{display:grid;gap:8px}
+.acesso-opc p{margin:0;font-size:.88rem}
+.acesso-opc label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line-2);border-radius:var(--r-sm);cursor:pointer}
+.acesso-opc label.on{border-color:var(--accent);background:var(--accent-soft)}
+.acesso-opc input{margin-top:3px;accent-color:var(--accent)}
+.acesso-opc small{display:block;color:var(--muted);font-size:.82rem;margin-top:2px}
+.selo-nuvem{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 10px;font-size:.78rem;font-weight:500;color:var(--muted);cursor:pointer}
+.selo-nuvem .ic{width:14px;height:14px}
+.selo-nuvem.ok .ic{color:var(--ok)}
+.selo-nuvem.warn{color:var(--warn);border-color:var(--warn-soft);background:var(--warn-soft)}
+@media (max-width:560px){ .selo-nuvem span{display:none} .selo-nuvem{padding:6px} }
+.pf-conta{padding:6px 10px 8px;border-bottom:1px solid var(--line);margin-bottom:4px;line-height:1.4;word-break:break-all}
 </style>
 
 
@@ -1430,6 +1462,7 @@ input[type=checkbox]{accent-color:var(--brand)}
   </div>
 </div>
 <div id="camada"></div>
+<div id="acesso" hidden></div>
 <div id="imp" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 <div class="tip" id="tip" role="tooltip" hidden></div>
@@ -1657,7 +1690,15 @@ function carregar(){
   return hidratar(migrarV1(seed(), new Date().toISOString(), 'exemplos'));
 }
 let db = carregar();
-const save = () => { gravar(KEY, JSON.stringify(db)); };
+// Depois de gravar no aparelho, avisa quem estiver ouvindo (a sincronia com o servidor, etapa 10).
+let ouvinteSalvar = null;
+const ouvirSalvar = fn => { ouvinteSalvar = fn; };
+const save = () => { gravar(KEY, JSON.stringify(db)); if(ouvinteSalvar) ouvinteSalvar(); };
+// Troca todos os dados pelos que vieram do servidor (ou por uma clínica vazia), sem avisar a sincronia.
+function trocarDados(doc){ db = hidratar(JSON.parse(JSON.stringify(doc))); gravar(KEY, JSON.stringify(db)); }
+const dadosVazios = () => hidratar(migrarV1({ patients:[], appts:[] }, new Date().toISOString(), 'nova-clinica'));
+// Quanta coisa tem neste aparelho (para o primeiro acesso dizer o que vai junto).
+const resumoDados = () => ({ pacientes:db.patients.filter(p=>!p.exemplo).length, exemplos:db.patients.some(p=>p.exemplo), atendimentos:db.patients.reduce((n,p)=>n+p.atendimentos.length,0), horarios:db.appts.length });
 const patient = id => db.patients.find(p=>p.id===id);
 // Substitui todos os dados pelos exemplos (botão "Restaurar exemplos").
 function restaurarExemplos(){ db = hidratar(migrarV1(seed(), new Date().toISOString(), 'exemplos')); save(); }
@@ -2399,6 +2440,280 @@ function notificacoes(){
   acompanhamento().forEach(({p,m})=>N.push({k:'ac-'+p.id,i:m[0][0],t:m[0][1],titulo:p.name,txt:m.map(x=>x[2]).join(' · '),pid:p.id}));
   return N;
 }
+// dados pela API REST, com as regras de acesso do banco (supabase/001_inicio.sql) decidindo o que cada
+// conta enxerga. A chave abaixo é a pública (publishable): pode ficar no código do site.
+// Nesta primeira parte cada clínica guarda o documento inteiro do sistema, com versão (salvar_dados).
+
+const NUVEM = { url:'https://lmucimqjrzjewfyhcfoh.supabase.co', chave:'sb_publishable_kRmZNwp0_Xq4jPPMgTzKKA_SyLsreZS' };
+const KEY_SESSAO = 'musubi-sessao';
+
+// Mensagens do servidor em português, para mostrar direto na tela.
+const MSG_NUVEM = {
+  invalid_credentials:'E-mail ou senha incorretos.',
+  email_not_confirmed:'Falta confirmar o e-mail. Abra o link que mandamos para a sua caixa de entrada.',
+  user_already_exists:'Já existe uma conta com esse e-mail. Use "Entrar".',
+  email_exists:'Já existe uma conta com esse e-mail. Use "Entrar".',
+  weak_password:'Senha fraca. Use pelo menos 8 caracteres, misturando letras e números.',
+  over_email_send_rate_limit:'Muitos e-mails em pouco tempo. Espere alguns minutos e tente de novo.',
+  over_request_rate_limit:'Muitas tentativas em pouco tempo. Espere um pouco e tente de novo.',
+  validation_failed:'Confira o e-mail e a senha.',
+  sem_acesso:'Sua conta não tem acesso a esta clínica.',
+  sem_login:'Entre de novo para continuar.'
+};
+const ErroNuvem = class extends Error { constructor(msg, codigo, status){ super(msg); this.codigo = codigo; this.status = status; } };
+const erroDe = (status, corpo) => {
+  const cod = corpo?.error_code || corpo?.code || corpo?.error || '', txt = String(corpo?.message || corpo?.msg || corpo?.error_description || '');
+  const chave = Object.keys(MSG_NUVEM).find(k => cod === k || txt.includes(k));
+  return new ErroNuvem(chave ? MSG_NUVEM[chave] : status === 401 ? MSG_NUVEM.sem_login : 'O servidor não respondeu como esperado. Tente de novo.', chave || cod || String(status), status);
+};
+
+// f = fetch, mem = armazenamento (localStorage), agora = relógio em ms. Tudo injetável para os testes.
+function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(...a), mem = localStorage, agora = () => Date.now() } = {}){
+  const lerSessao = () => { try { return JSON.parse(mem.getItem(KEY_SESSAO)) || null; } catch (e) { return null; } };
+  const gravarSessao = s => { try { s ? mem.setItem(KEY_SESSAO, JSON.stringify(s)) : mem.removeItem(KEY_SESSAO); } catch (e) {} };
+  let sessao = lerSessao();
+
+  const chamar = async (caminho, { metodo = 'GET', corpo, token, cab = {} } = {}) => {
+    let r;
+    try { r = await f(url + caminho, { method:metodo, headers:{ apikey:chave, 'Content-Type':'application/json', ...(token ? { Authorization:'Bearer ' + token } : {}), ...cab }, body:corpo === undefined ? undefined : JSON.stringify(corpo) }); }
+    catch (e) { throw new ErroNuvem('Sem conexão com o servidor. Confira a internet; o que você fizer fica guardado neste aparelho.', 'offline', 0); }
+    const txt = await r.text(); let j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) {}
+    if (!r.ok) throw erroDe(r.status, j);
+    return j;
+  };
+  const guardar = j => {
+    sessao = { access_token:j.access_token, refresh_token:j.refresh_token, expira:agora() + (Number(j.expires_in) || 3600) * 1000, user:{ id:j.user?.id, email:j.user?.email, nome:j.user?.user_metadata?.nome || '' } };
+    gravarSessao(sessao); return sessao;
+  };
+  // Token válido, renovando um minuto antes de vencer. Sem sessão, ou renovação recusada: sai.
+  const token = async () => {
+    if (!sessao) throw new ErroNuvem(MSG_NUVEM.sem_login, 'sem_login', 401);
+    if (sessao.expira - agora() > 60000) return sessao.access_token;
+    try { return guardar(await chamar('/auth/v1/token?grant_type=refresh_token', { metodo:'POST', corpo:{ refresh_token:sessao.refresh_token } })).access_token; }
+    catch (e) { if (e.codigo !== 'offline') { sessao = null; gravarSessao(null); } throw e; }
+  };
+  const rest = async (caminho, op = {}) => chamar('/rest/v1/' + caminho, { ...op, token:await token() });
+
+  return {
+    sessao:() => sessao,
+    entrar:async (email, senha) => guardar(await chamar('/auth/v1/token?grant_type=password', { metodo:'POST', corpo:{ email:email.trim(), password:senha } })),
+    // Devolve a sessão, ou {confirmar:true} quando o servidor pede para confirmar o e-mail antes.
+    criarConta:async (email, senha, nome, voltarPara) => {
+      const j = await chamar('/auth/v1/signup' + (voltarPara ? '?redirect_to=' + encodeURIComponent(voltarPara) : ''), { metodo:'POST', corpo:{ email:email.trim(), password:senha, data:{ nome:nome.trim() } } });
+      return j?.access_token ? guardar(j) : { confirmar:true };
+    },
+    esqueci:async (email, voltarPara) => { await chamar('/auth/v1/recover' + (voltarPara ? '?redirect_to=' + encodeURIComponent(voltarPara) : ''), { metodo:'POST', corpo:{ email:email.trim() } }); return true; },
+    // Sessão que chega no endereço depois de confirmar o e-mail ou pedir nova senha (#access_token=...).
+    sessaoDoLink:hash => {
+      const p = new URLSearchParams(String(hash || '').replace(/^#/, ''));
+      if (!p.get('access_token')) return null;
+      const s = guardar({ access_token:p.get('access_token'), refresh_token:p.get('refresh_token'), expires_in:p.get('expires_in'), user:{} });
+      return { sessao:s, tipo:p.get('type') || '' };
+    },
+    completarUsuario:async () => { const u = await chamar('/auth/v1/user', { token:await token() }); sessao.user = { id:u.id, email:u.email, nome:u.user_metadata?.nome || '' }; gravarSessao(sessao); return sessao.user; },
+    trocarSenha:async senha => { await chamar('/auth/v1/user', { metodo:'PUT', corpo:{ password:senha }, token:await token() }); return true; },
+    sair:async () => { const t = sessao?.access_token; sessao = null; gravarSessao(null); if (t) { try { await chamar('/auth/v1/logout', { metodo:'POST', token:t }); } catch (e) {} } },
+    minhasClinicas:async () => (await rest(`membros?select=perfil,nome,clinicas(id,nome,cidade,uf)&user_id=eq.${sessao.user.id}&ativo=is.true`) || [])
+      .filter(m => m.clinicas).map(m => ({ id:m.clinicas.id, nome:m.clinicas.nome, cidade:m.clinicas.cidade, uf:m.clinicas.uf, perfil:m.perfil })),
+    criarClinica:async ({ nome, cidade, uf, nomePessoa }, doc) => rest('rpc/criar_clinica', { metodo:'POST', corpo:{ p_nome:nome, p_cidade:cidade, p_uf:uf, p_nome_pessoa:nomePessoa, p_doc:doc } }),
+    baixar:async clinica => { const L = await rest(`dados?select=doc,versao&clinica_id=eq.${clinica}`); return L?.[0] || null; },
+    salvar:async (clinica, doc, versao) => rest('rpc/salvar_dados', { metodo:'POST', corpo:{ p_clinica:clinica, p_doc:doc, p_versao:versao } }),
+    // Página de apresentação: pedido de contato sem login (a lista só o dono do MUSUBI lê).
+    pedirContato:async (nome, whats) => { await chamar('/rest/v1/interessados', { metodo:'POST', corpo:{ nome:nome.trim(), whats:whats.trim() }, cab:{ Prefer:'return=minimal' } }); return true; }
+  };
+}
+
+// Mantém o documento da clínica igual no aparelho e no servidor. marcar() depois de cada mudança:
+// espera um pouco e envia. Se outro aparelho salvou antes, guarda uma cópia do que estava aqui,
+// traz a versão do servidor e avisa. Sem internet, fica pendente e tenta de novo depois.
+function criarSincronia({ nuvem, clinica, obter, aplicar, aoMudar = () => {}, mem = localStorage, espera = 1500, relogio = { definir:(fn, ms) => setTimeout(fn, ms), limpar:h => clearTimeout(h) }, agora = () => new Date().toISOString() }){
+  let versao = 0, pendente = false, enviando = false, h = null, estado = 'carregando';
+  const mudar = (e, extra) => { estado = e; aoMudar(e, extra); };
+  const enviar = async () => {
+    h = null; if (enviando) { pendente = true; return; }
+    enviando = true; pendente = false; mudar('salvando');
+    try {
+      const v = await nuvem.salvar(clinica, obter(), versao);
+      if (v > 0) { versao = v; mudar('salvo'); }
+      else {
+        const copia = 'musubi-v2-conflito-' + agora();
+        try { mem.setItem(copia, JSON.stringify(obter())); } catch (e) {}
+        const r = await nuvem.baixar(clinica); versao = r.versao; aplicar(r.doc);
+        mudar('conflito', { copia });
+      }
+    } catch (e) { pendente = true; mudar(e.codigo === 'offline' ? 'offline' : 'erro', { msg:e.message }); }
+    finally { enviando = false; if (pendente && estado !== 'offline' && estado !== 'erro') marcar(); }
+  };
+  const marcar = () => { pendente = true; if (h) relogio.limpar(h); h = relogio.definir(enviar, espera); };
+  return {
+    estado:() => estado, versao:() => versao, pendente:() => pendente,
+    iniciar:async () => { const r = await nuvem.baixar(clinica); if (!r) throw new Error('Clínica sem dados no servidor.'); versao = r.versao; aplicar(r.doc); mudar('salvo'); return r; },
+    marcar, agora:enviar,
+    tentarDeNovo:() => { if (pendente) marcar(); }
+  };
+}
+// primeiro acesso da clínica (levando os dados deste aparelho ou começando do zero); depois disso,
+// mantém os dados iguais no aparelho e no servidor e mostra no topo se está tudo salvo.
+// No computador de desenvolvimento e no arquivo aberto do disco o sistema segue sem conta, como antes,
+// a não ser que o modo servidor seja escolhido (musubi-modo = nuvem).
+
+const KEY_MODO = 'musubi-modo', KEY_CLINICA = 'musubi-clinica', KEY_CACHE_DE = 'musubi-v2-clinica';
+const UFS_BR = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
+const lerC = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const gravarC = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+const voltarAoSite = () => location.origin + location.pathname;
+
+// Estado da conta: modo 'local' (sem conta) ou 'nuvem'; tela de acesso aberta (ou null); clínica atual.
+const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true };
+let aoMudarConta = () => {};
+
+const modoInicial = () => {
+  const m = lerC(KEY_MODO); if (m === 'local' || m === 'nuvem') return m;
+  return location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname) ? 'local' : 'nuvem';
+};
+
+// Chamado uma vez ao abrir o sistema. render = redesenhar o sistema.
+function iniciarConta(render, nuvem){
+  aoMudarConta = render; conta.modo = modoInicial();
+  if (conta.modo === 'local') return;
+  conta.nuvem = nuvem || criarNuvem();
+  const lk = conta.nuvem.sessaoDoLink(location.hash);
+  if (lk) { history.replaceState(null, '', location.pathname); if (lk.tipo === 'recovery') { abrirAcesso('nova-senha'); return; } }
+  if (!conta.nuvem.sessao()) { abrirAcesso('entrar'); return; }
+  conectar(!!lk);
+}
+function abrirAcesso(tela, msg = ''){ conta.tela = tela; conta.msg = msg; conta.erro = ''; conta.ocupado = false; desenharAcesso(); }
+function fecharAcesso(){ conta.tela = null; desenharAcesso(); }
+
+// Depois de entrar: descobre as clínicas da pessoa e abre a última usada (ou o primeiro acesso).
+async function conectar(completar){
+  conta.ocupado = true; desenharAcesso();
+  try {
+    if (completar || !conta.nuvem.sessao().user.email) await conta.nuvem.completarUsuario();
+    conta.clinicas = await conta.nuvem.minhasClinicas();
+    if (!conta.clinicas.length) { abrirAcesso('clinica'); return; }
+    await abrirClinica(conta.clinicas.find(c => c.id === lerC(KEY_CLINICA)) || conta.clinicas[0]);
+  } catch (e) {
+    if (e.codigo === 'sem_login') abrirAcesso('entrar', 'Entre de novo para continuar.');
+    else if (e.codigo === 'offline' && lerC(KEY_CACHE_DE)) { conta.clinica = { id:lerC(KEY_CACHE_DE), nome:'' }; ligarSincronia(); conta.estado = 'offline'; fecharAcesso(); aoMudarConta(); }
+    else { conta.erro = e.message; conta.ocupado = false; conta.tela = conta.tela || 'entrar'; desenharAcesso(); }
+  }
+}
+function ligarSincronia(){
+  conta.sinc = criarSincronia({ nuvem:conta.nuvem, clinica:conta.clinica.id, obter:() => db, aplicar:doc => { trocarDados(doc); },
+    aoMudar:(e, x) => { conta.estado = e; if (e === 'conflito') avisoConta('Outro aparelho salvou antes. Abrimos a versão mais nova; o que estava aqui ficou guardado como cópia neste aparelho.'); aoMudarConta(true); } });
+  ouvirSalvar(() => conta.sinc.marcar());
+}
+async function abrirClinica(c){
+  conta.clinica = c; gravarC(KEY_CLINICA, c.id); ligarSincronia();
+  await conta.sinc.iniciar(); gravarC(KEY_CACHE_DE, c.id);
+  fecharAcesso(); aoMudarConta();
+}
+let avisoH = null;
+function avisoConta(m){ const t = document.getElementById('toast'); if (!t) return; t.className = 'toast info'; t.innerHTML = `${ic('info')}<span></span>`; t.lastChild.textContent = m; t.hidden = false; clearTimeout(avisoH); avisoH = setTimeout(() => { t.hidden = true; }, 6000); }
+
+// Selo no topo: está tudo salvo no servidor?
+function seloConta(){
+  if (conta.modo !== 'nuvem' || !conta.sinc) return '';
+  const E = { salvo:['okc', 'Salvo', 'ok'], salvando:['carregando', 'Salvando…', ''], carregando:['carregando', 'Abrindo…', ''], offline:['alerta', 'Sem internet', 'warn'], erro:['alerta', 'Não salvou', 'warn'], conflito:['okc', 'Atualizado', 'ok'] }[conta.estado] || ['okc', 'Salvo', 'ok'];
+  const dica = conta.estado === 'offline' ? 'Sem conexão: o que você fizer fica neste aparelho e é enviado quando a internet voltar' : conta.estado === 'erro' ? 'O servidor não aceitou; toque para tentar de novo' : 'Tudo guardado no servidor';
+  return `<button class="selo-nuvem ${E[2]}" data-act="nuvem-tentar" data-tip="${dica}" aria-label="${E[1]}. ${dica}">${ic(E[0])}<span>${E[1]}</span></button>`;
+}
+// Parte da conta no menu do perfil.
+function menuConta(){
+  if (conta.modo !== 'nuvem') return `<button class="pf-i" data-act="conta-entrar">${ic('sair')}Entrar na sua conta</button>`;
+  const s = conta.nuvem?.sessao();
+  return `<div class="pf-conta muted sm">${esc(s?.user.email || '')}${conta.clinica?.nome ? `<br>${esc(conta.clinica.nome)}` : ''}</div><button class="pf-i sair" data-act="sair">${ic('sair')}Sair</button>`;
+}
+function tentarDeNovoConta(){ conta.sinc?.tentarDeNovo(); }
+function entrarNaConta(){ gravarC(KEY_MODO, 'nuvem'); location.reload(); }
+const sairDaConta = async () => {
+  if (conta.sinc?.pendente()) { await conta.sinc.agora(); if (conta.sinc.pendente()) { avisoConta('Ainda há mudanças que não chegaram ao servidor. Confira a internet e tente sair de novo.'); return; } }
+  await conta.nuvem.sair();
+  // Os dados da clínica estão no servidor: não ficam neste aparelho depois de sair.
+  if (lerC(KEY_CACHE_DE)) { trocarDados(dadosVazios()); gravarC(KEY_CACHE_DE, null); }
+  location.reload();
+};
+
+/* ---------- Tela de acesso ---------- */
+const campoA = (nome, rot, tipo = 'text', extra = '') => `<label class="field"><span class="lbl">${rot}</span><input name="${nome}" type="${tipo}" ${extra} required></label>`;
+function htmlAcesso(){
+  const t = conta.tela, carregando = conta.ocupado && !conta.erro;
+  const TIT = { entrar:['Entrar no MUSUBI', 'Use o e-mail e a senha da sua conta.'], criar:['Criar sua conta', 'Comece com o seu e-mail e uma senha.'], esqueci:['Criar uma nova senha', 'Informe o seu e-mail. Mandamos um link para criar a nova senha.'],
+    'nova-senha':['Escolha a nova senha', 'Pelo menos 8 caracteres.'], clinica:['Conte sobre a clínica', 'Atende sozinho? Use o seu nome. O resto dá para ajustar depois.'] }[t] || ['', ''];
+  const R = resumoDados(), temDados = !lerC(KEY_CACHE_DE) && (R.pacientes > 0 || R.horarios > 0);
+  const corpo = carregando ? `<p class="muted acesso-c">${ic('carregando')}Abrindo a sua clínica…</p>`
+    : conta.msg && ['enviado', 'confirmar'].includes(conta.tela) ? ''
+    : t === 'entrar' ? `${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}<label class="field"><span class="lbl">Senha</span><span class="senha-c"><input name="senha" type="password" autocomplete="current-password" required><button type="button" class="btn ghost sm" data-ac="ver">Mostrar</button></span></label>
+        <div class="acesso-l"><button type="button" class="lnk" data-ac="esqueci">Esqueci minha senha</button></div>`
+    : t === 'criar' ? `${campoA('nome', 'Seu nome', 'text', 'autocomplete="name"')}${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}${campoA('senha', 'Crie uma senha', 'password', 'autocomplete="new-password" minlength="8"')}`
+    : t === 'esqueci' ? campoA('email', 'E-mail', 'email', 'autocomplete="email"')
+    : t === 'nova-senha' ? campoA('senha', 'Nova senha', 'password', 'autocomplete="new-password" minlength="8"')
+    : t === 'clinica' ? `${campoA('clinica', 'Nome da clínica')}<div class="acesso-2">${campoA('cidade', 'Cidade')}<label class="field"><span class="lbl">Estado</span><select name="uf">${UFS_BR.map(u => `<option ${u === 'RS' ? 'selected' : ''}>${u}</option>`).join('')}</select></label></div>
+        ${temDados ? `<div class="acesso-opc" role="radiogroup" aria-label="Dados deste aparelho"><p><b>Encontramos dados neste aparelho:</b> ${R.pacientes} paciente${R.pacientes === 1 ? '' : 's'}${R.exemplos ? ' (além dos exemplos)' : ''}, ${R.atendimentos} atendimento${R.atendimentos === 1 ? '' : 's'} e ${R.horarios} horário${R.horarios === 1 ? '' : 's'} na agenda.</p>
+          <label class="${conta.levar ? 'on' : ''}"><input type="radio" name="levar" value="1" data-ac="levar" ${conta.levar ? 'checked' : ''}><span><b>Levar para a minha conta</b><small>Tudo passa a ficar no servidor e aparece em qualquer aparelho. Recomendado.</small></span></label>
+          <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa vazia.</small></span></label></div>` : ''}` : '';
+  const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Entrar no MUSUBI' }[t];
+  const rodape = t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p>`
+    : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
+    : t === 'clinica' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
+  return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>
+    <div class="acesso-h">${LOGO}<b>Musubi</b></div>
+    <h1>${conta.tela === 'confirmar' ? 'Confira o seu e-mail' : conta.tela === 'enviado' ? 'Link enviado' : TIT[0]}</h1>
+    <p class="muted">${esc(conta.msg || TIT[1])}</p>
+    ${corpo}
+    <p class="erro-a" role="alert" ${conta.erro ? '' : 'hidden'}>${esc(conta.erro)}</p>
+    ${carregando || ['confirmar', 'enviado'].includes(t) ? '' : `<button class="btn pri largo" type="submit" ${conta.ocupado ? 'disabled' : ''}>${conta.ocupado ? 'Aguarde…' : botao}</button>`}
+    ${['confirmar', 'enviado'].includes(t) ? `<button class="btn largo" type="button" data-ac="entrar">Voltar para entrar</button>` : rodape}
+  </form></div>`;
+}
+function desenharAcesso(){
+  const el = document.getElementById('acesso'); if (!el) return;
+  el.hidden = !conta.tela; document.body.classList.toggle('com-acesso', !!conta.tela);
+  if (!conta.tela) { el.innerHTML = ''; return; }
+  const foco = document.activeElement?.name;
+  el.innerHTML = htmlAcesso();
+  const i = (foco && el.querySelector(`[name="${foco}"]`)) || el.querySelector('input');
+  if (i && !conta.ocupado) i.focus();
+}
+const okEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v).trim());
+async function enviarAcesso(f){
+  const t = conta.tela, v = n => f.elements[n]?.value || '';
+  const falta = t === 'entrar' ? (!okEmail(v('email')) ? 'Confira o e-mail.' : !v('senha') ? 'Digite a sua senha.' : '')
+    : t === 'criar' ? (!v('nome').trim() ? 'Escreva o seu nome.' : !okEmail(v('email')) ? 'Confira o e-mail.' : v('senha').length < 8 ? 'A senha precisa de pelo menos 8 caracteres.' : '')
+    : t === 'esqueci' ? (!okEmail(v('email')) ? 'Confira o e-mail.' : '')
+    : t === 'nova-senha' ? (v('senha').length < 8 ? 'A senha precisa de pelo menos 8 caracteres.' : '')
+    : t === 'clinica' ? (!v('clinica').trim() ? 'Escreva o nome da clínica.' : !v('cidade').trim() ? 'Escreva a cidade.' : '') : '';
+  if (falta) { conta.erro = falta; desenharAcesso(); return; }
+  conta.erro = ''; conta.ocupado = true; desenharAcesso();
+  try {
+    if (t === 'entrar') { await conta.nuvem.entrar(v('email'), v('senha')); await conectar(); return; }
+    if (t === 'criar') { const r = await conta.nuvem.criarConta(v('email'), v('senha'), v('nome'), voltarAoSite());
+      if (r.confirmar) { abrirAcesso('confirmar', `Mandamos um link para ${v('email').trim()}. Abra o link para ativar a conta; ele traz você de volta para cá.`); return; }
+      await conectar(); return; }
+    if (t === 'esqueci') { await conta.nuvem.esqueci(v('email'), voltarAoSite()); abrirAcesso('enviado', `Se ${v('email').trim()} tiver uma conta, o link chega em alguns minutos. Confira também a caixa de spam.`); return; }
+    if (t === 'nova-senha') { await conta.nuvem.trocarSenha(v('senha')); await conectar(true); return; }
+    if (t === 'clinica') {
+      const levar = !lerC(KEY_CACHE_DE) && conta.levar && (resumoDados().pacientes > 0 || resumoDados().horarios > 0);
+      const doc = levar ? db : dadosVazios();
+      const id = await conta.nuvem.criarClinica({ nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf'), nomePessoa:conta.nuvem.sessao().user.nome || '' }, doc);
+      await abrirClinica({ id, nome:v('clinica').trim(), perfil:'adm' });
+    }
+  } catch (e) { conta.erro = e.message; conta.ocupado = false; desenharAcesso(); }
+}
+// Eventos da tela de acesso (ficam nela; o resto do sistema não é afetado).
+function ligarAcesso(){
+  const el = document.getElementById('acesso'); if (!el) return;
+  el.addEventListener('submit', ev => { ev.preventDefault(); if (!conta.ocupado) enviarAcesso(ev.target); });
+  el.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-ac]'); if (!b) return; const a = b.dataset.ac;
+    if (a === 'ver') { const s = el.querySelector('[name=senha]'), mostrar = s.type === 'password'; s.type = mostrar ? 'text' : 'password'; b.textContent = mostrar ? 'Ocultar' : 'Mostrar'; }
+    else if (['entrar', 'criar', 'esqueci'].includes(a)) abrirAcesso(a);
+    else if (a === 'local') { gravarC(KEY_MODO, 'local'); conta.modo = 'local'; fecharAcesso(); aoMudarConta(); }
+    else if (a === 'sair') sairDaConta();
+  });
+  el.addEventListener('change', ev => { if (ev.target.dataset.ac === 'levar') { conta.levar = ev.target.value === '1'; desenharAcesso(); } });
+}
 // e as camadas que abrem por cima da tela (busca e atalhos de teclado).
 
 // [rota, rótulo, ícone]
@@ -2448,7 +2763,7 @@ function renderNav(route){
     <a class="tb-logo" href="#painel">${LOGO}<b>Musubi</b></a>
     <nav class="migalha" aria-label="Caminho">${crumbs.map(([h,t],i)=>h&&i<crumbs.length-1?`<a ${h.startsWith('#')?`href="${h}"`:h}>${esc(t)}</a>`:`<span>${esc(t)}</span>`).join(ic('dir'))}</nav>
     <button class="busca-g" data-act="busca" aria-label="Busca global (Ctrl K)">${ic('busca')}<span>Buscar pacientes, pontos e telas</span><kbd>Ctrl K</kbd></button>
-    <div class="tb-r">
+    <div class="tb-r">${seloConta()}
       <button class="ib so-cel" data-act="busca" aria-label="Buscar" data-tip="Buscar">${ic('busca')}</button>
       <button class="ib" data-act="atalhos" aria-label="Atalhos de teclado" data-tip="Atalhos de teclado (?)">${ic('teclado')}</button>
       <div class="dd"><button class="ib" data-act="notif" aria-label="Notificações: ${nl} novas" aria-expanded="${ui.ov==='notif'}" data-tip="Notificações">${ic('sino')}${nl?`<span class="badge">${nl}</span>`:''}</button>
@@ -2458,7 +2773,7 @@ function renderNav(route){
       <div class="dd"><button class="perfil-b" data-act="perfil" aria-expanded="${ui.ov==='perfil'}" aria-label="Perfil do profissional"><span class="avatar">${initials(PROF.nome)}</span><span class="pf-n">${PROF.nome.split(' ')[0]}</span>${ic('baixo')}</button>
         ${ui.ov==='perfil'?`<div class="dd-p pf" role="menu"><div class="pf-h"><span class="avatar lg">${initials(PROF.nome)}</span><div><b>${PROF.nome}</b><small class="muted">${PROF.papel}</small></div></div>
           <a class="pf-i" href="#configuracoes">${ic('admin')}Preferências</a><button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
-          <button class="pf-i sair" data-act="aviso" data-m="Sair: disponível quando houver login (etapa 10).">${ic('sair')}Sair</button></div>`:''}</div>
+          ${menuConta()}</div>`:''}</div>
     </div>`;
   document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+
     NAV.map(([k,l,i])=>`<a href="#${k}" aria-label="${l}" class="${atual===k?'on':''}" ${atual===k?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${k==='painel'&&nl?`<span class="nb">${nl}</span>`:''}</a>`).join('')+
@@ -4551,6 +4866,9 @@ document.addEventListener('click',ev=>{
   else if(a==='msg-orig'){ if(voltarMensagemWa(db,t.dataset.k)){ save(); render(true); toast('Mensagem de volta ao texto original'); } }
   else if(a==='ler-todas'){ notificacoes().forEach(n=>ui.lidas.add(n.k)); ui.ov=null; render(true); toast('Notificações marcadas como lidas'); }
   else if(a==='aviso'){ ui.ov=null; render(true); toast(t.dataset.m,'info'); }
+  else if(a==='sair'){ ui.ov=null; sairDaConta(); }
+  else if(a==='conta-entrar'){ entrarNaConta(); }
+  else if(a==='nuvem-tentar'){ tentarDeNovoConta(); }
   else if(a==='dia'){ ui.dia=t.dataset.d; render(true); }
   else if(a==='rolar'){ const d=document.getElementById(t.dataset.to); d?.scrollIntoView({behavior:'smooth',block:'start'}); d?.querySelector('input')?.focus({preventScroll:true}); }
   else if(a==='serie'){ const on=t.getAttribute('aria-pressed')!=='false'; t.setAttribute('aria-pressed',String(!on)); t.closest('.card').querySelectorAll(`.chart .se[data-s="${t.dataset.s}"]`).forEach(g=>g.classList.toggle('oculta',on)); }
@@ -4846,5 +5164,7 @@ document.addEventListener('submit',ev=>{
     save(); ui.bookPid=null; ui.remarcar=null; ui.agForm=null; ui.agDia=date; render(true);
   }
 });
+ligarAcesso();
+iniciarConta(manter => render(manter));
 render();
 </script>
