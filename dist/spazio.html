@@ -1527,6 +1527,7 @@ body.com-acesso{overflow:hidden}
 @media (min-width:761px){ .pd-i .pd-ctl{margin:0;width:auto} }
 @media (max-width:560px){ .tb-r > [data-act=atalhos]{display:none} }
 .cad-lado:has(.cad-exc.on){position:static}
+:root[data-theme="dark"] .logo-m{filter:brightness(0) invert(1)} /* no escuro, o logo vai na versão branca (regra do Maicon) */
 </style>
 
 
@@ -3049,7 +3050,7 @@ function renderNav(route){
           <div class="dd-f muted sm">Geradas a partir da agenda, dos alertas e dos prontuários.</div></div>`:''}</div>
       <div class="dd"><button class="perfil-b" data-act="perfil" aria-expanded="${ui.ov==='perfil'}" aria-label="Perfil do profissional"><span class="avatar">${initials(PROF.nome)}</span><span class="pf-n">${PROF.nome.split(' ')[0]}</span>${ic('baixo')}</button>
         ${ui.ov==='perfil'?`<div class="dd-p pf" role="menu"><div class="pf-h"><span class="avatar lg">${initials(PROF.nome)}</span><div><b>${PROF.nome}</b><small class="muted">${PROF.papel}</small></div></div>
-          ${conta.dono?`<a class="pf-i" href="#musubi">${ic('estrela')}Painel do MUSUBI</a>`:''}<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="conta">${ic('escudo')}Minha conta</a>${conta.modo!=='nuvem'||conta.clinica?.perfil==='adm'?`<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="clinica">${ic('admin')}Configurações da clínica</a>`:''}<button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
+          ${conta.dono?`<a class="pf-i" href="#musubi">${ic('estrela')}Painel do MUSUBI</a>`:''}<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="conta">${ic('escudo')}Minha conta</a>${conta.modo!=='nuvem'||conta.clinica?.perfil==='adm'?`<a class="pf-i" href="#configuracoes" data-cf="ir" data-k="clinica">${ic('admin')}Configurações da clínica</a>`:''}<button class="pf-i" data-act="tema" role="menuitemcheckbox" aria-checked="${document.documentElement.dataset.theme==='dark'}">${ic(document.documentElement.dataset.theme==='dark'?'sol':'yin')}${document.documentElement.dataset.theme==='dark'?'Tema claro':'Tema escuro'}</button><button class="pf-i" data-act="atalhos">${ic('teclado')}Atalhos de teclado</button>
           ${menuConta()}</div>`:''}</div>
     </div>`;
   document.getElementById('nav').innerHTML=`<div class="brand">${LOGO}<div><b>Musubi</b><small>Gestão clínica integrativa</small></div></div>`+
@@ -5456,6 +5457,7 @@ document.addEventListener('click',ev=>{
   else if(a==='ver-ponto'){ ui.ptQ=t.dataset.c; ui.ptMer=''; ui.bib='central'; irPara('biblioteca'); }
   else if(a.startsWith('bib-')||a.startsWith('atl-')){ acaoBiblioteca(a,t); }
   else if(a==='busca'||a==='notif'||a==='perfil'||a==='atalhos'){ abrir(a); }
+  else if(a==='tema'){ const escuro=document.documentElement.dataset.theme!=='dark'; definirTema(escuro?'dark':'light'); render(true); toast(escuro?'Tema escuro':'Tema claro'); }
   else if(a==='fechar'){ ui.ov=null; render(true); }
   else if(a==='fechar-ir'){ ui.ov=null; ui.wa=null; }
   else if(a==='wa'){ abrirPainelWa(t.dataset.t,t.dataset.pid,t.dataset.ap); render(true); document.getElementById('wa-t')?.focus(); }
@@ -5768,6 +5770,9 @@ document.addEventListener('submit',ev=>{
     save(); ui.bookPid=null; ui.remarcar=null; ui.agForm=null; ui.agDia=date; render(true);
   }
 });
+// Tema claro (padrão) ou escuro, escolhido no menu do usuário e guardado neste aparelho.
+function definirTema(t){ document.documentElement.dataset.theme=t; try{ localStorage.setItem('musubi-tema',t); }catch(e){} }
+try{ if(localStorage.getItem('musubi-tema')==='dark') document.documentElement.dataset.theme='dark'; }catch(e){}
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);

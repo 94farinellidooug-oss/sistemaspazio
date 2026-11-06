@@ -115,6 +115,19 @@ await ir(M, 'configuracoes');
 let larga = [];
 for (const k of ['clinica', 'servicos', 'horario', 'conta']) { await clicar(M, `[data-cf=aba][data-k=${k}]`); if (await M.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) larga.push(k); }
 ok(!larga.length, 'celular: nenhuma aba com rolagem lateral' + (larga.length ? ': ' + larga.join(', ') : ''));
+
+// Tema claro ou escuro pelo menu do usuário: começa claro, fica salvo no aparelho e o logo vira branco no escuro
+const tema = p => p.evaluate(() => document.documentElement.dataset.theme || 'light');
+const filtroLogo = p => p.evaluate(() => getComputedStyle(document.querySelector('.logo-m')).filter);
+ok(await tema(M) === 'light' && await filtroLogo(M) === 'none', 'tema: começa claro, com o logo colorido');
+await ir(M, 'painel'); await clicar(M, '[data-act=perfil]'); await clicar(M, '[data-act=tema]');
+ok(await tema(M) === 'dark' && (await filtroLogo(M)).includes('invert'), 'tema: botão do menu troca para o escuro e o logo fica branco');
+await M.reload(); await M.waitForTimeout(200);
+ok(await tema(M) === 'dark', 'tema: a escolha continua depois de recarregar');
+await clicar(M, '[data-act=perfil]');
+ok(await tem(M, '[data-act=tema]', 'Tema claro'), 'tema: no escuro o botão oferece o tema claro');
+await clicar(M, '[data-act=tema]'); await M.reload(); await M.waitForTimeout(200);
+ok(await tema(M) === 'light', 'tema: volta ao claro e fica salvo');
 ok(!erros.length, 'sem erros no console' + (erros.length ? ': ' + erros.join(' | ') : ''));
 await browser.close(); srv.close();
 console.log(falhas ? `\n${falhas} verificações falharam.` : '\nAs Configurações passaram.');
