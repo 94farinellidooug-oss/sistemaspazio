@@ -52,6 +52,13 @@ ok(await tem('.p10-u[data-u=u2] .pill', 'sem acesso') && await tem('#toast', 're
 await p.selectOption('[data-a=perfil][data-u=u2]', 'adm'); await espera();
 ok(await tem('#toast', 'agora é Administrador') && await p.isDisabled('[data-a=perfil][data-u=u1]'), 'muda o perfil; o próprio administrador não se rebaixa');
 
+// Permissões escolhidas pela clínica
+ok(!(await tem('[data-a=perm-padrao]')) && await p.locator('[data-a=perm]').count() === 16, 'profissional e recepção editáveis; administrador fixo');
+await clicar('[data-a=perm][data-r="2"][data-i="2"]');
+ok(await p.isChecked('[data-a=perm][data-r="2"][data-i="2"]') && await tem('#toast', 'Recepção agora abre: Prontuário') && await tem('[data-a=perm-padrao]'), 'clínica libera o prontuário para a recepção');
+await clicar('[data-a=perm-padrao]');
+ok(!(await p.isChecked('[data-a=perm][data-r="2"][data-i="2"]')) && !(await tem('[data-a=perm-padrao]')), 'voltar ao padrão');
+
 // Troca de clínica
 await clicar('[data-a=conta]');
 ok(await p.locator('.p10-menu [data-a=clinica]').count() === 2, 'topo mostra as clínicas da pessoa');
