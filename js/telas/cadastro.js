@@ -1,11 +1,12 @@
 // Tela Cadastro do paciente: novo paciente ou edição dos dados de um paciente existente.
 // Identificação e contato, local de atendimento (para o contexto sazonal), queixa principal,
 // alertas de segurança e consentimento LGPD. Os campos do protótipo mantêm os mesmos ids (np-*).
+import { ANOS_GUARDA, MOTIVOS_EXCLUSAO, guardarAte, temProntuario } from '../dados/excluir.js';
 import { ic } from '../componentes/icones.js';
 import { patient } from '../dados/repositorio.js';
 import { ALERTA_NOME } from '../dados/indicadores.js';
 import { ui } from '../estado.js';
-import { esc, fmt, initials } from '../util.js';
+import { TODAY, esc, fmt, initials } from '../util.js';
 
 const ALERTA_DICA = { gestante:'Pontos com cautela na gestação', anticoagulante:'Ventosa e sangria', marcapasso:'Eletroacupuntura' };
 
@@ -43,6 +44,7 @@ export function vCadastro(){
         :`<label class="lgpd"><input type="checkbox" id="np-lgpd" ${p?'':'required'}> <span>O paciente autorizou o tratamento dos dados de saúde para fins de atendimento (consentimento LGPD).${p?'':' *'}</span></label>`}</section>
       <div class="at-f" style="margin-top:0">${p?`<button type="button" class="btn" data-act="open" data-pid="${p.id}">Cancelar</button>`:'<a class="btn" href="#pacientes">Cancelar</a>'}<button class="btn pri">${ic('check')}${p?'Salvar alterações':'Cadastrar e abrir prontuário'}</button></div>
     </div>
+    ${p?excluirHtml(p):''}
     <aside class="card cad-p"><div class="lbl">Pré-visualização</div><div class="cad-pv"><span class="avatar xl" id="pv-av">${p?initials(p.name):'?'}</span><b id="pv-n">${p?esc(p.name):'Nome do paciente'}</b><small class="muted" id="pv-q">${p?esc(p.queixa):'Queixa principal'}</small></div>
       <div class="lbl" style="margin-top:16px">Próximo passo</div><p class="sm muted" style="margin-top:6px">${p?'As alterações aparecem no perfil e no prontuário. Sessões, avaliações e anamnese não são alteradas.':'Depois de cadastrar, o perfil abre na anamnese. O botão <b>Novo atendimento</b> registra a primeira consulta.'}</p></aside>
   </form>`;
@@ -52,4 +54,16 @@ export function previaCadastro(){
   const n=document.getElementById('np-name')?.value.trim(), q=document.getElementById('np-q')?.value.trim();
   const av=document.getElementById('pv-av'); if(!av) return;
   av.textContent=n?initials(n):'?'; document.getElementById('pv-n').textContent=n||'Nome do paciente'; document.getElementById('pv-q').textContent=q||'Queixa principal';
+}
+
+// Excluir cadastro: aviso da guarda do prontuário, motivo e o que vai acontecer.
+function excluirHtml(p){
+  const E = ui.excluir?.pid === p.id ? ui.excluir : null, guarda = temProntuario(p);
+  if (!E) return `<section class="card cad-exc" id="cad-exc"><div class="card-h"><h2>Excluir cadastro</h2></div><p class="muted sm">Para pacientes de exemplo, cadastros feitos por engano ou duplicados.</p><div class="at-f"><button type="button" class="btn cad-exc-b" data-act="pac-excluir" data-pid="${p.id}">${ic('x')}Excluir paciente</button></div></section>`;
+  return `<section class="card cad-exc on" id="cad-exc"><div class="card-h"><h2>Excluir ${esc(p.name)}</h2></div>
+    <div class="notice warn">${ic('alerta')}<span>O prontuário de saúde tem guarda obrigatória: em geral, <b>${ANOS_GUARDA} anos depois do último registro</b>. Por isso, paciente com atendimento, avaliação ou documento não é apagado.</span></div>
+    <p class="sm cad-exc-o">${guarda ? `<b>${esc(p.name)} tem prontuário.</b> O cadastro fica <b>desativado</b> até ${fmt(guardarAte(p, TODAY))}: sai das listas, da agenda e da busca, e aparece só em Administração, Pacientes desativados, de onde dá para reativar.` : `<b>${esc(p.name)} não tem prontuário.</b> O cadastro e os horários da agenda saem de vez. Não dá para desfazer.`} O que já foi recebido continua no financeiro.</p>
+    <div class="form"><div class="field full"><label class="lbl" for="exc-m">Motivo *</label><select id="exc-m" data-exc="motivo"><option value="">Escolha o motivo</option>${MOTIVOS_EXCLUSAO.map(m => `<option ${E.motivo === m ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+      ${E.motivo === 'Outro motivo' ? `<div class="field full"><label class="lbl" for="exc-o">Qual motivo? *</label><input id="exc-o" data-exc="outro" value="${esc(E.outro || '')}" autocomplete="off"></div>` : ''}</div>
+    <div class="at-f"><button type="button" class="btn" data-act="pac-excluir-nao">Cancelar</button><button type="button" class="btn crit" data-act="pac-excluir-sim" data-pid="${p.id}">${ic('x')}${guarda ? 'Desativar cadastro' : 'Excluir de vez'}</button></div></section>`;
 }

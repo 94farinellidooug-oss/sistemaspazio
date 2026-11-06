@@ -34,6 +34,8 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   S.usuarios = { 'maicon@x.com':{ id:'u1', senha:'segredo123', nome:'Maicon' } }; S.clinicas.length = 0; S.dados = {};
   // Aparelho 1: tem os exemplos e um paciente cadastrado sem conta
   const A = await aparelho('A', url);
+  // um paciente de verdade, cadastrado antes no protótipo (o sistema converte ao abrir), além dos exemplos
+  await A.evaluate(() => { localStorage.setItem('spazio-v1', JSON.stringify({ patients:[{ id:'r1', name:'Paciente Real', birth:'1990-01-01', phone:'', queixa:'dor', anam:{}, alerts:{}, sessions:[], assess:[] }], appts:[{ id:'h1', pid:'r1', date:new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10), time:'09:00', tipo:'Acupuntura', valor:180, done:false }] })); localStorage.removeItem('musubi-v2'); }); await A.reload(); await A.waitForTimeout(150);
   ok(await p_visivel(A, '#acesso') && await tem(A, '#acesso h1', 'Entrar no MUSUBI'), `${rot}: abre na tela de entrar`);
   await A.fill('#acesso [name=email]', 'maicon@x.com'); await A.fill('#acesso [name=senha]', 'errada'); await clicar(A, '#acesso [type=submit]');
   ok(await tem(A, '.erro-a', 'E-mail ou senha incorretos'), `${rot}: senha errada em português`);

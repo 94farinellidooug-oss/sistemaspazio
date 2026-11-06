@@ -33,6 +33,7 @@ export const voltarMensagemWa = (db, k) => { if (db.mensagensWa?.[k]) { delete d
 // Número para o link: só dígitos; com DDD e sem o 55 (10 ou 11 dígitos), o 55 entra na frente.
 export function numeroWa(tel){
   const d = String(tel || '').replace(/\D/g, '');
+  if (/^(\d)\1+$/.test(d)) return ''; // número de exemplo (0000…, 1111…): não abre conversa com ninguém
   return d.length === 10 || d.length === 11 ? '55' + d : d.length >= 12 && d.length <= 13 ? d : '';
 }
 export const linkWa = (tel, texto) => numeroWa(tel) ? `https://wa.me/${numeroWa(tel)}?text=${encodeURIComponent(texto)}` : '';

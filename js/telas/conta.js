@@ -4,7 +4,7 @@
 // No computador de desenvolvimento e no arquivo aberto do disco o sistema segue sem conta, como antes,
 // a não ser que o modo servidor seja escolhido (musubi-modo = nuvem).
 import { criarNuvem, criarSincronia } from '../dados/nuvem.js';
-import { dadosVazios, db, ouvirSalvar, resumoDados, trocarDados } from '../dados/repositorio.js';
+import { dadosNovaClinica, dadosVazios, db, ouvirSalvar, resumoDados, trocarDados } from '../dados/repositorio.js';
 import { definirNomeClinica } from '../dados/documentos.js';
 import { PROF } from './menu.js';
 import { LOGO, ic } from '../componentes/icones.js';
@@ -128,7 +128,7 @@ function htmlAcesso(){
     : t === 'clinica' ? `${campoA('clinica', 'Nome da clínica')}<div class="acesso-2">${campoA('cidade', 'Cidade')}<label class="field"><span class="lbl">Estado</span><select name="uf">${UFS_BR.map(u => `<option ${u === 'RS' ? 'selected' : ''}>${u}</option>`).join('')}</select></label></div>
         ${temDados ? `<div class="acesso-opc" role="radiogroup" aria-label="Dados deste aparelho"><p><b>Encontramos dados neste aparelho:</b> ${R.pacientes} paciente${R.pacientes === 1 ? '' : 's'}${R.exemplos ? ' (além dos exemplos)' : ''}, ${R.atendimentos} atendimento${R.atendimentos === 1 ? '' : 's'} e ${R.horarios} horário${R.horarios === 1 ? '' : 's'} na agenda.</p>
           <label class="${conta.levar ? 'on' : ''}"><input type="radio" name="levar" value="1" data-ac="levar" ${conta.levar ? 'checked' : ''}><span><b>Levar para a minha conta</b><small>Tudo passa a ficar no servidor e aparece em qualquer aparelho. Recomendado.</small></span></label>
-          <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa vazia.</small></span></label></div>` : ''}` : '';
+          <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa com pacientes de exemplo (WhatsApp e CPF 0000…) para conhecer o sistema. Dá para excluir depois.</small></span></label></div>` : ''}` : '';
   const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Entrar no MUSUBI' }[t];
   const rodape = t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p>`
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
@@ -171,7 +171,7 @@ async function enviarAcesso(f){
     if (t === 'nova-senha') { await conta.nuvem.trocarSenha(v('senha')); await conectar(true); return; }
     if (t === 'clinica') {
       const levar = !lerC(KEY_CACHE_DE) && conta.levar && (resumoDados().pacientes > 0 || resumoDados().horarios > 0);
-      const doc = levar ? db : dadosVazios();
+      const doc = levar ? db : dadosNovaClinica();
       (doc.config ||= {}).clinica = { ...(doc.config.clinica || {}), nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf') };
       const id = await conta.nuvem.criarClinica({ nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf'), nomePessoa:conta.nuvem.sessao().user.nome || '' }, doc);
       await abrirClinica({ id, nome:v('clinica').trim(), perfil:'adm' });
