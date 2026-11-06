@@ -117,7 +117,7 @@ export const sairDaConta = async () => {
 
 /* ---------- Usado em Configurações (Sua conta e dados da clínica) ---------- */
 // Pagamento pela InfinitePay a partir de Minha conta: abre o link (devolve '' ou a mensagem de erro).
-export const pagarConta = (plano, periodo) => tentarC(async () => { const r = await conta.nuvem.pagar(conta.clinica.id, plano, periodo); location.href = r.url; });
+export const pagarConta = (plano, periodo, teste = false) => tentarC(async () => { const r = await conta.nuvem.pagar(conta.clinica.id, plano, periodo, teste); location.href = r.url; });
 // Pagamentos da clínica (null enquanto carrega; recarrega a tela quando chegam).
 export const pagamentosConta = () => {
   if (conta.modo !== 'nuvem' || !conta.clinica?.id) return [];

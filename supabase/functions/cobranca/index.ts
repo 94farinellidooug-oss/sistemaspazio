@@ -8,6 +8,7 @@
 //
 // Pedidos (POST, JSON):
 //   { acao:'criar', clinica, plano, periodo }  com o login do administrador da clínica: cria o pedido e devolve { url }
+//   { acao:'criar', clinica, plano, teste:true }  só o dono do MUSUBI: pagamento de teste de R$ 1,00 (libera 1 mês)
 //   { acao:'conferir', order_nsu, transaction_nsu, slug }  com login: confere na InfinitePay e devolve { pago }
 //   aviso da InfinitePay (webhook, ?aviso=1): confere na InfinitePay e marca como pago
 // O pagamento só é marcado depois de a InfinitePay confirmar pelo payment_check (o aviso não tem assinatura).
@@ -18,6 +19,7 @@ const INFINITEPAY = 'https://api.checkout.infinitepay.io';
 export const PRECOS = { essencial:7900, profissional:14900, clinica:29900 };
 export const NOMES = { essencial:'Essencial', profissional:'Profissional', clinica:'Clínica' };
 export const valorDe = (plano, periodo) => PRECOS[plano] * (periodo === 'anual' ? 10 : 1);
+export const VALOR_TESTE = 100; // R$ 1,00, o mínimo da InfinitePay
 
 const CORS = { 'Access-Control-Allow-Origin':'*', 'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods':'POST, OPTIONS' };
 const resp = (status, corpo) => new Response(JSON.stringify(corpo), { status, headers:{ ...CORS, 'Content-Type':'application/json' } });
@@ -72,16 +74,17 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
         return resp(200, { pago:r.pago });
       }
       if (corpo.acao !== 'criar') return erro(400, 'acao', 'Pedido inválido.');
-      const { clinica, plano, periodo } = corpo;
+      const teste = corpo.teste === true, { clinica, plano } = corpo, periodo = teste ? 'mensal' : corpo.periodo;
       if (!PRECOS[plano] || !['mensal', 'anual'].includes(periodo) || !/^[0-9a-f-]{36}$/i.test(String(clinica || ''))) return erro(400, 'dados', 'Pacote ou período inválido.');
       if (!HANDLE) return erro(503, 'sem_cobranca', 'O pagamento online ainda não está ligado.');
       const M = (await banco(`membros?select=perfil&clinica_id=eq.${clinica}&user_id=eq.${u.id}&ativo=is.true`)) || [];
       if (M[0]?.perfil !== 'adm') return erro(403, 'sem_acesso', 'Só o administrador da clínica faz o pagamento.');
-      const valor = valorDe(plano, periodo), order_nsu = 'musubi-' + novoId();
+      if (teste && !((await banco(`donos?select=user_id&user_id=eq.${u.id}`)) || []).length) return erro(403, 'sem_acesso', 'Só o dono do MUSUBI faz o pagamento de teste.');
+      const valor = teste ? VALOR_TESTE : valorDe(plano, periodo), order_nsu = 'musubi-' + novoId();
       await banco('pagamentos', { metodo:'POST', corpo:{ clinica_id:clinica, plano, periodo, valor, order_nsu, pedido_por:u.id }, cab:{ Prefer:'return=minimal' } });
       const r = await f(`${INFINITEPAY}/links`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({
         handle:HANDLE, order_nsu,
-        items:[{ description:`MUSUBI ${NOMES[plano]} · ${periodo === 'anual' ? '12 meses' : '1 mês'}`, price:valor, quantity:1 }],
+        items:[{ description:teste ? 'MUSUBI · teste de pagamento' : `MUSUBI ${NOMES[plano]} · ${periodo === 'anual' ? '12 meses' : '1 mês'}`, price:valor, quantity:1 }],
         redirect_url:`${SITE}/spazio.html`, webhook_url:`${SB}/functions/v1/cobranca?aviso=1`,
         customer:u.email ? { email:u.email } : undefined
       }) });

@@ -101,6 +101,10 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(S.interessados[0].situacao === 'chamei', `${rot}: muda a situação do interessado`);
   await clicar(M, '[data-pd=aba][data-k=pagamentos]');
   ok(await M.locator('#pd-pag .pd-g-l').count() === 2 && await tem(M, '#pd-pag .pd-g-l', 'Clínica Sol') && await tem(M, '#pd-pag', 'R$ 790,00') && await tem(M, '#pd-pag .pd-g-l', 'Não concluído'), `${rot}: painel lista os pagamentos de todas as clínicas`);
+  ok(await tem(M, '#pd-pag [data-pd=teste]', 'Testar pagamento (R$ 1,00)'), `${rot}: dono vê o botão de pagamento de teste`);
+  const antes = S.pagamentos.length;
+  await Promise.all([M.waitForURL(/checkout\.infinitepay\.io/, { timeout:5000 }).catch(() => {}), clicar(M, '#pd-pag [data-pd=teste]')]);
+  ok(S.pagamentos.length === antes + 1 && S.pagamentos[0].valor === 100 && S.pagamentos[0].periodo === 'mensal' && /checkout\.infinitepay\.io/.test(M.url()), `${rot}: teste abre o pagamento de R$ 1,00 na InfinitePay`);
   await M.context().close();
 }
 // Celular: painel sem rolagem lateral

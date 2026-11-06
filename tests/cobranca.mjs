@@ -8,13 +8,14 @@ const ok = (c, m) => { console.log(`${c ? 'ok   ' : 'FALHA'} ${m}`); if (!c) fal
 const C1 = '11111111-1111-1111-1111-111111111111';
 
 function cenario({ handle = 'spazio', resposta = { url:'https://checkout.infinitepay.io/spazio/abc' }, check = { success:true, paid:true, amount:14900, paid_amount:14900, capture_method:'pix' } } = {}){
-  const S = { pagamentos:[], chamadas:[], registros:[], membros:[{ clinica_id:C1, user_id:'u1', perfil:'adm' }, { clinica_id:C1, user_id:'u2', perfil:'rec' }], links:[], checks:[] };
+  const S = { donos:[], pagamentos:[], chamadas:[], registros:[], membros:[{ clinica_id:C1, user_id:'u1', perfil:'adm' }, { clinica_id:C1, user_id:'u2', perfil:'rec' }], links:[], checks:[] };
   const json = (status, j) => new Response(j === undefined ? null : JSON.stringify(j), { status });
   const f = async (url, op = {}) => {
     const u = new URL(url), corpo = op.body ? JSON.parse(op.body) : undefined; S.chamadas.push(u.pathname);
     if (u.origin === 'https://sb.test') {
       if (op.headers.apikey !== 'service') ok(false, 'banco chamado sem a chave do servidor');
       if (u.pathname === '/auth/v1/user') { const t = op.headers.Authorization.replace('Bearer ', ''); return t === 'tk-u1' ? json(200, { id:'u1', email:'adm@x.com' }) : t === 'tk-u2' ? json(200, { id:'u2', email:'rec@x.com' }) : json(401, {}); }
+      if (u.pathname === '/rest/v1/donos') return json(200, S.donos.includes(u.searchParams.get('user_id').slice(3)) ? [{ user_id:u.searchParams.get('user_id').slice(3) }] : []);
       if (u.pathname === '/rest/v1/membros') { const c = u.searchParams.get('clinica_id').slice(3), us = u.searchParams.get('user_id').slice(3); return json(200, S.membros.filter(m => m.clinica_id === c && m.user_id === us)); }
       if (u.pathname === '/rest/v1/pagamentos' && op.method === 'POST') { S.pagamentos.push({ ...corpo, situacao:'aberto' }); return json(201); }
       if (u.pathname === '/rest/v1/pagamentos' && op.method === 'PATCH') { const p = S.pagamentos.find(x => x.order_nsu === u.searchParams.get('order_nsu').slice(3)); Object.assign(p, corpo); return json(204); }
@@ -65,6 +66,17 @@ ok(valorDe('profissional', 'anual') === 149000, 'anual = 10 meses (2 meses grát
   // Volta do comprador
   r = await pedir({ acao:'conferir', order_nsu:'musubi-id1', transaction_nsu:'tx1', slug:'abc' }, 'tk-u1');
   ok((await r.json()).pago === true, 'na volta ao sistema, conferir mostra pago');
+}
+{ const { S, pedir } = cenario({ check:{ success:true, paid:true, amount:100, paid_amount:100, capture_method:'pix' } });
+  S.donos = ['u1'];
+  let r = await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'anual', teste:true }, 'tk-u1');
+  const j = await r.json();
+  ok(r.status === 200 && j.valor === 100 && S.pagamentos[0].valor === 100 && S.pagamentos[0].periodo === 'mensal' && S.links[0].items[0].price === 100 && S.links[0].items[0].description.includes('teste'), 'dono faz pagamento de teste de R$ 1,00 (sempre mensal)');
+  await pedir({ order_nsu:'musubi-id1', transaction_nsu:'tx1', invoice_slug:'abc' }, null, '?aviso=1');
+  ok(S.registros.length === 1 && S.pagamentos[0].situacao === 'pago', 'pagamento de teste confirmado é registrado');
+  S.donos = [];
+  r = await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal', teste:true }, 'tk-u1');
+  ok(r.status === 403 && S.pagamentos.length === 1, 'quem não é dono do MUSUBI não faz pagamento de teste');
 }
 { const { S, pedir } = cenario({ check:{ success:true, paid:false, amount:14900 } });
   await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u1');
