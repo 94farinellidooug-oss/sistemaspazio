@@ -5,11 +5,11 @@
 import { ic } from '../componentes/icones.js';
 import { db } from '../dados/repositorio.js';
 import { DIAS_SEMANA, DURACOES, UFS, configDe, resumoHorario, salvarClinica, salvarHorario, salvarServicos } from '../dados/config.js';
-import { clinicaNoServidor, contaAtual, situacaoConta, mudarEmailConta, sairDosOutrosConta, salvarNomeConta, trocarSenhaConta } from './conta.js';
+import { clinicaNoServidor, contaAtual, pagamentosConta, pagarConta, situacaoConta, mudarEmailConta, sairDosOutrosConta, salvarNomeConta, trocarSenhaConta } from './conta.js';
 import { esc } from '../util.js';
-import { PLANOS, precoTxt } from '../dados/planos.js';
+import { PERIODOS_PAG, PLANOS, planoDe, precoPeriodoTxt, precoTxt } from '../dados/planos.js';
 
-const cf = { aba:'clinica', senha:false, ocupado:false };
+const cf = { aba:'clinica', senha:false, ocupado:false, plano:null, periodo:'mensal' };
 let cfApp = { save:() => {}, render:() => {}, toast:() => {} };
 const ABAS_CF = [['clinica', 'Clínica', 'local'], ['servicos', 'Serviços e preços', 'dinheiro'], ['horario', 'Horário de atendimento', 'relogio'], ['conta', 'Sua conta e segurança', 'escudo']];
 const valorTxt = v => String(v).replace('.', ',');
@@ -83,12 +83,25 @@ function cfConta(){
       <p class="muted sm cf-obs">Entrou como <b>${esc({ adm:'Administrador', prof:'Profissional', rec:'Recepção' }[C.perfil] || '')}</b>${C.clinica ? ` em ${esc(C.clinica)}` : ''}.</p></form>
     ${seg}${cfPacote()}</div>`;
 }
-// Pacote da clínica: qual é, quanto tempo falta e o que cada pacote tem.
+// Pacote da clínica: qual é, quanto tempo falta, o que cada pacote tem e, para o administrador, pagar pela
+// InfinitePay (Pix ou cartão, mensal ou anual) e ver os pagamentos feitos.
+const FORMA_PAG = { pix:'Pix', credit_card:'Cartão' };
+const reais = c => (c / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 function cfPacote(){
   const S = situacaoConta(); if (!S) return '';
+  const adm = contaAtual().perfil === 'adm', plano = cf.plano || S.plano.k, P = planoDe(plano);
+  const pags = adm ? pagamentosConta() : [];
   return `<div class="card" id="cf-pacote"><div class="card-h"><h2>Seu pacote<small>${esc(S.rotulo)}</small></h2><span class="pill ${S.tipo === 'vencido' ? 'warn' : 'acc'}">${esc(S.plano.nome)}</span></div>
     <div class="cf-planos">${PLANOS.map(p => `<div class="cf-plano ${p.k === S.plano.k ? 'on' : ''}"><b>${p.nome}</b><small class="muted">${precoTxt(p)}</small><ul>${p.itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>
-    <p class="muted sm cf-obs">${S.tipo === 'teste' ? 'Durante o teste você usa tudo o que o pacote tem. ' : ''}O pagamento pelo site (Pix, boleto e cartão) entra em breve; para trocar de pacote, fale com o MUSUBI.</p></div>`;
+    ${adm ? `<div class="cf-pagar" id="cf-pagar"><h3>${S.tipo === 'pago' ? 'Renovar ou trocar de pacote' : 'Pagar o MUSUBI'}</h3>
+      <div class="cf-pagar-l"><label class="field"><span class="lbl">Pacote</span><select data-cf="pag-plano">${PLANOS.map(p => `<option value="${p.k}" ${p.k === plano ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></label>
+        <label class="field"><span class="lbl">Período</span><select data-cf="pag-periodo">${PERIODOS_PAG.map(([k, l]) => `<option value="${k}" ${k === cf.periodo ? 'selected' : ''}>${l}: ${precoPeriodoTxt(P, k)}${k === 'anual' ? ' (2 meses grátis)' : ''}</option>`).join('')}</select></label>
+        <button class="btn pri" data-cf="pagar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Pagar com Pix ou cartão'}</button></div>
+      <p class="erro-a" id="cf-pag-erro" role="alert" hidden></p>
+      <p class="muted sm cf-obs">O pagamento é feito na InfinitePay, com Pix ou cartão de crédito em até 12x. Quando ele é confirmado, o acesso é liberado sozinho${S.tipo === 'pago' ? ' e o novo período começa depois do que já está pago' : ''}.</p>
+      ${pags.length ? `<div class="list cf-pags">${pags.map(g => `<div class="row"><div class="grow"><b>${planoDe(g.plano).nome} · ${g.periodo === 'anual' ? 'anual' : 'mensal'}</b><small class="muted">${new Date(g.pago_em || g.criado_em).toLocaleDateString('pt-BR')}${g.forma ? ' · ' + (FORMA_PAG[g.forma] || esc(g.forma)) : ''}</small></div>
+        <b>${reais(g.valor)}</b><span class="pill ${g.situacao === 'pago' ? 'ok' : ''}">${g.situacao === 'pago' ? 'Pago' : 'Não concluído'}</span>${g.recibo ? `<a class="btn sm ghost" href="${esc(g.recibo)}" target="_blank" rel="noopener">Recibo</a>` : ''}</div>`).join('')}</div>` : ''}</div>`
+    : `<p class="muted sm cf-obs">O pagamento é feito pelo administrador da clínica, em Minha conta.</p>`}</div>`;
 }
 
 /* ---------- Eventos ---------- */
@@ -148,10 +161,13 @@ export function ligarConfig(s, r, t){
       L.push({ nome:n, dur:60, valor:0, ativo:true }); salvarServicos(db, L); cfApp.save(); cfApp.render(true);
       const i = document.querySelector(`#cf-serv [data-k="nome"][data-i="${L.length - 1}"]`); if (i) { i.focus(); i.select(); } }
     else if (a === 'senha') { cf.senha = true; b.hidden = true; const c = document.querySelector('#cf-conta .cf-senha'); if (c) { c.hidden = false; c.querySelector('input').focus(); } }
+    else if (a === 'pagar') { cf.ocupado = true; cfApp.render(true); const e = await pagarConta(cf.plano || situacaoConta()?.plano.k || 'profissional', cf.periodo); if (e) { cf.ocupado = false; cfApp.render(true); erroCf('cf-pag-erro', e); } }
     else if (a === 'sair-outros') { cf.ocupado = true; cfApp.render(true); const e = await sairDosOutrosConta(); cf.ocupado = false; cfApp.render(true); cfApp.toast(e || 'Os outros aparelhos vão pedir para entrar de novo', e ? 'info' : 'ok'); }
   });
   document.addEventListener('change', ev => {
     const t = ev.target; if (!t.dataset?.cf) return;
+    if (t.dataset.cf === 'pag-plano') { cf.plano = t.value; cfApp.render(true); return; }
+    if (t.dataset.cf === 'pag-periodo') { cf.periodo = t.value; cfApp.render(true); return; }
     if (t.dataset.cf === 'serv') mudarServ(t); else if (['dia', 'hora', 'pausa', 'pausa-h'].includes(t.dataset.cf)) mudarHor(t);
   });
   document.addEventListener('submit', ev => {

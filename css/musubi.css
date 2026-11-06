@@ -1279,3 +1279,13 @@ body.com-acesso{overflow:hidden}
 @media (max-width:560px){ .tb-r > [data-act=atalhos]{display:none} }
 .cad-lado:has(.cad-exc.on){position:static}
 :root[data-theme="dark"] .logo-m{filter:brightness(0) invert(1)} /* no escuro, o logo vai na versão branca (regra do Maicon) */
+/* Pagar o MUSUBI (Minha conta) */
+.cf-pagar{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.cf-pagar h3{font-size:.95rem;margin:0 0 10px}
+.cf-pagar-l{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto;gap:10px;align-items:end}
+@media (max-width:620px){ .cf-pagar-l{grid-template-columns:minmax(0,1fr)} }
+.cf-pags{margin-top:10px}
+.cf-pags .row{gap:10px;flex-wrap:wrap}
+.pd-n.pd-n3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:620px){ .pd-n.pd-n3{grid-template-columns:minmax(0,1fr)} }
+.pd-g-l{gap:10px;flex-wrap:wrap}

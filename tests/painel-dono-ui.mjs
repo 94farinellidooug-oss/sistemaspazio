@@ -1,7 +1,8 @@
 // Verifica no navegador os pacotes e o Painel do MUSUBI (etapa 10), com o Supabase falso:
 // escolher o pacote ao criar a clínica (7 dias grátis), aviso do teste no topo, teste terminado pedindo
 // para continuar (sem perder dados), painel só para o dono, dar e tirar acesso grátis, trocar pacote,
-// mais dias de teste e interessados. Uso: node tests/painel-dono-ui.mjs
+// mais dias de teste, interessados e pagamento pela InfinitePay (link, volta, acesso liberado, painel).
+// Uso: node tests/painel-dono-ui.mjs
 import { createRequire } from 'node:module';
 import { iniciar } from '../tools/servidor.mjs';
 import { servidor } from './lib/supabase-falso.mjs';
@@ -21,6 +22,7 @@ async function aparelho(nome, url, viewport = { width:1280, height:900 }){
     const r = await S.fetch(q.url(), { method:q.method(), headers:await q.allHeaders().then(h => ({ apikey:h.apikey, Authorization:h.authorization, Prefer:h.prefer })), body:q.postData() || undefined });
     await route.fulfill({ status:r.status, contentType:'application/json', body:await r.text() });
   });
+  await ctx.route('https://checkout.infinitepay.io/**', r => r.fulfill({ status:200, contentType:'text/html', body:'<h1>InfinitePay</h1>' }));
   const p = await ctx.newPage();
   p.on('pageerror', e => erros.push(`${nome}: ${e.message}`)); p.on('console', m => { if (m.type() === 'error' && !m.text().includes('Failed to load resource')) erros.push(`${nome}: ${m.text()}`); });
   await p.addInitScript(() => { if (!sessionStorage.getItem('iniciado')) { localStorage.setItem('musubi-modo', 'nuvem'); sessionStorage.setItem('iniciado', '1'); } });
@@ -33,7 +35,7 @@ const ir = async (p, h) => { await p.evaluate(x => { location.hash = x; }, h); a
 
 for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/spazio.html']]) {
   S.usuarios = { 'maicon@x.com':{ id:'u1', senha:'segredo123', nome:'Maicon' }, 'ana@y.com':{ id:'u2', senha:'outrasenha', nome:'Ana' } };
-  S.clinicas.length = 0; S.dados = {}; S.interessados.length = 0; S.donos = ['u1'];
+  S.clinicas.length = 0; S.dados = {}; S.interessados.length = 0; S.donos = ['u1']; S.pagamentos = []; S.cobranca = false;
   // Ana cria a clínica escolhendo o Essencial
   const A = await aparelho('A', url);
   await entrar(A, 'ana@y.com', 'outrasenha');
@@ -51,9 +53,28 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   // Teste terminado: pede para continuar, sem perder dados
   cA.assin.teste_ate = new Date(Date.now() - 864e5).toISOString();
   await A.reload(); await A.waitForTimeout(300);
-  ok(await tem(A, '#acesso h1', 'O teste grátis terminou') && await A.isChecked('#acesso [name=plano][value=essencial]'), `${rot}: teste terminado pede para continuar, com o pacote escolhido`);
+  ok(await tem(A, '#acesso h1', 'O teste grátis terminou') && await A.isChecked('#acesso [name=plano][value=essencial]') && await A.isChecked('#acesso [name=periodo][value=mensal]') && await tem(A, '#acesso [name=periodo][value=anual] ~ span', 'R$ 790/ano'), `${rot}: teste terminado pede para pagar, com o pacote escolhido, mensal ou anual`);
+  // Pagamento online ainda não ligado: cai no contato pelo WhatsApp
+  await clicar(A, '#acesso [type=submit]'); await A.waitForTimeout(200);
+  ok(await tem(A, '#acesso h1', 'Falar com a equipe') && await tem(A, '#acesso', 'ainda não está disponível'), `${rot}: sem pagamento online, oferece o contato da equipe`);
   await A.fill('#acesso [name=whats]', '(53) 99876-5432'); await clicar(A, '#acesso [type=submit]'); await A.waitForTimeout(150);
   ok(S.interessados.some(i => i.whats === '(53) 99876-5432' && i.nome.includes('Clínica Sol') && i.nome.includes('Essencial')) && await tem(A, '#acesso h1', 'Pedido enviado') && S.dados[cA.id], `${rot}: pedido de continuar vai para os interessados; dados guardados`);
+  // Pagamento ligado: anual pelo link da InfinitePay
+  S.cobranca = true; await A.reload(); await A.waitForTimeout(300);
+  await A.check('#acesso [name=periodo][value=anual]'); await A.waitForTimeout(100);
+  await Promise.all([A.waitForURL(/checkout\.infinitepay\.io/), clicar(A, '#acesso [type=submit]')]);
+  const g = S.pagamentos[0];
+  ok(g?.plano === 'essencial' && g.periodo === 'anual' && g.valor === 79000 && g.clinica_id === cA.id, `${rot}: abre o link da InfinitePay com o pacote e o período`);
+  await A.goto(BASE + url + `?receipt_url=https%3A%2F%2Frecibo%2F1&order_nsu=${g.order_nsu}&slug=abc&capture_method=pix&transaction_nsu=tx1`); await A.waitForTimeout(500);
+  ok(await A.locator('#acesso').isHidden() && await tem(A, '#toast', 'Pagamento confirmado') && !A.url().includes('order_nsu'), `${rot}: na volta, o pagamento é conferido e o sistema abre`);
+  ok(cA.assin.pago_ate && new Date(cA.assin.pago_ate) > Date.now() + 360 * 864e5 && !(await tem(A, '.selo-teste')), `${rot}: anual libera o acesso por 1 ano`);
+  await ir(A, 'configuracoes'); await clicar(A, '[data-cf=aba][data-k=conta]'); await A.waitForTimeout(200);
+  ok(await tem(A, '#cf-pagar h3', 'Renovar') && await tem(A, '#cf-pagar .cf-pags', 'Pago') && await tem(A, '#cf-pagar .cf-pags a', 'Recibo'), `${rot}: Minha conta mostra o pagamento, o recibo e a opção de renovar`);
+  await A.selectOption('#cf-pagar [data-cf=pag-plano]', 'profissional'); await A.waitForTimeout(100);
+  ok(await tem(A, '#cf-pagar [data-cf=pag-periodo] option', 'R$ 149/mês'), `${rot}: trocar o pacote mostra o preço dele`);
+  await Promise.all([A.waitForURL(/checkout\.infinitepay\.io/), clicar(A, '[data-cf=pagar]')]);
+  ok(S.pagamentos[0].plano === 'profissional' && S.pagamentos[0].periodo === 'mensal', `${rot}: renovar pela Minha conta abre o link`);
+  cA.assin.pago_ate = null;
   await A.context().close();
 
   // Maicon: dono
@@ -78,6 +99,8 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(await tem(M, '#pd-int', '(53) 99876-5432') && await tem(M, '#pd-int a.wa'), `${rot}: interessados com o WhatsApp`);
   await M.selectOption('#pd-int [data-pd=situ]', 'chamei'); await M.waitForTimeout(300);
   ok(S.interessados[0].situacao === 'chamei', `${rot}: muda a situação do interessado`);
+  await clicar(M, '[data-pd=aba][data-k=pagamentos]');
+  ok(await M.locator('#pd-pag .pd-g-l').count() === 2 && await tem(M, '#pd-pag .pd-g-l', 'Clínica Sol') && await tem(M, '#pd-pag', 'R$ 790,00') && await tem(M, '#pd-pag .pd-g-l', 'Não concluído'), `${rot}: painel lista os pagamentos de todas as clínicas`);
   await M.context().close();
 }
 // Celular: painel sem rolagem lateral

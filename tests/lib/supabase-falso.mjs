@@ -49,6 +49,25 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       d.doc = corpo.p_doc; d.versao++; return resp(200, d.versao);
     }
     if (u.pathname === '/rest/v1/clinicas' && op.method === 'PATCH') { const c = S.clinicas.find(x => x.id === u.searchParams.get('id').replace('eq.', '')); if (!c?.membros.some(m => m.user === eu.id && m.perfil === 'adm')) return resp(200); Object.assign(c, corpo); return resp(204); }
+    // Função cobranca (pagamento pela InfinitePay): S.cobranca = true liga; sem ela, responde como o servidor sem a InfiniteTag.
+    if (u.pathname === '/functions/v1/cobranca') {
+      S.pagamentos ||= [];
+      if (corpo.acao === 'criar') {
+        if (!S.cobranca) return resp(503, { erro:'sem_cobranca', msg:'O pagamento online ainda não está ligado.' });
+        if (!S.clinicas.find(x => x.id === corpo.clinica)?.membros.some(m => m.user === eu.id && m.perfil === 'adm')) return resp(403, { erro:'sem_acesso', msg:'Só o administrador da clínica faz o pagamento.' });
+        const n = ++S.n, valor = { essencial:7900, profissional:14900, clinica:29900 }[corpo.plano] * (corpo.periodo === 'anual' ? 10 : 1);
+        S.pagamentos.unshift({ id:'g' + n, clinica_id:corpo.clinica, plano:corpo.plano, periodo:corpo.periodo, valor, order_nsu:'musubi-' + n, situacao:'aberto', forma:'', recibo:'', criado_em:new Date().toISOString(), pago_em:null });
+        return resp(200, { url:'https://checkout.infinitepay.io/teste/' + n, order_nsu:'musubi-' + n, valor });
+      }
+      if (corpo.acao === 'conferir') {
+        const g = S.pagamentos.find(x => x.order_nsu === corpo.order_nsu); if (!g || corpo.transaction_nsu === 'falhou') return resp(200, { pago:false });
+        if (g.situacao !== 'pago') { const c = S.clinicas.find(x => x.id === g.clinica_id); Object.assign(g, { situacao:'pago', forma:'pix', pago_em:new Date().toISOString(), recibo:corpo.receipt_url || '' });
+          c.assin.plano = g.plano; c.assin.pago_ate = new Date(Math.max(Date.now(), new Date(c.assin.pago_ate || 0).getTime()) + (g.periodo === 'anual' ? 365 : 30) * 864e5).toISOString(); }
+        return resp(200, { pago:true });
+      }
+      return resp(400, { erro:'acao', msg:'Pedido inválido.' });
+    }
+    if (u.pathname === '/rest/v1/pagamentos') { const c = (u.searchParams.get('clinica_id') || '').replace('eq.', ''); return resp(200, (S.pagamentos || []).filter(g => (dono() && !c) || (g.clinica_id === c && (membro(c) || dono())))); }
     if (u.pathname === '/rest/v1/donos') return resp(200, (S.donos || []).includes(eu.id) ? [{ user_id:eu.id }] : []);
     return resp(404, { message:'não encontrado' });
   };
