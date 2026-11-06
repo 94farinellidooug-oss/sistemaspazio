@@ -13,6 +13,7 @@ import { abrirPainelWa, painelWa, textoComCamposWa, vMensagens } from './telas/w
 import { linkWa, registrarMensagem, salvarMensagemWa, voltarMensagemWa } from './dados/whatsapp.js';
 import { naoRetomar, novoInteressado, registrarContato, situacaoInteressado, virouPaciente } from './dados/relacionamento.js';
 import { MODELOS_DOC, apagarModelo, assinarNaTela, guardarDocumento, marcarAssinado, modeloDoc, salvarModelo, voltarOriginal } from './dados/documentos.js';
+import { excluirPaciente, reativarPaciente } from './dados/excluir.js';
 import { concluirHorario, conflito, desmarcar, marcarHorario, novoHorario, remarcar } from './dados/agenda.js';
 import { vAvaliacao } from './telas/avaliacao.js';
 import { atendimentoAberto, indicadosMarca, textoSalvo, vAtendimento } from './telas/atendimento.js';
@@ -116,6 +117,14 @@ document.addEventListener('click',ev=>{
   else if(a.startsWith('at-')){ acaoAtendimento(a,t); }
   else if(a==='novo-paciente'){ ui.editPid=null; ui.cadPrevio=null; irPara('cadastro'); }
   else if(a==='editar-paciente'){ ui.editPid=t.dataset.pid; irPara('cadastro'); }
+  else if(a==='pac-excluir'){ ui.excluir={pid:t.dataset.pid,motivo:'',outro:''}; render(true); document.getElementById('cad-exc')?.scrollIntoView({block:'center'}); }
+  else if(a==='pac-excluir-nao'){ ui.excluir=null; render(true); }
+  else if(a==='pac-excluir-sim'){ const E=ui.excluir; if(!E) return; const motivo=E.motivo==='Outro motivo'?E.outro.trim():E.motivo;
+    if(!motivo){ toast(E.motivo?'Escreva qual é o motivo':'Escolha o motivo da exclusão','info'); document.getElementById(E.motivo?'exc-o':'exc-m')?.focus(); return; }
+    const r=excluirPaciente(db,E.pid,{motivo:E.motivo==='Outro motivo'?'Outro: '+motivo:motivo,em:new Date().toISOString(),por:PROF.nome,hoje:TODAY}); ui.excluir=null; if(!r) return;
+    ui.editPid=null; ui.docPid=null; ui.atId=null; ui.pid=db.patients[0]?.id||null; save();
+    toast(r.desativado?`${r.nome} desativado; o prontuário fica guardado até ${fmt(r.guardarAte)}`:`Cadastro de ${r.nome} excluído`); irPara('pacientes'); }
+  else if(a==='pac-reativar'){ const p=reativarPaciente(db,t.dataset.pid); if(!p) return; hidratarPaciente(p); save(); render(true); toast(`${p.name} reativado`); }
   else if(a==='queixa-ativa'){ const q=alternarQueixa(patient(ui.pid),t.dataset.q,new Date().toISOString()); if(q){ save(); render(true); toast(q.ativa?'Queixa reativada':'Queixa marcada como resolvida'); } }
   else if(a==='sessao'){ ui.pid=t.dataset.pid; ui.tab='nova'; irPara('prontuario'); }
   else if(a==='ver-ponto'){ ui.ptQ=t.dataset.c; ui.ptMer=''; ui.bib='central'; irPara('biblioteca'); }
@@ -190,6 +199,7 @@ document.addEventListener('click',ev=>{
 });
 document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
 document.addEventListener('input',ev=>{
+  if(ev.target.dataset?.exc==='outro'&&ui.excluir){ ui.excluir.outro=ev.target.value; return; }
   const t=ev.target;
   if(t.dataset.agf==='time'){ formAgenda().time=t.value; return; }
   if(t.dataset.int&&t.tagName==='INPUT'){ (ui.novoInt||={nome:'',tel:'',origem:'Instagram'})[t.dataset.int]=t.value; return; }
@@ -349,6 +359,7 @@ function previaModelo(){ const pv=document.getElementById('doc-pv'), r=document.
 // Baixa um texto como arquivo (cópia de segurança).
 function baixar(texto, nome){ const u=URL.createObjectURL(new Blob([texto],{type:'application/json'})), l=document.createElement('a'); l.href=u; l.download=nome; document.body.append(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
 document.addEventListener('change',ev=>{
+  if(ev.target.dataset?.exc&&ui.excluir){ ui.excluir[ev.target.dataset.exc]=ev.target.value; if(ev.target.dataset.exc==='motivo'){ render(true); document.getElementById(ui.excluir.motivo==='Outro motivo'?'exc-o':'exc-m')?.focus(); } return; }
   if(ev.target.id==='np-p'&&ui.finPac){ Object.assign(ui.finPac,{pid:ev.target.value,total:document.getElementById('np-s').value,valor:document.getElementById('np-v').value}); render(true); return; }
   const t=ev.target;
   if(t.matches('[data-atltodos]')){ ui.atlas.todos=t.checked; render(true); return; }

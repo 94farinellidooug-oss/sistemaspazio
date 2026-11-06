@@ -29,8 +29,15 @@ export const save = () => { gravar(KEY, JSON.stringify(db)); if(ouvinteSalvar) o
 // Troca todos os dados pelos que vieram do servidor (ou por uma clínica vazia), sem avisar a sincronia.
 export function trocarDados(doc){ db = hidratar(JSON.parse(JSON.stringify(doc))); aplicarConfig(db); gravar(KEY, JSON.stringify(db)); }
 export const dadosVazios = () => hidratar(migrarV1({ patients:[], appts:[] }, new Date().toISOString(), 'nova-clinica'));
+// Clínica nova: começa com os pacientes de exemplo, com WhatsApp e CPF de mentira (0000…), para nenhuma
+// mensagem de teste ir para alguém de verdade (o WhatsApp não abre com número repetido).
+export const dadosNovaClinica = () => {
+  const d = hidratar(migrarV1(seed(), new Date().toISOString(), 'exemplos'));
+  d.patients.forEach(p => { p.phone = '(00) 00000-0000'; if (p.cadastro) p.cadastro.cpf = '000.000.000-00'; });
+  return d;
+};
 // Quanta coisa tem neste aparelho (para o primeiro acesso dizer o que vai junto).
-export const resumoDados = () => ({ pacientes:db.patients.filter(p=>!p.exemplo).length, exemplos:db.patients.some(p=>p.exemplo), atendimentos:db.patients.reduce((n,p)=>n+p.atendimentos.length,0), horarios:db.appts.length });
+export const resumoDados = () => ({ pacientes:db.patients.filter(p=>!p.exemplo).length, exemplos:db.patients.some(p=>p.exemplo), atendimentos:db.patients.filter(p=>!p.exemplo).reduce((n,p)=>n+p.atendimentos.length,0), horarios:db.appts.filter(a=>!db.patients.find(p=>p.id===a.pid)?.exemplo).length });
 export const patient = id => db.patients.find(p=>p.id===id);
 // Substitui todos os dados pelos exemplos (botão "Restaurar exemplos").
 export function restaurarExemplos(){ db = hidratar(migrarV1(seed(), new Date().toISOString(), 'exemplos')); aplicarConfig(db); save(); }

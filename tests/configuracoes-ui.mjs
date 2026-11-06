@@ -59,6 +59,29 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(d2.config.horario.dias[6].aberto === false && d2.config.horario.pausa.tem && await tem(L, '#cf-hor-resumo', '6 dias abertos'), `${rot}: domingo fechado e intervalo salvos, com o resumo`);
   await clicar(L, '[data-cf=aba][data-k=conta]');
   ok(await tem(L, '#cf-conta [data-act=conta-entrar]') && await tem(L, '#cf-seg', 'Dados só neste aparelho'), `${rot}: sem conta, a aba da conta oferece entrar`);
+  // Excluir o cadastro de um paciente: aviso da guarda, motivo obrigatório
+  const editar = async id => { await L.evaluate(id => { document.body.insertAdjacentHTML('beforeend', `<button id="t-ed" data-act="editar-paciente" data-pid="${id}"></button>`); document.getElementById('t-ed').click(); document.getElementById('t-ed').remove(); }, id); await L.waitForTimeout(150); };
+  const p0 = (await dbDe(L)).patients[0];
+  await editar(p0.id); await clicar(L, '[data-act=pac-excluir]');
+  ok(await tem(L, '#cad-exc .notice', 'guarda obrigatória') && await tem(L, '#cad-exc', 'não tem prontuário') && await tem(L, '[data-act=pac-excluir-sim]', 'Excluir de vez'), `${rot}: aviso da guarda; exemplo sai de vez`);
+  await clicar(L, '[data-act=pac-excluir-sim]');
+  ok((await dbDe(L)).patients.some(p => p.id === p0.id) && await tem(L, '#toast', 'Escolha o motivo'), `${rot}: sem motivo não exclui`);
+  await L.selectOption('#exc-m', 'Paciente de exemplo'); await L.waitForTimeout(100); await clicar(L, '[data-act=pac-excluir-sim]');
+  const d3 = await dbDe(L);
+  ok(!d3.patients.some(p => p.id === p0.id) && !d3.appts.some(a => a.pid === p0.id) && d3.exclusoes[0].motivo === 'Paciente de exemplo' && await L.evaluate(() => location.hash) === '#pacientes', `${rot}: paciente de exemplo excluído com o motivo registrado`);
+  // Paciente de verdade com prontuário: fica desativado
+  const p1 = d3.patients.find(p => p.atendimentos.some(a => a.status === 'finalizado'));
+  await L.evaluate(id => { const d = JSON.parse(localStorage.getItem('musubi-v2')); d.patients.find(p => p.id === id).exemplo = false; localStorage.setItem('musubi-v2', JSON.stringify(d)); }, p1.id); await L.reload(); await L.waitForTimeout(150);
+  await editar(p1.id); await clicar(L, '[data-act=pac-excluir]');
+  await L.selectOption('#exc-m', 'Outro motivo'); await L.waitForTimeout(100); await L.fill('#exc-o', 'Mudou de cidade');
+  ok(await tem(L, '#cad-exc', 'tem prontuário') && await tem(L, '[data-act=pac-excluir-sim]', 'Desativar cadastro'), `${rot}: com prontuário, o botão é desativar`);
+  await clicar(L, '[data-act=pac-excluir-sim]');
+  const d4 = await dbDe(L);
+  ok(!d4.patients.some(p => p.id === p1.id) && d4.desativados[0].id === p1.id && d4.desativados[0].desativado.motivo === 'Outro: Mudou de cidade' && await tem(L, '#toast', 'fica guardado até'), `${rot}: paciente com prontuário fica desativado e guardado`);
+  await ir(L, 'administracao');
+  ok(await tem(L, '#desativados', p1.name) && await tem(L, '#desativados', 'Outro: Mudou de cidade'), `${rot}: Administração mostra os desativados`);
+  await clicar(L, '#desativados [data-act=pac-reativar]');
+  ok((await dbDe(L)).patients.some(p => p.id === p1.id) && await tem(L, '#toast', 'reativado'), `${rot}: reativar volta o paciente`);
   await L.context().close();
 
   // Com conta no servidor
@@ -68,6 +91,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await N.fill('#acesso [name=clinica]', 'Clínica Lua'); await N.fill('#acesso [name=cidade]', 'Pelotas'); await clicar(N, '#acesso [type=submit]'); await N.waitForTimeout(200);
   const cid = S.clinicas[0]?.id;
   ok(S.dados[cid]?.doc.config?.clinica.nome === 'Clínica Lua', `${rot}: a clínica criada já leva o nome para os documentos`);
+  ok(S.dados[cid]?.doc.patients.length > 0 && S.dados[cid].doc.patients.every(p => p.phone === '(00) 00000-0000'), `${rot}: clínica nova começa com exemplos de WhatsApp 0000`);
   ok(!(await tem(N, '[data-act=reset]')), `${rot}: com conta, "Restaurar exemplos" não aparece`);
   await clicar(N, '[data-act=perfil]');
   ok(await tem(N, '.pf-h b', 'Maicon Farinelli') && await tem(N, '.pf-h small', 'Administrador'), `${rot}: menu mostra o nome da conta e o perfil`);

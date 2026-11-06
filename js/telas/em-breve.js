@@ -3,7 +3,7 @@
 import { ic } from '../componentes/icones.js';
 import { db } from '../dados/repositorio.js';
 import { LABEL } from './menu.js';
-import { fmt } from '../util.js';
+import { esc, fmt } from '../util.js';
 import { conta } from './conta.js';
 
 const MODULOS = {
@@ -35,5 +35,8 @@ export function vAdministracao(){
     ${conta.modo==='nuvem'?'':`<div class="card"><div class="card-h"><h2>Dados de exemplo</h2></div>
       <p class="muted sm" style="margin-bottom:12px">Restaurar apaga o que foi digitado neste navegador e volta aos pacientes de exemplo. Exporte antes se quiser guardar.</p>
       <button class="btn" data-act="reset">${ic('retorno')}Restaurar exemplos</button></div>`}
-  </div>`;
+  </div>
+  ${(db.desativados||[]).length||(db.exclusoes||[]).length?`<div class="card desat-l" id="desativados" style="margin-top:20px"><div class="card-h"><h2>Pacientes desativados<small>com prontuário guardado até o fim do prazo de guarda</small></h2></div>
+    ${(db.desativados||[]).length?`<div class="list">${db.desativados.map(p=>`<div class="row"><span class="avatar">${esc(p.name.split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase())}</span><div class="grow"><b>${esc(p.name)}</b><small class="muted">${esc(p.desativado.motivo)} · desativado em ${fmt(p.desativado.em.slice(0,10))} por ${esc(p.desativado.por||'')} · guardar até ${fmt(p.desativado.guardarAte)}</small></div><button class="btn sm" data-act="pac-reativar" data-pid="${p.id}">${ic('retorno')}Reativar</button></div>`).join('')}</div>`:'<p class="muted sm">Nenhum paciente desativado.</p>'}
+    ${(db.exclusoes||[]).length?`<p class="muted sm" style="margin-top:12px">${db.exclusoes.length} cadastro${db.exclusoes.length>1?'s':''} sem prontuário excluído${db.exclusoes.length>1?'s':''} de vez (último: ${esc(db.exclusoes[0].nome)}, ${esc(db.exclusoes[0].motivo)}, em ${fmt(db.exclusoes[0].em.slice(0,10))}).</p>`:''}</div>`:''}`;
 }

@@ -109,5 +109,5 @@ export function resumoMes(db, mes, hoje){
 // Dados que a nota fiscal vai pedir, prontos para copiar.
 export function dadosNota(db, r){
   const a = db.appts.find(x => x.id === r.ap), p = a && db.patients.find(x => x.id === a.pid);
-  return [`Paciente: ${p?.name || ''}`, `CPF: ${p?.cadastro?.cpf || 'não cadastrado'}`, `Serviço: ${a?.tipo || ''}`, `Valor: ${brl(r.valor)}`, `Data do atendimento: ${a ? fmt(a.date) : ''}`, `Recebido em: ${fmt(r.data)} (${r.forma})`].join('\n');
+  return [`Paciente: ${p?.name || r.nome || ''}`, `CPF: ${p?.cadastro?.cpf || 'não cadastrado'}`, `Serviço: ${a?.tipo || r.tipo || ''}`, `Valor: ${brl(r.valor)}`, `Data do atendimento: ${a ? fmt(a.date) : ''}`, `Recebido em: ${fmt(r.data)} (${r.forma})`].join('\n');
 }

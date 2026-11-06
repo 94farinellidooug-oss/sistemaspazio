@@ -1231,3 +1231,17 @@ body.com-acesso{overflow:hidden}
 .cf-hh input{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:6px 8px;font:inherit;font-size:.9rem;color:var(--ink)}
 .cf-pausa{margin-top:8px;border-top:1px dashed var(--line-2);padding-top:12px}
 #cf-hor-resumo{margin-top:10px}
+
+/* Etapa 10 · Excluir cadastro de paciente */
+.cad-exc{border-color:var(--line)}
+.cad-exc .at-f{margin-top:12px}
+.cad-exc-b{color:var(--crit)}
+.cad-exc .notice{margin-bottom:12px}
+.cad-exc-o{margin:0 0 12px}
+.desat-l .row small{display:block}
+
+/* Etapa 10 · logo oficial ao lado do nome */
+.logo-m{display:block;flex:none;width:28px;height:28px;object-fit:contain}
+.brand .logo-m{width:32px;height:32px}
+.imp-h .logo-m{width:32px;height:32px}
+.acesso-h .logo-m{width:36px;height:36px}
