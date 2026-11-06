@@ -1104,3 +1104,68 @@ input[type=checkbox]{accent-color:var(--brand)}
 .fin-l .hor-p .lk{max-width:100%}
 .pac.fim{opacity:.6}
 #np-serv{align-self:center}
+
+/* Etapa 9 · Relatórios */
+.p9-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.rel-t4 .tile{display:block;cursor:default}
+.rel-t4 .tile small{display:block;color:var(--muted);font-size:.78rem}
+.rel-t4 .tile b.num{display:block;font-size:1.45rem;margin:4px 0 2px}
+.rel-t4 .tile b.num .sm{font-size:.85rem;font-weight:500}
+.cmp{display:inline-flex !important;align-items:center;gap:4px}
+.cmp .ic{width:13px;height:13px}
+.cmp.bom{color:var(--ok) !important}
+.cmp.ruim{color:var(--warn) !important}
+.rel-g{align-items:start;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:900px){ .rel-g{grid-template-columns:minmax(0,1fr)} }
+/* Colunas por mês: uma série, cor da marca; meses fora do período mais claros */
+.rel-c{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:18px;border-bottom:1px solid var(--line)}
+.rel-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:0;position:relative;cursor:default}
+.rel-col span{display:block;width:min(34px,70%);background:var(--accent-line);border-radius:4px 4px 0 0}
+.rel-col.on span{background:var(--accent)}
+.rel-col b{font-size:.74rem;font-weight:600;color:var(--muted);margin-bottom:3px;font-variant-numeric:tabular-nums}
+.rel-col.on b{color:var(--ink)}
+.rel-col small{position:absolute;bottom:-20px;font-size:.72rem;color:var(--muted)}
+.rel-c + .rel-tab{margin-top:28px}
+.rel-tab summary{cursor:pointer;font-size:.84rem;color:var(--muted)}
+.rel-tab table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:8px}
+.rel-tab th,.rel-tab td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
+.rel-tab td:not(:first-child),.rel-tab th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+/* Barras horizontais: nome, barra, valor */
+.rel-l{display:grid;gap:10px}
+.rel-b{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 10px;font-size:.88rem}
+.rel-b .rel-t{grid-column:1/-1;grid-row:2}
+.rel-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rel-t{height:10px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.rel-t span{display:block;height:100%;background:var(--accent);border-radius:0 4px 4px 0}
+.rel-v{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rel-v .muted{font-weight:400;font-size:.8rem;margin-left:4px}
+/* Evolução das queixas: cor de situação sempre com ícone e texto */
+.rel-ev{display:grid;gap:8px}
+.ev-i{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.ev-i b{font-size:1.05rem;font-variant-numeric:tabular-nums}
+.ev-i.ok .tico{color:var(--ok)}
+.ev-i.warn .tico{color:var(--warn)}
+.ev-i.neutro .tico{color:var(--muted)}
+@media (max-width:560px){
+  .rel-t4 .tile b.num{font-size:1.15rem}
+  .rel-c{gap:4px}
+}
+/* O que dá para fazer agora */
+#r-dicas{margin-top:16px}
+.dicas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:8px}
+.dica{display:flex;flex-wrap:wrap;align-items:flex-start;align-content:flex-start;gap:8px 10px;padding:10px;border:1px solid var(--line);border-radius:10px;min-width:0}
+.dica .grow{flex:1 1 calc(100% - 50px);min-width:0}
+.dica b{display:block;font-size:.9rem}
+.dica small{display:block;color:var(--muted);font-size:.8rem;line-height:1.35}
+.dica .btn{flex:none;margin-left:42px}
+/* Folha impressa */
+@media print{
+  .rel-imp{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:10pt}
+  .rel-imp .card,.rel-imp .tile{box-shadow:none;border:1px solid #ccc;break-inside:avoid;padding:10px 12px}
+  .rel-imp .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+  .rel-imp .rel-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rel-imp #r-dicas{margin-top:10px}
+  .rel-imp .dicas{grid-template-columns:1fr 1fr}
+  .rel-imp .card-h h2{font-size:11pt}
+  .rel-imp .rel-c{height:120px;margin-bottom:24px}
+}

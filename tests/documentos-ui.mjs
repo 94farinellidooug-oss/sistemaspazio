@@ -37,7 +37,7 @@ async function verificar(browser, url, nome){
   await clicar('[data-m="termo"]'); await clicar('[data-act="doc-editar"]');
   ok(await tem('#f-mod') && (await p.locator('#m-texto').inputValue()).startsWith('Eu, {paciente}') && await tem('#mod-raw .cp', 'Paciente'), `${nome}: editar abre o texto do modelo num campo comum`);
   await p.locator('#m-texto').press('Control+End'); await p.keyboard.type(' Ajuste feito na hora em {data}.'); await espera();
-  ok(await tem('#doc-t', 'Ajuste feito na hora em 05/11/2026') && await p.evaluate(() => document.activeElement.id) === 'm-texto', `${nome}: a prévia acompanha o que se digita, sem perder o cursor`);
+  ok(await tem('#doc-t', 'Ajuste feito na hora em ' + await p.evaluate(() => new Date().toLocaleDateString('pt-BR'))) && await p.evaluate(() => document.activeElement.id) === 'm-texto', `${nome}: a prévia acompanha o que se digita, sem perder o cursor`);
   await clicar('[data-act="doc-campo"][data-k="profissional"]');
   ok((await p.locator('#m-texto').inputValue()).endsWith('{data}.{profissional}') && await tem('#mod-raw .cp', 'Profissional'), `${nome}: botão insere o dado no cursor`);
   await clicar('#f-mod .btn.pri');
