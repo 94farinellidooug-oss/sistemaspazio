@@ -1528,6 +1528,16 @@ body.com-acesso{overflow:hidden}
 @media (max-width:560px){ .tb-r > [data-act=atalhos]{display:none} }
 .cad-lado:has(.cad-exc.on){position:static}
 :root[data-theme="dark"] .logo-m{filter:brightness(0) invert(1)} /* no escuro, o logo vai na versão branca (regra do Maicon) */
+/* Pagar o MUSUBI (Minha conta) */
+.cf-pagar{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.cf-pagar h3{font-size:.95rem;margin:0 0 10px}
+.cf-pagar-l{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto;gap:10px;align-items:end}
+@media (max-width:620px){ .cf-pagar-l{grid-template-columns:minmax(0,1fr)} }
+.cf-pags{margin-top:10px}
+.cf-pags .row{gap:10px;flex-wrap:wrap}
+.pd-n.pd-n3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:620px){ .pd-n.pd-n3{grid-template-columns:minmax(0,1fr)} }
+.pd-g-l{gap:10px;flex-wrap:wrap}
 </style>
 
 
@@ -2637,6 +2647,7 @@ const MSG_NUVEM = {
 const ErroNuvem = class extends Error { constructor(msg, codigo, status){ super(msg); this.codigo = codigo; this.status = status; } };
 const erroDe = (status, corpo) => {
   const cod = corpo?.error_code || corpo?.code || corpo?.error || '', txt = String(corpo?.message || corpo?.msg || corpo?.error_description || '');
+  if (corpo?.erro && corpo?.msg) return new ErroNuvem(String(corpo.msg), String(corpo.erro), status);   // função cobranca
   const chave = Object.keys(MSG_NUVEM).find(k => cod === k || txt.includes(k));
   return new ErroNuvem(chave ? MSG_NUVEM[chave] : status === 401 ? MSG_NUVEM.sem_login : 'O servidor não respondeu como esperado. Tente de novo.', chave || cod || String(status), status);
 };
@@ -2715,6 +2726,11 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     mudarClinica:async (clinica, { nome, cidade, uf, whats }) => { await rest(`clinicas?id=eq.${clinica}`, { metodo:'PATCH', corpo:{ nome, cidade, uf, whats }, cab:{ Prefer:'return=minimal' } }); return true; },
     souDono:async () => ((await rest(`donos?select=user_id&user_id=eq.${sessao.user.id}`)) || []).length > 0,
     salvar:async (clinica, doc, versao) => rest('rpc/salvar_dados', { metodo:'POST', corpo:{ p_clinica:clinica, p_doc:doc, p_versao:versao } }),
+    // Pagamento do MUSUBI pela InfinitePay (função cobranca, supabase/functions/cobranca). Devolve { url } do link.
+    pagar:async (clinica, plano, periodo) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo }, token:await token() }),
+    conferirPagamento:async ({ order_nsu, transaction_nsu, slug, receipt_url }) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'conferir', order_nsu, transaction_nsu, slug, receipt_url }, token:await token() }),
+    // Pagamentos (supabase/003_pagamentos.sql): da clínica, ou todos para o dono. [] quando o servidor ainda não tem a tabela.
+    pagamentos:async clinica => { try { return (await rest(`pagamentos?select=id,clinica_id,plano,periodo,valor,valor_pago,situacao,forma,recibo,link,criado_em,pago_em&order=criado_em.desc${clinica ? '&clinica_id=eq.' + clinica : ''}`)) || []; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return []; throw e; } },
     // Página de apresentação: pedido de contato sem login (a lista só o dono do MUSUBI lê).
     pedirContato:async (nome, whats) => { await chamar('/rest/v1/interessados', { metodo:'POST', corpo:{ nome:nome.trim(), whats:whats.trim() }, cab:{ Prefer:'return=minimal' } }); return true; }
   };
@@ -2762,6 +2778,10 @@ const PLANOS = [
 const planoDe = k => PLANOS.find(p => p.k === k) || PLANOS[1];
 const precoTxt = p => `${p.aPartir ? 'a partir de ' : ''}R$ ${p.preco}/mês`;
 const DIAS_TESTE = 7;
+// Pagamento pela InfinitePay (Pix ou cartão): mensal, ou anual com 2 meses grátis (paga 10 meses).
+const PERIODOS_PAG = [['mensal', 'Mensal'], ['anual', 'Anual']];
+const valorPeriodo = (p, periodo) => p.preco * (periodo === 'anual' ? 10 : 1);
+const precoPeriodoTxt = (p, periodo) => `R$ ${valorPeriodo(p, periodo).toLocaleString('pt-BR')}${periodo === 'anual' ? '/ano' : '/mês'}`;
 
 const DIA = 86400000;
 // Situação da assinatura: {tipo:'gratis'|'pago'|'teste'|'vencido', dias (que faltam), ate (iso), sempre}.
@@ -2795,7 +2815,7 @@ const gravarC = (k, v) => { try { v == null ? localStorage.removeItem(k) : local
 const voltarAoSite = () => location.origin + location.pathname;
 
 // Estado da conta: modo 'local' (sem conta) ou 'nuvem'; tela de acesso aberta (ou null); clínica atual.
-const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false, plano:'profissional', assin:null, sit:null };
+const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false, plano:'profissional', periodo:'mensal', assin:null, sit:null, retorno:null, pagamentos:null };
 const PERFIL_NOME = { adm:'Administrador', prof:'Profissional', rec:'Recepção' };
 let aoMudarConta = () => {};
 
@@ -2809,6 +2829,12 @@ function iniciarConta(render, nuvem){
   aoMudarConta = render; conta.modo = modoInicial();
   if (conta.modo === 'local') return;
   conta.nuvem = nuvem || criarNuvem();
+  // Volta do pagamento na InfinitePay: o endereço traz o pedido; confere depois de abrir a clínica.
+  const q = new URLSearchParams(location.search);
+  if (q.get('order_nsu') && q.get('transaction_nsu')) {
+    conta.retorno = { order_nsu:q.get('order_nsu'), transaction_nsu:q.get('transaction_nsu'), slug:q.get('slug') || '', receipt_url:q.get('receipt_url') || '' };
+    history.replaceState(null, '', location.pathname + location.hash);
+  }
   const lk = conta.nuvem.sessaoDoLink(location.hash);
   if (lk) { history.replaceState(null, '', location.pathname); if (lk.tipo === 'recovery') { abrirAcesso('nova-senha'); return; } }
   const pe = lerC(KEY_PLANO_SITE); if (PLANOS.some(p => p.k === pe)) conta.plano = pe;
@@ -2846,11 +2872,18 @@ async function abrirClinica(c){
   PROF.papel = PERFIL_NOME[c.perfil] || PROF.papel;
   if (!db.config?.clinica?.nome && c.nome) definirNomeClinica(c.nome);
   try { conta.dono = await conta.nuvem.souDono(); } catch (e) { conta.dono = false; }
+  let avisoPago = '';
+  if (conta.retorno) {
+    const R = conta.retorno; conta.retorno = null;
+    try { avisoPago = (await conta.nuvem.conferirPagamento(R))?.pago ? 'Pagamento confirmado. Obrigado!' : ''; } catch (e) {}
+    avisoPago ||= 'Recebemos o seu pagamento. O acesso é liberado assim que a InfinitePay confirmar (no Pix, em instantes).';
+  }
   try { conta.assin = await conta.nuvem.assinatura(c.id); } catch (e) { conta.assin = null; }
-  conta.sit = situacaoAssinatura(conta.assin);
+  conta.sit = situacaoAssinatura(conta.assin); conta.pagamentos = null;
   // Teste terminado sem acesso grátis nem pagamento: os dados ficam guardados, o sistema pede para continuar.
-  if (conta.sit.tipo === 'vencido' && !conta.dono) { conta.plano = conta.assin?.plano || conta.plano; abrirAcesso('vencido'); aoMudarConta(); return; }
+  if (conta.sit.tipo === 'vencido' && !conta.dono) { conta.plano = conta.assin?.plano || conta.plano; abrirAcesso('vencido', avisoPago); aoMudarConta(); return; }
   fecharAcesso(); aoMudarConta();
+  if (avisoPago) avisoConta(avisoPago);
 }
 let avisoH = null;
 function avisoConta(m){ const t = document.getElementById('toast'); if (!t) return; t.className = 'toast info'; t.innerHTML = `${ic('info')}<span></span>`; t.lastChild.textContent = m; t.hidden = false; clearTimeout(avisoH); avisoH = setTimeout(() => { t.hidden = true; }, 6000); }
@@ -2880,6 +2913,14 @@ const sairDaConta = async () => {
 };
 
 /* ---------- Usado em Configurações (Sua conta e dados da clínica) ---------- */
+// Pagamento pela InfinitePay a partir de Minha conta: abre o link (devolve '' ou a mensagem de erro).
+const pagarConta = (plano, periodo) => tentarC(async () => { const r = await conta.nuvem.pagar(conta.clinica.id, plano, periodo); location.href = r.url; });
+// Pagamentos da clínica (null enquanto carrega; recarrega a tela quando chegam).
+const pagamentosConta = () => {
+  if (conta.modo !== 'nuvem' || !conta.clinica?.id) return [];
+  if (conta.pagamentos === null) { conta.pagamentos = []; conta.nuvem.pagamentos(conta.clinica.id).then(L => { conta.pagamentos = L; aoMudarConta(true); }).catch(() => {}); }
+  return conta.pagamentos;
+};
 const situacaoConta = () => conta.modo === 'nuvem' && conta.sit ? { ...conta.sit, plano:planoDe(conta.assin?.plano), rotulo:rotuloSituacao(conta.sit) } : null;
 const contaAtual = () => {
   const u = conta.modo === 'nuvem' ? conta.nuvem?.sessao()?.user : null;
@@ -2898,15 +2939,17 @@ const clinicaNoServidor = D => conta.modo === 'nuvem' && conta.clinica?.id ? ten
 
 /* ---------- Tela de acesso ---------- */
 const escolherPlano = rot => `<div class="acesso-opc acesso-plano" role="radiogroup" aria-label="Pacote"><p><b>${rot}</b></p>${PLANOS.map(p => `<label class="${conta.plano === p.k ? 'on' : ''}"><input type="radio" name="plano" value="${p.k}" data-ac="plano" ${conta.plano === p.k ? 'checked' : ''}><span><b>${p.nome} <span class="acesso-preco">${precoTxt(p)}</span></b><small>${p.resumo}</small></span></label>`).join('')}</div>`;
+const escolherPeriodo = () => `<div class="acesso-opc acesso-periodo" role="radiogroup" aria-label="Período">${PERIODOS_PAG.map(([k, l]) => `<label class="${conta.periodo === k ? 'on' : ''}"><input type="radio" name="periodo" value="${k}" data-ac="periodo" ${conta.periodo === k ? 'checked' : ''}><span><b>${l} <span class="acesso-preco">${precoPeriodoTxt(planoDe(conta.plano), k)}</span></b>${k === 'anual' ? '<small>2 meses grátis</small>' : ''}</span></label>`).join('')}</div>`;
 const campoA = (nome, rot, tipo = 'text', extra = '') => `<label class="field"><span class="lbl">${rot}</span><input name="${nome}" type="${tipo}" ${extra} required></label>`;
 function htmlAcesso(){
   const t = conta.tela, carregando = conta.ocupado && !conta.erro;
   const TIT = { entrar:['Entrar no MUSUBI', 'Use o e-mail e a senha da sua conta.'], criar:['Criar sua conta', 'Comece com o seu e-mail e uma senha.'], esqueci:['Criar uma nova senha', 'Informe o seu e-mail. Mandamos um link para criar a nova senha.'],
     'nova-senha':['Escolha a nova senha', 'Pelo menos 8 caracteres.'], clinica:['Conte sobre a clínica', 'Atende sozinho? Use o seu nome. O resto dá para ajustar depois.'],
-    vencido:['O teste grátis terminou', `Os dados${conta.clinica?.nome ? ' de ' + conta.clinica.nome : ''} continuam guardados. Para seguir usando, escolha o pacote e deixe o seu WhatsApp: a gente chama você para combinar.`],
+    vencido:['O teste grátis terminou', `Os dados${conta.clinica?.nome ? ' de ' + conta.clinica.nome : ''} continuam guardados. Para seguir usando, escolha o pacote e pague com Pix ou cartão.`],
+    contato:['Falar com a equipe', 'Deixe o seu WhatsApp: a equipe entra em contato para combinar. Os seus dados continuam guardados.'],
     aguardando:['Pedido enviado', ''] }[t] || ['', ''];
   const R = resumoDados(), temDados = !lerC(KEY_CACHE_DE) && (R.pacientes > 0 || R.horarios > 0);
-  const corpo = carregando ? `<p class="muted acesso-c">${ic('carregando')}Abrindo a sua clínica…</p>`
+  const corpo = carregando ? `<p class="muted acesso-c">${ic('carregando')}${t === 'vencido' ? 'Abrindo o pagamento…' : 'Abrindo a sua clínica…'}</p>`
     : conta.msg && ['enviado', 'confirmar', 'aguardando'].includes(conta.tela) ? ''
     : t === 'entrar' ? `${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}<label class="field"><span class="lbl">Senha</span><span class="senha-c"><input name="senha" type="password" autocomplete="current-password" required><button type="button" class="btn ghost sm" data-ac="ver">Mostrar</button></span></label>
         <div class="acesso-l"><button type="button" class="lnk" data-ac="esqueci">Esqueci minha senha</button></div>`
@@ -2918,11 +2961,14 @@ function htmlAcesso(){
           <label class="${conta.levar ? 'on' : ''}"><input type="radio" name="levar" value="1" data-ac="levar" ${conta.levar ? 'checked' : ''}><span><b>Levar para a minha conta</b><small>Tudo passa a ficar no servidor e aparece em qualquer aparelho. Recomendado.</small></span></label>
           <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa com pacientes de exemplo (WhatsApp e CPF 0000…) para conhecer o sistema. Dá para excluir depois.</small></span></label></div>` : ''}
         ${escolherPlano('Escolha o pacote: 7 dias grátis com tudo o que ele tem')}`
-    : t === 'vencido' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
-  const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Quero continuar' }[t];
+    : t === 'vencido' ? `${escolherPlano('Pacote')}${escolherPeriodo()}`
+    : t === 'contato' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
+  const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Pagar com Pix ou cartão', contato:'Enviar' }[t];
   const rodape = t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p><p class="muted sm"><a class="lnk suave" href="inicio/index.html">Conhecer o MUSUBI</a></p>`
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
-    : ['clinica', 'vencido', 'aguardando'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
+    : t === 'vencido' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="contato">Prefiro que a equipe entre em contato</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
+    : t === 'contato' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="vencido">Voltar para o pagamento</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
+    : ['clinica', 'aguardando'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
   return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>
     <div class="acesso-h">${LOGO}<b>Musubi</b></div>
     <h1>${conta.tela === 'confirmar' ? 'Confira o seu e-mail' : conta.tela === 'enviado' ? 'Link enviado' : TIT[0]}</h1>
@@ -2953,7 +2999,7 @@ async function enviarAcesso(f){
     : t === 'esqueci' ? (!okEmail(v('email')) ? 'Confira o e-mail.' : '')
     : t === 'nova-senha' ? (v('senha').length < 8 ? 'A senha precisa de pelo menos 8 caracteres.' : '')
     : t === 'clinica' ? (!v('clinica').trim() ? 'Escreva o nome da clínica.' : !v('cidade').trim() ? 'Escreva a cidade.' : '')
-    : t === 'vencido' ? (String(v('whats')).replace(/\D/g, '').length < 10 ? 'Confira o WhatsApp, com o DDD.' : '') : '';
+    : t === 'contato' ? (String(v('whats')).replace(/\D/g, '').length < 10 ? 'Confira o WhatsApp, com o DDD.' : '') : '';
   if (falta) { conta.erro = falta; desenharAcesso(); return; }
   conta.erro = ''; conta.ocupado = true; desenharAcesso();
   try {
@@ -2971,9 +3017,13 @@ async function enviarAcesso(f){
       await abrirClinica({ id, nome:v('clinica').trim(), perfil:'adm' });
     }
     if (t === 'vencido') {
+      try { const r = await conta.nuvem.pagar(conta.clinica.id, conta.plano, conta.periodo); location.href = r.url; return; }
+      catch (e) { if (e.codigo === 'sem_cobranca' || e.status === 404) { abrirAcesso('contato', 'O pagamento pelo site ainda não está disponível. Deixe o seu WhatsApp: a equipe entra em contato para combinar.'); return; } throw e; }
+    }
+    if (t === 'contato') {
       const u = conta.nuvem.sessao()?.user || {}, P = planoDe(conta.plano);
       await conta.nuvem.pedirContato(`${u.nome || u.email || 'Cliente'} · ${conta.clinica?.nome || ''} · quer o ${P.nome}`.slice(0, 120), v('whats'));
-      abrirAcesso('aguardando', `Recebemos o seu pedido do pacote ${P.nome} (${precoTxt(P)}). A gente chama você no WhatsApp ${v('whats').trim()} para combinar. Os seus dados continuam guardados.`);
+      abrirAcesso('aguardando', `Recebemos o seu pedido do pacote ${P.nome} (${precoTxt(P)}). A equipe entra em contato pelo WhatsApp ${v('whats').trim()} para combinar. Os seus dados continuam guardados.`);
     }
   } catch (e) { conta.erro = e.message; conta.ocupado = false; desenharAcesso(); }
 }
@@ -2984,13 +3034,14 @@ function ligarAcesso(){
   el.addEventListener('click', ev => {
     const b = ev.target.closest('[data-ac]'); if (!b) return; const a = b.dataset.ac;
     if (a === 'ver') { const s = el.querySelector('[name=senha]'), mostrar = s.type === 'password'; s.type = mostrar ? 'text' : 'password'; b.textContent = mostrar ? 'Ocultar' : 'Mostrar'; }
-    else if (['entrar', 'criar', 'esqueci'].includes(a)) abrirAcesso(a);
+    else if (['entrar', 'criar', 'esqueci', 'contato', 'vencido'].includes(a)) abrirAcesso(a);
     else if (a === 'local') { gravarC(KEY_MODO, 'local'); conta.modo = 'local'; fecharAcesso(); aoMudarConta(); }
     else if (a === 'sair') sairDaConta();
   });
   el.addEventListener('change', ev => {
     if (ev.target.dataset.ac === 'levar') { conta.levar = ev.target.value === '1'; desenharAcesso(); }
     if (ev.target.dataset.ac === 'plano') { conta.plano = ev.target.value; desenharAcesso(); }
+    if (ev.target.dataset.ac === 'periodo') { conta.periodo = ev.target.value; desenharAcesso(); }
   });
 }
 // e as camadas que abrem por cima da tela (busca e atalhos de teclado).
@@ -4846,7 +4897,7 @@ function vAdministracao(){
 // vê as três primeiras; os outros perfis veem só a própria conta.
 // Serviços e horário salvam a cada mudança; dados da clínica e da conta, no botão Salvar.
 
-const cf = { aba:'clinica', senha:false, ocupado:false };
+const cf = { aba:'clinica', senha:false, ocupado:false, plano:null, periodo:'mensal' };
 let cfApp = { save:() => {}, render:() => {}, toast:() => {} };
 const ABAS_CF = [['clinica', 'Clínica', 'local'], ['servicos', 'Serviços e preços', 'dinheiro'], ['horario', 'Horário de atendimento', 'relogio'], ['conta', 'Sua conta e segurança', 'escudo']];
 const valorTxt = v => String(v).replace('.', ',');
@@ -4920,12 +4971,25 @@ function cfConta(){
       <p class="muted sm cf-obs">Entrou como <b>${esc({ adm:'Administrador', prof:'Profissional', rec:'Recepção' }[C.perfil] || '')}</b>${C.clinica ? ` em ${esc(C.clinica)}` : ''}.</p></form>
     ${seg}${cfPacote()}</div>`;
 }
-// Pacote da clínica: qual é, quanto tempo falta e o que cada pacote tem.
+// Pacote da clínica: qual é, quanto tempo falta, o que cada pacote tem e, para o administrador, pagar pela
+// InfinitePay (Pix ou cartão, mensal ou anual) e ver os pagamentos feitos.
+const FORMA_PAG = { pix:'Pix', credit_card:'Cartão' };
+const reais = c => (c / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 function cfPacote(){
   const S = situacaoConta(); if (!S) return '';
+  const adm = contaAtual().perfil === 'adm', plano = cf.plano || S.plano.k, P = planoDe(plano);
+  const pags = adm ? pagamentosConta() : [];
   return `<div class="card" id="cf-pacote"><div class="card-h"><h2>Seu pacote<small>${esc(S.rotulo)}</small></h2><span class="pill ${S.tipo === 'vencido' ? 'warn' : 'acc'}">${esc(S.plano.nome)}</span></div>
     <div class="cf-planos">${PLANOS.map(p => `<div class="cf-plano ${p.k === S.plano.k ? 'on' : ''}"><b>${p.nome}</b><small class="muted">${precoTxt(p)}</small><ul>${p.itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>
-    <p class="muted sm cf-obs">${S.tipo === 'teste' ? 'Durante o teste você usa tudo o que o pacote tem. ' : ''}O pagamento pelo site (Pix, boleto e cartão) entra em breve; para trocar de pacote, fale com o MUSUBI.</p></div>`;
+    ${adm ? `<div class="cf-pagar" id="cf-pagar"><h3>${S.tipo === 'pago' ? 'Renovar ou trocar de pacote' : 'Pagar o MUSUBI'}</h3>
+      <div class="cf-pagar-l"><label class="field"><span class="lbl">Pacote</span><select data-cf="pag-plano">${PLANOS.map(p => `<option value="${p.k}" ${p.k === plano ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></label>
+        <label class="field"><span class="lbl">Período</span><select data-cf="pag-periodo">${PERIODOS_PAG.map(([k, l]) => `<option value="${k}" ${k === cf.periodo ? 'selected' : ''}>${l}: ${precoPeriodoTxt(P, k)}${k === 'anual' ? ' (2 meses grátis)' : ''}</option>`).join('')}</select></label>
+        <button class="btn pri" data-cf="pagar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Pagar com Pix ou cartão'}</button></div>
+      <p class="erro-a" id="cf-pag-erro" role="alert" hidden></p>
+      <p class="muted sm cf-obs">O pagamento é feito na InfinitePay, com Pix ou cartão de crédito em até 12x. Quando ele é confirmado, o acesso é liberado sozinho${S.tipo === 'pago' ? ' e o novo período começa depois do que já está pago' : ''}.</p>
+      ${pags.length ? `<div class="list cf-pags">${pags.map(g => `<div class="row"><div class="grow"><b>${planoDe(g.plano).nome} · ${g.periodo === 'anual' ? 'anual' : 'mensal'}</b><small class="muted">${new Date(g.pago_em || g.criado_em).toLocaleDateString('pt-BR')}${g.forma ? ' · ' + (FORMA_PAG[g.forma] || esc(g.forma)) : ''}</small></div>
+        <b>${reais(g.valor)}</b><span class="pill ${g.situacao === 'pago' ? 'ok' : ''}">${g.situacao === 'pago' ? 'Pago' : 'Não concluído'}</span>${g.recibo ? `<a class="btn sm ghost" href="${esc(g.recibo)}" target="_blank" rel="noopener">Recibo</a>` : ''}</div>`).join('')}</div>` : ''}</div>`
+    : `<p class="muted sm cf-obs">O pagamento é feito pelo administrador da clínica, em Minha conta.</p>`}</div>`;
 }
 
 /* ---------- Eventos ---------- */
@@ -4985,10 +5049,13 @@ function ligarConfig(s, r, t){
       L.push({ nome:n, dur:60, valor:0, ativo:true }); salvarServicos(db, L); cfApp.save(); cfApp.render(true);
       const i = document.querySelector(`#cf-serv [data-k="nome"][data-i="${L.length - 1}"]`); if (i) { i.focus(); i.select(); } }
     else if (a === 'senha') { cf.senha = true; b.hidden = true; const c = document.querySelector('#cf-conta .cf-senha'); if (c) { c.hidden = false; c.querySelector('input').focus(); } }
+    else if (a === 'pagar') { cf.ocupado = true; cfApp.render(true); const e = await pagarConta(cf.plano || situacaoConta()?.plano.k || 'profissional', cf.periodo); if (e) { cf.ocupado = false; cfApp.render(true); erroCf('cf-pag-erro', e); } }
     else if (a === 'sair-outros') { cf.ocupado = true; cfApp.render(true); const e = await sairDosOutrosConta(); cf.ocupado = false; cfApp.render(true); cfApp.toast(e || 'Os outros aparelhos vão pedir para entrar de novo', e ? 'info' : 'ok'); }
   });
   document.addEventListener('change', ev => {
     const t = ev.target; if (!t.dataset?.cf) return;
+    if (t.dataset.cf === 'pag-plano') { cf.plano = t.value; cfApp.render(true); return; }
+    if (t.dataset.cf === 'pag-periodo') { cf.periodo = t.value; cfApp.render(true); return; }
     if (t.dataset.cf === 'serv') mudarServ(t); else if (['dia', 'hora', 'pausa', 'pausa-h'].includes(t.dataset.cf)) mudarHor(t);
   });
   document.addEventListener('submit', ev => {
@@ -4999,9 +5066,9 @@ function ligarConfig(s, r, t){
 }
 // Mostra todas as clínicas com o pacote, a situação (teste, grátis, pago, vencido), quem usa e números gerais
 // (nunca os dados dos pacientes), permite dar ou tirar acesso grátis, trocar o pacote e dar mais dias de teste,
-// e lista os interessados da página de apresentação. Pagamentos entram com o serviço de cobrança.
+// lista os interessados da página de apresentação e os pagamentos feitos pela InfinitePay.
 
-const pd = { aba:'clinicas', lista:null, inter:null, erro:'', carregando:false, gratis:null, busca:'' };
+const pd = { aba:'clinicas', lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'' };
 let pdApp = { render:() => {}, toast:() => {} };
 const SITU_INT = [['novo', 'Novo'], ['chamei', 'Já chamei'], ['cliente', 'Virou cliente'], ['nao', 'Não quis']];
 const PRAZOS = [['30', '30 dias'], ['90', '90 dias'], ['365', '1 ano'], ['sempre', 'Sem prazo']];
@@ -5013,7 +5080,7 @@ const ehDono = () => conta.modo === 'nuvem' && conta.dono;
 
 async function carregarPd(){
   if (pd.carregando) return; pd.carregando = true; pd.erro = ''; pdApp.render(true);
-  try { const [L, I] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados()]); pd.lista = L; pd.inter = I; }
+  try { const [L, I, G] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => [])]); pd.lista = L; pd.inter = I; pd.pags = G; }
   catch (e) { pd.erro = e.message; }
   pd.carregando = false; pdApp.render(true);
 }
@@ -5033,7 +5100,7 @@ function vPainelDono(){
       <div class="card"><small>Teste terminou</small><b>${n('vencido')}</b></div>
       <div class="card"><small>Interessados novos</small><b>${novos}</b></div></div>
     <div class="tabs" role="tablist">${[['clinicas', 'Clínicas', 'admin'], ['interessados', `Interessados${novos ? ` (${novos})` : ''}`, 'sino'], ['pagamentos', 'Pagamentos', 'dinheiro']].map(([k, l, i]) => `<button role="tab" data-pd="aba" data-k="${k}" class="${pd.aba === k ? 'on' : ''}" aria-selected="${pd.aba === k}">${ic(i)}${l}</button>`).join('')}</div>
-    ${pd.aba === 'clinicas' ? pdClinicas(L) : pd.aba === 'interessados' ? pdInteressados(I) : pdPagamentos()}`;
+    ${pd.aba === 'clinicas' ? pdClinicas(L) : pd.aba === 'interessados' ? pdInteressados(I) : pdPagamentos(L, pd.pags)}`;
 }
 
 function pdClinicas(L){
@@ -5063,10 +5130,19 @@ function pdInteressados(I){
         <label><span class="so-leitor">Situação de ${esc(i.nome)}</span><select data-pd="situ" data-i="${i.id}">${SITU_INT.map(([k, l]) => `<option value="${k}" ${i.situacao === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div></div>`).join('') || '<p class="muted sm">Ninguém pediu contato ainda.</p>'}</div></div>`;
 }
 
-function pdPagamentos(){
-  return `<div class="card cf-max" id="pd-pag"><div class="card-h"><h2>Pagamentos</h2></div>
-    <p class="sm">Os pacotes já estão no sistema: ${PLANOS.map(p => `<b>${p.nome}</b> (${precoTxt(p)})`).join(', ')}, com 7 dias grátis para toda clínica nova.</p>
-    <p class="muted sm cf-obs">A cobrança automática (Pix, boleto e cartão, mensal ou anual) entra quando escolhermos o serviço de cobrança. Aí cada pagamento aparece aqui sozinho, e quem atrasar recebe aviso antes de o acesso ser limitado, sem perder os dados.</p></div>`;
+const FORMA_PD = { pix:'Pix', credit_card:'Cartão' };
+const reaisPd = c => (c / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+function pdPagamentos(L, G){
+  const pagos = G.filter(g => g.situacao === 'pago'), mes = new Date().toISOString().slice(0, 7);
+  const doMes = pagos.filter(g => String(g.pago_em || '').slice(0, 7) === mes), nomeC = id => L.find(c => c.id === id)?.nome || 'Clínica';
+  return `<div class="card" id="pd-pag"><div class="card-h"><h2>Pagamentos<small>pela InfinitePay: Pix ou cartão, mensal ou anual (2 meses grátis)</small></h2></div>
+    <div class="pd-n pd-n3"><div class="card"><small>Recebido este mês</small><b>${reaisPd(doMes.reduce((t, g) => t + (g.valor_pago || g.valor), 0))}</b></div>
+      <div class="card"><small>Pagamentos confirmados</small><b>${pagos.length}</b></div>
+      <div class="card"><small>Não concluídos</small><b>${G.length - pagos.length}</b></div></div>
+    <div class="list">${G.map(g => `<div class="row pd-g-l"><span class="tico sm ${g.situacao === 'pago' ? 'acc' : ''}">${ic('dinheiro')}</span>
+      <div class="grow"><b>${esc(nomeC(g.clinica_id))}</b><small class="muted">${esc(planoDe(g.plano).nome)} · ${g.periodo === 'anual' ? 'anual' : 'mensal'} · ${dataBR(g.pago_em || g.criado_em)}${g.forma ? ' · ' + (FORMA_PD[g.forma] || esc(g.forma)) : ''}</small></div>
+      <b>${reaisPd(g.valor)}</b><span class="pill ${g.situacao === 'pago' ? 'ok' : ''}">${g.situacao === 'pago' ? 'Pago' : 'Não concluído'}</span>${g.recibo ? `<a class="btn sm ghost" href="${esc(g.recibo)}" target="_blank" rel="noopener">Recibo</a>` : ''}</div>`).join('') || '<p class="muted sm">Nenhum pagamento ainda.</p>'}</div>
+    <p class="muted sm cf-obs">Pacotes: ${PLANOS.map(p => `<b>${p.nome}</b> (${precoTxt(p)})`).join(', ')}. O pagamento confirmado pela InfinitePay libera o acesso da clínica sozinho. "Não concluído" é quem abriu o pagamento e não terminou.</p></div>`;
 }
 
 const pdFaz = async (fn, ok) => { try { await fn(); pdApp.toast(ok); await carregarPd(); } catch (e) { pdApp.toast(e.message, 'info'); } };

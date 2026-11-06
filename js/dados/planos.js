@@ -12,6 +12,10 @@ export const PLANOS = [
 export const planoDe = k => PLANOS.find(p => p.k === k) || PLANOS[1];
 export const precoTxt = p => `${p.aPartir ? 'a partir de ' : ''}R$ ${p.preco}/mês`;
 export const DIAS_TESTE = 7;
+// Pagamento pela InfinitePay (Pix ou cartão): mensal, ou anual com 2 meses grátis (paga 10 meses).
+export const PERIODOS_PAG = [['mensal', 'Mensal'], ['anual', 'Anual']];
+export const valorPeriodo = (p, periodo) => p.preco * (periodo === 'anual' ? 10 : 1);
+export const precoPeriodoTxt = (p, periodo) => `R$ ${valorPeriodo(p, periodo).toLocaleString('pt-BR')}${periodo === 'anual' ? '/ano' : '/mês'}`;
 
 const DIA = 86400000;
 // Situação da assinatura: {tipo:'gratis'|'pago'|'teste'|'vencido', dias (que faltam), ate (iso), sempre}.

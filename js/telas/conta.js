@@ -7,7 +7,7 @@ import { criarNuvem, criarSincronia } from '../dados/nuvem.js';
 import { dadosNovaClinica, dadosVazios, db, ouvirSalvar, resumoDados, trocarDados } from '../dados/repositorio.js';
 import { definirNomeClinica } from '../dados/documentos.js';
 import { PROF } from './menu.js';
-import { PLANOS, planoDe, precoTxt, rotuloSituacao, situacaoAssinatura } from '../dados/planos.js';
+import { PERIODOS_PAG, PLANOS, planoDe, precoPeriodoTxt, precoTxt, rotuloSituacao, situacaoAssinatura } from '../dados/planos.js';
 import { LOGO, ic } from '../componentes/icones.js';
 import { esc } from '../util.js';
 
@@ -18,7 +18,7 @@ const gravarC = (k, v) => { try { v == null ? localStorage.removeItem(k) : local
 const voltarAoSite = () => location.origin + location.pathname;
 
 // Estado da conta: modo 'local' (sem conta) ou 'nuvem'; tela de acesso aberta (ou null); clínica atual.
-export const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false, plano:'profissional', assin:null, sit:null };
+export const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false, plano:'profissional', periodo:'mensal', assin:null, sit:null, retorno:null, pagamentos:null };
 export const PERFIL_NOME = { adm:'Administrador', prof:'Profissional', rec:'Recepção' };
 let aoMudarConta = () => {};
 
@@ -32,6 +32,12 @@ export function iniciarConta(render, nuvem){
   aoMudarConta = render; conta.modo = modoInicial();
   if (conta.modo === 'local') return;
   conta.nuvem = nuvem || criarNuvem();
+  // Volta do pagamento na InfinitePay: o endereço traz o pedido; confere depois de abrir a clínica.
+  const q = new URLSearchParams(location.search);
+  if (q.get('order_nsu') && q.get('transaction_nsu')) {
+    conta.retorno = { order_nsu:q.get('order_nsu'), transaction_nsu:q.get('transaction_nsu'), slug:q.get('slug') || '', receipt_url:q.get('receipt_url') || '' };
+    history.replaceState(null, '', location.pathname + location.hash);
+  }
   const lk = conta.nuvem.sessaoDoLink(location.hash);
   if (lk) { history.replaceState(null, '', location.pathname); if (lk.tipo === 'recovery') { abrirAcesso('nova-senha'); return; } }
   const pe = lerC(KEY_PLANO_SITE); if (PLANOS.some(p => p.k === pe)) conta.plano = pe;
@@ -69,11 +75,18 @@ async function abrirClinica(c){
   PROF.papel = PERFIL_NOME[c.perfil] || PROF.papel;
   if (!db.config?.clinica?.nome && c.nome) definirNomeClinica(c.nome);
   try { conta.dono = await conta.nuvem.souDono(); } catch (e) { conta.dono = false; }
+  let avisoPago = '';
+  if (conta.retorno) {
+    const R = conta.retorno; conta.retorno = null;
+    try { avisoPago = (await conta.nuvem.conferirPagamento(R))?.pago ? 'Pagamento confirmado. Obrigado!' : ''; } catch (e) {}
+    avisoPago ||= 'Recebemos o seu pagamento. O acesso é liberado assim que a InfinitePay confirmar (no Pix, em instantes).';
+  }
   try { conta.assin = await conta.nuvem.assinatura(c.id); } catch (e) { conta.assin = null; }
-  conta.sit = situacaoAssinatura(conta.assin);
+  conta.sit = situacaoAssinatura(conta.assin); conta.pagamentos = null;
   // Teste terminado sem acesso grátis nem pagamento: os dados ficam guardados, o sistema pede para continuar.
-  if (conta.sit.tipo === 'vencido' && !conta.dono) { conta.plano = conta.assin?.plano || conta.plano; abrirAcesso('vencido'); aoMudarConta(); return; }
+  if (conta.sit.tipo === 'vencido' && !conta.dono) { conta.plano = conta.assin?.plano || conta.plano; abrirAcesso('vencido', avisoPago); aoMudarConta(); return; }
   fecharAcesso(); aoMudarConta();
+  if (avisoPago) avisoConta(avisoPago);
 }
 let avisoH = null;
 function avisoConta(m){ const t = document.getElementById('toast'); if (!t) return; t.className = 'toast info'; t.innerHTML = `${ic('info')}<span></span>`; t.lastChild.textContent = m; t.hidden = false; clearTimeout(avisoH); avisoH = setTimeout(() => { t.hidden = true; }, 6000); }
@@ -103,6 +116,14 @@ export const sairDaConta = async () => {
 };
 
 /* ---------- Usado em Configurações (Sua conta e dados da clínica) ---------- */
+// Pagamento pela InfinitePay a partir de Minha conta: abre o link (devolve '' ou a mensagem de erro).
+export const pagarConta = (plano, periodo) => tentarC(async () => { const r = await conta.nuvem.pagar(conta.clinica.id, plano, periodo); location.href = r.url; });
+// Pagamentos da clínica (null enquanto carrega; recarrega a tela quando chegam).
+export const pagamentosConta = () => {
+  if (conta.modo !== 'nuvem' || !conta.clinica?.id) return [];
+  if (conta.pagamentos === null) { conta.pagamentos = []; conta.nuvem.pagamentos(conta.clinica.id).then(L => { conta.pagamentos = L; aoMudarConta(true); }).catch(() => {}); }
+  return conta.pagamentos;
+};
 export const situacaoConta = () => conta.modo === 'nuvem' && conta.sit ? { ...conta.sit, plano:planoDe(conta.assin?.plano), rotulo:rotuloSituacao(conta.sit) } : null;
 export const contaAtual = () => {
   const u = conta.modo === 'nuvem' ? conta.nuvem?.sessao()?.user : null;
@@ -121,15 +142,17 @@ export const clinicaNoServidor = D => conta.modo === 'nuvem' && conta.clinica?.i
 
 /* ---------- Tela de acesso ---------- */
 const escolherPlano = rot => `<div class="acesso-opc acesso-plano" role="radiogroup" aria-label="Pacote"><p><b>${rot}</b></p>${PLANOS.map(p => `<label class="${conta.plano === p.k ? 'on' : ''}"><input type="radio" name="plano" value="${p.k}" data-ac="plano" ${conta.plano === p.k ? 'checked' : ''}><span><b>${p.nome} <span class="acesso-preco">${precoTxt(p)}</span></b><small>${p.resumo}</small></span></label>`).join('')}</div>`;
+const escolherPeriodo = () => `<div class="acesso-opc acesso-periodo" role="radiogroup" aria-label="Período">${PERIODOS_PAG.map(([k, l]) => `<label class="${conta.periodo === k ? 'on' : ''}"><input type="radio" name="periodo" value="${k}" data-ac="periodo" ${conta.periodo === k ? 'checked' : ''}><span><b>${l} <span class="acesso-preco">${precoPeriodoTxt(planoDe(conta.plano), k)}</span></b>${k === 'anual' ? '<small>2 meses grátis</small>' : ''}</span></label>`).join('')}</div>`;
 const campoA = (nome, rot, tipo = 'text', extra = '') => `<label class="field"><span class="lbl">${rot}</span><input name="${nome}" type="${tipo}" ${extra} required></label>`;
 function htmlAcesso(){
   const t = conta.tela, carregando = conta.ocupado && !conta.erro;
   const TIT = { entrar:['Entrar no MUSUBI', 'Use o e-mail e a senha da sua conta.'], criar:['Criar sua conta', 'Comece com o seu e-mail e uma senha.'], esqueci:['Criar uma nova senha', 'Informe o seu e-mail. Mandamos um link para criar a nova senha.'],
     'nova-senha':['Escolha a nova senha', 'Pelo menos 8 caracteres.'], clinica:['Conte sobre a clínica', 'Atende sozinho? Use o seu nome. O resto dá para ajustar depois.'],
-    vencido:['O teste grátis terminou', `Os dados${conta.clinica?.nome ? ' de ' + conta.clinica.nome : ''} continuam guardados. Para seguir usando, escolha o pacote e deixe o seu WhatsApp: a gente chama você para combinar.`],
+    vencido:['O teste grátis terminou', `Os dados${conta.clinica?.nome ? ' de ' + conta.clinica.nome : ''} continuam guardados. Para seguir usando, escolha o pacote e pague com Pix ou cartão.`],
+    contato:['Falar com a equipe', 'Deixe o seu WhatsApp: a equipe entra em contato para combinar. Os seus dados continuam guardados.'],
     aguardando:['Pedido enviado', ''] }[t] || ['', ''];
   const R = resumoDados(), temDados = !lerC(KEY_CACHE_DE) && (R.pacientes > 0 || R.horarios > 0);
-  const corpo = carregando ? `<p class="muted acesso-c">${ic('carregando')}Abrindo a sua clínica…</p>`
+  const corpo = carregando ? `<p class="muted acesso-c">${ic('carregando')}${t === 'vencido' ? 'Abrindo o pagamento…' : 'Abrindo a sua clínica…'}</p>`
     : conta.msg && ['enviado', 'confirmar', 'aguardando'].includes(conta.tela) ? ''
     : t === 'entrar' ? `${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}<label class="field"><span class="lbl">Senha</span><span class="senha-c"><input name="senha" type="password" autocomplete="current-password" required><button type="button" class="btn ghost sm" data-ac="ver">Mostrar</button></span></label>
         <div class="acesso-l"><button type="button" class="lnk" data-ac="esqueci">Esqueci minha senha</button></div>`
@@ -141,11 +164,14 @@ function htmlAcesso(){
           <label class="${conta.levar ? 'on' : ''}"><input type="radio" name="levar" value="1" data-ac="levar" ${conta.levar ? 'checked' : ''}><span><b>Levar para a minha conta</b><small>Tudo passa a ficar no servidor e aparece em qualquer aparelho. Recomendado.</small></span></label>
           <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa com pacientes de exemplo (WhatsApp e CPF 0000…) para conhecer o sistema. Dá para excluir depois.</small></span></label></div>` : ''}
         ${escolherPlano('Escolha o pacote: 7 dias grátis com tudo o que ele tem')}`
-    : t === 'vencido' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
-  const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Quero continuar' }[t];
+    : t === 'vencido' ? `${escolherPlano('Pacote')}${escolherPeriodo()}`
+    : t === 'contato' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
+  const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Pagar com Pix ou cartão', contato:'Enviar' }[t];
   const rodape = t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p><p class="muted sm"><a class="lnk suave" href="inicio/index.html">Conhecer o MUSUBI</a></p>`
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
-    : ['clinica', 'vencido', 'aguardando'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
+    : t === 'vencido' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="contato">Prefiro que a equipe entre em contato</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
+    : t === 'contato' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="vencido">Voltar para o pagamento</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
+    : ['clinica', 'aguardando'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
   return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>
     <div class="acesso-h">${LOGO}<b>Musubi</b></div>
     <h1>${conta.tela === 'confirmar' ? 'Confira o seu e-mail' : conta.tela === 'enviado' ? 'Link enviado' : TIT[0]}</h1>
@@ -176,7 +202,7 @@ async function enviarAcesso(f){
     : t === 'esqueci' ? (!okEmail(v('email')) ? 'Confira o e-mail.' : '')
     : t === 'nova-senha' ? (v('senha').length < 8 ? 'A senha precisa de pelo menos 8 caracteres.' : '')
     : t === 'clinica' ? (!v('clinica').trim() ? 'Escreva o nome da clínica.' : !v('cidade').trim() ? 'Escreva a cidade.' : '')
-    : t === 'vencido' ? (String(v('whats')).replace(/\D/g, '').length < 10 ? 'Confira o WhatsApp, com o DDD.' : '') : '';
+    : t === 'contato' ? (String(v('whats')).replace(/\D/g, '').length < 10 ? 'Confira o WhatsApp, com o DDD.' : '') : '';
   if (falta) { conta.erro = falta; desenharAcesso(); return; }
   conta.erro = ''; conta.ocupado = true; desenharAcesso();
   try {
@@ -194,9 +220,13 @@ async function enviarAcesso(f){
       await abrirClinica({ id, nome:v('clinica').trim(), perfil:'adm' });
     }
     if (t === 'vencido') {
+      try { const r = await conta.nuvem.pagar(conta.clinica.id, conta.plano, conta.periodo); location.href = r.url; return; }
+      catch (e) { if (e.codigo === 'sem_cobranca' || e.status === 404) { abrirAcesso('contato', 'O pagamento pelo site ainda não está disponível. Deixe o seu WhatsApp: a equipe entra em contato para combinar.'); return; } throw e; }
+    }
+    if (t === 'contato') {
       const u = conta.nuvem.sessao()?.user || {}, P = planoDe(conta.plano);
       await conta.nuvem.pedirContato(`${u.nome || u.email || 'Cliente'} · ${conta.clinica?.nome || ''} · quer o ${P.nome}`.slice(0, 120), v('whats'));
-      abrirAcesso('aguardando', `Recebemos o seu pedido do pacote ${P.nome} (${precoTxt(P)}). A gente chama você no WhatsApp ${v('whats').trim()} para combinar. Os seus dados continuam guardados.`);
+      abrirAcesso('aguardando', `Recebemos o seu pedido do pacote ${P.nome} (${precoTxt(P)}). A equipe entra em contato pelo WhatsApp ${v('whats').trim()} para combinar. Os seus dados continuam guardados.`);
     }
   } catch (e) { conta.erro = e.message; conta.ocupado = false; desenharAcesso(); }
 }
@@ -207,12 +237,13 @@ export function ligarAcesso(){
   el.addEventListener('click', ev => {
     const b = ev.target.closest('[data-ac]'); if (!b) return; const a = b.dataset.ac;
     if (a === 'ver') { const s = el.querySelector('[name=senha]'), mostrar = s.type === 'password'; s.type = mostrar ? 'text' : 'password'; b.textContent = mostrar ? 'Ocultar' : 'Mostrar'; }
-    else if (['entrar', 'criar', 'esqueci'].includes(a)) abrirAcesso(a);
+    else if (['entrar', 'criar', 'esqueci', 'contato', 'vencido'].includes(a)) abrirAcesso(a);
     else if (a === 'local') { gravarC(KEY_MODO, 'local'); conta.modo = 'local'; fecharAcesso(); aoMudarConta(); }
     else if (a === 'sair') sairDaConta();
   });
   el.addEventListener('change', ev => {
     if (ev.target.dataset.ac === 'levar') { conta.levar = ev.target.value === '1'; desenharAcesso(); }
     if (ev.target.dataset.ac === 'plano') { conta.plano = ev.target.value; desenharAcesso(); }
+    if (ev.target.dataset.ac === 'periodo') { conta.periodo = ev.target.value; desenharAcesso(); }
   });
 }

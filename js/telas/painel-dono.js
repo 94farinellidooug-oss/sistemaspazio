@@ -1,13 +1,13 @@
 // Etapa 10: Painel do MUSUBI, só para a conta dona do MUSUBI (tabela donos no servidor).
 // Mostra todas as clínicas com o pacote, a situação (teste, grátis, pago, vencido), quem usa e números gerais
 // (nunca os dados dos pacientes), permite dar ou tirar acesso grátis, trocar o pacote e dar mais dias de teste,
-// e lista os interessados da página de apresentação. Pagamentos entram com o serviço de cobrança.
+// lista os interessados da página de apresentação e os pagamentos feitos pela InfinitePay.
 import { ic } from '../componentes/icones.js';
 import { PLANOS, planoDe, precoTxt, rotuloSituacao, situacaoAssinatura } from '../dados/planos.js';
 import { conta } from './conta.js';
 import { esc } from '../util.js';
 
-const pd = { aba:'clinicas', lista:null, inter:null, erro:'', carregando:false, gratis:null, busca:'' };
+const pd = { aba:'clinicas', lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'' };
 let pdApp = { render:() => {}, toast:() => {} };
 const SITU_INT = [['novo', 'Novo'], ['chamei', 'Já chamei'], ['cliente', 'Virou cliente'], ['nao', 'Não quis']];
 const PRAZOS = [['30', '30 dias'], ['90', '90 dias'], ['365', '1 ano'], ['sempre', 'Sem prazo']];
@@ -19,7 +19,7 @@ export const ehDono = () => conta.modo === 'nuvem' && conta.dono;
 
 async function carregarPd(){
   if (pd.carregando) return; pd.carregando = true; pd.erro = ''; pdApp.render(true);
-  try { const [L, I] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados()]); pd.lista = L; pd.inter = I; }
+  try { const [L, I, G] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => [])]); pd.lista = L; pd.inter = I; pd.pags = G; }
   catch (e) { pd.erro = e.message; }
   pd.carregando = false; pdApp.render(true);
 }
@@ -39,7 +39,7 @@ export function vPainelDono(){
       <div class="card"><small>Teste terminou</small><b>${n('vencido')}</b></div>
       <div class="card"><small>Interessados novos</small><b>${novos}</b></div></div>
     <div class="tabs" role="tablist">${[['clinicas', 'Clínicas', 'admin'], ['interessados', `Interessados${novos ? ` (${novos})` : ''}`, 'sino'], ['pagamentos', 'Pagamentos', 'dinheiro']].map(([k, l, i]) => `<button role="tab" data-pd="aba" data-k="${k}" class="${pd.aba === k ? 'on' : ''}" aria-selected="${pd.aba === k}">${ic(i)}${l}</button>`).join('')}</div>
-    ${pd.aba === 'clinicas' ? pdClinicas(L) : pd.aba === 'interessados' ? pdInteressados(I) : pdPagamentos()}`;
+    ${pd.aba === 'clinicas' ? pdClinicas(L) : pd.aba === 'interessados' ? pdInteressados(I) : pdPagamentos(L, pd.pags)}`;
 }
 
 function pdClinicas(L){
@@ -69,10 +69,19 @@ function pdInteressados(I){
         <label><span class="so-leitor">Situação de ${esc(i.nome)}</span><select data-pd="situ" data-i="${i.id}">${SITU_INT.map(([k, l]) => `<option value="${k}" ${i.situacao === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div></div>`).join('') || '<p class="muted sm">Ninguém pediu contato ainda.</p>'}</div></div>`;
 }
 
-function pdPagamentos(){
-  return `<div class="card cf-max" id="pd-pag"><div class="card-h"><h2>Pagamentos</h2></div>
-    <p class="sm">Os pacotes já estão no sistema: ${PLANOS.map(p => `<b>${p.nome}</b> (${precoTxt(p)})`).join(', ')}, com 7 dias grátis para toda clínica nova.</p>
-    <p class="muted sm cf-obs">A cobrança automática (Pix, boleto e cartão, mensal ou anual) entra quando escolhermos o serviço de cobrança. Aí cada pagamento aparece aqui sozinho, e quem atrasar recebe aviso antes de o acesso ser limitado, sem perder os dados.</p></div>`;
+const FORMA_PD = { pix:'Pix', credit_card:'Cartão' };
+const reaisPd = c => (c / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+function pdPagamentos(L, G){
+  const pagos = G.filter(g => g.situacao === 'pago'), mes = new Date().toISOString().slice(0, 7);
+  const doMes = pagos.filter(g => String(g.pago_em || '').slice(0, 7) === mes), nomeC = id => L.find(c => c.id === id)?.nome || 'Clínica';
+  return `<div class="card" id="pd-pag"><div class="card-h"><h2>Pagamentos<small>pela InfinitePay: Pix ou cartão, mensal ou anual (2 meses grátis)</small></h2></div>
+    <div class="pd-n pd-n3"><div class="card"><small>Recebido este mês</small><b>${reaisPd(doMes.reduce((t, g) => t + (g.valor_pago || g.valor), 0))}</b></div>
+      <div class="card"><small>Pagamentos confirmados</small><b>${pagos.length}</b></div>
+      <div class="card"><small>Não concluídos</small><b>${G.length - pagos.length}</b></div></div>
+    <div class="list">${G.map(g => `<div class="row pd-g-l"><span class="tico sm ${g.situacao === 'pago' ? 'acc' : ''}">${ic('dinheiro')}</span>
+      <div class="grow"><b>${esc(nomeC(g.clinica_id))}</b><small class="muted">${esc(planoDe(g.plano).nome)} · ${g.periodo === 'anual' ? 'anual' : 'mensal'} · ${dataBR(g.pago_em || g.criado_em)}${g.forma ? ' · ' + (FORMA_PD[g.forma] || esc(g.forma)) : ''}</small></div>
+      <b>${reaisPd(g.valor)}</b><span class="pill ${g.situacao === 'pago' ? 'ok' : ''}">${g.situacao === 'pago' ? 'Pago' : 'Não concluído'}</span>${g.recibo ? `<a class="btn sm ghost" href="${esc(g.recibo)}" target="_blank" rel="noopener">Recibo</a>` : ''}</div>`).join('') || '<p class="muted sm">Nenhum pagamento ainda.</p>'}</div>
+    <p class="muted sm cf-obs">Pacotes: ${PLANOS.map(p => `<b>${p.nome}</b> (${precoTxt(p)})`).join(', ')}. O pagamento confirmado pela InfinitePay libera o acesso da clínica sozinho. "Não concluído" é quem abriu o pagamento e não terminou.</p></div>`;
 }
 
 const pdFaz = async (fn, ok) => { try { await fn(); pdApp.toast(ok); await carregarPd(); } catch (e) { pdApp.toast(e.message, 'info'); } };
