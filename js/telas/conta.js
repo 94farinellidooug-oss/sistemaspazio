@@ -132,6 +132,10 @@ export const sairDaConta = async () => {
 // Pagamento pela InfinitePay a partir de Minha conta: abre o link (devolve '' ou a mensagem de erro).
 export const pagarConta = (plano, periodo, teste = false) => tentarC(async () => { const r = await conta.nuvem.pagar(conta.clinica.id, plano, periodo, teste); location.href = r.url; });
 // Pagamentos da clínica (null enquanto carrega; recarrega a tela quando chegam).
+// Cobrar por link (Financeiro): só com a conta no servidor. Devolve { url } ou { erro }.
+export const cobrancaLigada = () => conta.modo === 'nuvem' && !!conta.clinica?.id && !!conta.nuvem;
+export const cobrarLinkConta = async (tag, valor, descricao) => { try { return await conta.nuvem.cobrarLink(conta.clinica.id, tag, Math.round(valor * 100), descricao); }
+  catch (e) { return { erro:e.codigo === 'acao' || e.status === 404 ? 'A cobrança por link ainda não foi ligada no servidor (falta atualizar a função cobranca).' : e.message || 'Não foi possível criar o link agora. Tente de novo.' }; } };
 export const pagamentosConta = () => {
   if (conta.modo !== 'nuvem' || !conta.clinica?.id) return [];
   if (conta.pagamentos === null) { conta.pagamentos = []; conta.nuvem.pagamentos(conta.clinica.id).then(L => { conta.pagamentos = L; aoMudarConta(true); }).catch(() => {}); }

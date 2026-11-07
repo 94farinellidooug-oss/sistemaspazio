@@ -1089,6 +1089,8 @@ input[type=checkbox]{accent-color:var(--brand)}
 .fin-v.neg{color:var(--crit)}
 .fin-l .pill.sm{font-size:.7rem;padding:1px 7px}
 .fin-rec{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:end;gap:10px;padding-top:8px;border-top:1px dashed var(--line-2)}
+.fin-link{grid-column:1/-1;display:grid;gap:8px;padding-top:8px;border-top:1px dashed var(--line-2);min-width:0}
+.fin-link input{width:100%;min-width:0;font-size:13px}
 .fin-val{width:140px}
 .pac{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:10px}
 .pac small{display:block;color:var(--muted);font-size:.8rem}

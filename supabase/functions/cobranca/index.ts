@@ -10,6 +10,8 @@
 //   { acao:'criar', clinica, plano, periodo }  com o login do administrador da clínica: cria o pedido e devolve { url }
 //   { acao:'criar', clinica, plano, teste:true }  só o dono do MUSUBI: pagamento de teste de R$ 1,00 (libera 1 mês)
 //   { acao:'conferir', order_nsu, transaction_nsu, slug }  com login: confere na InfinitePay e devolve { pago }
+//   { acao:'link', clinica, tag, valor, descricao }  com o login de alguém da equipe: link de pagamento de um
+//     atendimento na InfiniteTag da própria clínica (o dinheiro cai na conta dela); devolve { url }. Não grava nada aqui.
 //   aviso da InfinitePay (webhook, ?aviso=1): confere na InfinitePay e marca como pago
 // O pagamento só é marcado depois de a InfinitePay confirmar pelo payment_check (o aviso não tem assinatura).
 // Escrito em JavaScript simples (sem tipos) para rodar igual no Supabase e nos testes (node).
@@ -21,7 +23,10 @@ export const NOMES = { essencial:'Essencial', profissional:'Profissional', clini
 export const valorDe = (plano, periodo) => PRECOS[plano] * (periodo === 'anual' ? 10 : 1);
 export const VALOR_TESTE = 100; // R$ 1,00, o mínimo da InfinitePay
 // Número do pedido curto, só letras e números (até 25, como o identificador do Pix): alguns bancos recusam o Pix com hífen ou longo.
-export const numeroPedido = id => ('MSB' + String(id).replace(/[^0-9a-z]/gi, '')).slice(0, 25);
+export const numeroPedido = (id, prefixo = 'MSB') => (prefixo + String(id).replace(/[^0-9a-z]/gi, '')).slice(0, 25);
+// Cobrar por link: a InfiniteTag da clínica (sem $) e o valor em centavos (de R$ 1,00 a R$ 100.000,00).
+export const TAG_OK = /^[a-z0-9][a-z0-9_.-]{1,39}$/;
+export const VALOR_LINK = { min:100, max:10000000 };
 // Textos sem acento nem símbolos, para o banco ler o Pix sem problema.
 const semAcento = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '-');
 
@@ -76,6 +81,22 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
       if (corpo.acao === 'conferir') {
         const r = await conferir({ order_nsu:corpo.order_nsu, transaction_nsu:corpo.transaction_nsu, slug:corpo.slug, recibo:corpo.receipt_url || '' });
         return resp(200, { pago:r.pago });
+      }
+      if (corpo.acao === 'link') {
+        const { clinica } = corpo, tag = String(corpo.tag || '').trim().replace(/^\$/, '').toLowerCase(), valor = Number(corpo.valor);
+        if (!/^[0-9a-f-]{36}$/i.test(String(clinica || ''))) return erro(400, 'dados', 'Pedido inválido.');
+        if (!TAG_OK.test(tag)) return erro(400, 'tag', 'Confira a InfiniteTag da clínica.');
+        if (!Number.isInteger(valor) || valor < VALOR_LINK.min || valor > VALOR_LINK.max) return erro(400, 'valor', 'O valor do link precisa ser de pelo menos R$ 1,00.');
+        const M = (await banco(`membros?select=perfil&clinica_id=eq.${clinica}&user_id=eq.${u.id}&ativo=is.true`)) || [];
+        if (!M.length) return erro(403, 'sem_acesso', 'Você não faz parte desta clínica.');
+        const descricao = semAcento(String(corpo.descricao || 'Atendimento')).trim().slice(0, 60) || 'Atendimento';
+        const r = await f(`${INFINITEPAY}/links`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({
+          handle:tag, order_nsu:numeroPedido(novoId(), 'MSL'), items:[{ description:descricao, price:valor, quantity:1 }]
+        }) });
+        const j = await r.json().catch(() => null);
+        const link = j && (j.url || j.payment_url || j.link || j.checkout_url);
+        if (!r.ok || !link) return erro(502, 'infinitepay', 'A InfinitePay não criou o link. Confira a InfiniteTag e tente de novo.');
+        return resp(200, { url:link, valor });
       }
       if (corpo.acao !== 'criar') return erro(400, 'acao', 'Pedido inválido.');
       const teste = corpo.teste === true, { clinica, plano } = corpo, periodo = teste ? 'mensal' : corpo.periodo;

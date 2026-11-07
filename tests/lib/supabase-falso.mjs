@@ -83,6 +83,12 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
         S.pagamentos.unshift({ id:'g' + n, clinica_id:corpo.clinica, plano:corpo.plano, periodo, valor, order_nsu:'MSB' + n, situacao:'aberto', forma:'', recibo:'', criado_em:new Date().toISOString(), pago_em:null });
         return resp(200, { url:'https://checkout.infinitepay.io/teste/' + n, order_nsu:'MSB' + n, valor });
       }
+      if (corpo.acao === 'link') {   // Cobrar por link: qualquer pessoa ativa da clínica, na InfiniteTag da clínica
+        if (S.semLink) return resp(400, { erro:'acao', msg:'Pedido inválido.' });
+        if (!S.clinicas.find(x => x.id === corpo.clinica)?.membros.some(m => m.user === eu.id && m.ativo !== false)) return resp(403, { erro:'sem_acesso', msg:'Você não faz parte desta clínica.' });
+        if (!/^[a-z0-9][a-z0-9_.-]{1,39}$/.test(corpo.tag || '')) return resp(400, { erro:'tag', msg:'Confira a InfiniteTag da clínica.' });
+        (S.links ||= []).push(corpo); return resp(200, { url:`https://checkout.infinitepay.io/${corpo.tag}/l${S.links.length}`, valor:corpo.valor });
+      }
       if (corpo.acao === 'conferir') {
         const g = S.pagamentos.find(x => x.order_nsu === corpo.order_nsu); if (!g || corpo.transaction_nsu === 'falhou') return resp(200, { pago:false });
         if (g.situacao !== 'pago') { const c = S.clinicas.find(x => x.id === g.clinica_id); Object.assign(g, { situacao:'pago', forma:'pix', pago_em:new Date().toISOString(), recibo:corpo.receipt_url || '' });
