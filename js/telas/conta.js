@@ -136,6 +136,9 @@ export const pagarConta = (plano, periodo, teste = false) => tentarC(async () =>
 export const cobrancaLigada = () => conta.modo === 'nuvem' && !!conta.clinica?.id && !!conta.nuvem;
 export const cobrarLinkConta = async (tag, valor, descricao) => { try { return await conta.nuvem.cobrarLink(conta.clinica.id, tag, Math.round(valor * 100), descricao); }
   catch (e) { return { erro:e.codigo === 'acao' || e.status === 404 ? 'A cobrança por link ainda não foi ligada no servidor (falta atualizar a função cobranca).' : e.message || 'Não foi possível criar o link agora. Tente de novo.' }; } };
+// Nota fiscal (função nfse): devolve a resposta do servidor ou { erro, ...corpo } com a mensagem pronta.
+export const nfseConta = async (acao, extra = {}) => { try { return await conta.nuvem.nfse({ acao, clinica:conta.clinica.id, ...extra }); }
+  catch (e) { return { ...(e.corpo || {}), erro:e.status === 404 && !e.corpo ? 'A nota fiscal ainda não foi ligada no servidor (falta publicar a função nfse).' : e.message || 'Não deu certo agora. Tente de novo.', codigo:e.codigo || '' }; } };
 export const pagamentosConta = () => {
   if (conta.modo !== 'nuvem' || !conta.clinica?.id) return [];
   if (conta.pagamentos === null) { conta.pagamentos = []; conta.nuvem.pagamentos(conta.clinica.id).then(L => { conta.pagamentos = L; aoMudarConta(true); }).catch(() => {}); }

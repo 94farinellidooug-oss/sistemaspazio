@@ -1620,6 +1620,26 @@ body.com-acesso{overflow:hidden}
 .cid-i small{display:block}
 .cid-i.fora{opacity:.7}
 .cid-pill{border:0;cursor:pointer;font:inherit;background:var(--accent-soft);color:var(--accent)}
+
+/* Nota fiscal (NFS-e) */
+.nf-amb{border:0;padding:0;margin:0;min-width:0}
+.nf-amb .chip{position:relative}
+.nf-amb .chip input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:pointer}
+.nf-pronto{display:flex;gap:8px;align-items:flex-start;color:var(--ok);font-size:.88rem}
+.nf-pronto svg{flex:none;width:16px;height:16px;margin-top:2px}
+.nf-linhas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
+.nf-linhas>div{display:grid;gap:2px;min-width:0}
+.nf-linhas b{overflow-wrap:anywhere}
+.nf-n{white-space:nowrap}
+@media (max-width:560px){.nf-linhas{grid-template-columns:1fr}}
+#imp .nf-folha h1{font-size:15pt;margin:0 0 6px}
+#imp .nf-folha table{width:100%;border-collapse:collapse;margin-top:10px}
+#imp .nf-folha th,#imp .nf-folha td{border:1px solid #000;padding:5px 7px;text-align:left;vertical-align:top;font-size:10.5pt}
+#imp .nf-folha th{width:17%;font-weight:600;background:#f2f2f2}
+#imp .nf-folha .mono{font-family:ui-monospace,monospace;letter-spacing:.5px;word-break:break-all}
+#imp .nf-teste{border:2px solid #000;padding:4px 8px;display:inline-block;margin:6px 0}
+#imp .nf-cons{margin-top:10px;font-size:10pt}
+.nf-amb .chip:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 
 
@@ -2763,7 +2783,7 @@ const MSG_NUVEM = {
 const ErroNuvem = class extends Error { constructor(msg, codigo, status){ super(msg); this.codigo = codigo; this.status = status; } };
 const erroDe = (status, corpo) => {
   const cod = corpo?.error_code || corpo?.code || corpo?.error || '', txt = String(corpo?.message || corpo?.msg || corpo?.error_description || '');
-  if (corpo?.erro && corpo?.msg) return new ErroNuvem(String(corpo.msg), String(corpo.erro), status);   // função cobranca
+  if (corpo?.erro && corpo?.msg) return Object.assign(new ErroNuvem(String(corpo.msg), String(corpo.erro), status), { corpo });   // funções cobranca e nfse
   const chave = Object.keys(MSG_NUVEM).find(k => cod === k || txt.includes(k));
   return new ErroNuvem(chave ? MSG_NUVEM[chave] : status === 401 ? MSG_NUVEM.sem_login : 'O servidor não respondeu como esperado. Tente de novo.', chave || cod || String(status), status);
 };
@@ -2853,6 +2873,8 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     // Pagamento do MUSUBI pela InfinitePay (função cobranca, supabase/functions/cobranca). Devolve { url } do link.
     pagar:async (clinica, plano, periodo, teste = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo, ...(teste ? { teste:true } : {}) }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
+    // Nota fiscal (função nfse, supabase/functions/nfse): { acao, clinica, ... }.
+    nfse:async corpo => chamar('/functions/v1/nfse', { metodo:'POST', corpo, token:await token() }),
     conferirPagamento:async ({ order_nsu, transaction_nsu, slug, receipt_url }) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'conferir', order_nsu, transaction_nsu, slug, receipt_url }, token:await token() }),
     // Pagamentos (supabase/003_pagamentos.sql): da clínica, ou todos para o dono. [] quando o servidor ainda não tem a tabela.
     pagamentos:async clinica => { try { return (await rest(`pagamentos?select=id,clinica_id,plano,periodo,valor,valor_pago,situacao,forma,recibo,link,criado_em,pago_em&order=criado_em.desc${clinica ? '&clinica_id=eq.' + clinica : ''}`)) || []; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return []; throw e; } },
@@ -3144,6 +3166,9 @@ const pagarConta = (plano, periodo, teste = false) => tentarC(async () => { cons
 const cobrancaLigada = () => conta.modo === 'nuvem' && !!conta.clinica?.id && !!conta.nuvem;
 const cobrarLinkConta = async (tag, valor, descricao) => { try { return await conta.nuvem.cobrarLink(conta.clinica.id, tag, Math.round(valor * 100), descricao); }
   catch (e) { return { erro:e.codigo === 'acao' || e.status === 404 ? 'A cobrança por link ainda não foi ligada no servidor (falta atualizar a função cobranca).' : e.message || 'Não foi possível criar o link agora. Tente de novo.' }; } };
+// Nota fiscal (função nfse): devolve a resposta do servidor ou { erro, ...corpo } com a mensagem pronta.
+const nfseConta = async (acao, extra = {}) => { try { return await conta.nuvem.nfse({ acao, clinica:conta.clinica.id, ...extra }); }
+  catch (e) { return { ...(e.corpo || {}), erro:e.status === 404 && !e.corpo ? 'A nota fiscal ainda não foi ligada no servidor (falta publicar a função nfse).' : e.message || 'Não deu certo agora. Tente de novo.', codigo:e.codigo || '' }; } };
 const pagamentosConta = () => {
   if (conta.modo !== 'nuvem' || !conta.clinica?.id) return [];
   if (conta.pagamentos === null) { conta.pagamentos = []; conta.nuvem.pagamentos(conta.clinica.id).then(L => { conta.pagamentos = L; aoMudarConta(true); }).catch(() => {}); }
@@ -3747,6 +3772,307 @@ function textoCobranca(p, a, valor, url, clinica){
   const nome = String(p?.name || '').trim().split(/\s+/)[0] || '';
   return `Olá${nome ? ', ' + nome : ''}! Segue o link para o pagamento de ${a?.tipo || 'atendimento'}${a?.date ? ' do dia ' + fmt(a.date) : ''} (${brl(valor)}): ${url}\nO pagamento pode ser feito por Pix ou cartão de crédito.${clinica ? '\n' + clinica : ''}`;
 }
+// da Receita com o certificado A1 da própria clínica, sem intermediário pago). Quem emite é a função nfse do
+// servidor (supabase/functions/nfse); aqui ficam a configuração fiscal da clínica e as notas emitidas.
+//
+// db.config.nfse = { ambiente:'homologacao'|'producao', regime:'1'|'2'|'3', codigo (6 números), pTotTribSN,
+//   fed, est, mun (percentuais aproximados de tributos), aliquota (ISS %, opcional), serie, proximo }
+// db.financeiro.notas = [{ id (no servidor), rec (recebimento), situacao:'emitida'|'enviando'|'rejeitada',
+//   numero, chave, ndps, serie, ambiente, valor, tomador, cpf, descricao, data, emitidaEm, consulta, msg, em, por }]
+// Municípios: tabela do IBGE (js/conhecimento/municipios.txt, código, nome e UF), para o código da cidade da nota.
+
+// Códigos de tributação nacional (item, subitem e desdobro da LC 116/2003) mais usados em saúde e bem-estar.
+const CODIGOS_SERVICO = [
+  ['040501', 'Acupuntura'],
+  ['040901', 'Terapias de qualquer espécie para tratamento físico, orgânico e mental'],
+  ['040101', 'Medicina e biomedicina'],
+  ['040801', 'Terapia ocupacional, fisioterapia e fonoaudiologia'],
+  ['041001', 'Nutrição'],
+  ['041601', 'Psicologia'],
+  ['060201', 'Esteticistas, tratamento de pele, depilação e congêneres']
+];
+const REGIMES_NOTA = [['2', 'MEI'], ['3', 'Simples Nacional (ME ou EPP)'], ['1', 'Fora do Simples Nacional']];
+const AMBIENTES = { homologacao:'Homologação (teste, sem valor fiscal)', producao:'Produção (nota com valor fiscal)' };
+const PADRAO = { ambiente:'homologacao', regime:'', codigo:'040501', pTotTribSN:'', fed:'', est:'', mun:'', aliquota:'', serie:'1', proximo:'' };
+
+const codigoTxt = c => String(c || '').replace(/^(\d{2})(\d{2})(\d{2})$/, '$1.$2.$3');
+const nomeCodigo = c => CODIGOS_SERVICO.find(x => x[0] === c)?.[1] || '';
+const configNota = db => ({ ...PADRAO, ...(db.config?.nfse || {}) });
+const num = v => String(v ?? '').trim().replace(',', '.');
+const pctOk = v => v !== '' && Number(v) >= 0 && Number(v) <= 100;
+
+// Salva a configuração fiscal. Devolve a mensagem de erro, ou ''.
+function salvarConfigNota(db, D){
+  const N = { ...configNota(db) };
+  for (const k of ['ambiente', 'regime', 'codigo', 'serie', 'proximo']) if (D[k] !== undefined) N[k] = String(D[k]).trim();
+  for (const k of ['pTotTribSN', 'fed', 'est', 'mun', 'aliquota']) if (D[k] !== undefined) N[k] = num(D[k]);
+  N.codigo = N.codigo.replace(/\D/g, '');
+  if (!AMBIENTES[N.ambiente]) return 'Escolha homologação ou produção.';
+  if (!REGIMES_NOTA.some(r => r[0] === N.regime)) return 'Escolha o regime tributário da clínica.';
+  if (N.codigo.length !== 6) return 'O código do serviço tem 6 números (por exemplo 04.05.01).';
+  if (N.regime === '3' && !pctOk(N.pTotTribSN)) return 'Informe o percentual aproximado de tributos do Simples (de 0 a 100).';
+  if (N.regime === '1' && !['fed', 'est', 'mun'].every(k => pctOk(N[k]))) return 'Informe os três percentuais aproximados de tributos (de 0 a 100).';
+  if (N.aliquota !== '' && !(Number(N.aliquota) > 0 && Number(N.aliquota) <= 5)) return 'A alíquota do ISS fica entre 0,01% e 5% (ou deixe em branco).';
+  if (!/^\d{1,5}$/.test(N.serie) || Number(N.serie) < 1) return 'A série é um número de 1 a 49999.';
+  if (N.proximo !== '' && !/^[1-9]\d{0,14}$/.test(N.proximo)) return 'O número inicial precisa ser um número inteiro.';
+  (db.config ||= {}).nfse = N; return '';
+}
+
+// Tabela de municípios: "código\tnome\tUF" por linha.
+const semAcentoMun = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const lerMunicipios = txt => String(txt).split('\n').map(l => l.split('\t')).filter(x => x.length === 3 && /^\d{7}$/.test(x[0])).map(([c, n, uf]) => ({ c, n, uf:uf.trim(), k:semAcentoMun(n) }));
+const codigoMunicipio = (L, cidade, uf) => (L || []).find(m => m.uf === uf && m.k === semAcentoMun(cidade))?.c || '';
+
+// O que ainda falta para emitir (lista de textos; vazia = pronto).
+function faltaParaNota(cfgClinica, nota, certificado, ibge){
+  const F = [], doc = String(cfgClinica.doc || '').replace(/\D/g, '');
+  if (!certificado) F.push('enviar o certificado digital A1');
+  else if (new Date(certificado.validade) <= new Date()) F.push('enviar um certificado dentro da validade');
+  if (doc.length !== 11 && doc.length !== 14) F.push('informar o CNPJ (ou CPF) da clínica');
+  if (!nota.regime) F.push('escolher o regime tributário');
+  if (ibge === '') F.push(`conferir a cidade da clínica (${cfgClinica.cidade} - ${cfgClinica.uf} não foi encontrada no IBGE)`);
+  return F;
+}
+
+const notasDe = (db, recId) => (db.financeiro?.notas || []).filter(n => n.rec === recId);
+// A nota que vale para o recebimento: a emitida, ou a que ficou sem resposta.
+const notaDe = (db, recId) => { const L = notasDe(db, recId); return L.find(n => n.situacao === 'emitida') || L.find(n => n.situacao === 'enviando') || null; };
+function guardarNota(db, n){
+  const F = db.financeiro ||= {}, L = F.notas ||= [], i = L.findIndex(x => x.id === n.id);
+  if (i >= 0) L[i] = { ...L[i], ...n }; else L.push(n);
+  return L[i >= 0 ? i : L.length - 1];
+}
+const descricaoNota = (tipo, data) => `${tipo || 'Atendimento'} realizado em ${fmt(data)}`;
+const cpfDe = p => String(p?.cadastro?.cpf || '').replace(/\D/g, '');
+function cpfConfere(v){
+  const c = String(v || '').replace(/\D/g, ''); if (c.length !== 11 || /^(\d)\1+$/.test(c)) return false;
+  const dv = n => { let s = 0; for (let i = 0; i < n; i++) s += Number(c[i]) * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
+  return dv(9) === Number(c[9]) && dv(10) === Number(c[10]);
+}
+
+// Pedido para a função nfse a partir do recebimento, da configuração e do que foi conferido na janela.
+function pedidoNota({ clinica, nota, ibge, valor, data, descricao, paciente, comCpf }){
+  const T = nota.regime === '3' ? { pTotTribSN:nota.pTotTribSN } : nota.regime === '1' ? { fed:nota.fed, est:nota.est, mun:nota.mun } : {};
+  const cpf = cpfDe(paciente);
+  return {
+    ambiente:nota.ambiente,
+    nota:{ serie:nota.serie, proximo:nota.proximo ? Number(nota.proximo) : undefined, cLocEmi:ibge, dCompet:data,
+      prestador:{ doc:String(clinica.doc || '').replace(/\D/g, ''), regime:nota.regime },
+      tomador:comCpf && cpfConfere(cpf) ? { doc:cpf, nome:paciente.name, email:paciente.cadastro?.email || '' } : undefined,
+      servico:{ cTribNac:nota.codigo, descricao }, valor:Math.round(valor * 100), tributos:T, aliquota:nota.aliquota }
+  };
+}
+// "Emitir nota" em cada recebimento do Financeiro, janela de conferência antes de emitir, "Conferir" para a
+// nota que ficou sem resposta e a folha da nota para imprimir. Quem emite é a função nfse do servidor.
+
+// cert: undefined (ainda não perguntado), null (sem certificado) ou { titular, documento, validade }
+const nf = { cert:undefined, buscando:false, ocupado:false, rasc:null, tirar:false, janela:null, erro:'', municipios:null, carregandoM:false };
+let app = { save:() => {}, render:() => {}, toast:() => {} };
+const dataBr = iso => iso ? new Date(iso).toLocaleDateString('pt-BR') : '';
+const docTxt = d => { const x = String(d || '').replace(/\D/g, ''); return x.length === 14 ? x.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : x.length === 11 ? x.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : x; };
+
+// Municípios do IBGE: carregam na primeira vez que a nota precisa do código da cidade.
+async function carregarMunicipios(){
+  if (nf.municipios || nf.carregandoM) return; nf.carregandoM = true;
+  const U = ['js/conhecimento/municipios.txt', '../js/conhecimento/municipios.txt']; if (location.pathname.includes('/dist/')) U.reverse();
+  for (const u of U) { try { const r = await fetch(u); if (r.ok) { const L = lerMunicipios(await r.text()); if (L.length) { nf.municipios = L; break; } } } catch (e) {} }
+  nf.carregandoM = false; app.render(true);
+}
+// Código IBGE da cidade da clínica: null enquanto carrega, '' quando não achou.
+const ibgeDaClinica = () => { if (!nf.municipios) { carregarMunicipios(); return null; } const C = configDe(db).clinica; return codigoMunicipio(nf.municipios, C.cidade, C.uf); };
+async function buscarCertificado(){
+  if (nf.buscando || nf.cert !== undefined || !cobrancaLigada()) return; nf.buscando = true;
+  const r = await nfseConta('situacao'); nf.buscando = false;
+  nf.cert = r.erro ? null : r.certificado; nf.erroServ = r.erro || ''; app.render(true);
+}
+
+/* ---------- Configurações > Nota fiscal ---------- */
+function cfNota(){
+  if (!cobrancaLigada()) return `<div class="card cf-max" id="cf-nota"><div class="card-h"><h2>Nota fiscal de serviço (NFS-e)</h2></div>
+    <p class="muted sm">A nota fiscal sai direto do MUSUBI pelo padrão nacional da Receita, com o certificado digital da clínica. Para isso, entre na sua conta: o certificado e as notas ficam guardados no servidor.</p>
+    <div class="cf-acoes"><button class="btn pri" data-act="conta-entrar">${ic('sair')}Entrar na sua conta</button></div></div>`;
+  buscarCertificado(); const ibge = ibgeDaClinica();
+  const N = nf.rasc || configNota(db), C = configDe(db).clinica, K = nf.cert, vencido = K && new Date(K.validade) <= new Date();
+  const dias = K ? Math.ceil((new Date(K.validade) - Date.now()) / 864e5) : 0;
+  const outro = !CODIGOS_SERVICO.some(c => c[0] === N.codigo);
+  const falta = K === undefined || ibge === null ? [] : faltaParaNota(C, N, K, ibge);
+  const certCard = `<div class="card" id="nf-cert"><div class="card-h"><h2>Certificado digital A1<small>o mesmo usado no e-CNPJ ou e-CPF da clínica</small></h2>${K ? `<span class="pill ${vencido ? 'crit' : dias <= 30 ? 'warn' : 'ok'}">${vencido ? 'vencido' : dias <= 30 ? `vence em ${dias} dia${dias === 1 ? '' : 's'}` : 'válido'}</span>` : ''}</div>
+    ${K === undefined ? `<p class="muted sm">${ic('carregando')} Conferindo o certificado no servidor…</p>`
+    : K ? `<div class="list"><div class="row"><span class="tico sm acc">${ic('escudo')}</span><div class="grow"><b>${esc(K.titular)}</b><small class="muted">${docTxt(K.documento)} · válido até ${dataBr(K.validade)}${K.enviadoEm ? ' · enviado em ' + dataBr(K.enviadoEm) : ''}</small></div></div></div>` : `<p class="muted sm">${nf.erroServ ? esc(nf.erroServ) : 'Nenhum certificado enviado ainda.'}</p>`}
+    <form id="nf-f-cert" class="form" novalidate style="margin-top:12px">
+      <label class="field full"><span class="lbl">${K ? 'Trocar pelo arquivo novo' : 'Arquivo do certificado'} (.pfx ou .p12)</span><input type="file" id="nf-arq" accept=".pfx,.p12,application/x-pkcs12"></label>
+      <label class="field full"><span class="lbl">Senha do certificado</span><input type="password" id="nf-senha" autocomplete="off"></label>
+      <p class="erro-c full" id="nf-cert-erro" hidden></p>
+      <div class="cf-acoes full"><button class="btn pri" type="submit" ${nf.ocupado ? 'disabled' : ''}>${ic('escudo')}${nf.ocupado ? 'Enviando…' : 'Enviar certificado'}</button>
+        ${K ? (nf.tirar ? `<button type="button" class="btn" data-nf="tirar-ok">Tirar mesmo</button><button type="button" class="btn ghost" data-nf="tirar-n">Manter</button>` : `<button type="button" class="btn ghost" data-nf="tirar">Tirar certificado</button>`) : ''}</div></form>
+    <p class="muted sm cf-obs">O arquivo vai cifrado para o servidor e fica trancado lá; ninguém da equipe consegue baixá-lo. A senha serve só para abrir o arquivo agora e não é guardada.</p></div>`;
+  const pctCampo = (k, l) => `<label class="field"><span class="lbl">${l}</span><input name="${k}" inputmode="decimal" value="${esc(String(N[k]).replace('.', ','))}" placeholder="0,00"></label>`;
+  return `<div class="grid cf-g">${certCard}
+    <form class="card" id="nf-f-dados" novalidate><div class="card-h"><h2>Dados da nota<small>confira com o seu contador</small></h2></div>
+      ${N.ambiente === 'homologacao' ? `<p class="aviso-ip" id="nf-homolog">${ic('info')}<span>Em <b>homologação</b> as notas são de teste e não valem como nota fiscal. Emita algumas para conferir e depois troque para <b>produção</b>.</span></p>` : ''}
+      <div class="form">
+        <fieldset class="field full nf-amb"><legend class="lbl">Ambiente</legend><div class="chips">${Object.entries(AMBIENTES).map(([k, l]) => `<label class="chip ${N.ambiente === k ? 'on' : ''}"><input type="radio" name="ambiente" value="${k}" data-nf="campo" ${N.ambiente === k ? 'checked' : ''}> ${l}</label>`).join('')}</div></fieldset>
+        <label class="field"><span class="lbl">CNPJ ou CPF da clínica</span><input name="doc" inputmode="numeric" value="${esc(docTxt(N.doc ?? C.doc))}" placeholder="00.000.000/0000-00"></label>
+        <label class="field"><span class="lbl">Regime tributário</span><select name="regime" data-nf="campo"><option value="">Escolha</option>${REGIMES_NOTA.map(([k, l]) => `<option value="${k}" ${N.regime === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label class="field full"><span class="lbl">Serviço (código nacional)</span><select name="codigoSel" data-nf="campo">${CODIGOS_SERVICO.map(([k, l]) => `<option value="${k}" ${N.codigo === k ? 'selected' : ''}>${codigoTxt(k)} · ${l}</option>`).join('')}<option value="outro" ${outro ? 'selected' : ''}>Outro código</option></select></label>
+        ${outro ? `<label class="field"><span class="lbl">Código do serviço</span><input name="codigo" inputmode="numeric" value="${esc(codigoTxt(N.codigo))}" placeholder="00.00.00"></label>` : ''}
+        ${N.regime === '3' ? pctCampo('pTotTribSN', 'Tributos aproximados do Simples (%)') : ''}
+        ${N.regime === '1' ? pctCampo('fed', 'Tributos federais (%)') + pctCampo('est', 'Tributos estaduais (%)') + pctCampo('mun', 'Tributos municipais (%)') : ''}
+      </div>
+      <details class="cf-mais" ${N.aliquota || N.proximo || N.serie !== '1' ? 'open' : ''}><summary>Mais (opcional)</summary><div class="form">
+        ${N.regime === '3' ? `<label class="field"><span class="lbl">Alíquota do ISS (%)</span><input name="aliquota" inputmode="decimal" value="${esc(String(N.aliquota).replace('.', ','))}" placeholder="a da prefeitura"></label>` : ''}
+        <label class="field"><span class="lbl">Série</span><input name="serie" inputmode="numeric" value="${esc(N.serie)}"></label>
+        <label class="field"><span class="lbl">Número inicial da DPS</span><input name="proximo" inputmode="numeric" value="${esc(N.proximo)}" placeholder="1"></label>
+        <small class="muted full">Preencha o número inicial só se a clínica já emitiu notas por outro sistema com a mesma série.</small></div></details>
+      <p class="muted sm cf-obs">Cidade da nota: <b>${esc(C.cidade)} - ${esc(C.uf)}</b>${ibge ? ` (IBGE ${ibge})` : ibge === '' ? ' · <span class="erro-a" style="display:inline">não encontrada no IBGE; confira em Dados da clínica</span>' : ''}.</p>
+      <p class="erro-c" id="nf-dados-erro" hidden></p>
+      <div class="cf-acoes"><button class="btn pri" type="submit">${ic('check')}Salvar</button></div>
+      ${falta.length ? `<p class="muted sm cf-obs" id="nf-falta">Para emitir, falta ${falta.join(', ')}.</p>` : K ? `<p class="cf-obs nf-pronto" id="nf-pronto">${ic('okc')} Pronto para emitir em ${N.ambiente === 'producao' ? 'produção' : 'homologação'}. Use <b>Emitir nota</b> nos recebimentos do Financeiro.</p>` : ''}</form></div>`;
+}
+
+/* ---------- Financeiro ---------- */
+const notaLigada = () => cobrancaLigada();
+// Botões da nota em cada recebimento.
+function botaoNota(r){
+  if (!notaLigada()) return '';
+  const n = notaDe(db, r.id);
+  if (n?.situacao === 'emitida') return `<span class="pill ok sm nf-n">NFS-e ${esc(n.numero)}${n.ambiente === 'homologacao' ? ' · teste' : ''}</span><button class="btn sm ghost" data-nf="imprimir" data-r="${r.id}" aria-label="Imprimir a nota" data-tip="Imprimir a nota">${ic('baixar')}</button>`;
+  if (n?.situacao === 'enviando') return `<button class="btn sm" data-nf="conferir" data-r="${r.id}" ${nf.ocupado ? 'disabled' : ''}>${ic('historico')}Conferir nota</button>`;
+  return `<button class="btn sm" data-nf="abrir" data-r="${r.id}">${ic('recibo')}Emitir nota</button>`;
+}
+function cartaoNota(){
+  if (!notaLigada()) return `<div class="card" id="f-nota"><h2>Nota fiscal</h2><p class="muted sm">Com a conta no servidor, a nota fiscal de serviço (NFS-e) sai direto do MUSUBI pelo padrão nacional. Sem conta, em cada recebimento o botão <b>Dados da nota</b> copia paciente, CPF, serviço, valor e data, prontos para colar no emissor.</p></div>`;
+  buscarCertificado();
+  const N = configNota(db), K = nf.cert, M = (db.financeiro?.notas || []).filter(n => n.situacao === 'emitida');
+  const mes = new Date().toISOString().slice(0, 7), doMes = M.filter(n => String(n.emitidaEm || n.em).slice(0, 7) === mes && n.ambiente === N.ambiente);
+  return `<div class="card" id="f-nota"><div class="card-h"><h2>Nota fiscal<small>padrão nacional, com o certificado da clínica</small></h2><span class="pill ${N.ambiente === 'producao' ? 'ok' : 'warn'}">${N.ambiente === 'producao' ? 'produção' : 'homologação'}</span></div>
+    ${K === undefined ? '<p class="muted sm">Conferindo…</p>' : !K || !N.regime ? `<p class="muted sm">Antes da primeira nota, ${souAdm() ? 'envie o certificado digital A1 e preencha os dados fiscais' : 'o administrador precisa enviar o certificado digital A1 e preencher os dados fiscais'}.</p>`
+      : `<p class="muted sm">${doMes.length} nota${doMes.length === 1 ? '' : 's'} emitida${doMes.length === 1 ? '' : 's'} neste mês${N.ambiente === 'homologacao' ? ' (teste)' : ''}. Use <b>Emitir nota</b> em cada recebimento.</p>`}
+    ${souAdm() ? `<a class="btn sm" href="#configuracoes" data-cf="ir" data-k="nota" style="margin-top:8px">${ic('editar')}Configurar a nota fiscal</a>` : ''}</div>`;
+}
+
+// Janela de conferência antes de emitir.
+function janelaNota(){
+  const r = nf.janela && db.financeiro?.recebimentos.find(x => x.id === nf.janela.rec); if (!r) { nf.janela = null; return ''; }
+  buscarCertificado();
+  const a = db.appts.find(x => x.id === r.ap), p = a && patient(a.pid), J = nf.janela, N = configNota(db), C = configDe(db).clinica, ibge = ibgeDaClinica();
+  const cpf = cpfDe(p), temCpf = cpfConfere(cpf);
+  const falta = nf.cert === undefined || ibge === null ? null : faltaParaNota(C, N, nf.cert, ibge);
+  return `<div class="modal-fundo" id="nf-fundo" data-nf="fechar"><form class="modal" id="f-nfse" role="dialog" aria-modal="true" aria-labelledby="nf-t" data-r="${r.id}" novalidate>
+    <div class="modal-h"><div class="grow"><h2 id="nf-t">Emitir nota fiscal</h2><small class="muted">${esc(p?.name || r.nome || '')} · ${brl(r.valor)} · recebido em ${fmt(r.data)}</small></div><button type="button" class="btn ghost sm" data-nf="fechar" aria-label="Fechar">${ic('x')}</button></div>
+    <div class="modal-c">
+      ${N.ambiente === 'homologacao' ? `<p class="aviso-ip">${ic('info')}<span>Ambiente de <b>homologação</b>: a nota é de teste e não vale como nota fiscal.</span></p>` : ''}
+      ${falta === null ? `<p class="muted sm">${ic('carregando')} Conferindo os dados da nota…</p>` : falta.length ? `<div class="notice" id="nf-falta-j">${ic('alerta')}<div>Antes de emitir, falta ${esc(falta.join(', '))}. ${souAdm() ? `<a href="#configuracoes" data-cf="ir" data-k="nota">Abrir Configurações > Nota fiscal</a>` : 'Peça ao administrador da clínica.'}</div></div>` : ''}
+      <div class="nf-linhas"><div><span class="lbl">Paciente (tomador)</span><b>${esc(p?.name || r.nome || '')}</b></div><div><span class="lbl">Valor</span><b>${brl(r.valor)}</b></div>
+        <div><span class="lbl">Data do atendimento</span><b>${fmt(a?.date || r.data)}</b></div><div><span class="lbl">Serviço</span><b>${codigoTxt(N.codigo)}${nomeCodigo(N.codigo) ? ' · ' + esc(nomeCodigo(N.codigo)) : ''}</b></div></div>
+      ${temCpf ? `<label class="ck"><input type="checkbox" id="nf-cpf" ${J.comCpf !== false ? 'checked' : ''}> Identificar o paciente com o CPF ${docTxt(cpf)}</label>`
+        : `<p class="muted sm">${cpf ? 'O CPF do cadastro do paciente está incorreto' : 'O paciente não tem CPF no cadastro'}: a nota sai sem identificar o paciente. Para incluir, corrija o cadastro antes.</p>`}
+      <label class="rx-f full"><span class="lbl">Descrição do serviço (sai na nota)</span><textarea id="nf-desc" rows="2" maxlength="1000">${esc(J.descricao ?? descricaoNota(a?.tipo || r.tipo, a?.date || r.data))}</textarea></label>
+      <p class="erro-a" id="nf-erro" role="alert" ${nf.erro ? '' : 'hidden'}>${esc(nf.erro)}</p>
+    </div>
+    <div class="modal-p"><button type="button" class="btn ghost" data-nf="fechar">Cancelar</button><button class="btn pri" ${nf.ocupado || !falta || falta.length ? 'disabled' : ''}>${ic('recibo')}${nf.ocupado ? 'Emitindo…' : 'Emitir nota'}</button></div>
+  </form></div>`;
+}
+
+// Folha da nota para imprimir (resumo da NFS-e; a oficial fica na consulta pública pela chave de acesso).
+function folhaNota(n){
+  const C = configDe(db).clinica, N = configNota(db);
+  return `<div class="folha nf-folha"><h1>Nota Fiscal de Serviço Eletrônica (NFS-e)</h1>
+    ${n.ambiente === 'homologacao' ? '<p class="nf-teste"><b>SEM VALOR FISCAL</b> · emitida em homologação (teste)</p>' : ''}
+    <table><tr><th>Número</th><td>${esc(n.numero)}</td><th>Emitida em</th><td>${n.emitidaEm ? new Date(n.emitidaEm).toLocaleString('pt-BR') : ''}</td></tr>
+      <tr><th>Chave de acesso</th><td colspan="3" class="mono">${esc(n.chave)}</td></tr>
+      <tr><th>Prestador</th><td colspan="3">${esc(C.nome)} · ${docTxt(C.doc)} · ${esc(C.cidade)} - ${esc(C.uf)}</td></tr>
+      <tr><th>Tomador</th><td colspan="3">${esc(n.tomador || 'não identificado')}${n.cpf ? ' · CPF ' + docTxt(n.cpf) : ''}</td></tr>
+      <tr><th>Serviço</th><td colspan="3">${codigoTxt(n.codigo || N.codigo)}${nomeCodigo(n.codigo || N.codigo) ? ' · ' + esc(nomeCodigo(n.codigo || N.codigo)) : ''}<br>${esc(n.descricao || '')}</td></tr>
+      <tr><th>Data do serviço</th><td>${n.data ? fmt(n.data) : ''}</td><th>Valor</th><td><b>${brl(n.valor)}</b></td></tr></table>
+    <p class="nf-cons">Consulte a nota oficial em nfse.gov.br/consultapublica com a chave de acesso acima.</p></div>`;
+}
+
+/* ---------- Eventos ---------- */
+const erroEm = (id, m) => { const e = document.getElementById(id); if (e) { e.textContent = m; e.hidden = !m; } return !!m; };
+const lerArquivo = f => new Promise((ok, falha) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => falha(r.error); r.readAsDataURL(f); });
+const campos = f => { const D = {}; for (const el of f.elements) if (el.name && (el.type !== 'radio' || el.checked)) D[el.name] = el.value; if (D.codigoSel && D.codigoSel !== 'outro') D.codigo = D.codigoSel; delete D.codigoSel; return D; };
+
+async function enviarCertificado(){
+  const arq = document.getElementById('nf-arq')?.files?.[0], senha = document.getElementById('nf-senha')?.value || '';
+  if (!arq) { erroEm('nf-cert-erro', 'Escolha o arquivo do certificado (.pfx ou .p12).'); return; }
+  if (arq.size > 30000) { erroEm('nf-cert-erro', 'Este arquivo é grande demais para um certificado A1. Confira se é o .pfx do certificado.'); return; }
+  if (!senha) { erroEm('nf-cert-erro', 'Digite a senha do certificado.'); return; }
+  nf.ocupado = true; app.render(true);
+  const r = await nfseConta('certificado', { pfx:await lerArquivo(arq), senha });
+  nf.ocupado = false;
+  if (r.erro) { app.render(true); erroEm('nf-cert-erro', r.erro); return; }
+  nf.cert = r.certificado; app.render(true); app.toast('Certificado guardado com segurança no servidor');
+}
+async function emitir(f){
+  const r = db.financeiro?.recebimentos.find(x => x.id === f.dataset.r); if (!r || nf.ocupado) return;
+  const a = db.appts.find(x => x.id === r.ap), p = a && patient(a.pid), N = configNota(db), C = configDe(db).clinica;
+  const descricao = document.getElementById('nf-desc').value.trim(), comCpf = document.getElementById('nf-cpf')?.checked ?? false;
+  nf.janela = { ...nf.janela, descricao, comCpf };
+  if (!descricao) { nf.erro = 'Escreva a descrição do serviço.'; app.render(true); return; }
+  const P = pedidoNota({ clinica:C, nota:N, ibge:ibgeDaClinica(), valor:r.valor, data:a?.date || r.data, descricao, paciente:p || { name:r.nome || '' }, comCpf });
+  nf.ocupado = true; nf.erro = ''; app.render(true);
+  const res = await nfseConta('emitir', { ...P, referencia:r.id });
+  nf.ocupado = false;
+  const base = { rec:r.id, valor:r.valor, tomador:P.nota.tomador ? p.name : '', cpf:P.nota.tomador?.doc || '', descricao, data:P.nota.dCompet, codigo:N.codigo, em:new Date().toISOString(), por:PROF.nome };
+  if (res.situacao === 'emitida') {
+    guardarNota(db, { ...base, id:res.id, situacao:'emitida', numero:res.numero, chave:res.chave, ndps:res.ndps, serie:res.serie, ambiente:res.ambiente, emitidaEm:res.emitidaEm, consulta:res.consulta });
+    nf.janela = null; app.save(); app.render(true); app.toast(`Nota ${res.numero} emitida${res.ambiente === 'homologacao' ? ' (teste)' : ''}`); return;
+  }
+  if (res.situacao === 'enviando' && res.id) {
+    guardarNota(db, { ...base, id:res.id, situacao:'enviando', ambiente:N.ambiente });
+    nf.janela = null; app.save(); app.render(true); app.toast(res.erro, 'info'); return;
+  }
+  nf.erro = res.erro || 'Não deu certo agora. Tente de novo.'; app.render(true);
+}
+async function conferir(recId){
+  const n = notaDe(db, recId); if (!n || nf.ocupado) return;
+  nf.ocupado = true; app.render(true);
+  const res = await nfseConta('conferir', { id:n.id }); nf.ocupado = false;
+  if (res.situacao === 'emitida') { guardarNota(db, { id:n.id, situacao:'emitida', numero:res.numero, chave:res.chave, ndps:res.ndps, serie:res.serie, emitidaEm:res.emitidaEm, consulta:res.consulta }); app.save(); app.render(true); app.toast(`Nota ${res.numero} emitida`); return; }
+  if (res.situacao === 'rejeitada') { guardarNota(db, { id:n.id, situacao:'rejeitada', msg:res.msg || '' }); app.save(); app.render(true); app.toast(res.msg || 'A nota não saiu. Pode emitir de novo.', 'info'); return; }
+  app.render(true); app.toast(res.erro || 'A Receita ainda não respondeu. Tente de novo em instantes.', 'info');
+}
+
+// Liga os eventos (s, r, t = save, render e toast do sistema).
+function ligarNfse(s, r, t){
+  app = { save:s, render:r, toast:t };
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-nf]'); if (!b || b.matches('input, select')) return; const a = b.dataset.nf;
+    if (a === 'fechar') { if (b.id === 'nf-fundo' && ev.target !== b) return; nf.janela = null; nf.erro = ''; app.render(true); }
+    else if (a === 'abrir') { nf.janela = { rec:b.dataset.r }; nf.erro = ''; app.render(true); setTimeout(() => document.getElementById('nf-desc')?.focus(), 0); }
+    else if (a === 'conferir') conferir(b.dataset.r);
+    else if (a === 'imprimir') { const n = notaDe(db, b.dataset.r); if (!n) return; document.getElementById('imp').innerHTML = folhaNota(n); window.print(); }
+    else if (a === 'tirar') { nf.tirar = true; app.render(true); }
+    else if (a === 'tirar-n') { nf.tirar = false; app.render(true); }
+    else if (a === 'tirar-ok') { nf.tirar = false; nf.ocupado = true; app.render(true);
+      nfseConta('tirar_certificado').then(res => { nf.ocupado = false; if (!res.erro) nf.cert = null; app.render(true); t(res.erro || 'Certificado tirado do servidor', res.erro ? 'info' : 'ok'); }); }
+  });
+  document.addEventListener('change', ev => {
+    if (ev.target.dataset?.nf !== 'campo') return;
+    const f = ev.target.form; if (!f) return;
+    const D = campos(f), N = { ...configNota(db), ...(nf.rasc || {}), ...D };
+    if (D.codigo === undefined && ev.target.name === 'codigoSel' && ev.target.value === 'outro') N.codigo = '';
+    nf.rasc = N; app.render(true);
+  });
+  document.addEventListener('submit', async ev => {
+    const f = ev.target;
+    if (f.id === 'nf-f-cert') { ev.preventDefault(); if (!nf.ocupado) enviarCertificado(); return; }
+    if (f.id === 'f-nfse') { ev.preventDefault(); emitir(f); return; }
+    if (f.id !== 'nf-f-dados') return;
+    ev.preventDefault();
+    const D = campos(f), doc = String(D.doc || '').replace(/\D/g, ''); delete D.doc;
+    if (doc && doc.length !== 11 && doc.length !== 14) { erroEm('nf-dados-erro', 'O CNPJ tem 14 números e o CPF tem 11.'); return; }
+    const e = salvarConfigNota(db, D); if (erroEm('nf-dados-erro', e)) return;
+    (db.config ||= {}).clinica = { ...configDe(db).clinica, doc };
+    nf.rasc = null; app.save(); app.render(true); app.toast('Dados da nota fiscal salvos');
+  });
+  addEventListener('hashchange', () => { nf.janela = null; nf.erro = ''; nf.rasc = null; nf.tirar = false; });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && nf.janela) { nf.janela = null; nf.erro = ''; app.render(true); } });
+}
+const notaAberta = () => !!nf.janela;
+// js/telas/nfse.js: Emitir nota em cada recebimento).
+
 const MESES_FIN = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const nomeMes = m => MESES_FIN[Number(m.slice(5, 7)) - 1];
 // Serviço do pacote: o do último atendido do paciente (ou do último horário, ou o primeiro serviço da clínica).
@@ -3792,7 +4118,7 @@ function vFinanceiro(){
         ${ui.finLink === a.id && linkDe(db, a.id) ? caixaLink(a, p) : ''}</div>`; }).join('') || `<div class="vazio">${ic('okc')}Tudo recebido.</div>`}</div></div>
     <div class="card" id="f-recs"><div class="card-h"><h2>Recebidos em ${nm}<small>com a forma de pagamento</small></h2></div>
       <div class="hor-l">${recs.map(r => { const a = db.appts.find(x => x.id === r.ap), p = a && patient(a.pid); return `<div class="fin-l rec" data-rec="${r.id}"><div class="hor-h"><b>${fmt(r.data).slice(0, 5)}</b></div><div class="hor-p"><b>${esc(p?.name || r.nome || '')}</b><small>${esc(a?.tipo || r.tipo || '')} · <span class="pill sm">${r.forma}</span>${a && r.valor < (a.valor || 0) ? ' · parcial' : ''}</small></div><b class="fin-v">${brl(r.valor)}</b>
-        <div class="hor-a">${ui.finDesf === r.id ? `<button class="btn sm" data-act="fin-desf-ok" data-r="${r.id}">Desfazer mesmo</button><button class="btn sm ghost" data-act="fin-desf-x">Manter</button>` : `<button class="btn sm ghost" data-act="fin-nota" data-r="${r.id}" aria-label="Copiar dados da nota" data-tip="Dados da nota">${ic('doc')}</button><button class="btn sm ghost" data-act="fin-desf" data-r="${r.id}" aria-label="Desfazer recebimento" data-tip="Desfazer">${ic('retorno')}</button>`}</div></div>`; }).join('') || '<p class="muted sm">Nada recebido ainda neste mês.</p>'}</div></div>
+        <div class="hor-a">${ui.finDesf === r.id ? `<button class="btn sm" data-act="fin-desf-ok" data-r="${r.id}">Desfazer mesmo</button><button class="btn sm ghost" data-act="fin-desf-x">Manter</button>` : `${botaoNota(r)}${notaLigada() ? '' : `<button class="btn sm ghost" data-act="fin-nota" data-r="${r.id}" aria-label="Copiar dados da nota" data-tip="Dados da nota">${ic('doc')}</button>`}<button class="btn sm ghost" data-act="fin-desf" data-r="${r.id}" aria-label="Desfazer recebimento" data-tip="Desfazer">${ic('retorno')}</button>`}</div></div>`; }).join('') || '<p class="muted sm">Nada recebido ainda neste mês.</p>'}</div></div>
   </div><div class="grid" style="align-content:start">
     ${cartaoCobranca(lig, tag)}
     <div class="card" id="f-pac"><div class="card-h"><h2>Pacotes<small>sessões pagas antes; cada atendimento desconta uma</small></h2></div>
@@ -3809,8 +4135,8 @@ function vFinanceiro(){
       <form id="f-nova-desp" class="ag-f" style="margin-top:12px"><label class="rx-f full"><span class="lbl">Despesa</span><input id="nd-d" placeholder="Ex.: conta de luz" autocomplete="off"></label>
         <label class="rx-f"><span class="lbl">Valor</span><input id="nd-v" inputmode="decimal" placeholder="0,00" autocomplete="off"></label><label class="rx-f"><span class="lbl">Tipo</span><select id="nd-c">${CATEGORIAS_DESP.map(c => `<option>${c}</option>`).join('')}</select></label>
         <label class="ck full"><input type="checkbox" id="nd-r"> Repete todo mês</label><div class="full"><button class="btn sm pri">${ic('mais')}Lançar despesa</button></div></form></div>` : ''}
-    <div class="card" id="f-nota"><h2>Nota fiscal</h2><p class="muted sm">A emissão automática da nota de serviço (NFS-e) entra na etapa 10, junto com o servidor e o login. Por enquanto, em cada recebimento o botão <b>Dados da nota</b> copia paciente, CPF, serviço, valor e data, prontos para colar no emissor.</p></div>
-  </div></div>`;
+    ${cartaoNota()}
+  </div></div>${janelaNota()}`;
 }
 // do que já é registrado (agenda, financeiro e atendimentos); nada é gravado e nada muda na exportação v1.
 //
@@ -5311,13 +5637,13 @@ function vAdministracao(){
     ${(db.desativados||[]).length?`<div class="list">${db.desativados.map(p=>`<div class="row"><span class="avatar">${esc(p.name.split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase())}</span><div class="grow"><b>${esc(p.name)}</b><small class="muted">${esc(p.desativado.motivo)} · desativado em ${fmt(p.desativado.em.slice(0,10))} por ${esc(p.desativado.por||'')} · guardar até ${fmt(p.desativado.guardarAte)}</small></div><button class="btn sm" data-act="pac-reativar" data-pid="${p.id}">${ic('retorno')}Reativar</button></div>`).join('')}</div>`:'<p class="muted sm">Nenhum paciente desativado.</p>'}
     ${(db.exclusoes||[]).length?`<p class="muted sm" style="margin-top:12px">${db.exclusoes.length} cadastro${db.exclusoes.length>1?'s':''} sem prontuário excluído${db.exclusoes.length>1?'s':''} de vez (último: ${esc(db.exclusoes[0].nome)}, ${esc(db.exclusoes[0].motivo)}, em ${fmt(db.exclusoes[0].em.slice(0,10))}).</p>`:''}</div>`:''}`;
 }
-// Abas: Clínica, Serviços e preços, Horário de atendimento, Sua conta e segurança. Só o administrador
-// vê as três primeiras; os outros perfis veem só a própria conta.
+// Abas: Clínica, Serviços e preços, Horário de atendimento, Nota fiscal (js/telas/nfse.js), Sua conta e
+// segurança. Só o administrador vê as quatro primeiras; os outros perfis veem só a própria conta.
 // Serviços e horário salvam a cada mudança; dados da clínica e da conta, no botão Salvar.
 
 const cf = { aba:'clinica', senha:false, ocupado:false, plano:null, periodo:'mensal' };
 let cfApp = { save:() => {}, render:() => {}, toast:() => {} };
-const ABAS_CF = [['clinica', 'Clínica', 'local'], ['servicos', 'Serviços e preços', 'dinheiro'], ['horario', 'Horário de atendimento', 'relogio'], ['conta', 'Sua conta e segurança', 'escudo']];
+const ABAS_CF = [['clinica', 'Clínica', 'local'], ['servicos', 'Serviços e preços', 'dinheiro'], ['horario', 'Horário de atendimento', 'relogio'], ['nota', 'Nota fiscal', 'recibo'], ['conta', 'Sua conta e segurança', 'escudo']];
 const valorTxt = v => String(v).replace('.', ',');
 const lerNum = t => Number(String(t).replace(/\./g, '').replace(',', '.')) || 0;
 
@@ -5326,7 +5652,7 @@ function vConfiguracoes(){
   if (!abas.some(a => a[0] === cf.aba)) cf.aba = abas[0][0];
   return `<div class="head"><div><h1>Configurações</h1><p>${esc(configDe(db).clinica.nome)}</p></div></div>
   <div class="tabs" role="tablist">${abas.map(([k, l, i]) => `<button role="tab" data-cf="aba" data-k="${k}" class="${cf.aba === k ? 'on' : ''}" aria-selected="${cf.aba === k}">${ic(i)}${l}</button>`).join('')}</div>` +
-  ({ clinica:cfClinica, servicos:cfServicos, horario:cfHorario, conta:cfConta })[cf.aba]();
+  ({ clinica:cfClinica, servicos:cfServicos, horario:cfHorario, nota:cfNota, conta:cfConta })[cf.aba]();
 }
 
 function cfClinica(){
@@ -6393,6 +6719,7 @@ function definirTema(t){ document.documentElement.dataset.theme=t; try{ localSto
 try{ if(localStorage.getItem('musubi-tema')==='dark') document.documentElement.dataset.theme='dark'; }catch(e){}
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
+ligarNfse(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
 ligarEquipe(manter => { if(route()==='equipe') render(manter); }, toast);
 iniciarConta(manter => render(manter));

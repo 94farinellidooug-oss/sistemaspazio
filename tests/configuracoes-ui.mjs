@@ -36,7 +36,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await clicar(L, '[data-act=perfil]');
   ok(await tem(L, '.pf-i', 'Minha conta') && await tem(L, '.pf-i', 'Configurações da clínica'), `${rot}: menu do usuário leva à conta e às configurações`);
   await clicar(L, '.pf-i >> text=Configurações da clínica');
-  ok(await L.locator('#view [role=tab]').count() === 4 && await L.inputValue('#cf-clinica [name=nome]') === 'Spazio Stabilità', `${rot}: Configurações abre com as quatro abas e os dados da clínica`);
+  ok(await L.locator('#view [role=tab]').count() === 5 && await L.inputValue('#cf-clinica [name=nome]') === 'Spazio Stabilità', `${rot}: Configurações abre com as cinco abas (com a Nota fiscal) e os dados da clínica`);
   await L.fill('#cf-clinica [name=nome]', ''); await clicar(L, '#cf-clinica [type=submit]');
   ok(await tem(L, '#cf-cl-erro', 'Escreva o nome da clínica'), `${rot}: clínica sem nome avisa`);
   await L.fill('#cf-clinica [name=nome]', 'Clínica Sol'); await L.fill('#cf-clinica [name=cidade]', 'Porto Alegre'); await clicar(L, '#cf-clinica [type=submit]');

@@ -24,6 +24,7 @@ import { LABEL, PROF, listaBusca, renderNav } from './telas/menu.js';
 import { RECURSO_ROTA } from './dados/planos.js';
 import { bloqueio, cobrarLinkConta, pode, podeVer, semPermissao, conta, entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
 import { ligarConfig, vConfiguracoes } from './telas/configuracoes.js';
+import { ligarNfse } from './telas/nfse.js';
 import { ligarPainelDono, vPainelDono } from './telas/painel-dono.js';
 import { esquecerEquipe, ligarEquipe, vEquipe } from './telas/equipe.js';
 import { PERM_ROTA } from './dados/equipe.js';
@@ -500,6 +501,7 @@ function definirTema(t){ document.documentElement.dataset.theme=t; try{ localSto
 try{ if(localStorage.getItem('musubi-tema')==='dark') document.documentElement.dataset.theme='dark'; }catch(e){}
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
+ligarNfse(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
 ligarEquipe(manter => { if(route()==='equipe') render(manter); }, toast);
 iniciarConta(manter => render(manter));

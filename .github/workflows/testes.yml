@@ -24,6 +24,9 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      - name: xmllint (esquema oficial da NFS-e)
+        run: command -v xmllint || (sudo apt-get update && sudo apt-get install -y libxml2-utils)
+
       - name: Cálculos idênticos à referência (51 casos)
         run: npm test
 
