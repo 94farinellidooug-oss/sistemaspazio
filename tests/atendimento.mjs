@@ -5,7 +5,7 @@
 // Uso: node tests/atendimento.mjs
 import { seed } from '../js/dados/exemplos.js';
 import { hidratar, migrarV1, paraV1, registrarSessao } from '../js/dados/migracao.js';
-import { PARES_VASOS, basalDe, definirVaso, ehBasal, fotoVersao, registrarCorrecao, vasoDe, versoesDe, CATEGORIAS, adicionarAchadoLivre, definirAchadoLivre, encaminhados, notaCategoria, removerAchadoLivre, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirPulso, descartarRascunho, estacao, finalizarAtendimento, iniciarAtendimento, preenchimento, rascunhoDe, registrarAlteracao, registroDe } from '../js/dados/atendimento.js';
+import { editarRegistro, versaoOriginal, PARES_VASOS, basalDe, definirVaso, ehBasal, fotoVersao, registrarCorrecao, vasoDe, versoesDe, CATEGORIAS, adicionarAchadoLivre, definirAchadoLivre, encaminhados, notaCategoria, removerAchadoLivre, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirPulso, descartarRascunho, estacao, finalizarAtendimento, iniciarAtendimento, preenchimento, rascunhoDe, registrarAlteracao, registroDe } from '../js/dados/atendimento.js';
 import { evaluate } from '../js/raciocinio/avaliacao.js';
 import { TIPOS_MARCA, adicionarMarca, atendimentosAnteriores, editarMarca, marcasDe, removerMarca, preenchimento as preench4 } from '../js/dados/atendimento.js';
 import { POS, TAM, VISTAS, ladoDe, posicoes, temPosicao } from '../js/componentes/corpo.js';
@@ -263,6 +263,21 @@ console.log('\n15. Profissional: Maicon Farinelli nos registros salvos');
   d.biblioteca = { particular:[], notas:{}, revisoes:{ E36:{ ok:true, por:'Mauren Turcatti', em:'x', hist:[{ acao:'a', por:'Mauren Turcatti', em:'x' }] } } };
   ok(trocarNomeProfissional(d, 'Mauren Turcatti', 'Maicon Farinelli') === 3 && d.patients[0].avaliacoes[0].prof === 'Maicon Farinelli' && d.biblioteca.revisoes.E36.hist[0].por === 'Maicon Farinelli' && d.patients[1].avaliacoes.every(v => v.prof === 'Outra Pessoa'), 'troca só o nome exato nos registros');
   ok(trocarNomeProfissional(d, 'Mauren Turcatti', 'Maicon Farinelli') === 0, 'segunda vez não muda nada'); }
+
+// Editar atendimento salvo (07/11): motivo obrigatório, original guardado, ponto retirado sai da prescrição.
+{ const d = hidratar(migrarV1(seed(), '2026-11-07T10:00:00Z')), p = d.patients[0], a = p.atendimentos.find(x => x.status === 'finalizado');
+  a.plano.rx = { [a.plano.pontos[0]]: { lado:'uni', status:'real' } };
+  const orig = JSON.stringify({ n:a.evolucao.nota, i:a.evolucao.intensidades, pts:a.plano.pontos });
+  ok(editarRegistro(p, a, { nota:'x' }, '  ', 'Maicon', '2026-11-07T11:00:00Z') === 'Informe o motivo da edição.' && !a.edicoes, 'editar: sem motivo não altera');
+  ok(editarRegistro(p, a, {}, 'nada', 'Maicon', '2026-11-07T11:00:00Z') === 'Nada foi alterado.', 'editar: sem mudança não cria edição');
+  ok(preenchimento(p, a, 0, []) >= 0, 'atendimento do protótipo (sem etapas) não quebra o preenchimento');
+  const r = editarRegistro(p, a, { nota:'nova', intensidades:{ ...a.evolucao.intensidades, q1:'12' }, pontos:a.plano.pontos.slice(1).concat('e36') }, 'corrigir', 'Maicon', '2026-11-07T11:00:00Z');
+  ok(typeof r === 'object' && a.evolucao.nota === 'nova' && a.evolucao.intensidades.q1 === 10 && a.plano.pontos.includes('E36') && !a.plano.rx[JSON.parse(orig).pts[0]], 'editar: aplica, limita a intensidade a 10, código em maiúsculas e tira da prescrição o ponto retirado');
+  const o = versaoOriginal(a);
+  ok(JSON.stringify({ n:o.nota, i:o.intensidades, pts:o.pontos }) === orig && r.motivo === 'corrigir' && r.por === 'Maicon' && r.mudou.includes('evolução') && a.historico.at(-1).acao.includes('corrigir'), 'editar: original guardado inteiro, com motivo, quem e o histórico');
+  editarRegistro(p, a, { nota:'nova 2' }, 'de novo', 'Maicon', '2026-11-07T12:00:00Z');
+  ok(a.edicoes.length === 2 && versaoOriginal(a).nota === JSON.parse(orig).n && a.edicoes[1].antes.nota === 'nova' && p.sessions.find(s => s.id === a.id).nota === 'nova 2', 'editar: segunda edição mantém o original e guarda a versão anterior; o prontuário lê a editada');
+}
 
 console.log(falhas ? `\n${falhas} de ${total} verificações falharam.` : `\n${total} verificações do atendimento passaram.`);
 process.exit(falhas ? 1 : 0);

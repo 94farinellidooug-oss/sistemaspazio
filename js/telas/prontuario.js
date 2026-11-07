@@ -16,7 +16,8 @@ import { db, patient } from '../dados/repositorio.js';
 import { alertasDe, melhoraPct } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
 import { pode } from './conta.js';
-import { LADOS_MARCA, TIPOS_MARCA, basalDe, marcaComIntensidade, marcasDe, rascunhoDe, versoesDe } from '../dados/atendimento.js';
+import { LADOS_MARCA, TIPOS_MARCA, basalDe, marcaComIntensidade, marcasDe, rascunhoDe, versaoOriginal, versoesDe } from '../dados/atendimento.js';
+import { TECNICAS } from './atendimento.js';
 import { iconeMarca, vistaNome } from '../componentes/corpo.js';
 import { ui } from '../estado.js';
 import { elemState, evaluate } from '../raciocinio/avaliacao.js';
@@ -49,14 +50,47 @@ function itemTempo(p,e){
     return `<div class="lt-i av"><span class="hi-n">${ic('yin')}</span><div class="grow"><div class="lt-h"><b>${fmt(e.data)}</b><span class="pill acc">${rotuloAv(p,e.av)}</span><span class="muted sm">avaliação energética sem atendimento no dia</span></div>
       <p class="sm">${e.av.signs.length} sina${e.av.signs.length===1?'l':'is'} observado${e.av.signs.length===1?'':'s'}${h.length?` · padrões validados: ${h.map(x=>esc(x.p.nome)).join(', ')}`:''}</p>${e.av.nota?`<p class="muted sm">${esc(e.av.nota)}</p>`:''}</div></div>`; }
   const outras=p.queixas.filter(q=>q.id!==QUEIXA_PRINCIPAL&&e.a.evolucao.intensidades[q.id]!=null), h=aceitos(e.av);
-  return `<div class="lt-i"><span class="hi-n">${e.n}</span><div class="grow"><div class="lt-h"><b>${ordinal(e.n)} atendimento</b>${e.av?`<span class="pill acc">${ic('yin')}${rotuloAv(p,e.av)}</span>`:''}${e.a.origem==='v1'?'<span class="pill" data-tip="Registro trazido do protótipo na conversão dos dados">protótipo</span>':''}</div>
+  return `<div class="lt-i"><span class="hi-n">${e.n}</span><div class="grow"><div class="lt-h"><b>${ordinal(e.n)} atendimento</b>${e.a.edicoes?.length?`<span class="pill warn">${ic('editar')}editado</span>`:''}${e.av?`<span class="pill acc">${ic('yin')}${rotuloAv(p,e.av)}</span>`:''}${e.a.origem==='v1'?'<span class="pill" data-tip="Registro trazido do protótipo na conversão dos dados">protótipo</span>':''}</div>
     ${sessHtml(e.s)}
     ${outras.length?`<div class="chips">${outras.map(q=>`<span class="pill"><i class="dotq" style="background:${corQ(p,q)}"></i>${esc(q.descricao)}: ${e.a.evolucao.intensidades[q.id]}/10</span>`).join('')}</div>`:''}
     ${h.length?`<p class="muted sm">Padrões validados na avaliação: ${h.map(x=>esc(x.p.nome)).join(', ')}</p>`:''}
     ${e.a.sintese?`<p class="sm"><b>Síntese:</b> ${esc(e.a.sintese)}</p>`:''}
     ${marcasProntuario(e.a)}
+    ${edicoesHtml(p,e.a)}
     <div class="lt-a">${e.a.historico.length>1?`<details class="mais"><summary>Histórico de alterações (${e.a.historico.length}) ${ic('baixo')}</summary><div class="hist-alt">${[...e.a.historico].reverse().map(x=>`<div><span class="mono muted">${fmt(x.em.slice(0,10))} ${new Date(x.em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span><span>${esc(x.acao)}</span></div>`).join('')}</div></details>`:'<span></span>'}
-      <button class="btn ghost sm" data-act="abrir-atendimento" data-pid="${p.id}" data-id="${e.a.id}">${ic('editar')}Abrir no ambiente</button></div></div></div>`;
+      <div class="chips">${e.a.etapas?`<button class="btn ghost sm" data-act="abrir-atendimento" data-pid="${p.id}" data-id="${e.a.id}">${ic('lista')}Ver atendimento completo</button>`:''}<button class="btn sm" data-act="pr-editar" data-id="${e.a.id}">${ic('editar')}Editar registro</button></div></div></div></div>`;
+}
+
+// Original e edições de um atendimento editado depois de salvo: quem, quando, motivo e o que mudou.
+function resumoFoto(p,f){
+  const q=Object.entries(f.intensidades||{}).map(([id,v])=>`${esc(p.queixas.find(x=>x.id===id)?.descricao||'queixa')}: ${v}/10`);
+  return [q.length?`<b>Intensidade:</b> ${q.join(' · ')}`:'',f.tec?.length?`<b>Técnicas:</b> ${esc(f.tec.join(', '))}`:'',f.pontos?.length?`<b>Pontos:</b> <span class="mono">${esc(f.pontos.join(', '))}</span>`:'',
+    f.sintese?`<b>Síntese:</b> ${esc(f.sintese)}`:'',f.nota?`<b>Evolução:</b> ${esc(f.nota)}`:'',f.orient?`<b>Orientações:</b> ${esc(f.orient)}`:''].filter(Boolean).map(x=>`<p class="sm">${x}</p>`).join('')||'<p class="muted sm">Sem anotações.</p>';
+}
+function edicoesHtml(p,a){
+  const E=a.edicoes||[]; if(!E.length) return '';
+  const quando=t=>`${fmt(t.slice(0,10))} às ${new Date(t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+  return `<details class="mais pr-ed"><summary>${ic('historico')}Versão original e edições (${E.length}) ${ic('baixo')}</summary>
+    <div class="pr-ed-l">${[...E].reverse().map((x,i)=>`<div class="pr-ed-i"><b>Edição ${E.length-i}</b><small class="muted">${quando(x.em)}${x.por?' · '+esc(x.por):''} · alterou ${esc(x.mudou.join(', '))}</small><p class="sm"><b>Motivo:</b> ${esc(x.motivo)}</p></div>`).join('')}
+    <div class="pr-ed-i orig"><b>Versão original</b><small class="muted">como foi salva em ${fmt(a.data)}; nunca é alterada</small>${resumoFoto(p,versaoOriginal(a))}</div></div></details>`;
+}
+// Janela para editar um atendimento salvo: tudo num lugar só, com o motivo obrigatório.
+function janelaEdicao(p){
+  const a=p.atendimentos.find(x=>x.id===ui.edReg&&x.status==='finalizado'); if(!a){ ui.edReg=null; return ''; }
+  const I=a.evolucao?.intensidades||{}, Q=p.queixas.filter(q=>I[q.id]!=null||q.ativa), tec=a.plano?.tec||[];
+  return `<div class="modal-fundo" id="ed-fundo" data-act="pr-editar-x"><form class="modal" id="f-edreg" role="dialog" aria-modal="true" aria-labelledby="ed-t" data-id="${a.id}">
+    <div class="modal-h"><div class="grow"><h2 id="ed-t">Editar atendimento de ${fmt(a.data)}</h2><small class="muted">${esc(p.name)} · a versão original fica guardada no prontuário</small></div><button type="button" class="btn ghost sm" data-act="pr-editar-x" aria-label="Fechar">${ic('x')}</button></div>
+    <div class="modal-c">
+      <div class="ed-g">${Q.map(q=>`<label class="rx-f"><span class="lbl">${esc(q.descricao)} (0 a 10)</span><input type="number" min="0" max="10" data-edq="${q.id}" value="${I[q.id]??''}" placeholder="não medida"></label>`).join('')}</div>
+      <div class="lbl" style="margin-top:12px">Técnicas</div><div class="chips">${TECNICAS.map(t=>`<label class="chip"><input type="checkbox" name="ed-tec" value="${t}" ${tec.includes(t)?'checked':''}> ${t}</label>`).join('')}</div>
+      <label class="rx-f full"><span class="lbl">Pontos (separe por vírgula)</span><input id="ed-pts" class="mono" value="${esc((a.plano?.pontos||[]).join(', '))}" autocomplete="off"></label>
+      <label class="rx-f full"><span class="lbl">Síntese clínica</span><textarea id="ed-sint" rows="3">${esc(a.sintese||'')}</textarea></label>
+      <label class="rx-f full"><span class="lbl">Evolução e observações</span><textarea id="ed-nota" rows="3">${esc(a.evolucao?.nota||'')}</textarea></label>
+      <label class="rx-f full"><span class="lbl">Orientações para casa</span><textarea id="ed-orient" rows="2">${esc(a.plano?.orient||'')}</textarea></label>
+      <label class="rx-f full ed-mot"><span class="lbl">Motivo da edição (obrigatório)</span><input id="ed-motivo" required maxlength="200" placeholder="Ex.: corrigir a intensidade anotada errada" autocomplete="off"></label>
+    </div>
+    <div class="modal-p"><button type="button" class="btn ghost" data-act="pr-editar-x">Cancelar</button><button class="btn pri">${ic('check')}Salvar edição</button></div>
+  </form></div>`;
 }
 
 function cardQueixas(p){
@@ -199,5 +233,5 @@ export function vProntuario(){
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
     ${alerts.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}</div>`:''}</div>
     <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button>${pode('mtc')?`<button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button>`:''}<button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
-    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}`;
+    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}`;
 }

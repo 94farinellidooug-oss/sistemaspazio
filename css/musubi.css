@@ -1339,3 +1339,19 @@ body.com-acesso{overflow:hidden}
 .eq-perfis{margin-top:12px}
 .eq-perfis p{margin:4px 0;font-size:.86rem}
 .acesso-conv{display:flex;gap:8px;text-align:left}
+/* Janela para editar um atendimento salvo (prontuário) */
+.modal-fundo{position:fixed;inset:0;z-index:45;background:rgba(31,42,27,.32);backdrop-filter:blur(2px);display:grid;place-items:center;padding:16px;animation:aparece .15s}
+.modal{width:min(640px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 60px rgba(31,42,27,.24);animation:surge .18s var(--ease);min-width:0}
+.modal-h{display:flex;gap:12px;align-items:flex-start;padding:18px 20px 12px;border-bottom:1px solid var(--line)}
+.modal-h h2{margin:0 0 2px;font-size:1.1rem}
+.modal-c{padding:14px 20px;overflow:auto;display:grid;gap:12px;min-width:0}
+.modal-c .rx-f{display:grid;gap:4px;min-width:0}
+.modal-c input,.modal-c textarea{width:100%;min-width:0}
+.modal-p{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--line)}
+.ed-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.ed-mot{padding:10px;border-radius:10px;background:var(--warn-soft)}
+.pr-ed-l{display:grid;gap:8px;margin-top:8px}
+.pr-ed-i{display:grid;gap:2px;padding:8px 10px;border-left:3px solid var(--warn);background:var(--surface-2);border-radius:6px}
+.pr-ed-i.orig{border-left-color:var(--accent)}
+.pr-ed-i p{margin:2px 0 0}
+@media (max-width:640px){.modal-fundo{padding:0;place-items:end stretch}.modal{max-height:92vh;border-radius:16px 16px 0 0}}
