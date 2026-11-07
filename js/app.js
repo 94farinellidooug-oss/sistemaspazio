@@ -37,7 +37,8 @@ import { listaTodos, pointCards, vPontos } from './telas/pontos.js';
 import { corrigirPonto, linhaRx, definirLado, definirMotivo, definirSituacao, definirStatus, esquecerPonto, todosRealizados } from './dados/prescricao.js';
 import { adicionarFichaParticular, definirNotaPonto, removerFichaParticular, revisarPosicao } from './dados/biblioteca.js';
 import { CODIGOS } from './conhecimento/pontos.js';
-import { vProntuario } from './telas/prontuario.js';
+import { cidLista, vProntuario } from './telas/prontuario.js';
+import { adicionarDiagnostico, buscarCid, lerCid, retirarDiagnostico } from './dados/cid.js';
 import { TODAY, addDays, brl, esc, fmt, uid } from './util.js';
 
 export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,equipe:vEquipe,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
@@ -45,6 +46,8 @@ EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
 export function render(keepScroll){
+  // Prontuário único: avaliação energética e pentagrama são abas do prontuário do paciente.
+  if(['avaliacao','pentagrama'].includes(location.hash.slice(1))){ ui.tab=location.hash.slice(1); history.replaceState(null,'','#prontuario'); }
   const r=route(), y=scrollY, v=document.getElementById('view');
   if(r==='equipe'&&ultimaRota!=='equipe') esquecerEquipe();
   ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=!podeVer(PERM_ROTA[r])?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${semPermissao()}`:rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
@@ -59,6 +62,22 @@ export function toast(m, tipo='ok'){ const t=document.getElementById('toast'); t
 // Camadas sobre a tela: busca global, notificações, perfil e atalhos.
 function abrir(ov){ ui.ov=ui.ov===ov?null:ov; if(ov==='busca'){ ui.q=''; ui.bi=0; } render(true); }
 // Abre a tela (ou a re-renderiza, se já estiver nela).
+// CID-10: a tabela (js/conhecimento/cid10.txt) carrega na primeira busca e fica na memória.
+let tabelaCid=null;
+async function carregarCid(){
+  if(tabelaCid) return tabelaCid;
+  const U=['js/conhecimento/cid10.txt','../js/conhecimento/cid10.txt']; if(location.pathname.includes('/dist/')) U.reverse();
+  for(const u of U){ try{ const r=await fetch(u); if(r.ok){ tabelaCid=lerCid(await r.text()); if(tabelaCid.length) return tabelaCid; } }catch(e){} }
+  throw new Error('sem tabela');
+}
+function mostrarCid(){ const l=document.getElementById('cid-l'), q=document.getElementById('cid-q'); if(l) l.innerHTML=cidLista(ui.cid); if(q) q.setAttribute('aria-expanded',String(!!ui.cid.lista?.length)); }
+async function procurarCid(q){
+  ui.cid={q,i:0,lista:[]};
+  if(!tabelaCid){ ui.cid.carregando=true; mostrarCid();
+    try{ await carregarCid(); }catch(e){ ui.cid={q,erro:'Não foi possível carregar a tabela CID-10. Confira a internet e tente de novo.'}; mostrarCid(); return; } }
+  if(ui.cid.q!==q) return;
+  ui.cid={q,i:0,lista:buscarCid(tabelaCid,q,20)}; mostrarCid();
+}
 function irPara(h){ if(location.hash.slice(1)===h) render(); else location.hash=h; }
 // Dica flutuante para elementos com data-tip (botões de ícone, gráficos, calendário).
 const tip=document.getElementById('tip');
@@ -71,7 +90,9 @@ addEventListener('hashchange',()=>{ if(route()!=='cadastro') ui.editPid=null; ui
 addEventListener('keydown',ev=>{
   const emCampo=ev.target.matches('input, textarea, select');
   if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k'){ ev.preventDefault(); abrir('busca'); return; }
-  if(ev.key==='Escape'){ if(ui.edReg){ ui.edReg=null; render(true); return; } if(ui.ov){ ui.ov=null; render(true); } else if(ui.menuAberto){ ui.menuAberto=false; render(true); } return; }
+  if(ev.target.id==='cid-q'&&ui.cid?.lista?.length&&['ArrowDown','ArrowUp','Enter'].includes(ev.key)){ ev.preventDefault(); const C=ui.cid;
+    if(ev.key==='Enter'){ document.querySelectorAll('.cid-o')[C.i|0]?.click(); return; } C.i=((C.i|0)+(ev.key==='ArrowDown'?1:-1)+C.lista.length)%C.lista.length; mostrarCid(); document.querySelector('.cid-o.on')?.scrollIntoView({block:'nearest'}); return; }
+  if(ev.key==='Escape'){ if(ui.cid?.q&&ev.target.id==='cid-q'){ ui.cid={}; ev.target.value=''; mostrarCid(); return; } if(ui.edReg){ ui.edReg=null; render(true); return; } if(ui.ov){ ui.ov=null; render(true); } else if(ui.menuAberto){ ui.menuAberto=false; render(true); } return; }
   if(ui.ov==='busca'&&['ArrowDown','ArrowUp','Enter'].includes(ev.key)){ ev.preventDefault(); const L=document.querySelectorAll('.pal-i');
     if(ev.key==='Enter'){ L[ui.bi]?.click(); return; } ui.bi=(ui.bi+(ev.key==='ArrowDown'?1:-1)+L.length)%Math.max(1,L.length); document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(ev.altKey&&route()==='atendimento'&&(ev.key==='ArrowLeft'||ev.key==='ArrowRight')){ ev.preventDefault(); irEtapa((ui.etapa|0)+(ev.key==='ArrowRight'?1:-1)); return; }
@@ -129,6 +150,9 @@ document.addEventListener('click',ev=>{
   else if(a==='novo-atendimento'){ const p=patient(t.dataset.pid||ui.pid); let x=rascunhoDe(p);
     if(!x){ x=iniciarAtendimento(p,{id:uid(),data:TODAY},new Date().toISOString()); save(); }
     ui.pid=p.id; ui.atId=x.id; ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; limparMapa(); irPara('atendimento'); scrollTo(0,0); }
+  else if(a==='cid-add'){ const p=patient(ui.pid); const r=adicionarDiagnostico(p,{id:uid(),codigo:t.dataset.c,descricao:t.dataset.d},PROF.nome,new Date().toISOString());
+    if(typeof r==='string'){ toast(r,'info'); return; } ui.cid={}; save(); render(true); toast(`CID ${r.codigo} incluído no prontuário`); document.getElementById('cid-q')?.focus(); }
+  else if(a==='cid-tirar'){ const d=retirarDiagnostico(patient(ui.pid),t.dataset.d,PROF.nome,new Date().toISOString()); if(d){ save(); render(true); toast(`CID ${d.codigo} retirado; fica na lista de retirados`,'info'); } }
   else if(a==='pr-editar'){ ui.edReg=t.dataset.id; render(true); setTimeout(()=>document.querySelector('#f-edreg input, #f-edreg textarea')?.focus(),0); }
   else if(a==='pr-editar-x'){ if(t.id==='ed-fundo'&&ev.target!==t) return; ui.edReg=null; render(true); }
   else if(a==='abrir-atendimento'){ ui.pid=t.dataset.pid; ui.atId=t.dataset.id; fotografarAvaliacao(); ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; limparMapa(); irPara('atendimento'); scrollTo(0,0); }
@@ -172,7 +196,7 @@ document.addEventListener('click',ev=>{
   else if(a==='tab'){ ui.tab=t.dataset.t; render(true); }
   else if(a==='sign'){ const s=t.dataset.s, L=ui.assess.signs; const i=L.indexOf(s); i<0?L.push(s):L.splice(i,1); render(true); }
   else if(a==='hyp'){ const id=t.dataset.p; ui.assess.status[id] = ui.assess.status[id]===t.dataset.st ? '' : t.dataset.st; render(true); }
-  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); const nv=registrarAvaliacao(p,{id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota},new Date().toISOString()); nv.prof=PROF.nome; const rm=ui.reavMotivo?.pid===p.id; if(rm) nv.motivo=ui.reavMotivo.motivo; ui.reavMotivo=null; save(); ui.pid=p.id; ui.tab=rm?'versoes':'resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
+  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); const nv=registrarAvaliacao(p,{id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota},new Date().toISOString()); nv.prof=PROF.nome; const rm=ui.reavMotivo?.pid===p.id; if(rm) nv.motivo=ui.reavMotivo.motivo; ui.reavMotivo=null; save(); ui.pid=p.id; ui.tab=rm?'versoes':'resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); irPara('prontuario'); }
   else if(a==='el'){ ui.el = t.dataset.e && ui.el!==t.dataset.e ? t.dataset.e : null; render(true); }
   else if(a==='mer'){ ui.ptMer=t.dataset.m; render(true); }
   else if(a==='week'||a==='ag-dia'){ ui.agDia = a==='ag-dia'?t.dataset.d:t.dataset.d==='0'?TODAY:addDays(7*Number(t.dataset.d),ui.agDia||TODAY);
@@ -220,6 +244,7 @@ document.addEventListener('click',ev=>{
 document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
 document.addEventListener('input',ev=>{
   if(ev.target.dataset?.exc==='outro'&&ui.excluir){ ui.excluir.outro=ev.target.value; return; }
+  if(ev.target.dataset?.cid==='q'){ procurarCid(ev.target.value); return; }
   const t=ev.target;
   if(t.dataset.agf==='time'){ formAgenda().time=t.value; return; }
   if(t.dataset.int&&t.tagName==='INPUT'){ (ui.novoInt||={nome:'',tel:'',origem:'Instagram'})[t.dataset.int]=t.value; return; }

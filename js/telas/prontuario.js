@@ -1,4 +1,7 @@
-// Perfil do paciente e prontuário. Abas:
+// Prontuário do paciente: concentra tudo num lugar só (pedido do Maicon, 07/11/2026). Abas: Resumo,
+// Atendimentos, Anamnese e alertas, Avaliação energética, Pentagrama, Versões da avaliação, CID e Registro
+// rápido. As antigas telas #avaliacao e #pentagrama abrem aqui, na aba correspondente.
+// Detalhe das abas:
 // - Resumo: indicadores, queixas com a evolução de cada uma, atendimentos recentes, mapa dos cinco
 //   elementos, padrões validados e dados cadastrais;
 // - Prontuário: evolução das queixas, avaliação basal × atual e linha do tempo dos atendimentos e
@@ -15,7 +18,10 @@ import { ativo } from '../dados/agenda.js';
 import { db, patient } from '../dados/repositorio.js';
 import { alertasDe, melhoraPct } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
-import { pode } from './conta.js';
+import { bloqueio, pode } from './conta.js';
+import { vAvaliacao } from './avaliacao.js';
+import { vPentagrama } from './pentagrama.js';
+import { diagnosticosAtivos } from '../dados/cid.js';
 import { LADOS_MARCA, TIPOS_MARCA, basalDe, marcaComIntensidade, marcasDe, rascunhoDe, versaoOriginal, versoesDe } from '../dados/atendimento.js';
 import { TECNICAS } from './atendimento.js';
 import { iconeMarca, vistaNome } from '../componentes/corpo.js';
@@ -140,8 +146,8 @@ function abaResumo(p){
       <div class="card"><div class="card-h"><h2>Mapa dos cinco elementos</h2>${a?`<span class="pill">${p.assess.length>1?'reavaliação':'basal'} · ${fmt(a.date)}</span>`:''}</div>
         ${st?`${barrasEl(st, p.assess.length>1?elemState(a0.signs,a0.status):null)}${p.assess.length>1?`<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal (${fmt(a0.date)}).</p>`:''}
           <details class="mais"><summary>Ver pentagrama ${ic('baixo')}</summary>${pentagram(st,null)}</details>`
-        :vazio('yin','Sem avaliação energética','Faça a avaliação para ver o mapa dos cinco elementos.',`<button class="btn sm pri" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliar</button>`)}</div>
-      <div class="card"><div class="card-h"><h2>Padrões validados</h2><a class="btn sm" href="#avaliacao">Nova avaliação</a></div>
+        :vazio('yin','Sem avaliação energética','Faça a avaliação para ver o mapa dos cinco elementos.',`<button class="btn sm pri" data-act="tab" data-t="avaliacao">${ic('yin')}Avaliar</button>`)}</div>
+      <div class="card"><div class="card-h"><h2>Padrões validados</h2><button class="btn sm" data-act="tab" data-t="avaliacao">Nova avaliação</button></div>
         ${ac.length?ac.map(h=>`<div class="row"><div class="grow"><b>${h.p.nome}</b></div>${elTag(h.p.el)}<span class="pill ${h.p.tipo==='exc'?'crit':'warn'}">${h.p.tipo==='exc'?'excesso':'deficiência'}</span></div>`).join(''):'<p class="muted sm">Nenhum padrão validado.</p>'}
         ${a?.nota?`<p class="muted" style="margin-top:8px">Nota: ${esc(a.nota)}</p>`:''}
       </div>
@@ -221,17 +227,39 @@ function abaVersoes(p){
       :'<p class="muted sm">A comparação aparece quando houver duas versões.</p>'}</div></div>`;
 }
 
-const ABAS = { resumo:abaResumo, sessoes:abaProntuario, anamnese:abaAnamnese, nova:abaNova, versoes:abaVersoes };
+// CID-10: busca por código ou descrição (a lista carrega na primeira busca) e os CIDs do paciente.
+function abaCid(p){
+  const A=diagnosticosAtivos(p), R=(p.diagnosticos||[]).filter(d=>d.ativo===false), C=ui.cid||{};
+  const quando=t=>fmt(String(t).slice(0,10));
+  return `<div class="grid g-side"><div class="card" id="cid-card"><div class="card-h"><h2>CID-10 do paciente</h2><span class="pill acc">${A.length}</span></div>
+      <div class="cid-busca"><label class="lbl" for="cid-q">Buscar CID por código ou descrição</label>
+        <input id="cid-q" data-cid="q" value="${esc(C.q||'')}" placeholder="Ex.: F41 ou ansiedade" autocomplete="off" role="combobox" aria-expanded="${!!C.lista?.length}" aria-controls="cid-l">
+        <div id="cid-l" class="cid-l" role="listbox">${cidLista(C)}</div></div>
+      ${A.length?`<div class="cid-sel">${A.map(d=>`<div class="cid-i" data-d="${d.id}"><b class="mono">${esc(d.codigo)}</b><span class="grow">${esc(d.descricao)}<small class="muted">incluído em ${quando(d.em)}${d.por?' · '+esc(d.por):''}</small></span><button class="btn ghost sm" data-act="cid-tirar" data-d="${d.id}" aria-label="Retirar ${esc(d.codigo)}" data-tip="Retirar">${ic('x')}</button></div>`).join('')}</div>`
+        :`<p class="muted sm" style="margin-top:12px">Nenhum CID registrado. Digite uma letra, um número ou parte da descrição e escolha na lista.</p>`}
+      ${R.length?`<details class="mais"><summary>${R.length} CID${R.length===1?' retirado':'s retirados'} ${ic('baixo')}</summary><div class="cid-sel">${R.map(d=>`<div class="cid-i fora"><b class="mono">${esc(d.codigo)}</b><span class="grow">${esc(d.descricao)}<small class="muted">incluído em ${quando(d.em)} · retirado em ${quando(d.retiradoEm)}${d.retiradoPor?' · '+esc(d.retiradoPor):''}</small></span></div>`).join('')}</div></details>`:''}</div>
+    <div class="card" style="align-self:start"><h3>Sobre o CID</h3><p class="muted sm">Tabela CID-10 do DATASUS (Ministério da Saúde). Os CIDs ficam no prontuário e aparecem no resumo do paciente. Retirar um CID não apaga: ele fica na lista de retirados, com a data.</p></div></div>`;
+}
+export function cidLista(C){
+  if(C.carregando) return `<p class="muted sm cid-msg">Carregando a tabela CID-10…</p>`;
+  if(C.erro) return `<p class="muted sm cid-msg">${esc(C.erro)}</p>`;
+  if(!C.q?.trim()) return '';
+  if(!C.lista?.length) return `<p class="muted sm cid-msg">Nenhum CID encontrado para “${esc(C.q)}”.</p>`;
+  return C.lista.map((x,i)=>`<button type="button" class="cid-o ${i===(C.i|0)?'on':''}" role="option" aria-selected="${i===(C.i|0)}" data-act="cid-add" data-c="${esc(x.c)}" data-d="${esc(x.d)}"><b class="mono">${esc(x.c)}</b><span>${esc(x.d)}</span></button>`).join('');
+}
+const abaMtc = f => p => pode('mtc') ? f(p) : bloqueio('mtc');
+const ABAS = { resumo:abaResumo, sessoes:abaProntuario, anamnese:abaAnamnese, avaliacao:abaMtc(()=>vAvaliacao(true)), pentagrama:abaMtc(()=>vPentagrama(true)), versoes:abaVersoes, cid:abaCid, nova:abaNova };
 export function vProntuario(){
   const p=patient(ui.pid)||db.patients[0];
   if(!p) return `<div class="head"><div><h1>Prontuário</h1></div></div>${vazio('pacientes','Nenhum paciente cadastrado','Cadastre um paciente para abrir o prontuário.',`<button class="btn pri sm" data-act="novo-paciente">${ic('novo')}Cadastrar paciente</button>`)}`;
   ui.pid=p.id; if(!ABAS[ui.tab]) ui.tab='resumo';
   const alerts=alertasDe(p);
-  const tabs=[['resumo','Resumo','painel'],['sessoes','Prontuário','historico'],['anamnese','Anamnese e alertas','folha'],['nova','Registro rápido','mais'],['versoes','Versões da avaliação','historico']];
+  const tabs=[['resumo','Resumo','painel'],['sessoes','Atendimentos','historico'],['anamnese','Anamnese e alertas','folha'],['avaliacao','Avaliação energética','yin'],['pentagrama','Pentagrama','estrela'],['versoes','Versões da avaliação','historico'],['cid','CID','lista'],['nova','Registro rápido','mais']];
+  const cids=diagnosticosAtivos(p);
   ui.crumbs=[['#pacientes','Pacientes'],[null,p.name]];
   return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
-    ${alerts.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}</div>`:''}</div>
-    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button>${pode('mtc')?`<button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button>`:''}<button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
-    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}`;
+    ${alerts.length||cids.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}${cids.map(d=>`<button class="pill cid-pill" data-act="tab" data-t="cid" data-tip="${esc(d.descricao)}">CID ${esc(d.codigo)}</button>`).join('')}</div>`:''}</div>
+    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
+    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic((k==='avaliacao'||k==='pentagrama')&&!pode('mtc')?'cadeado':i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}`;
 }

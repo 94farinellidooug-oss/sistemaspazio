@@ -20,7 +20,11 @@ const { chromium } = require('playwright');
 const REDESENHADAS = new Set(['abertura', 'tela painel']);
 // Passos feitos na Agenda: compara tudo menos o que é da própria Agenda.
 const NA_AGENDA = new Set(['tela agenda', 'próxima semana', 'agendamento criado', 'agendamento concluído', 'restaurar exemplos']);
-const semAgenda = (etapa, html) => { if (!NA_AGENDA.has(etapa)) return html; const o = JSON.parse(html); delete o.agenda; delete o.semana; o.selecionado = o.selecionado.slice(0, 2); return JSON.stringify(o); };
+// Prontuário único (07/11/2026): avaliação energética e pentagrama viraram abas do prontuário do paciente
+// aberto, sem o seletor de paciente próprio. Nesses passos compara tudo menos o seletor.
+const SEM_SELETOR = new Set(['tela avaliacao', 'tela pentagrama', 'avaliação preenchida', 'pentagrama Água', 'pentagrama sem Ke']);
+const semAgenda = (etapa, html) => { if (!NA_AGENDA.has(etapa) && !SEM_SELETOR.has(etapa)) return html; const o = JSON.parse(html);
+  if (SEM_SELETOR.has(etapa)) { delete o.selecionado; return JSON.stringify(o); } delete o.agenda; delete o.semana; o.selecionado = o.selecionado.slice(0, 2); return JSON.stringify(o); };
 const ALVOS = { 'original (legacy)': 'legacy/prototipo-v1.html', 'modular': 'index.html', 'arquivo único (dist)': 'dist/spazio.html' };
 // Math.random previsível, para que os ids gerados sejam iguais nas três versões.
 const SEMENTE = () => { let s = 42; Math.random = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648; };
@@ -77,6 +81,10 @@ async function roteiro(browser, url) {
   await p.fill('#ns-nota', 'Primeira sessão'); await p.click('#f-session button'); await p.waitForTimeout(60); await foto('sessão registrada');
 
   await ir('avaliacao');
+  // No original a avaliação continua no paciente escolhido na primeira visita (o primeiro da lista); no
+  // prontuário único ela é do prontuário aberto: abre o mesmo paciente, pela lista, e a aba Avaliação.
+  if (!(await p.$('#as-patient'))) { const pid = await p.evaluate(() => JSON.parse(localStorage.getItem('musubi-v2')).patients[0].id);
+    await ir('pacientes'); await p.fill('#pq', ''); await p.waitForTimeout(40); await p.click(`[data-act="open"][data-pid="${pid}"]`); await p.waitForTimeout(60); await p.click('[data-act="tab"][data-t="avaliacao"]'); await p.waitForTimeout(60); }
   for (const s of ['pulso_corda', 'irritabilidade', 'tpm', 'suspiros']) await p.click(`[data-s="${s}"]`);
   await p.click('[data-act="hyp"][data-p="f_estag"][data-st="aceito"]');
   await p.fill('#as-nota', 'Observação de teste'); await foto('avaliação preenchida');

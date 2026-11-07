@@ -1604,6 +1604,22 @@ body.com-acesso{overflow:hidden}
 .pr-ed-i.orig{border-left-color:var(--accent)}
 .pr-ed-i p{margin:2px 0 0}
 @media (max-width:640px){.modal-fundo{padding:0;place-items:end stretch}.modal{max-height:92vh;border-radius:16px 16px 0 0}}
+/* CID-10 no prontuário */
+.cid-busca{position:relative;display:grid;gap:4px}
+.cid-busca input{width:100%;min-width:0}
+.cid-l{display:grid;max-height:320px;overflow:auto;border-radius:10px}
+.cid-l:not(:empty){border:1px solid var(--line);margin-top:4px;background:var(--surface)}
+.cid-o{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:baseline;text-align:left;padding:8px 10px;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;font:inherit;cursor:pointer;min-width:0}
+.cid-o:last-child{border-bottom:0}
+.cid-o:hover,.cid-o.on{background:var(--accent-soft)}
+.cid-o span{min-width:0;overflow-wrap:anywhere}
+.cid-msg{padding:8px 10px;margin:0}
+.cid-sel{display:grid;gap:6px;margin-top:12px}
+.cid-i{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;min-width:0}
+.cid-i .grow{min-width:0;overflow-wrap:anywhere}
+.cid-i small{display:block}
+.cid-i.fora{opacity:.7}
+.cid-pill{border:0;cursor:pointer;font:inherit;background:var(--accent-soft);color:var(--accent)}
 </style>
 
 
@@ -4064,14 +4080,15 @@ function bagang(signs){
   const t=(a,b)=>{const A=c(a),B=c(b);return A+B?(B-A)/(A+B):0};
   return {fc:t('frio','calor'), de:t('def','exc'), n:signs.length};
 }
-function vAvaliacao(){
-  if(!ui.assess || !patient(ui.assess.pid)) ui.assess={pid:ui.pid,signs:[],status:{},nota:''};
+// embutido: aba "Avaliação energética" dentro do prontuário do paciente aberto (sem o cabeçalho próprio).
+function vAvaliacao(embutido=false){
+  if(!ui.assess || !patient(ui.assess.pid) || (embutido && ui.assess.pid!==ui.pid)) ui.assess={pid:ui.pid,signs:[],status:{},nota:''};
   const A=ui.assess, p=patient(A.pid);
-  ui.crumbs=[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Avaliação energética']];
+  if(!embutido) ui.crumbs=[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Avaliação energética']];
   const hyps=evaluate(A.signs), st=elemState(A.signs,A.status), bg=bagang(A.signs);
   const axis=(l,r,v)=>`<div class="axis"><span>${l}</span><div class="track"><span class="dot" style="left:${50+v*50}%"></span></div><span>${r}</span></div>`;
-  return `<div class="head"><div><h1>Avaliação energética</h1><p>Língua, pulso e manifestações organizados segundo a MTC</p></div>
-    <div class="field" style="min-width:200px"><label class="lbl" for="as-patient">Paciente</label>${patientSelect('as-patient',A.pid)}</div></div>
+  return `${embutido?`${ui.reavMotivo?.pid===p.id?`<div class="notice" style="margin-bottom:12px">${ic('historico')}<div><b>Reavaliação avulsa.</b> Motivo: ${esc(ui.reavMotivo.motivo)}. Ao salvar, ela vira uma nova versão da avaliação.</div></div>`:''}`:`<div class="head"><div><h1>Avaliação energética</h1><p>Língua, pulso e manifestações organizados segundo a MTC</p></div>
+    <div class="field" style="min-width:200px"><label class="lbl" for="as-patient">Paciente</label>${patientSelect('as-patient',A.pid)}</div></div>`}
   <div class="notice" style="margin-bottom:16px">${ic('info')}<div><b>Apoio ao raciocínio clínico.</b> As hipóteses abaixo são geradas a partir dos sinais marcados e não constituem diagnóstico. Cabe ao profissional aceitar, descartar e decidir a conduta.</div></div>
   <div class="grid g-side">
     <div class="grid" style="align-content:start">
@@ -4449,6 +4466,77 @@ function revisarPosicao(d, c, ok, por, em){
   r.hist.unshift({ acao: ok ? 'Posição marcada como revisada' : 'Revisão retirada', por, em });
   return r;
 }
+// embutido: aba "Pentagrama" dentro do prontuário do paciente aberto.
+function vPentagrama(embutido=false){
+  const p=patient(ui.pid);
+  if(!embutido) ui.crumbs=p?[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Pentagrama']]:[];
+  const a=p?.assess.at(-1), st=a?elemState(a.signs,a.status):null, e=ui.el;
+  let det='<p class="muted">Clique em um elemento para ver correspondências, funções e relações.</p>';
+  if(e){
+    const E=EL[e], s=st?st[e]:{def:0,exc:0}, kind=s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';
+    det=`<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px"><span style="font-size:2rem;color:${E.cor};font-family:var(--f-display)">${E.han}</span><h2>${E.nome}</h2>${kind?`<span class="pill ${kind==='exc'?'crit':'warn'}">${kind==='exc'?'excesso':'deficiência'} em ${esc(p.name.split(' ')[0])}</span>`:''}</div>
+    <dl class="corr"><dt>Zang (Yin)</dt><dd>${E.zang}</dd><dt>Fu (Yang)</dt><dd>${E.fu}</dd><dt>Emoção</dt><dd>${E.emocao}</dd><dt>Aspecto mental</dt><dd>${E.espirito}</dd><dt>Estação</dt><dd>${E.estacao}</dd><dt>Clima</dt><dd>${E.clima}</dd><dt>Órgão dos sentidos</dt><dd>${E.sentido}</dd><dt>Tecido</dt><dd>${E.tecido}</dd><dt>Sabor</dt><dd>${E.sabor}</dd><dt>Som</dt><dd>${E.som}</dd></dl>
+    <div class="lbl" style="margin:14px 0 4px">Funções tradicionais</div><ul style="margin:0;padding-left:18px">${E.funcoes.map(f=>`<li>${f}</li>`).join('')}</ul>
+    <div class="lbl" style="margin:14px 0 4px">Relações</div>
+    <dl class="corr"><dt>Gera (mãe de)</dt><dd>${elTag(SHENG[e])}</dd><dt>É gerado por</dt><dd>${elTag(mae(e))}</dd><dt>Controla</dt><dd>${elTag(KE[e])}</dd><dt>É controlado por</dt><dd>${elTag(controlador(e))}</dd></dl>
+    ${kind?`<div class="notice" style="margin-top:14px"><div><b>Considerações para o raciocínio:</b> ${kind==='def'
+      ?`na deficiência, a regra mãe-filho sugere avaliar a tonificação da mãe (${EL[mae(e)].nome}). Verifique também se ${EL[controlador(e)].nome} está em sobredominância.`
+      :`no excesso, a regra mãe-filho sugere avaliar a sedação do filho (${EL[SHENG[e]].nome}). Observe se ${E.nome} está sobredominando ${EL[KE[e]].nome} ou insultando ${EL[controlador(e)].nome}.`} Decisão do profissional.</div></div>`:''}`;
+  }
+  return `${embutido?'':`<div class="head"><div><h1>Pentagrama dos cinco elementos</h1><p>Wu Xing com ciclo de geração (Sheng) e de controle (Ke)</p></div>
+    <div class="field" style="min-width:200px"><label class="lbl" for="pt-patient">Sobrepor avaliação de</label>${patientSelect('pt-patient',ui.pid)}</div></div>`}
+  <div class="grid g-side">
+    <div class="card"><div class="chips" style="margin-bottom:8px">
+      <label class="chip ${ui.sheng?'on':''}"><input type="checkbox" id="cb-sheng" ${ui.sheng?'checked':''} hidden>Geração (Sheng)</label>
+      <label class="chip ${ui.ke?'on':''}"><input type="checkbox" id="cb-ke" ${ui.ke?'checked':''} hidden>Controle (Ke)</label>
+      ${e?`<button class="chip" data-act="el" data-e="">Limpar seleção</button>`:''}</div>
+      ${pentagram(st,e,{sheng:ui.sheng,ke:ui.ke})}
+      <div class="chips muted" style="font-size:.8rem;justify-content:center;gap:16px;margin-top:6px"><span><span style="color:var(--accent)">⟶</span> gera</span><span>- - ➝ controla</span><span>◌ deficiência</span><span>◯ excesso (anel espesso)</span></div>
+      <p class="muted" style="font-size:.8rem;text-align:center;margin-top:4px">${a?`Avaliação de ${esc(p.name)} em ${fmt(a.date)}`:'Sem avaliação para este paciente.'}</p>
+    </div>
+    <div class="card" style="align-self:start">${det}</div>
+  </div>`;
+}
+// do paciente. A tabela é a CID-10 do DATASUS (revisão 2008, dados públicos do Ministério da Saúde),
+// em js/conhecimento/cid10.txt (uma linha por código: "F41.1<tab>Ansiedade generalizada"), carregada
+// só quando a busca é usada.
+//   p.diagnosticos = [{ id, codigo, descricao, em, por, ativo, retiradoEm?, retiradoPor? }]
+const semAcentoCid = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function lerCid(texto){
+  return String(texto || '').split('\n').filter(Boolean).map(l => { const i = l.indexOf('\t'), c = l.slice(0, i), d = l.slice(i + 1);
+    const n = semAcentoCid(d); return { c, d, k: c.replace('.', '').toLowerCase(), n, w: n.split(/[^a-z0-9]+/).filter(Boolean) }; });
+}
+// Código (uma letra, ou letra e número: "f", "f41", "F41.1", "f411") busca pelo começo do código; texto busca
+// descrições em que cada palavra digitada é o começo de uma palavra ("dor lomb" acha "Dor lombar baixa").
+function buscarCid(L, termo, max = 20){
+  const t = semAcentoCid(termo).trim();
+  if (!t) return [];
+  if (/^[a-z](\d|$)/.test(t)) { const k = t.replace(/[.,\s]/g, ''); return L.filter(x => x.k.startsWith(k)).slice(0, max); }
+  const P = t.split(/\s+/).filter(w => w.length > 1 || t.length === 1);
+  if (!P.length) return [];
+  const R = L.filter(x => P.every(p => x.w.some(w => w.startsWith(p))));
+  const peso = x => (x.w[0]?.startsWith(P[0]) ? 0 : 2) + (x.c.includes('.') ? 1 : 0);
+  return R.sort((a, b) => peso(a) - peso(b) || a.k.localeCompare(b.k)).slice(0, max);
+}
+const diagnosticosAtivos = p => (p.diagnosticos || []).filter(d => d.ativo !== false);
+function adicionarDiagnostico(p, { id, codigo, descricao }, por, em){
+  const c = String(codigo || '').trim().toUpperCase();
+  if (!c || !descricao) return 'Escolha um CID da lista.';
+  if (diagnosticosAtivos(p).some(d => d.codigo === c)) return 'Este CID já está no prontuário.';
+  const d = { id, codigo: c, descricao: String(descricao).trim(), em, por: por || '', ativo: true };
+  (p.diagnosticos ||= []).push(d);
+  return d;
+}
+// Retirar não apaga: fica no histórico do prontuário como retirado, com quem e quando.
+function retirarDiagnostico(p, id, por, em){
+  const d = (p.diagnosticos || []).find(x => x.id === id && x.ativo !== false);
+  if (!d) return null;
+  Object.assign(d, { ativo: false, retiradoEm: em, retiradoPor: por || '' });
+  return d;
+}
+// Atendimentos, Anamnese e alertas, Avaliação energética, Pentagrama, Versões da avaliação, CID e Registro
+// rápido. As antigas telas #avaliacao e #pentagrama abrem aqui, na aba correspondente.
+// Detalhe das abas:
 // - Resumo: indicadores, queixas com a evolução de cada uma, atendimentos recentes, mapa dos cinco
 //   elementos, padrões validados e dados cadastrais;
 // - Prontuário: evolução das queixas, avaliação basal × atual e linha do tempo dos atendimentos e
@@ -4573,8 +4661,8 @@ function abaResumo(p){
       <div class="card"><div class="card-h"><h2>Mapa dos cinco elementos</h2>${a?`<span class="pill">${p.assess.length>1?'reavaliação':'basal'} · ${fmt(a.date)}</span>`:''}</div>
         ${st?`${barrasEl(st, p.assess.length>1?elemState(a0.signs,a0.status):null)}${p.assess.length>1?`<p class="muted sm" style="margin-top:6px">Marca vertical: posição na avaliação basal (${fmt(a0.date)}).</p>`:''}
           <details class="mais"><summary>Ver pentagrama ${ic('baixo')}</summary>${pentagram(st,null)}</details>`
-        :vazio('yin','Sem avaliação energética','Faça a avaliação para ver o mapa dos cinco elementos.',`<button class="btn sm pri" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliar</button>`)}</div>
-      <div class="card"><div class="card-h"><h2>Padrões validados</h2><a class="btn sm" href="#avaliacao">Nova avaliação</a></div>
+        :vazio('yin','Sem avaliação energética','Faça a avaliação para ver o mapa dos cinco elementos.',`<button class="btn sm pri" data-act="tab" data-t="avaliacao">${ic('yin')}Avaliar</button>`)}</div>
+      <div class="card"><div class="card-h"><h2>Padrões validados</h2><button class="btn sm" data-act="tab" data-t="avaliacao">Nova avaliação</button></div>
         ${ac.length?ac.map(h=>`<div class="row"><div class="grow"><b>${h.p.nome}</b></div>${elTag(h.p.el)}<span class="pill ${h.p.tipo==='exc'?'crit':'warn'}">${h.p.tipo==='exc'?'excesso':'deficiência'}</span></div>`).join(''):'<p class="muted sm">Nenhum padrão validado.</p>'}
         ${a?.nota?`<p class="muted" style="margin-top:8px">Nota: ${esc(a.nota)}</p>`:''}
       </div>
@@ -4654,19 +4742,41 @@ function abaVersoes(p){
       :'<p class="muted sm">A comparação aparece quando houver duas versões.</p>'}</div></div>`;
 }
 
-const ABAS = { resumo:abaResumo, sessoes:abaProntuario, anamnese:abaAnamnese, nova:abaNova, versoes:abaVersoes };
+// CID-10: busca por código ou descrição (a lista carrega na primeira busca) e os CIDs do paciente.
+function abaCid(p){
+  const A=diagnosticosAtivos(p), R=(p.diagnosticos||[]).filter(d=>d.ativo===false), C=ui.cid||{};
+  const quando=t=>fmt(String(t).slice(0,10));
+  return `<div class="grid g-side"><div class="card" id="cid-card"><div class="card-h"><h2>CID-10 do paciente</h2><span class="pill acc">${A.length}</span></div>
+      <div class="cid-busca"><label class="lbl" for="cid-q">Buscar CID por código ou descrição</label>
+        <input id="cid-q" data-cid="q" value="${esc(C.q||'')}" placeholder="Ex.: F41 ou ansiedade" autocomplete="off" role="combobox" aria-expanded="${!!C.lista?.length}" aria-controls="cid-l">
+        <div id="cid-l" class="cid-l" role="listbox">${cidLista(C)}</div></div>
+      ${A.length?`<div class="cid-sel">${A.map(d=>`<div class="cid-i" data-d="${d.id}"><b class="mono">${esc(d.codigo)}</b><span class="grow">${esc(d.descricao)}<small class="muted">incluído em ${quando(d.em)}${d.por?' · '+esc(d.por):''}</small></span><button class="btn ghost sm" data-act="cid-tirar" data-d="${d.id}" aria-label="Retirar ${esc(d.codigo)}" data-tip="Retirar">${ic('x')}</button></div>`).join('')}</div>`
+        :`<p class="muted sm" style="margin-top:12px">Nenhum CID registrado. Digite uma letra, um número ou parte da descrição e escolha na lista.</p>`}
+      ${R.length?`<details class="mais"><summary>${R.length} CID${R.length===1?' retirado':'s retirados'} ${ic('baixo')}</summary><div class="cid-sel">${R.map(d=>`<div class="cid-i fora"><b class="mono">${esc(d.codigo)}</b><span class="grow">${esc(d.descricao)}<small class="muted">incluído em ${quando(d.em)} · retirado em ${quando(d.retiradoEm)}${d.retiradoPor?' · '+esc(d.retiradoPor):''}</small></span></div>`).join('')}</div></details>`:''}</div>
+    <div class="card" style="align-self:start"><h3>Sobre o CID</h3><p class="muted sm">Tabela CID-10 do DATASUS (Ministério da Saúde). Os CIDs ficam no prontuário e aparecem no resumo do paciente. Retirar um CID não apaga: ele fica na lista de retirados, com a data.</p></div></div>`;
+}
+function cidLista(C){
+  if(C.carregando) return `<p class="muted sm cid-msg">Carregando a tabela CID-10…</p>`;
+  if(C.erro) return `<p class="muted sm cid-msg">${esc(C.erro)}</p>`;
+  if(!C.q?.trim()) return '';
+  if(!C.lista?.length) return `<p class="muted sm cid-msg">Nenhum CID encontrado para “${esc(C.q)}”.</p>`;
+  return C.lista.map((x,i)=>`<button type="button" class="cid-o ${i===(C.i|0)?'on':''}" role="option" aria-selected="${i===(C.i|0)}" data-act="cid-add" data-c="${esc(x.c)}" data-d="${esc(x.d)}"><b class="mono">${esc(x.c)}</b><span>${esc(x.d)}</span></button>`).join('');
+}
+const abaMtc = f => p => pode('mtc') ? f(p) : bloqueio('mtc');
+const ABAS = { resumo:abaResumo, sessoes:abaProntuario, anamnese:abaAnamnese, avaliacao:abaMtc(()=>vAvaliacao(true)), pentagrama:abaMtc(()=>vPentagrama(true)), versoes:abaVersoes, cid:abaCid, nova:abaNova };
 function vProntuario(){
   const p=patient(ui.pid)||db.patients[0];
   if(!p) return `<div class="head"><div><h1>Prontuário</h1></div></div>${vazio('pacientes','Nenhum paciente cadastrado','Cadastre um paciente para abrir o prontuário.',`<button class="btn pri sm" data-act="novo-paciente">${ic('novo')}Cadastrar paciente</button>`)}`;
   ui.pid=p.id; if(!ABAS[ui.tab]) ui.tab='resumo';
   const alerts=alertasDe(p);
-  const tabs=[['resumo','Resumo','painel'],['sessoes','Prontuário','historico'],['anamnese','Anamnese e alertas','folha'],['nova','Registro rápido','mais'],['versoes','Versões da avaliação','historico']];
+  const tabs=[['resumo','Resumo','painel'],['sessoes','Atendimentos','historico'],['anamnese','Anamnese e alertas','folha'],['avaliacao','Avaliação energética','yin'],['pentagrama','Pentagrama','estrela'],['versoes','Versões da avaliação','historico'],['cid','CID','lista'],['nova','Registro rápido','mais']];
+  const cids=diagnosticosAtivos(p);
   ui.crumbs=[['#pacientes','Pacientes'],[null,p.name]];
   return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
-    ${alerts.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}</div>`:''}</div>
-    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button>${pode('mtc')?`<button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button>`:''}<button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
-    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}`;
+    ${alerts.length||cids.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}${cids.map(d=>`<button class="pill cid-pill" data-act="tab" data-t="cid" data-tip="${esc(d.descricao)}">CID ${esc(d.codigo)}</button>`).join('')}</div>`:''}</div>
+    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
+    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic((k==='avaliacao'||k==='pentagrama')&&!pode('mtc')?'cadeado':i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}`;
 }
 // alertas, preenchimento por etapa e salvamento automático. Usa, sem alterar, o raciocínio clínico
 // (evaluate, bagang, elemState), o pentagrama e a verificação de segurança dos pontos.
@@ -5691,36 +5801,6 @@ function vPainel(){
         :vazio('historico','Sem atividades','As sessões, avaliações e agendamentos concluídos aparecem aqui.')}</div>
   </div>`;
 }
-function vPentagrama(){
-  const p=patient(ui.pid);
-  ui.crumbs=p?[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Pentagrama']]:[];
-  const a=p?.assess.at(-1), st=a?elemState(a.signs,a.status):null, e=ui.el;
-  let det='<p class="muted">Clique em um elemento para ver correspondências, funções e relações.</p>';
-  if(e){
-    const E=EL[e], s=st?st[e]:{def:0,exc:0}, kind=s.exc>s.def&&s.exc>0?'exc':s.def>0?'def':'';
-    det=`<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px"><span style="font-size:2rem;color:${E.cor};font-family:var(--f-display)">${E.han}</span><h2>${E.nome}</h2>${kind?`<span class="pill ${kind==='exc'?'crit':'warn'}">${kind==='exc'?'excesso':'deficiência'} em ${esc(p.name.split(' ')[0])}</span>`:''}</div>
-    <dl class="corr"><dt>Zang (Yin)</dt><dd>${E.zang}</dd><dt>Fu (Yang)</dt><dd>${E.fu}</dd><dt>Emoção</dt><dd>${E.emocao}</dd><dt>Aspecto mental</dt><dd>${E.espirito}</dd><dt>Estação</dt><dd>${E.estacao}</dd><dt>Clima</dt><dd>${E.clima}</dd><dt>Órgão dos sentidos</dt><dd>${E.sentido}</dd><dt>Tecido</dt><dd>${E.tecido}</dd><dt>Sabor</dt><dd>${E.sabor}</dd><dt>Som</dt><dd>${E.som}</dd></dl>
-    <div class="lbl" style="margin:14px 0 4px">Funções tradicionais</div><ul style="margin:0;padding-left:18px">${E.funcoes.map(f=>`<li>${f}</li>`).join('')}</ul>
-    <div class="lbl" style="margin:14px 0 4px">Relações</div>
-    <dl class="corr"><dt>Gera (mãe de)</dt><dd>${elTag(SHENG[e])}</dd><dt>É gerado por</dt><dd>${elTag(mae(e))}</dd><dt>Controla</dt><dd>${elTag(KE[e])}</dd><dt>É controlado por</dt><dd>${elTag(controlador(e))}</dd></dl>
-    ${kind?`<div class="notice" style="margin-top:14px"><div><b>Considerações para o raciocínio:</b> ${kind==='def'
-      ?`na deficiência, a regra mãe-filho sugere avaliar a tonificação da mãe (${EL[mae(e)].nome}). Verifique também se ${EL[controlador(e)].nome} está em sobredominância.`
-      :`no excesso, a regra mãe-filho sugere avaliar a sedação do filho (${EL[SHENG[e]].nome}). Observe se ${E.nome} está sobredominando ${EL[KE[e]].nome} ou insultando ${EL[controlador(e)].nome}.`} Decisão do profissional.</div></div>`:''}`;
-  }
-  return `<div class="head"><div><h1>Pentagrama dos cinco elementos</h1><p>Wu Xing com ciclo de geração (Sheng) e de controle (Ke)</p></div>
-    <div class="field" style="min-width:200px"><label class="lbl" for="pt-patient">Sobrepor avaliação de</label>${patientSelect('pt-patient',ui.pid)}</div></div>
-  <div class="grid g-side">
-    <div class="card"><div class="chips" style="margin-bottom:8px">
-      <label class="chip ${ui.sheng?'on':''}"><input type="checkbox" id="cb-sheng" ${ui.sheng?'checked':''} hidden>Geração (Sheng)</label>
-      <label class="chip ${ui.ke?'on':''}"><input type="checkbox" id="cb-ke" ${ui.ke?'checked':''} hidden>Controle (Ke)</label>
-      ${e?`<button class="chip" data-act="el" data-e="">Limpar seleção</button>`:''}</div>
-      ${pentagram(st,e,{sheng:ui.sheng,ke:ui.ke})}
-      <div class="chips muted" style="font-size:.8rem;justify-content:center;gap:16px;margin-top:6px"><span><span style="color:var(--accent)">⟶</span> gera</span><span>- - ➝ controla</span><span>◌ deficiência</span><span>◯ excesso (anel espesso)</span></div>
-      <p class="muted" style="font-size:.8rem;text-align:center;margin-top:4px">${a?`Avaliação de ${esc(p.name)} em ${fmt(a.date)}`:'Sem avaliação para este paciente.'}</p>
-    </div>
-    <div class="card" style="align-self:start">${det}</div>
-  </div>`;
-}
 // (silhueta com os trajetos aproximados dos 12 meridianos e dos 8 vasos). Etapa 4B.
 // O conteúdo clínico é só o das fichas que já existem; os demais pontos aparecem como "ficha pendente".
 
@@ -5859,6 +5939,8 @@ EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
 function render(keepScroll){
+  // Prontuário único: avaliação energética e pentagrama são abas do prontuário do paciente.
+  if(['avaliacao','pentagrama'].includes(location.hash.slice(1))){ ui.tab=location.hash.slice(1); history.replaceState(null,'','#prontuario'); }
   const r=route(), y=scrollY, v=document.getElementById('view');
   if(r==='equipe'&&ultimaRota!=='equipe') esquecerEquipe();
   ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=!podeVer(PERM_ROTA[r])?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${semPermissao()}`:rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
@@ -5873,6 +5955,22 @@ function toast(m, tipo='ok'){ const t=document.getElementById('toast'); t.classN
 // Camadas sobre a tela: busca global, notificações, perfil e atalhos.
 function abrir(ov){ ui.ov=ui.ov===ov?null:ov; if(ov==='busca'){ ui.q=''; ui.bi=0; } render(true); }
 // Abre a tela (ou a re-renderiza, se já estiver nela).
+// CID-10: a tabela (js/conhecimento/cid10.txt) carrega na primeira busca e fica na memória.
+let tabelaCid=null;
+async function carregarCid(){
+  if(tabelaCid) return tabelaCid;
+  const U=['js/conhecimento/cid10.txt','../js/conhecimento/cid10.txt']; if(location.pathname.includes('/dist/')) U.reverse();
+  for(const u of U){ try{ const r=await fetch(u); if(r.ok){ tabelaCid=lerCid(await r.text()); if(tabelaCid.length) return tabelaCid; } }catch(e){} }
+  throw new Error('sem tabela');
+}
+function mostrarCid(){ const l=document.getElementById('cid-l'), q=document.getElementById('cid-q'); if(l) l.innerHTML=cidLista(ui.cid); if(q) q.setAttribute('aria-expanded',String(!!ui.cid.lista?.length)); }
+async function procurarCid(q){
+  ui.cid={q,i:0,lista:[]};
+  if(!tabelaCid){ ui.cid.carregando=true; mostrarCid();
+    try{ await carregarCid(); }catch(e){ ui.cid={q,erro:'Não foi possível carregar a tabela CID-10. Confira a internet e tente de novo.'}; mostrarCid(); return; } }
+  if(ui.cid.q!==q) return;
+  ui.cid={q,i:0,lista:buscarCid(tabelaCid,q,20)}; mostrarCid();
+}
 function irPara(h){ if(location.hash.slice(1)===h) render(); else location.hash=h; }
 // Dica flutuante para elementos com data-tip (botões de ícone, gráficos, calendário).
 const tip=document.getElementById('tip');
@@ -5885,7 +5983,9 @@ addEventListener('hashchange',()=>{ if(route()!=='cadastro') ui.editPid=null; ui
 addEventListener('keydown',ev=>{
   const emCampo=ev.target.matches('input, textarea, select');
   if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k'){ ev.preventDefault(); abrir('busca'); return; }
-  if(ev.key==='Escape'){ if(ui.edReg){ ui.edReg=null; render(true); return; } if(ui.ov){ ui.ov=null; render(true); } else if(ui.menuAberto){ ui.menuAberto=false; render(true); } return; }
+  if(ev.target.id==='cid-q'&&ui.cid?.lista?.length&&['ArrowDown','ArrowUp','Enter'].includes(ev.key)){ ev.preventDefault(); const C=ui.cid;
+    if(ev.key==='Enter'){ document.querySelectorAll('.cid-o')[C.i|0]?.click(); return; } C.i=((C.i|0)+(ev.key==='ArrowDown'?1:-1)+C.lista.length)%C.lista.length; mostrarCid(); document.querySelector('.cid-o.on')?.scrollIntoView({block:'nearest'}); return; }
+  if(ev.key==='Escape'){ if(ui.cid?.q&&ev.target.id==='cid-q'){ ui.cid={}; ev.target.value=''; mostrarCid(); return; } if(ui.edReg){ ui.edReg=null; render(true); return; } if(ui.ov){ ui.ov=null; render(true); } else if(ui.menuAberto){ ui.menuAberto=false; render(true); } return; }
   if(ui.ov==='busca'&&['ArrowDown','ArrowUp','Enter'].includes(ev.key)){ ev.preventDefault(); const L=document.querySelectorAll('.pal-i');
     if(ev.key==='Enter'){ L[ui.bi]?.click(); return; } ui.bi=(ui.bi+(ev.key==='ArrowDown'?1:-1)+L.length)%Math.max(1,L.length); document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(ev.altKey&&route()==='atendimento'&&(ev.key==='ArrowLeft'||ev.key==='ArrowRight')){ ev.preventDefault(); irEtapa((ui.etapa|0)+(ev.key==='ArrowRight'?1:-1)); return; }
@@ -5943,6 +6043,9 @@ document.addEventListener('click',ev=>{
   else if(a==='novo-atendimento'){ const p=patient(t.dataset.pid||ui.pid); let x=rascunhoDe(p);
     if(!x){ x=iniciarAtendimento(p,{id:uid(),data:TODAY},new Date().toISOString()); save(); }
     ui.pid=p.id; ui.atId=x.id; ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; limparMapa(); irPara('atendimento'); scrollTo(0,0); }
+  else if(a==='cid-add'){ const p=patient(ui.pid); const r=adicionarDiagnostico(p,{id:uid(),codigo:t.dataset.c,descricao:t.dataset.d},PROF.nome,new Date().toISOString());
+    if(typeof r==='string'){ toast(r,'info'); return; } ui.cid={}; save(); render(true); toast(`CID ${r.codigo} incluído no prontuário`); document.getElementById('cid-q')?.focus(); }
+  else if(a==='cid-tirar'){ const d=retirarDiagnostico(patient(ui.pid),t.dataset.d,PROF.nome,new Date().toISOString()); if(d){ save(); render(true); toast(`CID ${d.codigo} retirado; fica na lista de retirados`,'info'); } }
   else if(a==='pr-editar'){ ui.edReg=t.dataset.id; render(true); setTimeout(()=>document.querySelector('#f-edreg input, #f-edreg textarea')?.focus(),0); }
   else if(a==='pr-editar-x'){ if(t.id==='ed-fundo'&&ev.target!==t) return; ui.edReg=null; render(true); }
   else if(a==='abrir-atendimento'){ ui.pid=t.dataset.pid; ui.atId=t.dataset.id; fotografarAvaliacao(); ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; limparMapa(); irPara('atendimento'); scrollTo(0,0); }
@@ -5986,7 +6089,7 @@ document.addEventListener('click',ev=>{
   else if(a==='tab'){ ui.tab=t.dataset.t; render(true); }
   else if(a==='sign'){ const s=t.dataset.s, L=ui.assess.signs; const i=L.indexOf(s); i<0?L.push(s):L.splice(i,1); render(true); }
   else if(a==='hyp'){ const id=t.dataset.p; ui.assess.status[id] = ui.assess.status[id]===t.dataset.st ? '' : t.dataset.st; render(true); }
-  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); const nv=registrarAvaliacao(p,{id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota},new Date().toISOString()); nv.prof=PROF.nome; const rm=ui.reavMotivo?.pid===p.id; if(rm) nv.motivo=ui.reavMotivo.motivo; ui.reavMotivo=null; save(); ui.pid=p.id; ui.tab=rm?'versoes':'resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); location.hash='prontuario'; }
+  else if(a==='save-assess'){ const A=ui.assess, p=patient(A.pid); const nv=registrarAvaliacao(p,{id:uid(),date:TODAY,signs:[...A.signs],status:{...A.status},nota:A.nota},new Date().toISOString()); nv.prof=PROF.nome; const rm=ui.reavMotivo?.pid===p.id; if(rm) nv.motivo=ui.reavMotivo.motivo; ui.reavMotivo=null; save(); ui.pid=p.id; ui.tab=rm?'versoes':'resumo'; ui.assess=null; toast('Avaliação salva no prontuário'); irPara('prontuario'); }
   else if(a==='el'){ ui.el = t.dataset.e && ui.el!==t.dataset.e ? t.dataset.e : null; render(true); }
   else if(a==='mer'){ ui.ptMer=t.dataset.m; render(true); }
   else if(a==='week'||a==='ag-dia'){ ui.agDia = a==='ag-dia'?t.dataset.d:t.dataset.d==='0'?TODAY:addDays(7*Number(t.dataset.d),ui.agDia||TODAY);
@@ -6034,6 +6137,7 @@ document.addEventListener('click',ev=>{
 document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
 document.addEventListener('input',ev=>{
   if(ev.target.dataset?.exc==='outro'&&ui.excluir){ ui.excluir.outro=ev.target.value; return; }
+  if(ev.target.dataset?.cid==='q'){ procurarCid(ev.target.value); return; }
   const t=ev.target;
   if(t.dataset.agf==='time'){ formAgenda().time=t.value; return; }
   if(t.dataset.int&&t.tagName==='INPUT'){ (ui.novoInt||={nome:'',tel:'',origem:'Instagram'})[t.dataset.int]=t.value; return; }

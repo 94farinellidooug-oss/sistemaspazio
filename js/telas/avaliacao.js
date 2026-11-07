@@ -9,14 +9,15 @@ import { bagang, elemState, evaluate } from '../raciocinio/avaliacao.js';
 import { ic } from '../componentes/icones.js';
 import { esc } from '../util.js';
 
-export function vAvaliacao(){
-  if(!ui.assess || !patient(ui.assess.pid)) ui.assess={pid:ui.pid,signs:[],status:{},nota:''};
+// embutido: aba "Avaliação energética" dentro do prontuário do paciente aberto (sem o cabeçalho próprio).
+export function vAvaliacao(embutido=false){
+  if(!ui.assess || !patient(ui.assess.pid) || (embutido && ui.assess.pid!==ui.pid)) ui.assess={pid:ui.pid,signs:[],status:{},nota:''};
   const A=ui.assess, p=patient(A.pid);
-  ui.crumbs=[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Avaliação energética']];
+  if(!embutido) ui.crumbs=[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Avaliação energética']];
   const hyps=evaluate(A.signs), st=elemState(A.signs,A.status), bg=bagang(A.signs);
   const axis=(l,r,v)=>`<div class="axis"><span>${l}</span><div class="track"><span class="dot" style="left:${50+v*50}%"></span></div><span>${r}</span></div>`;
-  return `<div class="head"><div><h1>Avaliação energética</h1><p>Língua, pulso e manifestações organizados segundo a MTC</p></div>
-    <div class="field" style="min-width:200px"><label class="lbl" for="as-patient">Paciente</label>${patientSelect('as-patient',A.pid)}</div></div>
+  return `${embutido?`${ui.reavMotivo?.pid===p.id?`<div class="notice" style="margin-bottom:12px">${ic('historico')}<div><b>Reavaliação avulsa.</b> Motivo: ${esc(ui.reavMotivo.motivo)}. Ao salvar, ela vira uma nova versão da avaliação.</div></div>`:''}`:`<div class="head"><div><h1>Avaliação energética</h1><p>Língua, pulso e manifestações organizados segundo a MTC</p></div>
+    <div class="field" style="min-width:200px"><label class="lbl" for="as-patient">Paciente</label>${patientSelect('as-patient',A.pid)}</div></div>`}
   <div class="notice" style="margin-bottom:16px">${ic('info')}<div><b>Apoio ao raciocínio clínico.</b> As hipóteses abaixo são geradas a partir dos sinais marcados e não constituem diagnóstico. Cabe ao profissional aceitar, descartar e decidir a conduta.</div></div>
   <div class="grid g-side">
     <div class="grid" style="align-content:start">
