@@ -97,6 +97,29 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       }
       return resp(400, { erro:'acao', msg:'Pedido inválido.' });
     }
+    // Função nfse (nota fiscal): S.nfse = { cert, notas, modo:'ok'|'recusa'|'cair', pedidos }. Sem S.nfse, responde como sem a função (404).
+    if (u.pathname === '/functions/v1/nfse') {
+      const N = S.nfse; if (!N) return resp(404, { code:'NOT_FOUND', message:'Requested function was not found' });
+      const m = eu_m(corpo.clinica); if (!m) return resp(403, { erro:'sem_acesso', msg:'Você não faz parte desta clínica.' });
+      (N.pedidos ||= []).push(corpo); N.notas ||= [];
+      if (corpo.acao === 'situacao') return resp(200, { certificado:N.cert || null });
+      if (corpo.acao === 'certificado') { if (m.perfil !== 'adm') return resp(403, { erro:'sem_acesso', msg:'Só o administrador da clínica envia o certificado.' });
+        if (corpo.senha !== 'certo') return resp(400, { erro:'senha', msg:'A senha do certificado não confere.' });
+        N.cert = { titular:'SPAZIO STABILITA LTDA', documento:'11222333000181', validade:new Date(Date.now() + 300 * 864e5).toISOString(), enviadoEm:new Date().toISOString() }; return resp(200, { certificado:N.cert }); }
+      if (corpo.acao === 'tirar_certificado') { N.cert = null; return resp(200, { certificado:null }); }
+      if (corpo.acao === 'emitir') {
+        if (!N.cert) return resp(400, { erro:'sem_certificado', msg:'Envie o certificado digital A1 da clínica em Configurações > Nota fiscal.' });
+        const id = 'n' + (++S.n), ndps = N.notas.length + 1;
+        if (N.modo === 'recusa') { N.notas.push({ id, situacao:'rejeitada' }); return resp(422, { erro:'rejeitada', msg:'A Receita recusou: E0312 Código de tributação nacional não administrado pelo município', id, situacao:'rejeitada' }); }
+        const numero = String(N.notas.filter(x => x.situacao === 'emitida').length + 1), chave = '43051082211222333000181' + numero.padStart(13, '0') + '26110000000010';
+        const nota = { id, situacao:N.modo === 'cair' ? 'enviando' : 'emitida', numero, chave, ndps, serie:'1', ambiente:corpo.ambiente, emitidaEm:new Date().toISOString(), consulta:'https://www.nfse.gov.br/consultapublica?tpc=1&chave=' + chave };
+        N.notas.push(nota);
+        if (N.modo === 'cair') return resp(504, { erro:'sem_resposta', msg:'A Receita não respondeu. Em instantes, toque em "Conferir" para saber se a nota saiu.', id, situacao:'enviando' });
+        return resp(200, nota);
+      }
+      if (corpo.acao === 'conferir') { const n = N.notas.find(x => x.id === corpo.id); if (!n) return resp(404, { erro:'nao_achei', msg:'Nota não encontrada.' }); n.situacao = 'emitida'; return resp(200, n); }
+      return resp(400, { erro:'acao', msg:'Pedido inválido.' });
+    }
     if (u.pathname === '/rest/v1/pagamentos') { const c = (u.searchParams.get('clinica_id') || '').replace('eq.', ''); return resp(200, (S.pagamentos || []).filter(g => (dono() && !c) || (g.clinica_id === c && (membro(c) || dono())))); }
     if (u.pathname === '/rest/v1/donos') return resp(200, (S.donos || []).includes(eu.id) ? [{ user_id:eu.id }] : []);
     return resp(404, { message:'não encontrado' });

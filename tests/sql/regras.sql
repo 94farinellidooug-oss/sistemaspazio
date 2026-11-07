@@ -183,4 +183,26 @@ exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if;
 select public.cancelar_convite(id) from convites where clinica_id = :'c1' and aceito_em is null \g /dev/null
 select pg_temp.checar((select count(*) from convites where clinica_id = :'c1' and aceito_em is null) = 0, 'administrador cancela convites em aberto');
 reset role;
+-- Nota fiscal (005_nfse.sql): o certificado ninguém lê pelo sistema; as notas só a função cria
+set role service_role;
+insert into nfse_certificados (clinica_id, cifrado, iv, titular, documento, validade) values (:'c1', 'xxx', 'yyy', 'SPAZIO', '11222333000181', now() + interval '1 year');
+insert into nfse_notas (clinica_id, ambiente, serie, ndps, id_dps, valor, situacao) values (:'c1', 'homologacao', '1', 1, 'DPS1', 15000, 'emitida');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select pg_temp.checar((select count(*) from nfse_certificados) = 0, 'nem o administrador lê o certificado guardado');
+select pg_temp.checar((select count(*) from nfse_notas) = 1, 'a equipe vê as notas da clínica');
+update nfse_notas set situacao = 'cancelada';
+select pg_temp.checar((select situacao from nfse_notas) = 'emitida', 'a equipe não muda a nota por fora da função');
+do $$ begin insert into nfse_notas (clinica_id, ambiente, serie, ndps, id_dps, valor) values (current_setting('teste.c1')::uuid, 'homologacao', '1', 2, 'DPS2', 100); raise exception 'FALHA: criou nota';
+exception when insufficient_privilege then raise notice 'ok    a equipe não cria nota por fora da função'; end $$;
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select pg_temp.checar((select count(*) from nfse_notas) = 0, 'outra clínica não vê as notas');
+reset role;
+set role service_role;
+do $$ begin insert into nfse_notas (clinica_id, ambiente, serie, ndps, id_dps, valor) values (current_setting('teste.c1')::uuid, 'homologacao', '1', 1, 'DPS1b', 100); raise exception 'FALHA: repetiu o número';
+exception when unique_violation then raise notice 'ok    o número da DPS não repete na mesma série e ambiente'; end $$;
+reset role;
 \echo 'Todas as regras do banco passaram.'

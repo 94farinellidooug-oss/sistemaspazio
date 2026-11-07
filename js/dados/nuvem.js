@@ -27,7 +27,7 @@ const MSG_NUVEM = {
 export const ErroNuvem = class extends Error { constructor(msg, codigo, status){ super(msg); this.codigo = codigo; this.status = status; } };
 const erroDe = (status, corpo) => {
   const cod = corpo?.error_code || corpo?.code || corpo?.error || '', txt = String(corpo?.message || corpo?.msg || corpo?.error_description || '');
-  if (corpo?.erro && corpo?.msg) return new ErroNuvem(String(corpo.msg), String(corpo.erro), status);   // função cobranca
+  if (corpo?.erro && corpo?.msg) return Object.assign(new ErroNuvem(String(corpo.msg), String(corpo.erro), status), { corpo });   // funções cobranca e nfse
   const chave = Object.keys(MSG_NUVEM).find(k => cod === k || txt.includes(k));
   return new ErroNuvem(chave ? MSG_NUVEM[chave] : status === 401 ? MSG_NUVEM.sem_login : 'O servidor não respondeu como esperado. Tente de novo.', chave || cod || String(status), status);
 };
@@ -117,6 +117,8 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     // Pagamento do MUSUBI pela InfinitePay (função cobranca, supabase/functions/cobranca). Devolve { url } do link.
     pagar:async (clinica, plano, periodo, teste = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo, ...(teste ? { teste:true } : {}) }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
+    // Nota fiscal (função nfse, supabase/functions/nfse): { acao, clinica, ... }.
+    nfse:async corpo => chamar('/functions/v1/nfse', { metodo:'POST', corpo, token:await token() }),
     conferirPagamento:async ({ order_nsu, transaction_nsu, slug, receipt_url }) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'conferir', order_nsu, transaction_nsu, slug, receipt_url }, token:await token() }),
     // Pagamentos (supabase/003_pagamentos.sql): da clínica, ou todos para o dono. [] quando o servidor ainda não tem a tabela.
     pagamentos:async clinica => { try { return (await rest(`pagamentos?select=id,clinica_id,plano,periodo,valor,valor_pago,situacao,forma,recibo,link,criado_em,pago_em&order=criado_em.desc${clinica ? '&clinica_id=eq.' + clinica : ''}`)) || []; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return []; throw e; } },

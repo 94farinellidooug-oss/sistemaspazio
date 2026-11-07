@@ -1,4 +1,5 @@
-// Tela Financeiro (etapa 8): resumo do mês, A receber, Recebidos, Pacotes, Despesas e os dados para a nota.
+// Tela Financeiro (etapa 8): resumo do mês, A receber, Recebidos, Pacotes, Despesas e a nota fiscal (NFS-e,
+// js/telas/nfse.js: Emitir nota em cada recebimento).
 import { CATEGORIAS_DESP, FORMAS, aReceber, linkDe, tagCobranca, textoCobranca, coberturaPacotes, despesasDoMes, faltaDe, recebidoDe, recebimentosDoMes, resumoMes, usosPacote } from '../dados/financeiro.js';
 import { SERVICOS } from '../dados/agenda.js';
 import { db, patient } from '../dados/repositorio.js';
@@ -8,6 +9,7 @@ import { TODAY, brl, esc, fmt } from '../util.js';
 import { cobrancaLigada, podeVer, souAdm } from './conta.js';
 import { linkWa } from '../dados/whatsapp.js';
 import { configDe } from '../dados/config.js';
+import { botaoNota, cartaoNota, janelaNota, notaLigada } from './nfse.js';
 
 const MESES_FIN = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const nomeMes = m => MESES_FIN[Number(m.slice(5, 7)) - 1];
@@ -54,7 +56,7 @@ export function vFinanceiro(){
         ${ui.finLink === a.id && linkDe(db, a.id) ? caixaLink(a, p) : ''}</div>`; }).join('') || `<div class="vazio">${ic('okc')}Tudo recebido.</div>`}</div></div>
     <div class="card" id="f-recs"><div class="card-h"><h2>Recebidos em ${nm}<small>com a forma de pagamento</small></h2></div>
       <div class="hor-l">${recs.map(r => { const a = db.appts.find(x => x.id === r.ap), p = a && patient(a.pid); return `<div class="fin-l rec" data-rec="${r.id}"><div class="hor-h"><b>${fmt(r.data).slice(0, 5)}</b></div><div class="hor-p"><b>${esc(p?.name || r.nome || '')}</b><small>${esc(a?.tipo || r.tipo || '')} · <span class="pill sm">${r.forma}</span>${a && r.valor < (a.valor || 0) ? ' · parcial' : ''}</small></div><b class="fin-v">${brl(r.valor)}</b>
-        <div class="hor-a">${ui.finDesf === r.id ? `<button class="btn sm" data-act="fin-desf-ok" data-r="${r.id}">Desfazer mesmo</button><button class="btn sm ghost" data-act="fin-desf-x">Manter</button>` : `<button class="btn sm ghost" data-act="fin-nota" data-r="${r.id}" aria-label="Copiar dados da nota" data-tip="Dados da nota">${ic('doc')}</button><button class="btn sm ghost" data-act="fin-desf" data-r="${r.id}" aria-label="Desfazer recebimento" data-tip="Desfazer">${ic('retorno')}</button>`}</div></div>`; }).join('') || '<p class="muted sm">Nada recebido ainda neste mês.</p>'}</div></div>
+        <div class="hor-a">${ui.finDesf === r.id ? `<button class="btn sm" data-act="fin-desf-ok" data-r="${r.id}">Desfazer mesmo</button><button class="btn sm ghost" data-act="fin-desf-x">Manter</button>` : `${botaoNota(r)}${notaLigada() ? '' : `<button class="btn sm ghost" data-act="fin-nota" data-r="${r.id}" aria-label="Copiar dados da nota" data-tip="Dados da nota">${ic('doc')}</button>`}<button class="btn sm ghost" data-act="fin-desf" data-r="${r.id}" aria-label="Desfazer recebimento" data-tip="Desfazer">${ic('retorno')}</button>`}</div></div>`; }).join('') || '<p class="muted sm">Nada recebido ainda neste mês.</p>'}</div></div>
   </div><div class="grid" style="align-content:start">
     ${cartaoCobranca(lig, tag)}
     <div class="card" id="f-pac"><div class="card-h"><h2>Pacotes<small>sessões pagas antes; cada atendimento desconta uma</small></h2></div>
@@ -71,6 +73,6 @@ export function vFinanceiro(){
       <form id="f-nova-desp" class="ag-f" style="margin-top:12px"><label class="rx-f full"><span class="lbl">Despesa</span><input id="nd-d" placeholder="Ex.: conta de luz" autocomplete="off"></label>
         <label class="rx-f"><span class="lbl">Valor</span><input id="nd-v" inputmode="decimal" placeholder="0,00" autocomplete="off"></label><label class="rx-f"><span class="lbl">Tipo</span><select id="nd-c">${CATEGORIAS_DESP.map(c => `<option>${c}</option>`).join('')}</select></label>
         <label class="ck full"><input type="checkbox" id="nd-r"> Repete todo mês</label><div class="full"><button class="btn sm pri">${ic('mais')}Lançar despesa</button></div></form></div>` : ''}
-    <div class="card" id="f-nota"><h2>Nota fiscal</h2><p class="muted sm">A emissão automática da nota de serviço (NFS-e) entra na etapa 10, junto com o servidor e o login. Por enquanto, em cada recebimento o botão <b>Dados da nota</b> copia paciente, CPF, serviço, valor e data, prontos para colar no emissor.</p></div>
-  </div></div>`;
+    ${cartaoNota()}
+  </div></div>${janelaNota()}`;
 }

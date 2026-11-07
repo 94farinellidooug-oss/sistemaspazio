@@ -1,17 +1,18 @@
 // Etapa 10: Configurações (proposta aprovada pelo Maicon em 06/11/2026, proposta/etapa-10/sistema.html#/configuracoes).
-// Abas: Clínica, Serviços e preços, Horário de atendimento, Sua conta e segurança. Só o administrador
-// vê as três primeiras; os outros perfis veem só a própria conta.
+// Abas: Clínica, Serviços e preços, Horário de atendimento, Nota fiscal (js/telas/nfse.js), Sua conta e
+// segurança. Só o administrador vê as quatro primeiras; os outros perfis veem só a própria conta.
 // Serviços e horário salvam a cada mudança; dados da clínica e da conta, no botão Salvar.
 import { ic } from '../componentes/icones.js';
 import { db } from '../dados/repositorio.js';
 import { DIAS_SEMANA, DURACOES, UFS, configDe, resumoHorario, salvarClinica, salvarHorario, salvarServicos } from '../dados/config.js';
 import { clinicaNoServidor, contaAtual, pagamentosConta, pagarConta, situacaoConta, mudarEmailConta, sairDosOutrosConta, salvarNomeConta, trocarSenhaConta } from './conta.js';
 import { esc } from '../util.js';
+import { cfNota } from './nfse.js';
 import { PERIODOS_PAG, PLANOS, planoDe, precoPeriodoTxt, precoTxt } from '../dados/planos.js';
 
 const cf = { aba:'clinica', senha:false, ocupado:false, plano:null, periodo:'mensal' };
 let cfApp = { save:() => {}, render:() => {}, toast:() => {} };
-const ABAS_CF = [['clinica', 'Clínica', 'local'], ['servicos', 'Serviços e preços', 'dinheiro'], ['horario', 'Horário de atendimento', 'relogio'], ['conta', 'Sua conta e segurança', 'escudo']];
+const ABAS_CF = [['clinica', 'Clínica', 'local'], ['servicos', 'Serviços e preços', 'dinheiro'], ['horario', 'Horário de atendimento', 'relogio'], ['nota', 'Nota fiscal', 'recibo'], ['conta', 'Sua conta e segurança', 'escudo']];
 const valorTxt = v => String(v).replace('.', ',');
 const lerNum = t => Number(String(t).replace(/\./g, '').replace(',', '.')) || 0;
 
@@ -20,7 +21,7 @@ export function vConfiguracoes(){
   if (!abas.some(a => a[0] === cf.aba)) cf.aba = abas[0][0];
   return `<div class="head"><div><h1>Configurações</h1><p>${esc(configDe(db).clinica.nome)}</p></div></div>
   <div class="tabs" role="tablist">${abas.map(([k, l, i]) => `<button role="tab" data-cf="aba" data-k="${k}" class="${cf.aba === k ? 'on' : ''}" aria-selected="${cf.aba === k}">${ic(i)}${l}</button>`).join('')}</div>` +
-  ({ clinica:cfClinica, servicos:cfServicos, horario:cfHorario, conta:cfConta })[cf.aba]();
+  ({ clinica:cfClinica, servicos:cfServicos, horario:cfHorario, nota:cfNota, conta:cfConta })[cf.aba]();
 }
 
 function cfClinica(){
