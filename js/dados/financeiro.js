@@ -111,3 +111,26 @@ export function dadosNota(db, r){
   const a = db.appts.find(x => x.id === r.ap), p = a && db.patients.find(x => x.id === a.pid);
   return [`Paciente: ${p?.name || r.nome || ''}`, `CPF: ${p?.cadastro?.cpf || 'não cadastrado'}`, `Serviço: ${a?.tipo || r.tipo || ''}`, `Valor: ${brl(r.valor)}`, `Data do atendimento: ${a ? fmt(a.date) : ''}`, `Recebido em: ${fmt(r.data)} (${r.forma})`].join('\n');
 }
+
+// Cobrar por link (etapa 10): o link de pagamento sai na InfiniteTag da própria clínica, guardada em
+// db.config.cobranca.tag. Cada link criado fica em db.financeiro.links [{id, ap, url, valor, em, por}].
+// O dinheiro cai direto na conta InfinitePay da clínica; quem recebe confirma em "Receber", como sempre.
+export const limparTag = t => String(t ?? '').trim().replace(/^\$/, '').replace(/^@/, '').toLowerCase();
+export const tagValida = t => /^[a-z0-9][a-z0-9_.-]{1,39}$/.test(limparTag(t));
+export const tagCobranca = db => db.config?.cobranca?.tag || '';
+export function salvarTagCobranca(db, t){
+  const tag = limparTag(t); if (tag && !tagValida(tag)) return false;
+  const C = db.config ||= {};
+  if (tag) C.cobranca = { ...(C.cobranca || {}), tag }; else delete C.cobranca;
+  return true;
+}
+export const linkDe = (db, apId) => (db.financeiro?.links || []).filter(l => l.ap === apId).at(-1) || null;
+export function guardarLink(db, { id, ap, url, valor, em, por }){
+  const [Fin] = financeiroDe(db, em); (Fin.links ||= []).push({ id, ap, url, valor, em, por });
+  return Fin.links.at(-1);
+}
+// Mensagem pronta para o WhatsApp do paciente.
+export function textoCobranca(p, a, valor, url, clinica){
+  const nome = String(p?.name || '').trim().split(/\s+/)[0] || '';
+  return `Olá${nome ? ', ' + nome : ''}! Segue o link para o pagamento de ${a?.tipo || 'atendimento'}${a?.date ? ' do dia ' + fmt(a.date) : ''} (${brl(valor)}): ${url}\nO pagamento pode ser feito por Pix ou cartão de crédito.${clinica ? '\n' + clinica : ''}`;
+}

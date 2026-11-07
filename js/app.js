@@ -8,7 +8,7 @@ import { docAtual, folhaDoc, ligarPad, painelAss, previaDoc, textoComCampos, vDo
 import { vRelacionamento } from './telas/relacionamento.js';
 import { servicoPacote, vFinanceiro } from './telas/financeiro.js';
 import { folhaRelatorio, vRelatorios } from './telas/relatorios.js';
-import { dadosNota, desfazerRecebimento, faltaDe, financeiroDe, lerValor, novaDespesa, novoPacote, receber, removerDespesa } from './dados/financeiro.js';
+import { dadosNota, desfazerRecebimento, faltaDe, financeiroDe, guardarLink, lerValor, linkDe, novaDespesa, novoPacote, receber, removerDespesa, salvarTagCobranca, tagCobranca } from './dados/financeiro.js';
 import { abrirPainelWa, painelWa, textoComCamposWa, vMensagens } from './telas/whatsapp.js';
 import { linkWa, registrarMensagem, salvarMensagemWa, voltarMensagemWa } from './dados/whatsapp.js';
 import { naoRetomar, novoInteressado, registrarContato, situacaoInteressado, virouPaciente } from './dados/relacionamento.js';
@@ -22,7 +22,7 @@ import { cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cada
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { LABEL, PROF, listaBusca, renderNav } from './telas/menu.js';
 import { RECURSO_ROTA } from './dados/planos.js';
-import { bloqueio, pode, podeVer, semPermissao, conta, entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
+import { bloqueio, cobrarLinkConta, pode, podeVer, semPermissao, conta, entrarNaConta, iniciarConta, ligarAcesso, sairDaConta, tentarDeNovoConta } from './telas/conta.js';
 import { ligarConfig, vConfiguracoes } from './telas/configuracoes.js';
 import { ligarPainelDono, vPainelDono } from './telas/painel-dono.js';
 import { esquecerEquipe, ligarEquipe, vEquipe } from './telas/equipe.js';
@@ -104,6 +104,18 @@ document.addEventListener('click',ev=>{
   else if(a==='fin-receber'){ const x=db.appts.find(z=>z.id===t.dataset.ap); ui.finRec={ap:x.id,forma:'Pix',valor:String(faltaDe(db,x)).replace('.',',')}; render(true); document.getElementById('rec-v')?.focus(); }
   else if(a==='fin-forma'){ ui.finRec.valor=document.getElementById('rec-v').value; ui.finRec.forma=t.dataset.f; render(true); }
   else if(a==='fin-rec-x'){ ui.finRec=null; render(true); }
+  // Cobrar por link (etapa 10)
+  else if(a==='fin-link'){ const x=db.appts.find(z=>z.id===t.dataset.ap); if(!x) return; const ja=linkDe(db,x.id), valor=faltaDe(db,x);
+    if(ja&&ja.valor===valor){ ui.finLink=x.id; render(true); return; }
+    if(!(valor>=1)){ toast('O link precisa ser de pelo menos R$ 1,00','info'); return; }
+    t.disabled=true; cobrarLinkConta(tagCobranca(db),valor,`${x.tipo} - ${fmt(x.date)}`).then(r=>{ t.disabled=false;
+      if(r.erro||!r.url){ toast(r.erro||'Não foi possível criar o link agora. Tente de novo.','info'); return; }
+      guardarLink(db,{id:uid(),ap:x.id,url:r.url,valor,em:new Date().toISOString(),por:PROF.nome}); ui.finLink=x.id; save(); render(true); toast('Link de pagamento criado'); }); }
+  else if(a==='fin-link-x'){ ui.finLink=null; render(true); }
+  else if(a==='fin-link-copiar'){ const L=linkDe(db,t.dataset.ap); if(!L) return;
+    (navigator.clipboard?.writeText(L.url)||Promise.reject()).then(()=>toast('Link copiado'),()=>{ const i=document.getElementById('fin-link-u'); i?.select(); toast('Selecionei o link; copie com Ctrl+C','info'); }); }
+  else if(a==='fin-tag'){ ui.finTag=true; render(true); document.getElementById('ft-tag')?.focus(); }
+  else if(a==='fin-tag-x'){ ui.finTag=false; render(true); }
   else if(a==='fin-desf'){ ui.finDesf=t.dataset.r; render(true); }
   else if(a==='fin-desf-x'){ ui.finDesf=null; render(true); }
   else if(a==='fin-desf-ok'){ desfazerRecebimento(db,t.dataset.r); ui.finDesf=null; save(); render(true); toast('Recebimento desfeito; voltou para A receber','info'); }
@@ -405,6 +417,8 @@ document.addEventListener('submit',ev=>{
     ui.finRec=null; save(); render(true); toast(falta>0?`${brl(r.valor)} recebido; ficou faltando ${brl(falta)}`:`${brl(r.valor)} recebido de ${patient(x.pid)?.name.split(' ')[0]||''}`); return; }
   if(f.id==='f-novo-pac'){ const pid=v('np-p'), k=novoPacote(db,{id:uid(),pid,serv:servicoPacote(pid),total:v('np-s'),valor:lerValor(v('np-v')),em:TODAY,por:PROF.nome});
     if(!k){ toast('Informe as sessões e o valor','info'); return; } ui.finPac=null; save(); render(true); toast('Pacote criado'); return; }
+  if(f.id==='f-tag'){ if(!salvarTagCobranca(db,v('ft-tag'))){ toast('Confira a InfiniteTag: só letras, números, ponto, hífen ou _','info'); return; }
+    ui.finTag=false; save(); render(true); toast(tagCobranca(db)?'InfiniteTag salva; o botão Link aparece em A receber':'InfiniteTag retirada'); return; }
   if(f.id==='f-nova-desp'){ const d=novaDespesa(db,{id:uid(),desc:v('nd-d'),cat:v('nd-c'),valor:lerValor(v('nd-v')),data:TODAY,repete:document.getElementById('nd-r').checked,por:PROF.nome});
     if(!d){ toast('Informe a despesa e o valor','info'); return; } save(); render(true); toast('Despesa lançada'); return; }
   if(f.id==='f-int'){ if(novoInteressado(db,{id:uid(),nome:v('int-nome'),tel:v('int-tel'),origem:v('int-origem'),em:new Date().toISOString(),por:PROF.nome})){ ui.novoInt=null; save(); render(true); toast('Interessado incluído'); } return; }

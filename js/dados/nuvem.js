@@ -116,6 +116,7 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     salvar:async (clinica, doc, versao) => rest('rpc/salvar_dados', { metodo:'POST', corpo:{ p_clinica:clinica, p_doc:doc, p_versao:versao } }),
     // Pagamento do MUSUBI pela InfinitePay (função cobranca, supabase/functions/cobranca). Devolve { url } do link.
     pagar:async (clinica, plano, periodo, teste = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo, ...(teste ? { teste:true } : {}) }, token:await token() }),
+    cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
     conferirPagamento:async ({ order_nsu, transaction_nsu, slug, receipt_url }) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'conferir', order_nsu, transaction_nsu, slug, receipt_url }, token:await token() }),
     // Pagamentos (supabase/003_pagamentos.sql): da clínica, ou todos para o dono. [] quando o servidor ainda não tem a tabela.
     pagamentos:async clinica => { try { return (await rest(`pagamentos?select=id,clinica_id,plano,periodo,valor,valor_pago,situacao,forma,recibo,link,criado_em,pago_em&order=criado_em.desc${clinica ? '&clinica_id=eq.' + clinica : ''}`)) || []; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return []; throw e; } },

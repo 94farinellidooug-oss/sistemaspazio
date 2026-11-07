@@ -101,6 +101,26 @@ ok(valorDe('profissional', 'anual') === 149000, 'anual = 10 meses (2 meses grát
   const r = await pedir({ acao:'criar', clinica:C1, plano:'essencial', periodo:'mensal' }, 'tk-u1');
   ok((await r.json()).url === 'https://pay/x', 'aceita o link também como payment_url');
 }
+// Cobrar por link: na InfiniteTag da clínica, por qualquer pessoa da equipe, sem gravar pagamento do MUSUBI.
+{ const { S, pedir } = cenario({ handle:'' });
+  let r = await pedir({ acao:'link', clinica:C1, tag:'$Clinica.Ana', valor:15000, descricao:'Acupuntura · 07/11' });
+  ok(r.status === 401, 'cobrar por link: sem login não cria');
+  r = await pedir({ acao:'link', clinica:C1, tag:'$Clinica.Ana', valor:15000, descricao:'Acupuntura · 07/11' }, 'tk-u2');
+  const j = await r.json(), L = S.links[0];
+  ok(r.status === 200 && j.url === 'https://checkout.infinitepay.io/spazio/abc' && j.valor === 15000, 'cobrar por link: a recepção também cria o link (mesmo sem a InfiniteTag do MUSUBI)');
+  ok(L.handle === 'clinica.ana' && L.items[0].price === 15000 && /^[\x20-\x7e]+$/.test(L.items[0].description) && L.order_nsu.startsWith('MSL') && !L.webhook_url, 'cobrar por link: vai para a InfiniteTag da clínica, sem acento e sem aviso para o MUSUBI');
+  ok(!S.pagamentos.length, 'cobrar por link: não vira pagamento do pacote do MUSUBI');
+  r = await pedir({ acao:'link', clinica:C1, tag:'a b', valor:15000 }, 'tk-u1');
+  ok(r.status === 400 && (await r.json()).erro === 'tag', 'cobrar por link: InfiniteTag inválida é recusada');
+  r = await pedir({ acao:'link', clinica:C1, tag:'ana', valor:50 }, 'tk-u1');
+  ok(r.status === 400 && (await r.json()).erro === 'valor', 'cobrar por link: valor abaixo de R$ 1,00 é recusado');
+  r = await pedir({ acao:'link', clinica:'22222222-2222-2222-2222-222222222222', tag:'ana', valor:15000 }, 'tk-u1');
+  ok(r.status === 403 && S.links.length === 1, 'cobrar por link: quem não é da clínica não cria');
+}
+{ const { pedir } = cenario({ resposta:null });
+  const r = await pedir({ acao:'link', clinica:C1, tag:'ana', valor:15000 }, 'tk-u1');
+  ok(r.status === 502, 'cobrar por link: InfinitePay recusou (tag errada) avisa para conferir');
+}
 
 console.log(falhas ? `\n${falhas} verificações falharam.` : '\nA função de cobrança passou.');
 process.exit(falhas ? 1 : 0);
