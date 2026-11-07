@@ -2,6 +2,8 @@
 -- esquema auth com users, auth.uid() e auth.jwt() lidos da sessão, e os papéis anon, authenticated e service_role.
 create schema if not exists auth;
 create table if not exists auth.users (id uuid primary key, email text);
+alter table auth.users add column if not exists email_confirmed_at timestamptz default now();
+alter table auth.users add column if not exists raw_user_meta_data jsonb default '{}'::jsonb;
 create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create or replace function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
 do $$ begin

@@ -17,6 +17,11 @@ const MSG_NUVEM = {
   over_request_rate_limit:'Muitas tentativas em pouco tempo. Espere um pouco e tente de novo.',
   validation_failed:'Confira o e-mail e a senha.',
   sem_acesso:'Sua conta não tem acesso a esta clínica.',
+  limite_pacote:'O pacote da clínica não comporta mais uma pessoa com esse perfil. No pacote Clínica a equipe não tem limite.',
+  ja_na_equipe:'Essa pessoa já está na equipe.',
+  ja_convidado:'Esse e-mail já foi convidado.',
+  email_invalido:'Confira o e-mail.',
+  nao_a_si_mesmo:'Você não pode mudar o seu próprio perfil.',
   sem_login:'Entre de novo para continuar.'
 };
 export const ErroNuvem = class extends Error { constructor(msg, codigo, status){ super(msg); this.codigo = codigo; this.status = status; } };
@@ -78,8 +83,16 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     mudarEmail:async (email, voltarPara) => { await chamar('/auth/v1/user' + (voltarPara ? '?redirect_to=' + encodeURIComponent(voltarPara) : ''), { metodo:'PUT', corpo:{ email:email.trim() }, token:await token() }); return true; },
     sairDosOutros:async () => { await chamar('/auth/v1/logout?scope=others', { metodo:'POST', token:await token() }); return true; },
     sair:async () => { const t = sessao?.access_token; sessao = null; gravarSessao(null); if (t) { try { await chamar('/auth/v1/logout', { metodo:'POST', token:t }); } catch (e) {} } },
-    minhasClinicas:async () => (await rest(`membros?select=perfil,nome,clinicas(id,nome,cidade,uf)&user_id=eq.${sessao.user.id}&ativo=is.true`) || [])
-      .filter(m => m.clinicas).map(m => ({ id:m.clinicas.id, nome:m.clinicas.nome, cidade:m.clinicas.cidade, uf:m.clinicas.uf, perfil:m.perfil })),
+    minhasClinicas:async () => (await rest(`membros?select=perfil,nome,clinicas(id,nome,cidade,uf,permissoes)&user_id=eq.${sessao.user.id}&ativo=is.true`) || [])
+      .filter(m => m.clinicas).map(m => ({ id:m.clinicas.id, nome:m.clinicas.nome, cidade:m.clinicas.cidade, uf:m.clinicas.uf, perfil:m.perfil, permissoes:m.clinicas.permissoes || {} })),
+    // Equipe (supabase/004_equipe.sql). aceitarConvites: ao entrar, entra nas clínicas que convidaram este e-mail.
+    aceitarConvites:async () => { try { return await rest('rpc/aceitar_convites', { metodo:'POST', corpo:{} }); } catch (e) { if (e.status === 404 || e.codigo === 'PGRST202') return 0; throw e; } },
+    equipe:async clinica => (await rest(`membros?select=user_id,nome,email,perfil,ativo,criado_em&clinica_id=eq.${clinica}&order=criado_em.asc`)) || [],
+    convites:async clinica => { try { return (await rest(`convites?select=id,nome,email,perfil,criado_em&clinica_id=eq.${clinica}&aceito_em=is.null&order=criado_em.asc`)) || []; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    convidar:async (clinica, nome, email, perfil) => rest('rpc/convidar', { metodo:'POST', corpo:{ p_clinica:clinica, p_nome:nome.trim(), p_email:email.trim(), p_perfil:perfil } }),
+    cancelarConvite:async id => rest('rpc/cancelar_convite', { metodo:'POST', corpo:{ p_id:id } }),
+    mudarMembro:async (clinica, user, perfil, ativo) => rest('rpc/mudar_membro', { metodo:'POST', corpo:{ p_clinica:clinica, p_user:user, p_perfil:perfil, p_ativo:ativo } }),
+    salvarPermissoes:async (clinica, permissoes) => { await rest(`clinicas?id=eq.${clinica}`, { metodo:'PATCH', corpo:{ permissoes }, cab:{ Prefer:'return=minimal' } }); return true; },
     criarClinica:async ({ nome, cidade, uf, nomePessoa, plano }, doc) => {
       const corpo = { p_nome:nome, p_cidade:cidade, p_uf:uf, p_nome_pessoa:nomePessoa, p_doc:doc };
       if (!plano) return rest('rpc/criar_clinica', { metodo:'POST', corpo });

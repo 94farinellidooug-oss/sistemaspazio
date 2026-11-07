@@ -123,4 +123,64 @@ select pg_temp.checar((select situacao = 'pago' and forma = 'credit_card' and pa
 do $$ begin perform public.registrar_pagamento('nao-existe', 'pix', 100, '', ''); raise exception 'FALHA: aceitou pedido inexistente';
 exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    pedido desconhecido é recusado'; end $$;
 reset role;
+
+-- Equipe (004_equipe.sql): convite pelo e-mail, limite por pacote, perfil e acesso
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-00000000000c', 'ana@z.com'), ('00000000-0000-0000-0000-00000000000d', 'julia@z.com'), ('00000000-0000-0000-0000-00000000000e', 'rita@z.com');
+insert into auth.users (id, email, email_confirmed_at) values ('00000000-0000-0000-0000-00000000000f', 'semconfirmar@z.com', null);
+update assinaturas set plano = 'profissional' where clinica_id = :'c1';
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select set_config('teste.c1', :'c1', false) \g /dev/null
+do $$ begin perform public.convidar(current_setting('teste.c1')::uuid, 'Ana', 'ana@z.com', 'prof'); raise exception 'FALHA: Profissional aceitou 2º profissional';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    Profissional: não cabe outro profissional (%)', sqlerrm; end $$;
+select public.convidar(:'c1', 'Júlia', ' Julia@Z.com ', 'rec') is not null and public.convidar(:'c1', 'Rita', 'rita@z.com', 'rec') is not null as dois \gset
+select pg_temp.checar(:'dois' and (select count(*) from convites where clinica_id = :'c1') = 2, 'administrador convida duas pessoas da recepção');
+do $$ begin perform public.convidar(current_setting('teste.c1')::uuid, 'Sem', 'semconfirmar@z.com', 'rec'); raise exception 'FALHA: 3ª recepção';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    Profissional: no máximo 2 na recepção'; end $$;
+do $$ begin perform public.convidar(current_setting('teste.c1')::uuid, 'Júlia', 'julia@z.com', 'rec'); raise exception 'FALHA: convite repetido';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    o mesmo e-mail não é convidado duas vezes'; end $$;
+reset role;
+-- Clínica: sem limite
+update assinaturas set plano = 'clinica' where clinica_id = :'c1';
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select pg_temp.checar(public.convidar(:'c1', 'Ana', 'ana@z.com', 'prof') is not null and public.convidar(:'c1', 'Sem', 'semconfirmar@z.com', 'rec') is not null, 'pacote Clínica: vários profissionais e recepção sem limite');
+reset role;
+-- Outra conta não convida para a clínica do Maicon nem vê os convites
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select pg_temp.checar((select count(*) from convites) = 0, 'outra clínica não vê os convites');
+do $$ begin perform public.convidar(current_setting('teste.c1')::uuid, 'X', 'x@z.com', 'prof'); raise exception 'FALHA: outra conta convidou';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    só o administrador da clínica convida'; end $$;
+reset role;
+-- Quem foi convidado entra e passa a fazer parte (só com o e-mail confirmado)
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+set role authenticated;
+select public.aceitar_convites() as aceitos \gset
+select pg_temp.checar(:aceitos = 1 and public.e_membro(:'c1') and not public.e_admin(:'c1'), 'convidada entra e faz parte da clínica como recepção');
+select pg_temp.checar((select perfil from membros where clinica_id = :'c1' and user_id = auth.uid()) = 'rec' and public.aceitar_convites() = 0, 'perfil do convite e nada a aceitar de novo');
+do $$ begin perform public.convidar(current_setting('teste.c1')::uuid, 'X', 'x@z.com', 'rec'); raise exception 'FALHA: recepção convidou';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    recepção não convida ninguém'; end $$;
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000f');
+set role authenticated;
+select pg_temp.checar(public.aceitar_convites() = 0 and not public.e_membro(:'c1'), 'e-mail não confirmado não aceita o convite');
+reset role;
+-- Administrador muda perfil e tira/devolve acesso; com o pacote Profissional, o limite volta a valer
+select pg_temp.como('00000000-0000-0000-0000-00000000000c');
+set role authenticated;
+select public.aceitar_convites() \g /dev/null
+reset role;
+update assinaturas set plano = 'profissional' where clinica_id = :'c1';
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select public.mudar_membro(:'c1', '00000000-0000-0000-0000-00000000000c', 'prof', false) \g /dev/null
+select pg_temp.checar(not (select ativo from membros where clinica_id = :'c1' and user_id = '00000000-0000-0000-0000-00000000000c'), 'tirar o acesso desliga sem apagar');
+do $$ begin perform public.mudar_membro(current_setting('teste.c1')::uuid, '00000000-0000-0000-0000-00000000000c', 'prof', true); raise exception 'FALHA: devolveu acima do limite';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    devolver o acesso respeita o limite do pacote'; end $$;
+do $$ begin perform public.mudar_membro(current_setting('teste.c1')::uuid, auth.uid(), 'rec', true); raise exception 'FALHA: mudou a si mesmo';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    administrador não muda o próprio perfil'; end $$;
+select public.cancelar_convite(id) from convites where clinica_id = :'c1' and aceito_em is null \g /dev/null
+select pg_temp.checar((select count(*) from convites where clinica_id = :'c1' and aceito_em is null) = 0, 'administrador cancela convites em aberto');
+reset role;
 \echo 'Todas as regras do banco passaram.'

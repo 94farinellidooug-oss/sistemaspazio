@@ -9,9 +9,10 @@ import { definirNomeClinica } from '../dados/documentos.js';
 import { PROF } from './menu.js';
 import { PERIODOS_PAG, PLANOS, RECURSOS, pacoteDoRecurso, planoDe, temRecurso, precoPeriodoTxt, precoTxt, rotuloSituacao, situacaoAssinatura } from '../dados/planos.js';
 import { LOGO, ic } from '../componentes/icones.js';
+import { permite } from '../dados/equipe.js';
 import { esc } from '../util.js';
 
-const KEY_PLANO_SITE = 'musubi-plano-site', KEY_MODO = 'musubi-modo', KEY_CLINICA = 'musubi-clinica', KEY_CACHE_DE = 'musubi-v2-clinica';
+const KEY_CONVITE = 'musubi-convite', KEY_PLANO_SITE = 'musubi-plano-site', KEY_MODO = 'musubi-modo', KEY_CLINICA = 'musubi-clinica', KEY_CACHE_DE = 'musubi-v2-clinica';
 const UFS_BR = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
 const lerC = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const gravarC = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
@@ -38,10 +39,12 @@ export function iniciarConta(render, nuvem){
     conta.retorno = { order_nsu:q.get('order_nsu'), transaction_nsu:q.get('transaction_nsu'), slug:q.get('slug') || '', receipt_url:q.get('receipt_url') || '' };
     history.replaceState(null, '', location.pathname + location.hash);
   }
+  // Convite da equipe: o link traz o e-mail convidado (para já vir preenchido) e abre "Criar sua conta".
+  if (q.get('convite')) { gravarC(KEY_CONVITE, q.get('convite')); history.replaceState(null, '', location.pathname + location.hash); }
   const lk = conta.nuvem.sessaoDoLink(location.hash);
   if (lk) { history.replaceState(null, '', location.pathname); if (lk.tipo === 'recovery') { abrirAcesso('nova-senha'); return; } }
   const pe = lerC(KEY_PLANO_SITE); if (PLANOS.some(p => p.k === pe)) conta.plano = pe;
-  if (!conta.nuvem.sessao()) { const criar = location.hash === '#criar'; if (criar) history.replaceState(null, '', location.pathname); abrirAcesso(criar ? 'criar' : 'entrar'); return; }
+  if (!conta.nuvem.sessao()) { const criar = location.hash === '#criar' || !!lerC(KEY_CONVITE); if (criar) history.replaceState(null, '', location.pathname); abrirAcesso(criar ? 'criar' : 'entrar'); return; }
   conectar(!!lk);
 }
 function abrirAcesso(tela, msg = ''){ conta.tela = tela; conta.msg = msg; conta.erro = ''; conta.ocupado = false; desenharAcesso(); }
@@ -52,8 +55,10 @@ async function conectar(completar){
   conta.ocupado = true; desenharAcesso();
   try {
     if (completar || !conta.nuvem.sessao().user.email) await conta.nuvem.completarUsuario();
+    try { if (await conta.nuvem.aceitarConvites()) gravarC(KEY_CONVITE, null); } catch (e) {}
     conta.clinicas = await conta.nuvem.minhasClinicas();
     if (!conta.clinicas.length) { abrirAcesso('clinica'); return; }
+    gravarC(KEY_CONVITE, null);
     await abrirClinica(conta.clinicas.find(c => c.id === lerC(KEY_CLINICA)) || conta.clinicas[0]);
   } catch (e) {
     if (e.codigo === 'sem_login') abrirAcesso('entrar', 'Entre de novo para continuar.');
@@ -132,8 +137,14 @@ export const pagamentosConta = () => {
   if (conta.pagamentos === null) { conta.pagamentos = []; conta.nuvem.pagamentos(conta.clinica.id).then(L => { conta.pagamentos = L; aoMudarConta(true); }).catch(() => {}); }
   return conta.pagamentos;
 };
+// Permissões do perfil nesta clínica (Equipe). Sem conta (modo local) tudo fica liberado.
+export const podeVer = chave => conta.modo !== 'nuvem' || !conta.clinica?.perfil || permite(conta.clinica.permissoes, conta.clinica.perfil, chave);
+export const souAdm = () => conta.modo !== 'nuvem' || (conta.clinica?.perfil || 'adm') === 'adm';
 // Recursos do pacote: sem conta (modo local) tudo fica liberado.
 export const pode = r => { const S = situacaoConta(); return !S || temRecurso(S.plano.k, r); };
+export const semPermissao = () => `<div class="card bloq" id="sem-permissao"><span class="tico acc">${ic('cadeado')}</span><div class="grow"><h2>Seu perfil não abre esta tela</h2>
+    <p class="muted">Em ${esc(conta.clinica?.nome || 'esta clínica')} você entra como <b>${esc(PERFIL_NOME[conta.clinica?.perfil] || '')}</b>. O que cada perfil abre é escolhido pelo administrador da clínica, em Administração > Equipe e permissões.</p>
+    <a class="btn" href="#painel">${ic('painel')}Ir para o painel</a></div></div>`;
 export function bloqueio(r){
   const R = RECURSOS[r], P = pacoteDoRecurso(r), S = situacaoConta(), adm = (conta.clinica?.perfil || 'adm') === 'adm';
   return `<div class="card bloq" id="bloq-${r}"><span class="tico acc">${ic('cadeado')}</span><div class="grow"><h2>${esc(R.nome)}</h2>
@@ -172,7 +183,7 @@ function htmlAcesso(){
     : conta.msg && ['enviado', 'confirmar', 'aguardando'].includes(conta.tela) ? ''
     : t === 'entrar' ? `${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}<label class="field"><span class="lbl">Senha</span><span class="senha-c"><input name="senha" type="password" autocomplete="current-password" required><button type="button" class="btn ghost sm" data-ac="ver">Mostrar</button></span></label>
         <div class="acesso-l"><button type="button" class="lnk" data-ac="esqueci">Esqueci minha senha</button></div>`
-    : t === 'criar' ? `${campoA('nome', 'Seu nome', 'text', 'autocomplete="name"')}${campoA('email', 'E-mail', 'email', 'autocomplete="email"')}${campoA('senha', 'Crie uma senha', 'password', 'autocomplete="new-password" minlength="8"')}`
+    : t === 'criar' ? `${campoA('nome', 'Seu nome', 'text', 'autocomplete="name"')}${campoA('email', 'E-mail', 'email', `autocomplete="email" value="${esc(lerC(KEY_CONVITE) || '')}"`)}${campoA('senha', 'Crie uma senha', 'password', 'autocomplete="new-password" minlength="8"')}`
     : t === 'esqueci' ? campoA('email', 'E-mail', 'email', 'autocomplete="email"')
     : t === 'nova-senha' ? campoA('senha', 'Nova senha', 'password', 'autocomplete="new-password" minlength="8"')
     : t === 'clinica' ? `${campoA('clinica', 'Nome da clínica')}<div class="acesso-2">${campoA('cidade', 'Cidade')}<label class="field"><span class="lbl">Estado</span><select name="uf">${UFS_BR.map(u => `<option ${u === 'RS' ? 'selected' : ''}>${u}</option>`).join('')}</select></label></div>
@@ -187,7 +198,7 @@ function htmlAcesso(){
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
     : t === 'vencido' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="contato">Prefiro que a equipe entre em contato</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
     : t === 'contato' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="vencido">Voltar para o pagamento</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
-    : ['clinica', 'aguardando'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
+    : ['clinica', 'aguardando'].includes(t) ? `${t === 'clinica' && lerC(KEY_CONVITE) ? `<p class="notice sm acesso-conv">${ic('info')}<span>Recebeu um convite de uma clínica? Ele vale para o e-mail convidado. Confirme o e-mail pelo link que mandamos e <button type="button" class="lnk" data-ac="de-novo">entre de novo</button>.</span></p>` : ''}<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
   return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>
     <div class="acesso-h">${LOGO}<b>Musubi</b></div>
     <h1>${conta.tela === 'confirmar' ? 'Confira o seu e-mail' : conta.tela === 'enviado' ? 'Link enviado' : TIT[0]}</h1>
@@ -256,6 +267,7 @@ export function ligarAcesso(){
     else if (['entrar', 'criar', 'esqueci', 'contato', 'vencido'].includes(a)) abrirAcesso(a);
     else if (a === 'local') { gravarC(KEY_MODO, 'local'); conta.modo = 'local'; fecharAcesso(); aoMudarConta(); }
     else if (a === 'sair') sairDaConta();
+    else if (a === 'de-novo') conectar(true);
   });
   el.addEventListener('change', ev => {
     if (ev.target.dataset.ac === 'levar') { conta.levar = ev.target.value === '1'; desenharAcesso(); }

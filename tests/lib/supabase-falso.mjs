@@ -1,4 +1,5 @@
 // Servidor falso que responde como o Supabase (auth e REST), na memória, para os testes.
+import { cabeNaEquipe } from '../../js/dados/equipe.js';
 const resp = (status, corpo) => ({ ok:status < 300, status, text:async () => corpo === undefined ? '' : JSON.stringify(corpo) });
 
 export function servidor({ confirmar = false, chave = 'pub' } = {}){
@@ -26,7 +27,7 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
     if (u.pathname === '/auth/v1/user') { if (!eu) return resp(401, { code:'PGRST301' }); if (op.method === 'PUT') { const x = S.usuarios[eu.email]; if (corpo.password) x.senha = corpo.password; if (corpo.data?.nome) x.nome = eu.nome = corpo.data.nome; if (corpo.email) S.emailPedido = corpo.email; } return resp(200, { id:eu.id, email:eu.email, user_metadata:{ nome:eu.nome } }); }
     if (u.pathname === '/rest/v1/interessados' && op.method === 'POST') { if (op.headers.Prefer !== 'return=minimal') return resp(401, { code:'42501', message:'new row violates row-level security' }); S.interessados.push(corpo); return resp(201); }
     if (!eu) return resp(401, { code:'PGRST301', message:'JWT expired' });
-    if (u.pathname === '/rest/v1/rpc/criar_clinica') { const id = 'c' + (++S.n); S.clinicas.push({ id, nome:corpo.p_nome, cidade:corpo.p_cidade, uf:corpo.p_uf, criado_por:eu.email, membros:[{ user:eu.id, perfil:'adm' }], assin:{ plano:corpo.p_plano || 'profissional', teste_ate:new Date(Date.now() + 7 * 864e5).toISOString(), gratis_ate:null, gratis_sempre:false, gratis_motivo:'', pago_ate:null } }); S.dados[id] = { doc:corpo.p_doc, versao:1 }; return resp(200, id); }
+    if (u.pathname === '/rest/v1/rpc/criar_clinica') { const id = 'c' + (++S.n); S.clinicas.push({ id, nome:corpo.p_nome, cidade:corpo.p_cidade, uf:corpo.p_uf, criado_por:eu.email, membros:[{ user:eu.id, perfil:'adm', ativo:true, email:eu.email, nome:eu.nome || '' }], assin:{ plano:corpo.p_plano || 'profissional', teste_ate:new Date(Date.now() + 7 * 864e5).toISOString(), gratis_ate:null, gratis_sempre:false, gratis_motivo:'', pago_ate:null } }); S.dados[id] = { doc:corpo.p_doc, versao:1 }; return resp(200, id); }
     const dono = () => (S.donos || []).includes(eu.id);
     if (u.pathname === '/rest/v1/assinaturas') { const c = S.clinicas.find(x => x.id === u.searchParams.get('clinica_id').replace('eq.', '')); return resp(200, c && (c.membros.some(m => m.user === eu.id) || dono()) ? [c.assin] : []); }
     if (u.pathname.startsWith('/rest/v1/rpc/') && ['painel_dono', 'dar_gratis', 'mudar_plano', 'estender_teste'].includes(u.pathname.slice(13))) {
@@ -40,8 +41,30 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
     }
     if (u.pathname === '/rest/v1/interessados' && op.method === 'GET') return resp(200, dono() ? S.interessados.map((x, i) => ({ id:x.id || 'i' + i, situacao:'novo', criado_em:'2026-11-06T12:00:00Z', ...x })) : []);
     if (u.pathname === '/rest/v1/interessados' && op.method === 'PATCH') { const id = u.searchParams.get('id').replace('eq.', ''); S.interessados.forEach((x, i) => { if ((x.id || 'i' + i) === id && dono()) x.situacao = corpo.situacao; }); return resp(204); }
-    const membro = c => S.clinicas.find(x => x.id === c)?.membros.some(m => m.user === eu.id);
-    if (u.pathname === '/rest/v1/membros') return resp(200, S.clinicas.filter(c => c.membros.some(m => m.user === eu.id)).map(c => ({ perfil:'adm', nome:'', clinicas:{ id:c.id, nome:c.nome, cidade:c.cidade, uf:c.uf } })));
+    const eu_m = c => S.clinicas.find(x => x.id === c)?.membros.find(m => m.user === eu.id && m.ativo !== false);
+    const membro = c => !!eu_m(c), adm = c => eu_m(c)?.perfil === 'adm';
+    // Equipe (004_equipe.sql)
+    S.convites ||= [];
+    if (u.pathname === '/rest/v1/membros' && u.searchParams.get('clinica_id')) { const c = S.clinicas.find(x => x.id === u.searchParams.get('clinica_id').replace('eq.', ''));
+      return resp(200, c && membro(c.id) ? c.membros.map(m => ({ user_id:m.user, nome:m.nome || '', email:m.email || '', perfil:m.perfil, ativo:m.ativo !== false, criado_em:'2026-11-06T12:00:00Z' })) : []); }
+    if (u.pathname === '/rest/v1/membros') return resp(200, S.clinicas.filter(c => membro(c.id)).map(c => ({ perfil:eu_m(c.id).perfil, nome:'', clinicas:{ id:c.id, nome:c.nome, cidade:c.cidade, uf:c.uf, permissoes:c.permissoes || {} } })));
+    if (u.pathname === '/rest/v1/convites') { if (S.semEquipe) return resp(404, { code:'PGRST205', message:'Could not find the table' }); const c = u.searchParams.get('clinica_id').replace('eq.', ''); return resp(200, adm(c) ? S.convites.filter(x => x.clinica_id === c && !x.aceito) : []); }
+    if (u.pathname === '/rest/v1/rpc/aceitar_convites') { if (S.semEquipe) return resp(404, { code:'PGRST202', message:'Could not find the function' }); let n = 0;
+      S.convites.filter(x => !x.aceito && x.email === eu.email.toLowerCase()).forEach(x => { const c = S.clinicas.find(k => k.id === x.clinica_id), m = c.membros.find(k => k.user === eu.id);
+        if (m) Object.assign(m, { perfil:x.perfil, ativo:true }); else c.membros.push({ user:eu.id, perfil:x.perfil, ativo:true, email:eu.email, nome:eu.nome || x.nome }); x.aceito = true; n++; });
+      return resp(200, n); }
+    if (u.pathname === '/rest/v1/rpc/convidar') { const c = S.clinicas.find(x => x.id === corpo.p_clinica), e = corpo.p_email.trim().toLowerCase();
+      if (!adm(corpo.p_clinica)) return resp(400, { code:'P0001', message:'sem_acesso' });
+      if (c.membros.some(m => m.email === e && m.ativo !== false)) return resp(400, { code:'P0001', message:'ja_na_equipe' });
+      if (S.convites.some(x => x.clinica_id === c.id && x.email === e && !x.aceito)) return resp(400, { code:'P0001', message:'ja_convidado' });
+      if (!cabeNaEquipe(c.assin.plano, c.membros.map(m => ({ ...m, ativo:m.ativo !== false })), S.convites.filter(x => x.clinica_id === c.id && !x.aceito), corpo.p_perfil)) return resp(400, { code:'P0001', message:'limite_pacote' });
+      const id = 'cv' + (++S.n); S.convites.push({ id, clinica_id:c.id, nome:corpo.p_nome, email:e, perfil:corpo.p_perfil, criado_em:'2026-11-06T12:00:00Z' }); return resp(200, id); }
+    if (u.pathname === '/rest/v1/rpc/cancelar_convite') { const x = S.convites.find(k => k.id === corpo.p_id); if (!x || !adm(x.clinica_id)) return resp(400, { code:'P0001', message:'sem_acesso' }); S.convites = S.convites.filter(k => k !== x); return resp(204); }
+    if (u.pathname === '/rest/v1/rpc/mudar_membro') { const c = S.clinicas.find(x => x.id === corpo.p_clinica), m = c?.membros.find(k => k.user === corpo.p_user);
+      if (!adm(corpo.p_clinica)) return resp(400, { code:'P0001', message:'sem_acesso' }); if (corpo.p_user === eu.id) return resp(400, { code:'P0001', message:'nao_a_si_mesmo' });
+      const grupo = p => p === 'rec' ? 'rec' : 'prof';
+      if (corpo.p_ativo && (m.ativo === false || grupo(m.perfil) !== grupo(corpo.p_perfil)) && !cabeNaEquipe(c.assin.plano, c.membros.filter(k => k !== m).map(k => ({ ...k, ativo:k.ativo !== false })), S.convites.filter(x => x.clinica_id === c.id && !x.aceito), corpo.p_perfil)) return resp(400, { code:'P0001', message:'limite_pacote' });
+      Object.assign(m, { perfil:corpo.p_perfil, ativo:corpo.p_ativo }); return resp(204); }
     if (u.pathname === '/rest/v1/dados') { const c = u.searchParams.get('clinica_id').replace('eq.', ''); return resp(200, membro(c) ? [S.dados[c]] : []); }
     if (u.pathname === '/rest/v1/rpc/salvar_dados') {
       if (!membro(corpo.p_clinica)) return resp(400, { code:'P0001', message:'sem_acesso' });
