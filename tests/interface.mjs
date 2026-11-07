@@ -46,13 +46,11 @@ async function verificar(browser, url, nome) {
   ok(await p.locator('.migalha').innerText().then(t => t.replace(/\s+/g, ' ').trim()) === 'Pacientes Rafael Monteiro', `${nome}: migalhas Pacientes › paciente no prontuário`);
   ok(await p.locator('#nav a[aria-current="page"]').getAttribute('href') === '#pacientes', `${nome}: prontuário marca Pacientes no menu`);
 
-  // Atalhos do prontuário
-  await p.click('[data-act="ir"][data-to="pentagrama"]'); await p.waitForTimeout(80);
-  ok(await p.evaluate(() => location.hash) === '#pentagrama' && await p.$eval('#pt-patient', s => s.selectedOptions[0].textContent) === 'Rafael Monteiro', `${nome}: atalho Pentagrama no prontuário abre o paciente certo`);
-  await p.click('.migalha a[data-pid="p2"]'); await p.waitForTimeout(80);
-  ok(await p.evaluate(() => location.hash) === '#prontuario', `${nome}: migalha volta ao prontuário do paciente`);
-  await p.click('[data-act="ir"][data-to="avaliacao"]'); await p.waitForTimeout(80);
-  ok(await p.$eval('#as-patient', s => s.selectedOptions[0].textContent) === 'Rafael Monteiro', `${nome}: atalho Avaliação no prontuário abre o paciente certo`);
+  // Prontuário único (07/11/2026): pentagrama e avaliação são abas do prontuário do paciente
+  await p.click('.tabs [data-t="pentagrama"]'); await p.waitForTimeout(80);
+  ok(await p.evaluate(() => location.hash) === '#prontuario' && await p.locator('svg.penta').count() > 0 && (await p.locator('.perfil-h h1').innerText()).trim() === 'Rafael Monteiro', `${nome}: aba Pentagrama no prontuário do paciente certo`);
+  await p.click('.tabs [data-t="avaliacao"]'); await p.waitForTimeout(80);
+  ok(await p.locator('[data-act="save-assess"]').count() === 1 && (await p.locator('[data-act="save-assess"]').innerText()).includes('Rafael'), `${nome}: aba Avaliação no prontuário do paciente certo`);
   await ir('prontuario'); await p.click('.tabs [data-t="nova"]'); await p.waitForTimeout(80);
   ok(await p.locator('#f-session').count() === 1, `${nome}: aba Registro rápido abre o registro de sessão`);
 
@@ -98,7 +96,7 @@ async function verificar(browser, url, nome) {
   const ac = p.locator('#acomp details', { hasText: 'Paciente Interface' });
   ok(await ac.count() === 1 && await ac.locator('.pill', { hasText: 'sem avaliação energética' }).count() === 1, `${nome}: paciente sem avaliação aparece em acompanhamento`);
   await ac.locator('summary').click(); await ac.locator('[data-to="avaliacao"]').click(); await p.waitForTimeout(80);
-  ok(await p.evaluate(() => location.hash) === '#avaliacao' && await p.$eval('#as-patient', s => s.selectedOptions[0].textContent) === 'Paciente Interface', `${nome}: "Avaliar" abre a avaliação do paciente certo`);
+  ok(await p.evaluate(() => location.hash) === '#prontuario' && (await p.locator('.perfil-h h1').innerText()).trim() === 'Paciente Interface' && await p.locator('.tabs .on', { hasText:'Avaliação energética' }).count() === 1, `${nome}: "Avaliar" abre a avaliação no prontuário do paciente certo`);
 
   // Telas em breve
   for (const r of EM_BREVE) {

@@ -385,7 +385,7 @@ async function verificar(browser, url, nome) {
   await p.click('#f-reav button'); await espera();
   ok(await p.evaluate(() => location.hash) === '#prontuario', `${nome}: reavaliação sem motivo não começa`);
   await p.fill('#rv-motivo', 'Piora após viagem'); await p.click('#f-reav button'); await espera();
-  ok(await p.evaluate(() => location.hash) === '#avaliacao', `${nome}: reavaliação abre a avaliação energética`);
+  ok(await p.evaluate(() => location.hash) === '#prontuario' && await tem('.tabs .on', 'Avaliação energética') && await tem('.notice', 'Piora após viagem'), `${nome}: reavaliação abre a avaliação energética no prontuário, com o motivo`);
   for (const s of ['irritabilidade', 'tpm', 'lombalgia']) await p.click(`[data-s="${s}"]`);
   await p.click('[data-act="save-assess"]'); await espera();
   j = await paciente();

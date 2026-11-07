@@ -81,7 +81,7 @@ async function verificar(browser, url, nome) {
   ok(JSON.stringify(v1.sessions.map(s => s.eva)) === '[6,3]' && v1.queixa === 'Enxaqueca' && !('cadastro' in v1) && Object.keys(v1.sessions[0]).join() === 'id,date,eva,pontos,tec,nota', `${nome}: convertido para o protótipo, só a queixa principal entra nas sessões`);
 
   // Prontuário em linha do tempo
-  ok(await tem('.tabs [data-t="sessoes"].on', 'Prontuário'), `${nome}: depois de salvar, abre a aba Prontuário`);
+  ok(await tem('.tabs [data-t="sessoes"].on', 'Atendimentos'), `${nome}: depois de salvar, abre a aba Atendimentos do prontuário`);
   ok(await p.locator('#view .card .chart g.se').count() === 2 && await p.locator('#view .leg-b').count() === 2, `${nome}: gráfico de evolução com uma linha por queixa`);
   ok(await tem('.qsum', '7 → 4') && await tem('.qsum', '6 → 3'), `${nome}: resumo da evolução de cada queixa`);
   ok(await p.locator('.lt .lt-i').count() === 2 && await tem('.lt .lt-i', '2º atendimento') && await tem('.lt .lt-i', 'Insônia: 4/10'), `${nome}: linha do tempo com os atendimentos e as intensidades`);
@@ -105,7 +105,7 @@ async function verificar(browser, url, nome) {
 
   // Avaliação basal × atual
   for (const sinais of [['pulso_corda', 'irritabilidade'], ['irritabilidade', 'tpm']]) {
-    await p.click('.perfil-a [data-to="avaliacao"]'); await espera();
+    await p.click('.tabs [data-t="avaliacao"]'); await espera();
     for (const s of sinais) await p.click(`[data-s="${s}"]`);
     await p.click('[data-act="save-assess"]'); await espera();
   }

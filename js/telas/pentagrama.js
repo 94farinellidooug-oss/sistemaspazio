@@ -7,9 +7,10 @@ import { ui } from '../estado.js';
 import { elemState } from '../raciocinio/avaliacao.js';
 import { esc, fmt } from '../util.js';
 
-export function vPentagrama(){
+// embutido: aba "Pentagrama" dentro do prontuário do paciente aberto.
+export function vPentagrama(embutido=false){
   const p=patient(ui.pid);
-  ui.crumbs=p?[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Pentagrama']]:[];
+  if(!embutido) ui.crumbs=p?[['#pacientes','Pacientes'],[`data-act="open" data-pid="${p.id}"`,p.name],[null,'Pentagrama']]:[];
   const a=p?.assess.at(-1), st=a?elemState(a.signs,a.status):null, e=ui.el;
   let det='<p class="muted">Clique em um elemento para ver correspondências, funções e relações.</p>';
   if(e){
@@ -23,8 +24,8 @@ export function vPentagrama(){
       ?`na deficiência, a regra mãe-filho sugere avaliar a tonificação da mãe (${EL[mae(e)].nome}). Verifique também se ${EL[controlador(e)].nome} está em sobredominância.`
       :`no excesso, a regra mãe-filho sugere avaliar a sedação do filho (${EL[SHENG[e]].nome}). Observe se ${E.nome} está sobredominando ${EL[KE[e]].nome} ou insultando ${EL[controlador(e)].nome}.`} Decisão do profissional.</div></div>`:''}`;
   }
-  return `<div class="head"><div><h1>Pentagrama dos cinco elementos</h1><p>Wu Xing com ciclo de geração (Sheng) e de controle (Ke)</p></div>
-    <div class="field" style="min-width:200px"><label class="lbl" for="pt-patient">Sobrepor avaliação de</label>${patientSelect('pt-patient',ui.pid)}</div></div>
+  return `${embutido?'':`<div class="head"><div><h1>Pentagrama dos cinco elementos</h1><p>Wu Xing com ciclo de geração (Sheng) e de controle (Ke)</p></div>
+    <div class="field" style="min-width:200px"><label class="lbl" for="pt-patient">Sobrepor avaliação de</label>${patientSelect('pt-patient',ui.pid)}</div></div>`}
   <div class="grid g-side">
     <div class="card"><div class="chips" style="margin-bottom:8px">
       <label class="chip ${ui.sheng?'on':''}"><input type="checkbox" id="cb-sheng" ${ui.sheng?'checked':''} hidden>Geração (Sheng)</label>
