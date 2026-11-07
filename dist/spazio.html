@@ -1340,6 +1340,15 @@ input[type=checkbox]{accent-color:var(--brand)}
 .fin-rec{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:end;gap:10px;padding-top:8px;border-top:1px dashed var(--line-2)}
 .fin-link{grid-column:1/-1;display:grid;gap:8px;padding-top:8px;border-top:1px dashed var(--line-2);min-width:0}
 .fin-link input{width:100%;min-width:0;font-size:13px}
+.aviso-ip{display:flex;gap:8px;align-items:flex-start;margin:0 0 10px;padding:8px 10px;border-radius:8px;background:var(--accent-soft);font-size:.85rem;line-height:1.4}
+.aviso-ip svg{flex:none;width:16px;height:16px;margin-top:2px}
+.f-cob{border:1.5px solid var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent 75%)}
+.cob-h{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+.cob-h h2{margin:0 0 4px}
+.cob-h p{margin:0;font-size:.9rem;color:var(--muted);line-height:1.45}
+.cob-ok{display:flex;gap:8px;align-items:flex-start;margin:0;font-size:.88rem;line-height:1.45}
+.cob-ok svg{flex:none;width:18px;height:18px;color:var(--accent);margin-top:1px}
+.btn.btn-link-pg{border-color:var(--accent);color:var(--accent);font-weight:600;background:var(--accent-soft)}
 .fin-val{width:140px}
 .pac{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:10px}
 .pac small{display:block;color:var(--muted);font-size:.8rem}
@@ -3694,13 +3703,14 @@ function caixaLink(a, p){
 }
 // Cartão "Cobrar por link": a InfiniteTag da clínica, onde o dinheiro dos links cai.
 function cartaoCobranca(lig, tag){
-  const h = `<div class="card-h"><h2>Cobrar por link<small>Pix ou cartão de crédito, pela InfinitePay</small></h2></div>`;
-  if (!lig) return `<div class="card" id="f-cob">${h}<p class="muted sm">Com a conta no servidor, você envia ao paciente um link de pagamento que cai direto na conta InfinitePay da clínica.</p></div>`;
-  if (!tag || ui.finTag) return `<div class="card" id="f-cob">${h}${souAdm() ? `<form id="f-tag" class="ag-f"><label class="rx-f full"><span class="lbl">InfiniteTag da clínica</span><input id="ft-tag" value="${esc(tag ? '$' + tag : '')}" placeholder="$suaclinica" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
-      <small class="muted full">Está no app da InfinitePay, no seu perfil (começa com $). O dinheiro dos links cai nessa conta.</small>
+  const h = `<div class="cob-h"><span class="tico acc">${ic('recibo')}</span><div class="grow"><h2>Cobrar por link</h2><p>Envie ao paciente um link para pagar por Pix ou cartão de crédito. O valor cai direto na conta da clínica.</p></div></div>
+    <p class="aviso-ip" id="f-cob-ip">${ic('info')}<span>Disponível somente para quem tem conta na <b>InfinitePay</b>. O paciente paga com qualquer banco ou cartão, mas quem recebe precisa da conta InfinitePay (gratuita, aberta pelo app).</span></p>`;
+  if (!lig) return `<div class="card f-cob" id="f-cob">${h}<p class="muted sm">Com a conta no servidor, você envia ao paciente um link de pagamento que cai direto na conta InfinitePay da clínica.</p></div>`;
+  if (!tag || ui.finTag) return `<div class="card f-cob" id="f-cob">${h}${souAdm() ? `<form id="f-tag" class="ag-f"><label class="rx-f full"><span class="lbl">InfiniteTag da clínica</span><input id="ft-tag" value="${esc(tag ? '$' + tag : '')}" placeholder="$suaclinica" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+      <small class="muted full">Está no app da InfinitePay, no seu perfil (começa com $). O dinheiro dos links cai nessa conta. Contas de outros bancos não funcionam aqui.</small>
       <div class="full chips"><button class="btn sm pri">${ic('check')}Salvar</button>${tag ? '<button type="button" class="btn sm ghost" data-act="fin-tag-x">Cancelar</button>' : ''}</div></form>`
     : '<p class="muted sm">Peça ao administrador da clínica para informar a InfiniteTag da InfinitePay.</p>'}</div>`;
-  return `<div class="card" id="f-cob">${h}<p class="muted sm">Os links saem na InfiniteTag <b>$${esc(tag)}</b> e o valor cai direto na conta da clínica. Use o botão <b>Link</b> em A receber; quando o paciente pagar, confirme em <b>Receber</b>.</p>
+  return `<div class="card f-cob on" id="f-cob">${h}<p class="cob-ok">${ic('okc')}<span>Ligado na InfiniteTag <b>$${esc(tag)}</b>. Use o botão <b>Enviar link</b> em A receber; quando o paciente pagar, confirme em <b>Receber</b>.</span></p>
     ${souAdm() ? `<button class="btn sm ghost" data-act="fin-tag" style="margin-top:8px">${ic('editar')}Trocar InfiniteTag</button>` : ''}</div>`;
 }
 
@@ -3718,12 +3728,13 @@ function vFinanceiro(){
         <div class="hor-p"><button class="lk" data-act="open" data-pid="${a.pid}">${esc(p?.name || '')}</button><small>${esc(a.tipo)} · ${brl(a.valor || 0)}${pg ? ` · já pagou ${brl(pg)}` : ''}${linkDe(db, a.id) ? ` · <span class="pill sm">link enviado ${fmt(linkDe(db, a.id).em.slice(0, 10)).slice(0, 5)}</span>` : ''}</small></div><b class="fin-v">${brl(faltaDe(db, a, cob))}</b>
         ${aberto ? `<form class="fin-rec" data-ap="${a.id}"><div class="chips" role="group" aria-label="Forma de pagamento">${FORMAS.map(f => `<button type="button" class="chip ${Rx.forma === f ? 'on' : ''}" data-act="fin-forma" data-f="${f}" aria-pressed="${Rx.forma === f}">${f}</button>`).join('')}</div>
           <label class="rx-f fin-val"><span class="lbl">Valor recebido</span><input id="rec-v" inputmode="decimal" value="${esc(Rx.valor)}" autocomplete="off"></label><div class="chips"><button class="btn sm pri">${ic('check')}Confirmar</button><button type="button" class="btn sm ghost" data-act="fin-rec-x">Cancelar</button></div></form>`
-          : `<div class="hor-a">${lig && tag ? `<button class="btn sm" data-act="fin-link" data-ap="${a.id}" aria-label="Cobrar por link" data-tip="Cobrar por link">${ic('recibo')}Link</button>` : ''}<button class="btn sm pri" data-act="fin-receber" data-ap="${a.id}">${ic('check')}Receber</button></div>`}
+          : `<div class="hor-a">${lig && tag ? `<button class="btn sm btn-link-pg" data-act="fin-link" data-ap="${a.id}" aria-label="Cobrar por link" data-tip="Cobrar por link">${ic('recibo')}Enviar link</button>` : ''}<button class="btn sm pri" data-act="fin-receber" data-ap="${a.id}">${ic('check')}Receber</button></div>`}
         ${ui.finLink === a.id && linkDe(db, a.id) ? caixaLink(a, p) : ''}</div>`; }).join('') || `<div class="vazio">${ic('okc')}Tudo recebido.</div>`}</div></div>
     <div class="card" id="f-recs"><div class="card-h"><h2>Recebidos em ${nm}<small>com a forma de pagamento</small></h2></div>
       <div class="hor-l">${recs.map(r => { const a = db.appts.find(x => x.id === r.ap), p = a && patient(a.pid); return `<div class="fin-l rec" data-rec="${r.id}"><div class="hor-h"><b>${fmt(r.data).slice(0, 5)}</b></div><div class="hor-p"><b>${esc(p?.name || r.nome || '')}</b><small>${esc(a?.tipo || r.tipo || '')} · <span class="pill sm">${r.forma}</span>${a && r.valor < (a.valor || 0) ? ' · parcial' : ''}</small></div><b class="fin-v">${brl(r.valor)}</b>
         <div class="hor-a">${ui.finDesf === r.id ? `<button class="btn sm" data-act="fin-desf-ok" data-r="${r.id}">Desfazer mesmo</button><button class="btn sm ghost" data-act="fin-desf-x">Manter</button>` : `<button class="btn sm ghost" data-act="fin-nota" data-r="${r.id}" aria-label="Copiar dados da nota" data-tip="Dados da nota">${ic('doc')}</button><button class="btn sm ghost" data-act="fin-desf" data-r="${r.id}" aria-label="Desfazer recebimento" data-tip="Desfazer">${ic('retorno')}</button>`}</div></div>`; }).join('') || '<p class="muted sm">Nada recebido ainda neste mês.</p>'}</div></div>
   </div><div class="grid" style="align-content:start">
+    ${cartaoCobranca(lig, tag)}
     <div class="card" id="f-pac"><div class="card-h"><h2>Pacotes<small>sessões pagas antes; cada atendimento desconta uma</small></h2></div>
       <div class="hor-l">${P.map(k => { const u = usosPacote(db, k, cob); return `<div class="pac ${u >= k.total ? 'fim' : ''}" data-pac="${k.id}"><div class="grow"><b>${esc(patient(k.pid)?.name || k.nome || '')}</b><small>${esc(k.serv)} · ${k.total} sessões · ${brl(k.valor)} · pago em ${fmt(k.em)}</small>
         <div class="pac-b" role="img" aria-label="${u} de ${k.total} sessões usadas"><span style="width:${Math.round(u / k.total * 100)}%"></span></div></div><b class="pac-n">${u}/${k.total}</b></div>`; }).join('') || '<p class="muted sm">Nenhum pacote ainda.</p>'}</div>
@@ -3738,7 +3749,6 @@ function vFinanceiro(){
       <form id="f-nova-desp" class="ag-f" style="margin-top:12px"><label class="rx-f full"><span class="lbl">Despesa</span><input id="nd-d" placeholder="Ex.: conta de luz" autocomplete="off"></label>
         <label class="rx-f"><span class="lbl">Valor</span><input id="nd-v" inputmode="decimal" placeholder="0,00" autocomplete="off"></label><label class="rx-f"><span class="lbl">Tipo</span><select id="nd-c">${CATEGORIAS_DESP.map(c => `<option>${c}</option>`).join('')}</select></label>
         <label class="ck full"><input type="checkbox" id="nd-r"> Repete todo mês</label><div class="full"><button class="btn sm pri">${ic('mais')}Lançar despesa</button></div></form></div>` : ''}
-    ${cartaoCobranca(lig, tag)}
     <div class="card" id="f-nota"><h2>Nota fiscal</h2><p class="muted sm">A emissão automática da nota de serviço (NFS-e) entra na etapa 10, junto com o servidor e o login. Por enquanto, em cada recebimento o botão <b>Dados da nota</b> copia paciente, CPF, serviço, valor e data, prontos para colar no emissor.</p></div>
   </div></div>`;
 }

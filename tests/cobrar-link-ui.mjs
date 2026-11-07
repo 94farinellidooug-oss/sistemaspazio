@@ -47,6 +47,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await entrar(M, 'maicon@x.com', 'segredo123');
   await M.fill('#acesso [name=clinica]', 'Spazio Stabilità'); await M.fill('#acesso [name=cidade]', 'Caxias do Sul'); await clicar(M, '#acesso [type=submit]'); await M.waitForTimeout(300);
   await atender(M); await ir(M, 'financeiro'); await M.waitForSelector('.fin-t');
+  ok(await tem(M, '#f-cob-ip', 'somente para quem tem conta na InfinitePay'), `${rot}: avisa que o link é só para quem tem conta na InfinitePay`);
   ok(await tem(M, '#f-tag #ft-tag') && !(await tem(M, '[data-act=fin-link]')), `${rot}: administrador vê o campo da InfiniteTag e ainda sem botão Link`);
   await M.fill('#ft-tag', 'a b'); await clicar(M, '#f-tag button.pri');
   ok(await tem(M, '#f-tag') && await tem(M, '.toast, #toast', 'Confira a InfiniteTag'), `${rot}: InfiniteTag inválida não é salva`);
