@@ -78,7 +78,7 @@ export function descartarRascunho(p, a){
 // registrado; não avalia o conteúdo clínico.
 export function preenchimento(p, a, i, H){
   const av = avaliacaoEditavel(p, a) || { signs: [], status: {} };
-  const vis = a.etapas.includes(i) ? 1 : 0;
+  const vis = (a.etapas || []).includes(i) ? 1 : 0;
   const anam = Object.values(p.anam).filter(Boolean).length / Math.max(1, Object.keys(p.anam).length);
   const dec = H.filter(h => av.status[h.p.id]).length;
   return [Math.min(1, vis * .4 + anam * .6),
@@ -276,4 +276,32 @@ export function removerMarca(a, id){
 export function atendimentosAnteriores(p, a){
   const F = finalizados(p), i = F.indexOf(a);
   return i >= 0 ? F.slice(0, i) : F.filter(x => x.data <= a.data);
+}
+
+// Editar um atendimento já salvo no prontuário (pedido do Maicon, 07/11/2026): sempre com motivo. O
+// registro anterior fica guardado inteiro em a.edicoes[].antes (a primeira edição guarda a versão
+// original), e o prontuário mostra a versão editada com o original e cada edição ao lado.
+// Campos editáveis: intensidades das queixas, técnicas, pontos, síntese, evolução e orientações.
+export const fotoRegistro = a => JSON.parse(JSON.stringify({ intensidades: a.evolucao?.intensidades || {}, nota: a.evolucao?.nota || '',
+  tec: a.plano?.tec || [], pontos: a.plano?.pontos || [], orient: a.plano?.orient || '', sintese: a.sintese || '' }));
+export const versaoOriginal = a => a.edicoes?.[0]?.antes || null;
+const NOMES_ED = { intensidades:'intensidade das queixas', tec:'técnicas', pontos:'pontos', sintese:'síntese', nota:'evolução', orient:'orientações' };
+export function editarRegistro(p, a, novo, motivo, por, em){
+  const m = String(motivo || '').trim();
+  if (!a || a.status !== 'finalizado') return 'Só atendimentos salvos no prontuário são editados aqui.';
+  if (!m) return 'Informe o motivo da edição.';
+  const antes = fotoRegistro(a), depois = { ...antes, ...JSON.parse(JSON.stringify(novo || {})) };
+  depois.pontos = [...new Set((depois.pontos || []).map(c => String(c).trim().toUpperCase()).filter(Boolean))];
+  depois.tec = [...new Set((depois.tec || []).filter(Boolean))];
+  for (const k of Object.keys(depois.intensidades)) { const v = depois.intensidades[k]; if (v === '' || v == null) delete depois.intensidades[k]; else depois.intensidades[k] = Math.max(0, Math.min(10, Math.round(Number(v)) || 0)); }
+  const mudou = Object.keys(NOMES_ED).filter(k => JSON.stringify(antes[k]) !== JSON.stringify(depois[k]));
+  if (!mudou.length) return 'Nada foi alterado.';
+  a.evolucao = { ...(a.evolucao || {}), intensidades: depois.intensidades, nota: depois.nota };
+  a.plano = { ...(a.plano || {}), tec: depois.tec, pontos: depois.pontos, orient: depois.orient };
+  if (a.plano.rx) for (const c of Object.keys(a.plano.rx)) if (!depois.pontos.includes(c)) delete a.plano.rx[c];
+  a.sintese = depois.sintese;
+  (a.edicoes ||= []).push({ em, por: por || '', motivo: m, mudou: mudou.map(k => NOMES_ED[k]), antes });
+  (a.historico ||= []).push({ em, acao: `registro editado (${mudou.map(k => NOMES_ED[k]).join(', ')}): ${m}` });
+  a.atualizadoEm = em;
+  return a.edicoes.at(-1);
 }

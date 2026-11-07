@@ -1588,6 +1588,22 @@ body.com-acesso{overflow:hidden}
 .eq-perfis{margin-top:12px}
 .eq-perfis p{margin:4px 0;font-size:.86rem}
 .acesso-conv{display:flex;gap:8px;text-align:left}
+/* Janela para editar um atendimento salvo (prontuário) */
+.modal-fundo{position:fixed;inset:0;z-index:45;background:rgba(31,42,27,.32);backdrop-filter:blur(2px);display:grid;place-items:center;padding:16px;animation:aparece .15s}
+.modal{width:min(640px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 60px rgba(31,42,27,.24);animation:surge .18s var(--ease);min-width:0}
+.modal-h{display:flex;gap:12px;align-items:flex-start;padding:18px 20px 12px;border-bottom:1px solid var(--line)}
+.modal-h h2{margin:0 0 2px;font-size:1.1rem}
+.modal-c{padding:14px 20px;overflow:auto;display:grid;gap:12px;min-width:0}
+.modal-c .rx-f{display:grid;gap:4px;min-width:0}
+.modal-c input,.modal-c textarea{width:100%;min-width:0}
+.modal-p{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--line)}
+.ed-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.ed-mot{padding:10px;border-radius:10px;background:var(--warn-soft)}
+.pr-ed-l{display:grid;gap:8px;margin-top:8px}
+.pr-ed-i{display:grid;gap:2px;padding:8px 10px;border-left:3px solid var(--warn);background:var(--surface-2);border-radius:6px}
+.pr-ed-i.orig{border-left-color:var(--accent)}
+.pr-ed-i p{margin:2px 0 0}
+@media (max-width:640px){.modal-fundo{padding:0;place-items:end stretch}.modal{max-height:92vh;border-radius:16px 16px 0 0}}
 </style>
 
 
@@ -1957,7 +1973,7 @@ function descartarRascunho(p, a){
 // registrado; não avalia o conteúdo clínico.
 function preenchimento(p, a, i, H){
   const av = avaliacaoEditavel(p, a) || { signs: [], status: {} };
-  const vis = a.etapas.includes(i) ? 1 : 0;
+  const vis = (a.etapas || []).includes(i) ? 1 : 0;
   const anam = Object.values(p.anam).filter(Boolean).length / Math.max(1, Object.keys(p.anam).length);
   const dec = H.filter(h => av.status[h.p.id]).length;
   return [Math.min(1, vis * .4 + anam * .6),
@@ -2155,6 +2171,34 @@ function removerMarca(a, id){
 function atendimentosAnteriores(p, a){
   const F = finalizados(p), i = F.indexOf(a);
   return i >= 0 ? F.slice(0, i) : F.filter(x => x.data <= a.data);
+}
+
+// Editar um atendimento já salvo no prontuário (pedido do Maicon, 07/11/2026): sempre com motivo. O
+// registro anterior fica guardado inteiro em a.edicoes[].antes (a primeira edição guarda a versão
+// original), e o prontuário mostra a versão editada com o original e cada edição ao lado.
+// Campos editáveis: intensidades das queixas, técnicas, pontos, síntese, evolução e orientações.
+const fotoRegistro = a => JSON.parse(JSON.stringify({ intensidades: a.evolucao?.intensidades || {}, nota: a.evolucao?.nota || '',
+  tec: a.plano?.tec || [], pontos: a.plano?.pontos || [], orient: a.plano?.orient || '', sintese: a.sintese || '' }));
+const versaoOriginal = a => a.edicoes?.[0]?.antes || null;
+const NOMES_ED = { intensidades:'intensidade das queixas', tec:'técnicas', pontos:'pontos', sintese:'síntese', nota:'evolução', orient:'orientações' };
+function editarRegistro(p, a, novo, motivo, por, em){
+  const m = String(motivo || '').trim();
+  if (!a || a.status !== 'finalizado') return 'Só atendimentos salvos no prontuário são editados aqui.';
+  if (!m) return 'Informe o motivo da edição.';
+  const antes = fotoRegistro(a), depois = { ...antes, ...JSON.parse(JSON.stringify(novo || {})) };
+  depois.pontos = [...new Set((depois.pontos || []).map(c => String(c).trim().toUpperCase()).filter(Boolean))];
+  depois.tec = [...new Set((depois.tec || []).filter(Boolean))];
+  for (const k of Object.keys(depois.intensidades)) { const v = depois.intensidades[k]; if (v === '' || v == null) delete depois.intensidades[k]; else depois.intensidades[k] = Math.max(0, Math.min(10, Math.round(Number(v)) || 0)); }
+  const mudou = Object.keys(NOMES_ED).filter(k => JSON.stringify(antes[k]) !== JSON.stringify(depois[k]));
+  if (!mudou.length) return 'Nada foi alterado.';
+  a.evolucao = { ...(a.evolucao || {}), intensidades: depois.intensidades, nota: depois.nota };
+  a.plano = { ...(a.plano || {}), tec: depois.tec, pontos: depois.pontos, orient: depois.orient };
+  if (a.plano.rx) for (const c of Object.keys(a.plano.rx)) if (!depois.pontos.includes(c)) delete a.plano.rx[c];
+  a.sintese = depois.sintese;
+  (a.edicoes ||= []).push({ em, por: por || '', motivo: m, mudou: mudou.map(k => NOMES_ED[k]), antes });
+  (a.historico ||= []).push({ em, acao: `registro editado (${mudou.map(k => NOMES_ED[k]).join(', ')}): ${m}` });
+  a.atualizadoEm = em;
+  return a.edicoes.at(-1);
 }
 //
 // Os pontos continuam em a.plano.pontos (lista de códigos), que é o que o cálculo, a verificação de
@@ -4439,14 +4483,47 @@ function itemTempo(p,e){
     return `<div class="lt-i av"><span class="hi-n">${ic('yin')}</span><div class="grow"><div class="lt-h"><b>${fmt(e.data)}</b><span class="pill acc">${rotuloAv(p,e.av)}</span><span class="muted sm">avaliação energética sem atendimento no dia</span></div>
       <p class="sm">${e.av.signs.length} sina${e.av.signs.length===1?'l':'is'} observado${e.av.signs.length===1?'':'s'}${h.length?` · padrões validados: ${h.map(x=>esc(x.p.nome)).join(', ')}`:''}</p>${e.av.nota?`<p class="muted sm">${esc(e.av.nota)}</p>`:''}</div></div>`; }
   const outras=p.queixas.filter(q=>q.id!==QUEIXA_PRINCIPAL&&e.a.evolucao.intensidades[q.id]!=null), h=aceitos(e.av);
-  return `<div class="lt-i"><span class="hi-n">${e.n}</span><div class="grow"><div class="lt-h"><b>${ordinal(e.n)} atendimento</b>${e.av?`<span class="pill acc">${ic('yin')}${rotuloAv(p,e.av)}</span>`:''}${e.a.origem==='v1'?'<span class="pill" data-tip="Registro trazido do protótipo na conversão dos dados">protótipo</span>':''}</div>
+  return `<div class="lt-i"><span class="hi-n">${e.n}</span><div class="grow"><div class="lt-h"><b>${ordinal(e.n)} atendimento</b>${e.a.edicoes?.length?`<span class="pill warn">${ic('editar')}editado</span>`:''}${e.av?`<span class="pill acc">${ic('yin')}${rotuloAv(p,e.av)}</span>`:''}${e.a.origem==='v1'?'<span class="pill" data-tip="Registro trazido do protótipo na conversão dos dados">protótipo</span>':''}</div>
     ${sessHtml(e.s)}
     ${outras.length?`<div class="chips">${outras.map(q=>`<span class="pill"><i class="dotq" style="background:${corQ(p,q)}"></i>${esc(q.descricao)}: ${e.a.evolucao.intensidades[q.id]}/10</span>`).join('')}</div>`:''}
     ${h.length?`<p class="muted sm">Padrões validados na avaliação: ${h.map(x=>esc(x.p.nome)).join(', ')}</p>`:''}
     ${e.a.sintese?`<p class="sm"><b>Síntese:</b> ${esc(e.a.sintese)}</p>`:''}
     ${marcasProntuario(e.a)}
+    ${edicoesHtml(p,e.a)}
     <div class="lt-a">${e.a.historico.length>1?`<details class="mais"><summary>Histórico de alterações (${e.a.historico.length}) ${ic('baixo')}</summary><div class="hist-alt">${[...e.a.historico].reverse().map(x=>`<div><span class="mono muted">${fmt(x.em.slice(0,10))} ${new Date(x.em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span><span>${esc(x.acao)}</span></div>`).join('')}</div></details>`:'<span></span>'}
-      <button class="btn ghost sm" data-act="abrir-atendimento" data-pid="${p.id}" data-id="${e.a.id}">${ic('editar')}Abrir no ambiente</button></div></div></div>`;
+      <div class="chips">${e.a.etapas?`<button class="btn ghost sm" data-act="abrir-atendimento" data-pid="${p.id}" data-id="${e.a.id}">${ic('lista')}Ver atendimento completo</button>`:''}<button class="btn sm" data-act="pr-editar" data-id="${e.a.id}">${ic('editar')}Editar registro</button></div></div></div></div>`;
+}
+
+// Original e edições de um atendimento editado depois de salvo: quem, quando, motivo e o que mudou.
+function resumoFoto(p,f){
+  const q=Object.entries(f.intensidades||{}).map(([id,v])=>`${esc(p.queixas.find(x=>x.id===id)?.descricao||'queixa')}: ${v}/10`);
+  return [q.length?`<b>Intensidade:</b> ${q.join(' · ')}`:'',f.tec?.length?`<b>Técnicas:</b> ${esc(f.tec.join(', '))}`:'',f.pontos?.length?`<b>Pontos:</b> <span class="mono">${esc(f.pontos.join(', '))}</span>`:'',
+    f.sintese?`<b>Síntese:</b> ${esc(f.sintese)}`:'',f.nota?`<b>Evolução:</b> ${esc(f.nota)}`:'',f.orient?`<b>Orientações:</b> ${esc(f.orient)}`:''].filter(Boolean).map(x=>`<p class="sm">${x}</p>`).join('')||'<p class="muted sm">Sem anotações.</p>';
+}
+function edicoesHtml(p,a){
+  const E=a.edicoes||[]; if(!E.length) return '';
+  const quando=t=>`${fmt(t.slice(0,10))} às ${new Date(t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+  return `<details class="mais pr-ed"><summary>${ic('historico')}Versão original e edições (${E.length}) ${ic('baixo')}</summary>
+    <div class="pr-ed-l">${[...E].reverse().map((x,i)=>`<div class="pr-ed-i"><b>Edição ${E.length-i}</b><small class="muted">${quando(x.em)}${x.por?' · '+esc(x.por):''} · alterou ${esc(x.mudou.join(', '))}</small><p class="sm"><b>Motivo:</b> ${esc(x.motivo)}</p></div>`).join('')}
+    <div class="pr-ed-i orig"><b>Versão original</b><small class="muted">como foi salva em ${fmt(a.data)}; nunca é alterada</small>${resumoFoto(p,versaoOriginal(a))}</div></div></details>`;
+}
+// Janela para editar um atendimento salvo: tudo num lugar só, com o motivo obrigatório.
+function janelaEdicao(p){
+  const a=p.atendimentos.find(x=>x.id===ui.edReg&&x.status==='finalizado'); if(!a){ ui.edReg=null; return ''; }
+  const I=a.evolucao?.intensidades||{}, Q=p.queixas.filter(q=>I[q.id]!=null||q.ativa), tec=a.plano?.tec||[];
+  return `<div class="modal-fundo" id="ed-fundo" data-act="pr-editar-x"><form class="modal" id="f-edreg" role="dialog" aria-modal="true" aria-labelledby="ed-t" data-id="${a.id}">
+    <div class="modal-h"><div class="grow"><h2 id="ed-t">Editar atendimento de ${fmt(a.data)}</h2><small class="muted">${esc(p.name)} · a versão original fica guardada no prontuário</small></div><button type="button" class="btn ghost sm" data-act="pr-editar-x" aria-label="Fechar">${ic('x')}</button></div>
+    <div class="modal-c">
+      <div class="ed-g">${Q.map(q=>`<label class="rx-f"><span class="lbl">${esc(q.descricao)} (0 a 10)</span><input type="number" min="0" max="10" data-edq="${q.id}" value="${I[q.id]??''}" placeholder="não medida"></label>`).join('')}</div>
+      <div class="lbl" style="margin-top:12px">Técnicas</div><div class="chips">${TECNICAS.map(t=>`<label class="chip"><input type="checkbox" name="ed-tec" value="${t}" ${tec.includes(t)?'checked':''}> ${t}</label>`).join('')}</div>
+      <label class="rx-f full"><span class="lbl">Pontos (separe por vírgula)</span><input id="ed-pts" class="mono" value="${esc((a.plano?.pontos||[]).join(', '))}" autocomplete="off"></label>
+      <label class="rx-f full"><span class="lbl">Síntese clínica</span><textarea id="ed-sint" rows="3">${esc(a.sintese||'')}</textarea></label>
+      <label class="rx-f full"><span class="lbl">Evolução e observações</span><textarea id="ed-nota" rows="3">${esc(a.evolucao?.nota||'')}</textarea></label>
+      <label class="rx-f full"><span class="lbl">Orientações para casa</span><textarea id="ed-orient" rows="2">${esc(a.plano?.orient||'')}</textarea></label>
+      <label class="rx-f full ed-mot"><span class="lbl">Motivo da edição (obrigatório)</span><input id="ed-motivo" required maxlength="200" placeholder="Ex.: corrigir a intensidade anotada errada" autocomplete="off"></label>
+    </div>
+    <div class="modal-p"><button type="button" class="btn ghost" data-act="pr-editar-x">Cancelar</button><button class="btn pri">${ic('check')}Salvar edição</button></div>
+  </form></div>`;
 }
 
 function cardQueixas(p){
@@ -4589,7 +4666,7 @@ function vProntuario(){
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
     ${alerts.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}</div>`:''}</div>
     <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button>${pode('mtc')?`<button class="btn" data-act="ir" data-to="avaliacao" data-pid="${p.id}">${ic('yin')}Avaliação energética</button><button class="btn" data-act="ir" data-to="pentagrama" data-pid="${p.id}">${ic('estrela')}Pentagrama</button>`:''}<button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
-    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}`;
+    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic(i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}`;
 }
 // alertas, preenchimento por etapa e salvamento automático. Usa, sem alterar, o raciocínio clínico
 // (evaluate, bagang, elemState), o pentagrama e a verificação de segurança dos pontos.
@@ -5804,11 +5881,11 @@ document.addEventListener('mouseover',ev=>{ const t=ev.target.closest('[data-tip
   tip.style.left=Math.max(8,Math.min(innerWidth-w-8,b.left+b.width/2-w/2))+'px'; tip.style.top=(b.top-tip.offsetHeight-8<4?b.bottom+8:b.top-tip.offsetHeight-8)+'px'; });
 addEventListener('scroll',()=>{ tip.hidden=true; },{passive:true});
 addEventListener('afterprint',()=>{ if(route()==='relatorios') document.getElementById('imp').innerHTML=''; });
-addEventListener('hashchange',()=>{ if(route()!=='cadastro') ui.editPid=null; ui.menuAberto=false; ui.ov=null; tip.hidden=true; render(); scrollTo(0,0); });
+addEventListener('hashchange',()=>{ if(route()!=='cadastro') ui.editPid=null; ui.edReg=null; ui.menuAberto=false; ui.ov=null; tip.hidden=true; render(); scrollTo(0,0); });
 addEventListener('keydown',ev=>{
   const emCampo=ev.target.matches('input, textarea, select');
   if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k'){ ev.preventDefault(); abrir('busca'); return; }
-  if(ev.key==='Escape'){ if(ui.ov){ ui.ov=null; render(true); } else if(ui.menuAberto){ ui.menuAberto=false; render(true); } return; }
+  if(ev.key==='Escape'){ if(ui.edReg){ ui.edReg=null; render(true); return; } if(ui.ov){ ui.ov=null; render(true); } else if(ui.menuAberto){ ui.menuAberto=false; render(true); } return; }
   if(ui.ov==='busca'&&['ArrowDown','ArrowUp','Enter'].includes(ev.key)){ ev.preventDefault(); const L=document.querySelectorAll('.pal-i');
     if(ev.key==='Enter'){ L[ui.bi]?.click(); return; } ui.bi=(ui.bi+(ev.key==='ArrowDown'?1:-1)+L.length)%Math.max(1,L.length); document.getElementById('pal-l').innerHTML=listaBusca(); return; }
   if(ev.altKey&&route()==='atendimento'&&(ev.key==='ArrowLeft'||ev.key==='ArrowRight')){ ev.preventDefault(); irEtapa((ui.etapa|0)+(ev.key==='ArrowRight'?1:-1)); return; }
@@ -5866,6 +5943,8 @@ document.addEventListener('click',ev=>{
   else if(a==='novo-atendimento'){ const p=patient(t.dataset.pid||ui.pid); let x=rascunhoDe(p);
     if(!x){ x=iniciarAtendimento(p,{id:uid(),data:TODAY},new Date().toISOString()); save(); }
     ui.pid=p.id; ui.atId=x.id; ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; limparMapa(); irPara('atendimento'); scrollTo(0,0); }
+  else if(a==='pr-editar'){ ui.edReg=t.dataset.id; render(true); setTimeout(()=>document.querySelector('#f-edreg input, #f-edreg textarea')?.focus(),0); }
+  else if(a==='pr-editar-x'){ if(t.id==='ed-fundo'&&ev.target!==t) return; ui.edReg=null; render(true); }
   else if(a==='abrir-atendimento'){ ui.pid=t.dataset.pid; ui.atId=t.dataset.id; fotografarAvaliacao(); ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; limparMapa(); irPara('atendimento'); scrollTo(0,0); }
   else if(a==='etapa'){ ev.preventDefault(); irEtapa(Number(t.dataset.i)); }
   else if(a.startsWith('at-')){ acaoAtendimento(a,t); }
@@ -6174,6 +6253,12 @@ document.addEventListener('submit',ev=>{
     const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),consentimento:TODAY,em}));
     Object.assign(p.alerts,alerts); p.cadastro=cadastro;
     db.patients.push(p); const ni=ui.cadPrevio?.intId&&(db.interessados||[]).find(x=>x.id===ui.cadPrevio.intId); if(ni) virouPaciente(ni,p.id); ui.cadPrevio=null; save(); ui.pid=p.id; ui.tab='anamnese'; toast('Paciente cadastrado'); location.hash='prontuario';
+  } else if(f.id==='f-edreg'){
+    const p=patient(ui.pid), x=p?.atendimentos.find(z=>z.id===f.dataset.id), I={};
+    f.querySelectorAll('[data-edq]').forEach(i=>{ I[i.dataset.edq]=i.value.trim(); });
+    const r=editarRegistro(p,x,{intensidades:I,tec:[...f.querySelectorAll('[name=ed-tec]:checked')].map(i=>i.value),pontos:v('ed-pts').split(/[,;\s]+/),sintese:v('ed-sint').trim(),nota:v('ed-nota').trim(),orient:v('ed-orient').trim()},v('ed-motivo'),PROF.nome,new Date().toISOString());
+    if(typeof r==='string'){ toast(r,'info'); return; }
+    ui.edReg=null; save(); render(true); toast('Edição salva; a versão original continua no prontuário'); return;
   } else if(f.id==='f-reav'){
     const m=v('rv-motivo').trim(); if(!m) return; ui.reavMotivo={pid:ui.pid,motivo:m}; ui.assess=null; irPara('avaliacao'); toast('Registre a reavaliação; ela vira uma nova versão','info');
   } else if(f.classList.contains('livre-f')){
