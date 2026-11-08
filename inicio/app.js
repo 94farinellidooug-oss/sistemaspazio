@@ -47,7 +47,7 @@ const PERGUNTAS = [
   ['O sistema atende outras terapias além da acupuntura?', 'Sim. Agenda, cadastro, documentos, WhatsApp, financeiro e relatórios atendem qualquer especialidade, com os serviços e valores da própria clínica. A avaliação pela Medicina Tradicional Chinesa fica disponível para quem utiliza.'],
   ['É possível usar com uma equipe?', 'Sim. Cada profissional tem o seu próprio acesso, e todos os registros identificam o autor, a data e a hora.'],
   ['O sistema faz diagnóstico?', 'Não. As hipóteses e sugestões apoiam o raciocínio clínico; a decisão é sempre do profissional.'],
-  ['O sistema emite nota fiscal?', 'O financeiro já organiza os dados da nota de cada atendimento. A emissão da nota fiscal de serviço pelo sistema, no município de cada clínica, está em desenvolvimento.'],
+  ['O sistema emite nota fiscal?', 'Sim. A nota fiscal de serviço (NFS-e) sai direto do financeiro, pelo padrão nacional da Receita, com o certificado digital da própria clínica e sem intermediário. Cada pacote tem um limite de notas por mês.'],
   ['Como agendar uma demonstração?', 'Preencha o formulário acima com seu nome e WhatsApp. Nossa equipe entrará em contato para apresentar o sistema.']
 ];
 
