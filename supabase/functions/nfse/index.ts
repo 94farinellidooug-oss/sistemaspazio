@@ -316,7 +316,7 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
         const xml = assinarDps(dps, cert, forge);
         let r;
         try { r = await sefin(ambiente, '/nfse', cert, { dpsXmlGZipB64:await gzipB64(xml) }); }
-        catch (e) { console.error(e); return erro(504, 'sem_resposta', 'A Receita não respondeu. Em instantes, toque em "Conferir" para saber se a nota saiu.', { id, situacao:'enviando' }); }
+        catch (e) { console.error(e); return erro(504, 'sem_resposta', 'A Receita não respondeu. Em instantes, toque em "Conferir" para saber se a nota saiu. (Motivo: ' + String(e?.message || e).replace(/\s+/g, ' ').slice(0, 240) + ')', { id, situacao:'enviando' }); }
         const b = r.j?.nfseXmlGZipB64 || r.j?.NfseXmlGZipB64;
         if (r.status >= 200 && r.status < 300 && b) return resp(200, await autorizada(linha, await gunzipB64(b), r.j.chaveAcesso));
         const E = errosSefin(r.j);
@@ -351,7 +351,7 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
     } catch (e) {
       console.error(e);
       if (/decrypt|operation-specific|OperationError/i.test(String(e?.message || e?.name))) return erro(500, 'cofre', 'Não foi possível abrir o certificado guardado. Envie o certificado de novo em Configurações > Nota fiscal.');
-      return erro(500, 'erro', 'Não deu certo agora. Tente de novo em instantes.');
+      return erro(500, 'erro', 'Não deu certo agora. Tente de novo em instantes. (Motivo: ' + String(e?.message || e).replace(/\s+/g, ' ').slice(0, 240) + ')');
     }
   };
 }
