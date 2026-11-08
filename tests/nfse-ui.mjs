@@ -78,7 +78,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(await tem(M, '#nf-cert', 'SPAZIO STABILITA LTDA') && await tem(M, '#nf-cert', '11.222.333/0001-81') && await tem(M, '#nf-cert .pill', 'válido'), `${rot}: certificado enviado mostra titular, CNPJ e validade`);
   await M.selectOption('#nf-f-dados [name=regime]', '3'); await M.waitForTimeout(200);
   ok(await tem(M, '#nf-f-dados [name=pTotTribSN]') && !(await tem(M, '#nf-f-dados [name=fed]')), `${rot}: Simples pede o percentual de tributos do Simples`);
-  await M.fill('#nf-f-dados [name=doc]', '11.222.333/0001-81'); await clicar(M, '#nf-f-dados button.pri');
+  await M.fill('#nf-f-dados [name=doc]', '11.222.333/0001-81'); await M.fill('#nf-f-dados [name=im]', '98765'); await clicar(M, '#nf-f-dados button.pri');
   ok(await tem(M, '#nf-dados-erro', 'percentual') , `${rot}: sem o percentual, não salva e diz o que falta`);
   await M.fill('#nf-f-dados [name=pTotTribSN]', '6,5'); await clicar(M, '#nf-f-dados button.pri'); await M.waitForTimeout(200);
   const D = await dados(M);
@@ -103,7 +103,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await M.fill('#nf-desc', 'Sessão de acupuntura em 07/11/2026'); await clicar(M, '#f-nfse button.pri'); await M.waitForTimeout(300);
   const E = S.nfse.pedidos.at(-1);
   ok(E.acao === 'emitir' && E.ambiente === 'homologacao' && E.nota.cLocEmi === '4305108' && E.nota.prestador.doc === '11222333000181' && E.nota.prestador.regime === '3' && E.nota.tributos.pTotTribSN === '6.5'
-    && E.nota.servico.cTribNac === '040501' && E.nota.servico.cTribMun === '003' && E.nota.servico.descricao === 'Sessão de acupuntura em 07/11/2026' && Number.isInteger(E.nota.valor) && E.nota.valor > 0 && !E.nota.tomador && E.referencia, `${rot}: o pedido leva cidade, CNPJ, regime, tributos, serviço, descrição e valor em centavos`);
+    && E.nota.servico.cTribNac === '040501' && E.nota.servico.cTribMun === '003' && E.nota.prestador.im === '98765' && E.nota.servico.descricao === 'Sessão de acupuntura em 07/11/2026' && Number.isInteger(E.nota.valor) && E.nota.valor > 0 && !E.nota.tomador && E.referencia, `${rot}: o pedido leva cidade, CNPJ, regime, tributos, serviço, descrição e valor em centavos`);
   ok(!(await tem(M, '#f-nfse')) && await tem(M, '#f-recs .nf-n', 'NFS-e 1 · teste') && await tem(M, '.toast, #toast', 'Nota 1 emitida'), `${rot}: nota emitida aparece com o número no recebimento`);
   await clicar(M, '#f-recs [data-nf=imprimir] >> nth=0');
   ok(await M.evaluate(() => window.__imprimiu) === 1 && await tem(M, '#imp', 'SEM VALOR FISCAL') && await tem(M, '#imp', S.nfse.notas[0].chave) && await tem(M, '#imp', 'Sessão de acupuntura'), `${rot}: imprimir a nota traz chave, descrição e o aviso de teste`);

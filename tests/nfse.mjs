@@ -74,6 +74,7 @@ for (const [rot, mud, msg] of [
   ['MEI', { prestador:{ doc:CNPJ, regime:'2' }, tributos:{} }, '<indTotTrib>0</indTotTrib>'],
   ['fora do Simples', { prestador:{ doc:CNPJ, regime:'1' }, tributos:{ fed:'4.5', est:'0', mun:'2' } }, '<pTotTribFed>4.50</pTotTribFed>'],
   ['sem paciente identificado e com CPF de prestador', { prestador:{ doc:CPF_P, regime:'2' }, tomador:undefined }, `<CPF>${CPF_P}</CPF>`],
+  ['com inscrição municipal', { prestador:{ doc:CPF_P, regime:'1', im:'12.345-6' }, tributos:{ fed:'0', est:'0', mun:'2' } }, `<CPF>${CPF_P}</CPF><IM>123456</IM><regTrib>`],
   ['com código municipal e NBS', { servico:{ ...NOTA.servico, cTribMun:'002', cNBS:'123012100' } }, '<cTribMun>002</cTribMun><cNBS>123012100</cNBS><xDescServ>']]) {
   const d = montarDps({ ...NOTA, ...mud }), x = d.erros ? '' : assinarDps(d, C, forge); writeFileSync(arq, x);
   let v = 'ok'; if (xsd !== 'sem xmllint') try { execFileSync('xmllint', ['--noout', '--nonet', '--schema', ESQUEMA, arq], { stdio:'pipe' }); } catch (e) { v = String(e.stderr).slice(0, 200); }

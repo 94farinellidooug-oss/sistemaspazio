@@ -4,7 +4,7 @@
 //
 // db.config.nfse = { ambiente:'homologacao'|'producao', regime:'1'|'2'|'3', codigo (6 números), codigoMun (complemento
 //   de 3 números que algumas prefeituras usam, opcional), pTotTribSN,
-//   fed, est, mun (percentuais aproximados de tributos), aliquota (ISS %, opcional), serie, proximo }
+//   im (inscrição municipal do prestador, opcional), fed, est, mun (percentuais aproximados de tributos), aliquota (ISS %, opcional), serie, proximo }
 // db.financeiro.notas = [{ id (no servidor), rec (recebimento), situacao:'emitida'|'enviando'|'rejeitada',
 //   numero, chave, ndps, serie, ambiente, valor, tomador, cpf, descricao, data, emitidaEm, consulta, msg, em, por }]
 // Municípios: tabela do IBGE (js/conhecimento/municipios.txt, código, nome e UF), para o código da cidade da nota.
@@ -22,7 +22,7 @@ export const CODIGOS_SERVICO = [
 ];
 export const REGIMES_NOTA = [['2', 'MEI'], ['3', 'Simples Nacional (ME ou EPP)'], ['1', 'Fora do Simples Nacional']];
 export const AMBIENTES = { homologacao:'Homologação (teste, sem valor fiscal)', producao:'Produção (nota com valor fiscal)' };
-const PADRAO = { ambiente:'homologacao', regime:'', codigo:'040501', codigoMun:'', pTotTribSN:'', fed:'', est:'', mun:'', aliquota:'', serie:'1', proximo:'' };
+const PADRAO = { ambiente:'homologacao', regime:'', codigo:'040501', codigoMun:'', im:'', pTotTribSN:'', fed:'', est:'', mun:'', aliquota:'', serie:'1', proximo:'' };
 
 export const codigoTxt = c => String(c || '').replace(/^(\d{2})(\d{2})(\d{2})$/, '$1.$2.$3');
 export const nomeCodigo = c => CODIGOS_SERVICO.find(x => x[0] === c)?.[1] || '';
@@ -33,12 +33,14 @@ const pctOk = v => v !== '' && Number(v) >= 0 && Number(v) <= 100;
 // Salva a configuração fiscal. Devolve a mensagem de erro, ou ''.
 export function salvarConfigNota(db, D){
   const N = { ...configNota(db) };
-  for (const k of ['ambiente', 'regime', 'codigo', 'codigoMun', 'serie', 'proximo']) if (D[k] !== undefined) N[k] = String(D[k]).trim();
+  for (const k of ['ambiente', 'regime', 'codigo', 'codigoMun', 'im', 'serie', 'proximo']) if (D[k] !== undefined) N[k] = String(D[k]).trim();
   for (const k of ['pTotTribSN', 'fed', 'est', 'mun', 'aliquota']) if (D[k] !== undefined) N[k] = num(D[k]);
   N.codigo = N.codigo.replace(/\D/g, ''); N.codigoMun = String(N.codigoMun || '').replace(/\D/g, '');
   if (!AMBIENTES[N.ambiente]) return 'Escolha homologação ou produção.';
   if (!REGIMES_NOTA.some(r => r[0] === N.regime)) return 'Escolha o regime tributário da clínica.';
   if (N.codigo.length !== 6) return 'O código do serviço tem 6 números (por exemplo 04.05.01).';
+  N.im = String(N.im || '').replace(/[^0-9A-Za-z]/g, '');
+  if (N.im.length > 15) return 'A inscrição municipal tem no máximo 15 caracteres.';
   if (N.codigoMun !== '' && N.codigoMun.length !== 3) return 'O complemento da prefeitura tem 3 números (por exemplo 001), ou deixe em branco.';
   if (N.regime === '3' && !pctOk(N.pTotTribSN)) return 'Informe o percentual aproximado de tributos do Simples (de 0 a 100).';
   if (N.regime === '1' && !['fed', 'est', 'mun'].every(k => pctOk(N[k]))) return 'Informe os três percentuais aproximados de tributos (de 0 a 100).';
@@ -87,7 +89,7 @@ export function pedidoNota({ clinica, nota, ibge, valor, data, descricao, pacien
   return {
     ambiente:nota.ambiente,
     nota:{ serie:nota.serie, proximo:nota.proximo ? Number(nota.proximo) : undefined, cLocEmi:ibge, dCompet:data,
-      prestador:{ doc:String(clinica.doc || '').replace(/\D/g, ''), regime:nota.regime },
+      prestador:{ doc:String(clinica.doc || '').replace(/\D/g, ''), regime:nota.regime, im:nota.im || undefined },
       tomador:comCpf && cpfConfere(cpf) ? { doc:cpf, nome:paciente.name, email:paciente.cadastro?.email || '' } : undefined,
       servico:{ cTribNac:nota.codigo, cTribMun:nota.codigoMun || undefined, descricao }, valor:Math.round(valor * 100), tributos:T, aliquota:nota.aliquota }
   };
