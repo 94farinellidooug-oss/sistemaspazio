@@ -117,6 +117,7 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
         if (N.modo === 'cair') return resp(504, { erro:'sem_resposta', msg:'A Receita não respondeu. Em instantes, toque em "Conferir" para saber se a nota saiu.', id, situacao:'enviando' });
         return resp(200, nota);
       }
+      if (corpo.acao === 'conferir_codigo') return resp(200, { ambiente:corpo.ambiente, municipio:corpo.municipio, convenio:{ ativo:true, mensagem:'' }, achados:N.complemento ? [{ complemento:N.complemento, codigo:corpo.codigo.replace(/^(\d{2})(\d{2})(\d{2})$/, '$1.$2.$3') + '.' + N.complemento, aliquota:2, incidencia:'SIM' }] : [], mensagem:'' });
       if (corpo.acao === 'conferir') { const n = N.notas.find(x => x.id === corpo.id); if (!n) return resp(404, { erro:'nao_achei', msg:'Nota não encontrada.' }); n.situacao = 'emitida'; return resp(200, n); }
       return resp(400, { erro:'acao', msg:'Pedido inválido.' });
     }

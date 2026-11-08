@@ -73,7 +73,8 @@ ok(!confere(xml.replace('<vServ>150.00</vServ>', '<vServ>1.00</vServ>')), 'mexer
 for (const [rot, mud, msg] of [
   ['MEI', { prestador:{ doc:CNPJ, regime:'2' }, tributos:{} }, '<indTotTrib>0</indTotTrib>'],
   ['fora do Simples', { prestador:{ doc:CNPJ, regime:'1' }, tributos:{ fed:'4.5', est:'0', mun:'2' } }, '<pTotTribFed>4.50</pTotTribFed>'],
-  ['sem paciente identificado e com CPF de prestador', { prestador:{ doc:CPF_P, regime:'2' }, tomador:undefined }, `<CPF>${CPF_P}</CPF>`]]) {
+  ['sem paciente identificado e com CPF de prestador', { prestador:{ doc:CPF_P, regime:'2' }, tomador:undefined }, `<CPF>${CPF_P}</CPF>`],
+  ['com código municipal e NBS', { servico:{ ...NOTA.servico, cTribMun:'002', cNBS:'123012100' } }, '<cTribMun>002</cTribMun><cNBS>123012100</cNBS><xDescServ>']]) {
   const d = montarDps({ ...NOTA, ...mud }), x = d.erros ? '' : assinarDps(d, C, forge); writeFileSync(arq, x);
   let v = 'ok'; if (xsd !== 'sem xmllint') try { execFileSync('xmllint', ['--noout', '--nonet', '--schema', ESQUEMA, arq], { stdio:'pipe' }); } catch (e) { v = String(e.stderr).slice(0, 200); }
   ok(!d.erros && x.includes(msg) && v === 'ok' && (!('tomador' in mud) || !x.includes('<toma>')), `DPS ${rot} no esquema oficial` + (v === 'ok' ? '' : ': ' + v));
@@ -108,6 +109,11 @@ function cenario({ segredo = 'frase-longa-do-servidor-123456', resposta = 'ok' }
       const dpsXml = await gunzipB64(JSON.parse(corpo).dpsXmlGZipB64); S.ultimoDps = dpsXml;
       if (S.resposta === 'recusa') return { status:400, texto:JSON.stringify({ erros:[{ Codigo:'E0312', Descricao:'Código de tributação nacional não administrado pelo município', Complemento:'' }] }) };
       return { status:201, texto:JSON.stringify({ tipoAmbiente:2, idDps:dpsXml.match(/Id="(DPS\d+)"/)[1], chaveAcesso:chave, nfseXmlGZipB64:await gzipB64(nfseXml(dpsXml, chave)) }) };
+    }
+    if (u.pathname.startsWith('/parametrizacao/')) {
+      if (u.pathname.endsWith('/convenio')) return { status:S.param.convenio.status, texto:JSON.stringify(S.param.convenio.j) };
+      const c = decodeURIComponent(u.pathname.split('/')[3]), q = S.param.codigos[c];
+      return q ? { status:200, texto:JSON.stringify({ aliquotas:{ [c]:[{ Incidencia:'SIM', Aliq:q, DtIni:'2023-01-01T00:00:00', DtFim:null }] }, mensagem:'ok' }) } : { status:404, texto:JSON.stringify({ aliquotas:null, mensagem:'Não encontrado' }) };
     }
     if (u.pathname.includes('/dps/')) return S.resposta === 'nao_recebeu' ? { status:404, texto:'' } : { status:200, texto:JSON.stringify({ chaveAcesso:chave }) };
     if (u.pathname.includes('/nfse/')) return { status:200, texto:JSON.stringify({ chaveAcesso:chave, nfseXmlGZipB64:await gzipB64(nfseXml(S.ultimoDps || '<DPS/>', chave)) }) };
@@ -155,6 +161,17 @@ ok((await pedir('tk-u1', { acao:'conferir', clinica:C1, id:cai.j.id })).j.numero
 const sem = await pedir('tk-u1', { acao:'emitir', clinica:C1, ambiente:'homologacao', nota:{ ...notaPedido, tributos:{} } });
 ok(sem.status === 400 && sem.j.msg.includes('percentual'), 'falta de dado fiscal avisa antes de enviar');
 ok((await pedir('tk-u1', { acao:'tirar_certificado', clinica:C1 })).j.certificado === null && !S.certs.length, 'o administrador tira o certificado');
+// Conferir o código do serviço na prefeitura (parâmetros municipais do ADN).
+S.param = { convenio:{ status:200, j:{ parametrosConvenio:{ aderenteAmbienteNacional:1, aderenteEmissorNacional:1 }, mensagem:'ok' } }, codigos:{ '04.05.01.003':5 } };
+await pedir('tk-u1', { acao:'certificado', clinica:C1, pfx:A.b64, senha:'segredo-1' });
+const cc = await pedir('tk-u1', { acao:'conferir_codigo', clinica:C1, ambiente:'homologacao', municipio:'4305108', codigo:'04.05.01', competencia:'2026-11-07' });
+const urls = S.envios.filter(e => e.url.includes('/parametrizacao/')).map(e => e.url);
+ok(cc.status === 200 && cc.j.convenio.ativo && urls[0] === 'https://adn.producaorestrita.nfse.gov.br/parametrizacao/4305108/convenio' && urls.includes('https://adn.producaorestrita.nfse.gov.br/parametrizacao/4305108/04.05.01.000/2026-11-01/aliquota'), 'confere o convênio e o código completo (II.SS.DD.CCC) na competência do mês');
+ok(cc.j.achados.length === 1 && cc.j.achados[0].complemento === '003' && cc.j.achados[0].aliquota === 5, 'sem o código 000, acha o complemento que a prefeitura usa');
+S.param = { convenio:{ status:404, j:{ parametrosConvenio:null, mensagem:'O convênio do município ainda não está ativo' } }, codigos:{} };
+const cc2 = await pedir('tk-u1', { acao:'conferir_codigo', clinica:C1, ambiente:'producao', municipio:'4305108', codigo:'040501' });
+ok(!cc2.j.convenio.ativo && cc2.j.convenio.mensagem.includes('não está ativo') && !cc2.j.achados.length && S.envios.at(-1).url.startsWith('https://adn.nfse.gov.br/'), 'prefeitura fora do convênio volta com o motivo');
+ok((await pedir('tk-u1', { acao:'conferir_codigo', clinica:C1, ambiente:'homologacao', municipio:'43', codigo:'0405' })).status === 400, 'cidade ou código incompletos não consultam');
 const semSeg = cenario({ segredo:'' });
 ok((await semSeg.pedir('tk-u1', { acao:'situacao', clinica:C1 })).j.erro === 'sem_segredo', 'sem o segredo NFSE_SEGREDO no servidor, avisa que falta ligar');
 ok(lerNfse('<NFSe><infNFSe Id="NFS' + '1'.repeat(50) + '"><nNFSe>12</nNFSe></infNFSe></NFSe>').numero === '12', 'lê número e chave da nota devolvida');

@@ -2,10 +2,11 @@
 // renegociação do TLS 1.2, que o Deno das Edge Functions do Supabase não faz (a conexão cai: "Connection reset by
 // peer"). O Node faz. Esta ponte só transporta: recebe da função nfse do Supabase o pedido já assinado e o
 // certificado, envia à Sefin e devolve a resposta. Não guarda nada.
-// Só aceita endereços da Sefin Nacional e só quem está logado no MUSUBI (confere o token no Supabase).
+// Só aceita endereços da Sefin Nacional (e dos parâmetros municipais do ADN) e só quem está logado no MUSUBI (confere o token no Supabase).
 import https from 'node:https';
 
-export const BASES = ['https://sefin.nfse.gov.br/SefinNacional/', 'https://sefin.producaorestrita.nfse.gov.br/SefinNacional/'];
+export const BASES = ['https://sefin.nfse.gov.br/SefinNacional/', 'https://sefin.producaorestrita.nfse.gov.br/SefinNacional/',
+  'https://adn.nfse.gov.br/parametrizacao/', 'https://adn.producaorestrita.nfse.gov.br/parametrizacao/'];
 const SUPABASE = { url:'https://lmucimqjrzjewfyhcfoh.supabase.co', chave:'sb_publishable_kRmZNwp0_Xq4jPPMgTzKKA_SyLsreZS' };
 
 // Conexão com o certificado, em TLS 1.2 (é nele que a Sefin renegocia para pedir o certificado).
