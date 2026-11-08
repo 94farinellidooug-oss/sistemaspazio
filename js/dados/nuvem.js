@@ -3,6 +3,8 @@
 // conta enxerga. A chave abaixo é a pública (publishable): pode ficar no código do site.
 // Nesta primeira parte cada clínica guarda o documento inteiro do sistema, com versão (salvar_dados).
 
+import { eventosEntre } from './historico.js';
+
 export const NUVEM = { url:'https://lmucimqjrzjewfyhcfoh.supabase.co', chave:'sb_publishable_kRmZNwp0_Xq4jPPMgTzKKA_SyLsreZS' };
 export const KEY_SESSAO = 'musubi-sessao';
 
@@ -36,7 +38,7 @@ const erroDe = (status, corpo) => {
 export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(...a), mem = localStorage, agora = () => Date.now() } = {}){
   const lerSessao = () => { try { return JSON.parse(mem.getItem(KEY_SESSAO)) || null; } catch (e) { return null; } };
   const gravarSessao = s => { try { s ? mem.setItem(KEY_SESSAO, JSON.stringify(s)) : mem.removeItem(KEY_SESSAO); } catch (e) {} };
-  let sessao = lerSessao();
+  let sessao = lerSessao(), semHistorico = false;
 
   const chamar = async (caminho, { metodo = 'GET', corpo, token, cab = {} } = {}) => {
     let r;
@@ -113,7 +115,18 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     // Nome, cidade e estado da clínica (só o administrador consegue: regra clinicas_mudar).
     mudarClinica:async (clinica, { nome, cidade, uf, whats }) => { await rest(`clinicas?id=eq.${clinica}`, { metodo:'PATCH', corpo:{ nome, cidade, uf, whats }, cab:{ Prefer:'return=minimal' } }); return true; },
     souDono:async () => ((await rest(`donos?select=user_id&user_id=eq.${sessao.user.id}`)) || []).length > 0,
-    salvar:async (clinica, doc, versao) => rest('rpc/salvar_dados', { metodo:'POST', corpo:{ p_clinica:clinica, p_doc:doc, p_versao:versao } }),
+    // Salva o documento e, junto, os eventos do histórico (supabase/006_historico.sql). Servidor sem o 006: salva
+    // só os dados (e avisa em semHistorico, para a tela do histórico dizer o que falta).
+    salvar:async (clinica, doc, versao, eventos = []) => {
+      if (!semHistorico) {
+        try { return await rest('rpc/salvar_dados', { metodo:'POST', corpo:{ p_clinica:clinica, p_doc:doc, p_versao:versao, p_eventos:eventos } }); }
+        catch (e) { if (!(e.status === 404 || e.codigo === 'PGRST202')) throw e; semHistorico = true; }
+      }
+      return rest('rpc/salvar_dados', { metodo:'POST', corpo:{ p_clinica:clinica, p_doc:doc, p_versao:versao } });
+    },
+    semHistorico:() => semHistorico,
+    // Histórico de alterações (só o administrador lê). F = { paciente, antes (iso), limite }.
+    historico:async (clinica, F = {}) => rest(`historico?select=id,em,pessoa,email,tipo,acao,alvo,paciente_id,titulo,campos&clinica_id=eq.${clinica}${F.paciente ? `&paciente_id=eq.${encodeURIComponent(F.paciente)}` : ''}${F.antes ? `&em=lt.${encodeURIComponent(F.antes)}` : ''}&order=em.desc&limit=${F.limite || 100}`),
     // Pagamento do MUSUBI pela InfinitePay (função cobranca, supabase/functions/cobranca). Devolve { url } do link.
     pagar:async (clinica, plano, periodo, teste = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo, ...(teste ? { teste:true } : {}) }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
@@ -173,7 +186,7 @@ export function criarSincronia({ nuvem, clinica, obter, aplicar, aoMudar = () =>
     h = null; if (enviando) { pendente = true; return; }
     enviando = true; pendente = false; mudar('salvando');
     try {
-      const enviado = copiar(obter()), v = await nuvem.salvar(clinica, enviado, versao);
+      const enviado = copiar(obter()), v = await nuvem.salvar(clinica, enviado, versao, base ? eventosEntre(base, enviado) : []);
       if (v > 0) { versao = v; base = enviado; mudar(pendente ? 'salvando' : 'salvo'); }
       else {
         // Outra pessoa salvou antes: junta as duas versões e manda de novo (nada se perde).
