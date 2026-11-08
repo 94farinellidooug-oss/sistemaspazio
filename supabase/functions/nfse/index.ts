@@ -359,7 +359,6 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
 // No Supabase (Deno): conexão com o certificado da clínica e a biblioteca node-forge. Nos testes (node) só as funções acima são usadas.
 const D = globalThis.Deno;
 if (D?.serve) {
-  const forge = (await import('npm:node-forge@1.4.2')).default;
   const mtls = async (url, { metodo, corpo }, cert) => {
     const client = D.createHttpClient({ cert:cert.certPem, key:cert.chavePem, certChain:cert.certPem, privateKey:cert.chavePem });
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 60000);
@@ -368,5 +367,17 @@ if (D?.serve) {
       return { status:r.status, texto:await r.text() };
     } finally { clearTimeout(t); client.close(); }
   };
-  D.serve(criarNfse({ env:k => D.env.get(k), forge, mtls }));
+  // A biblioteca só é carregada no primeiro pedido, e qualquer falha (de início ou inesperada) volta como resposta
+  // com CORS: assim o MUSUBI mostra o motivo em vez de "Sem conexão".
+  let tratar = null;
+  D.serve(async req => {
+    if (req.method === 'OPTIONS') return new Response(null, { status:204, headers:CORS });
+    try {
+      if (!tratar) { const forge = (await import('npm:node-forge@1.4.2')).default; tratar = criarNfse({ env:k => D.env.get(k), forge, mtls }); }
+      return await tratar(req);
+    } catch (e) {
+      console.error('nfse', e);
+      return resp(500, { erro:'falha_funcao', msg:'A função nfse falhou ao responder: ' + String(e?.message || e).slice(0, 300) });
+    }
+  });
 }
