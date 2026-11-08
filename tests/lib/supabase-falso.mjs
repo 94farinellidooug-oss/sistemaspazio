@@ -68,8 +68,13 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
     if (u.pathname === '/rest/v1/dados') { const c = u.searchParams.get('clinica_id').replace('eq.', ''); return resp(200, membro(c) ? [S.dados[c]] : []); }
     if (u.pathname === '/rest/v1/rpc/salvar_dados') {
       if (!membro(corpo.p_clinica)) return resp(400, { code:'P0001', message:'sem_acesso' });
+      // Histórico (006_historico.sql): S.semHistorico = true imita o servidor que ainda não rodou o 006.
+      if ('p_eventos' in corpo && S.semHistorico) return resp(404, { code:'PGRST202', message:'Could not find the function public.salvar_dados(p_clinica, p_doc, p_eventos, p_versao)' });
       const d = S.dados[corpo.p_clinica]; if (d.versao !== corpo.p_versao) return resp(200, -1);
-      d.doc = corpo.p_doc; d.versao++; return resp(200, d.versao);
+      d.doc = corpo.p_doc; d.versao++;
+      const m = eu_m(corpo.p_clinica);
+      (corpo.p_eventos || []).forEach(e => (S.historico ||= []).unshift({ id:++S.n, clinica_id:corpo.p_clinica, em:new Date(Date.now() + S.n).toISOString(), pessoa:m?.nome || '', email:m?.email || eu.email, tipo:e.tipo, acao:e.acao, alvo:e.alvo || '', paciente_id:e.paciente_id || '', titulo:e.titulo || '', campos:e.campos || [] }));
+      return resp(200, d.versao);
     }
     if (u.pathname === '/rest/v1/clinicas' && op.method === 'PATCH') { const c = S.clinicas.find(x => x.id === u.searchParams.get('id').replace('eq.', '')); if (!c?.membros.some(m => m.user === eu.id && m.perfil === 'adm')) return resp(200); Object.assign(c, corpo); return resp(204); }
     // Função cobranca (pagamento pela InfinitePay): S.cobranca = true liga; sem ela, responde como o servidor sem a InfiniteTag.
@@ -120,6 +125,12 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       if (corpo.acao === 'conferir_codigo') return resp(200, { ambiente:corpo.ambiente, municipio:corpo.municipio, convenio:{ ativo:true, mensagem:'' }, achados:N.complemento ? [{ complemento:N.complemento, codigo:corpo.codigo.replace(/^(\d{2})(\d{2})(\d{2})$/, '$1.$2.$3') + '.' + N.complemento, aliquota:2, incidencia:'SIM' }] : [], mensagem:'' });
       if (corpo.acao === 'conferir') { const n = N.notas.find(x => x.id === corpo.id); if (!n) return resp(404, { erro:'nao_achei', msg:'Nota não encontrada.' }); n.situacao = 'emitida'; return resp(200, n); }
       return resp(400, { erro:'acao', msg:'Pedido inválido.' });
+    }
+    if (u.pathname === '/rest/v1/historico') {
+      if (S.semHistorico) return resp(404, { code:'42P01', message:'relation "public.historico" does not exist' });
+      const q = k => (u.searchParams.get(k) || '').replace(/^(eq|lt)\./, ''), c = q('clinica_id'), m = eu_m(c);
+      if (!m || m.perfil !== 'adm') return resp(200, []);
+      return resp(200, (S.historico || []).filter(h => h.clinica_id === c && (!q('paciente_id') || h.paciente_id === q('paciente_id')) && (!q('em') || h.em < q('em'))).slice(0, Number(u.searchParams.get('limit')) || 100));
     }
     if (u.pathname === '/rest/v1/pagamentos') { const c = (u.searchParams.get('clinica_id') || '').replace('eq.', ''); return resp(200, (S.pagamentos || []).filter(g => (dono() && !c) || (g.clinica_id === c && (membro(c) || dono())))); }
     if (u.pathname === '/rest/v1/donos') return resp(200, (S.donos || []).includes(eu.id) ? [{ user_id:eu.id }] : []);

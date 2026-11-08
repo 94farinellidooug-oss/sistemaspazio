@@ -27,6 +27,7 @@ import { ligarConfig, vConfiguracoes } from './telas/configuracoes.js';
 import { ligarNfse } from './telas/nfse.js';
 import { ligarPainelDono, vPainelDono } from './telas/painel-dono.js';
 import { esquecerEquipe, ligarEquipe, vEquipe } from './telas/equipe.js';
+import { esquecerHistorico, ligarHistorico, vHistorico } from './telas/historico.js';
 import { PERM_ROTA } from './dados/equipe.js';
 import { notificacoes } from './dados/indicadores.js';
 import { LOGO, ic } from './componentes/icones.js';
@@ -42,7 +43,7 @@ import { cidLista, vProntuario } from './telas/prontuario.js';
 import { adicionarDiagnostico, buscarCid, lerCid, retirarDiagnostico } from './dados/cid.js';
 import { TODAY, addDays, brl, esc, fmt, uid } from './util.js';
 
-export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,equipe:vEquipe,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
+export const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,equipe:vEquipe,historico:vHistorico,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 export function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -51,6 +52,7 @@ export function render(keepScroll){
   if(['avaliacao','pentagrama'].includes(location.hash.slice(1))){ ui.tab=location.hash.slice(1); history.replaceState(null,'','#prontuario'); }
   const r=route(), y=scrollY, v=document.getElementById('view');
   if(r==='equipe'&&ultimaRota!=='equipe') esquecerEquipe();
+  if(r==='historico'&&ultimaRota!=='historico') esquecerHistorico();
   ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=!podeVer(PERM_ROTA[r])?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${semPermissao()}`:rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
   v.innerHTML=html;
   if(ui.ov==='ass'){ document.getElementById('camada').innerHTML=painelAss(); ligarPad(); }
@@ -504,5 +506,6 @@ ligarConfig(save, manter => render(manter), toast);
 ligarNfse(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
 ligarEquipe(manter => { if(route()==='equipe') render(manter); }, toast);
+ligarHistorico(manter => { if(route()==='historico') render(manter); });
 iniciarConta(manter => render(manter));
 render();

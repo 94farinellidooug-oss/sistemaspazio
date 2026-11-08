@@ -205,4 +205,30 @@ set role service_role;
 do $$ begin insert into nfse_notas (clinica_id, ambiente, serie, ndps, id_dps, valor) values (current_setting('teste.c1')::uuid, 'homologacao', '1', 1, 'DPS1b', 100); raise exception 'FALHA: repetiu o número';
 exception when unique_violation then raise notice 'ok    o número da DPS não repete na mesma série e ambiente'; end $$;
 reset role;
+-- Histórico de alterações (006_historico.sql): salvar grava quem e quando; ninguém mexe no histórico; só o administrador lê
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select versao as v0 from dados where clinica_id = :'c1' \gset
+select pg_temp.checar(public.salvar_dados(:'c1', '{"v":2,"patients":[2]}', :v0, '[{"tipo":"paciente","acao":"alterou","alvo":"p1","paciente_id":"p1","titulo":"Ana","campos":["phone"]},{"tipo":"","acao":"x"}]') = :v0 + 1, 'salvar com o histórico avança a versão');
+select pg_temp.checar((select count(*) from historico where clinica_id = :'c1' and tipo <> 'dados') = 1, 'grava só os eventos válidos');
+select pg_temp.checar((select email = 'maicon@x.com' and pessoa = 'Maicon Farinelli' and user_id = auth.uid() and campos = '{phone}' and em > now() - interval '1 minute' from historico where clinica_id = :'c1' and tipo = 'paciente'), 'o evento leva o login, o nome, a hora do servidor e os campos');
+select pg_temp.checar(public.salvar_dados(:'c1', '{"v":2,"patients":[3]}', :v0, '[{"tipo":"paciente","acao":"apagou"}]') = -1 and (select count(*) from historico where clinica_id = :'c1' and tipo <> 'dados') = 1, 'salvamento recusado (versão antiga) não grava histórico');
+select count(*) as d0 from historico where clinica_id = :'c1' and tipo = 'dados' \gset
+select pg_temp.checar(public.salvar_dados(:'c1', '{"v":2,"patients":[3]}', :v0 + 1) = :v0 + 2, 'o salvamento antigo continua funcionando');
+select pg_temp.checar((select count(*) from historico where clinica_id = :'c1' and tipo = 'dados') = :d0 + 1, 'o salvamento antigo, sem detalhes, também registra quem e quando');
+select count(*) as h0 from historico where clinica_id = :'c1' \gset
+update historico set titulo = 'mudado';
+delete from historico;
+select pg_temp.checar((select count(*) from historico where clinica_id = :'c1' and titulo <> 'mudado') = :h0 and :h0 > 0, 'nem o administrador altera ou apaga o histórico');
+do $$ begin insert into historico (clinica_id, tipo, acao) values (current_setting('teste.c1')::uuid, 'paciente', 'criou'); raise exception 'FALHA: inseriu no histórico';
+exception when insufficient_privilege then raise notice 'ok    ninguém escreve no histórico por fora do salvamento'; end $$;
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+set role authenticated;
+select pg_temp.checar(public.e_membro(:'c1') and (select count(*) from historico) = 0, 'a recepção não lê o histórico');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select pg_temp.checar((select count(*) from historico) = 0, 'outra clínica não vê o histórico');
+reset role;
 \echo 'Todas as regras do banco passaram.'

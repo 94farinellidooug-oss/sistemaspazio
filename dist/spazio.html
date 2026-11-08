@@ -2755,9 +2755,79 @@ function notificacoes(){
   acompanhamento().forEach(({p,m})=>N.push({k:'ac-'+p.id,i:m[0][0],t:m[0][1],titulo:p.name,txt:m.map(x=>x[2]).join(' · '),pid:p.id}));
   return N;
 }
+// documento de antes com o de agora e diz o que foi criado, alterado ou apagado. O servidor grava cada evento com
+// o login de quem salvou e a hora dele (supabase/006_historico.sql). Só os NOMES dos campos vão para o histórico,
+// nunca os valores, para ele não duplicar dados de saúde.
+// Evento: { tipo, acao:'criou'|'alterou'|'apagou'|'desativou'|'reativou', alvo (id), paciente_id, titulo, campos:[...] }
+
+// Vazio e ausente contam como iguais: telas que só preparam a estrutura ([] ou {}) não viram alteração.
+const vazioH = x => x == null || x === '' || (Array.isArray(x) ? !x.length : typeof x === 'object' && !Object.keys(x).length);
+const igualH = (a, b) => (vazioH(a) && vazioH(b)) || JSON.stringify(a) === JSON.stringify(b);
+const porIdH = L => new Map((Array.isArray(L) ? L : []).filter(x => x && x.id != null).map(x => [String(x.id), x]));
+// Campos que mudaram entre dois objetos (um nível; `fundo` abre um nível a mais, como o cadastro do paciente).
+function camposMudadosH(a = {}, b = {}, ignorar = [], fundo = []){
+  const C = [];
+  for (const k of new Set([...Object.keys(a || {}), ...Object.keys(b || {})])) {
+    if (ignorar.includes(k) || igualH(a?.[k], b?.[k])) continue;
+    if (fundo.includes(k) && a?.[k] && b?.[k] && typeof a[k] === 'object' && typeof b[k] === 'object') camposMudadosH(a[k], b[k]).forEach(x => C.push(`${k}.${x}`));
+    else C.push(k);
+  }
+  return C;
+}
+// Lista com id: criou, apagou ou alterou cada item.
+function listaH(E, antes, depois, ev){
+  const A = porIdH(antes), B = porIdH(depois);
+  for (const [id, b] of B) { const a = A.get(id); if (!a) E.push({ ...ev(b), acao:'criou', alvo:id, campos:[] }); else { const c = camposMudadosH(a, b); if (c.length) E.push({ ...ev(b), acao:'alterou', alvo:id, campos:c }); } }
+  for (const [id, a] of A) if (!B.has(id)) E.push({ ...ev(a), acao:'apagou', alvo:id, campos:[] });
+}
+const dataTxtH = d => { try { return d ? fmt(String(d).slice(0, 10)) : ''; } catch (e) { return ''; } };
+const SUB_H = ['atendimentos', 'avaliacoes', 'documentos', 'diagnosticos'];
+
+function eventosEntre(antes, depois){
+  const E = [], A = antes || {}, B = depois || {};
+  // Pacientes e o que fica dentro do prontuário.
+  const PA = porIdH(A.patients), PB = porIdH(B.patients), desatB = porIdH(B.desativados), desatA = porIdH(A.desativados);
+  for (const [id, b] of PB) {
+    const a = PA.get(id), nome = b.name || '', base = { paciente_id:id };
+    if (!a) { E.push({ ...base, tipo:'paciente', acao:desatA.has(id) ? 'reativou' : 'criou', alvo:id, titulo:nome, campos:[] }); }
+    else { const c = camposMudadosH(a, b, SUB_H, ['cadastro']); if (c.length) E.push({ ...base, tipo:'paciente', acao:'alterou', alvo:id, titulo:nome, campos:c }); }
+    const pa = a || {};
+    listaH(E, pa.atendimentos, b.atendimentos, x => ({ ...base, tipo:'atendimento', titulo:`${nome} · atendimento de ${dataTxtH(x.data)}` }));
+    listaH(E, pa.avaliacoes, b.avaliacoes, x => ({ ...base, tipo:'avaliacao', titulo:`${nome} · avaliação de ${dataTxtH(x.date || x.data)}` }));
+    listaH(E, pa.documentos, b.documentos, x => ({ ...base, tipo:'documento', titulo:`${nome} · ${x.nome || 'documento'}` }));
+    listaH(E, pa.diagnosticos, b.diagnosticos, x => ({ ...base, tipo:'diagnostico', titulo:`${nome} · CID ${x.codigo || ''}`.trim() }));
+  }
+  for (const [id, a] of PA) if (!PB.has(id)) E.push({ paciente_id:id, tipo:'paciente', acao:desatB.has(id) && !desatA.has(id) ? 'desativou' : 'apagou', alvo:id, titulo:a.name || '', campos:[] });
+  // Agenda.
+  const nomeDe = pid => (PB.get(String(pid)) || PA.get(String(pid)))?.name || '';
+  listaH(E, A.appts, B.appts, x => ({ tipo:'horario', paciente_id:x.pid ? String(x.pid) : '', titulo:`${nomeDe(x.pid) || 'Horário'} · ${dataTxtH(x.date)} ${x.time || ''}`.trim() }));
+  // Financeiro.
+  const FA = A.financeiro || {}, FB = B.financeiro || {};
+  const rec = x => ({ tipo:'recebimento', paciente_id:x.pid ? String(x.pid) : '', titulo:`Recebimento ${dataTxtH(x.data)}${x.pid && nomeDe(x.pid) ? ' · ' + nomeDe(x.pid) : ''}` });
+  listaH(E, FA.recebimentos, FB.recebimentos, rec);
+  listaH(E, FA.pacotes, FB.pacotes, x => ({ tipo:'pacote', paciente_id:x.pid ? String(x.pid) : '', titulo:`Pacote${x.nome ? ' ' + x.nome : ''}${x.pid && nomeDe(x.pid) ? ' · ' + nomeDe(x.pid) : ''}` }));
+  listaH(E, FA.despesas, FB.despesas, x => ({ tipo:'despesa', paciente_id:'', titulo:`Despesa${x.descricao ? ' · ' + x.descricao : ''}` }));
+  listaH(E, FA.notas, FB.notas, x => ({ tipo:'nota', paciente_id:'', titulo:`Nota fiscal${x.numero ? ' ' + x.numero : ''}${x.tomador ? ' · ' + x.tomador : ''}` }));
+  // Configurações, modelos de documento e de mensagens.
+  const cfg = camposMudadosH(A.config, B.config);
+  if (cfg.length) E.push({ tipo:'configuracao', acao:'alterou', alvo:'config', paciente_id:'', titulo:'Configurações da clínica', campos:cfg });
+  listaH(E, A.modelosDoc, B.modelosDoc, x => ({ tipo:'modelo', paciente_id:'', titulo:`Modelo de documento · ${x.nome || ''}`.trim() }));
+  if (!igualH(A.mensagensWa, B.mensagensWa)) E.push({ tipo:'mensagens', acao:'alterou', alvo:'mensagensWa', paciente_id:'', titulo:'Modelos de mensagens do WhatsApp', campos:[] });
+  return E.slice(0, 500).map(e => ({ ...e, campos:(e.campos || []).slice(0, 60) }));
+}
+
+// Textos para a tela.
+const TIPO_HIST = { paciente:'Cadastro', atendimento:'Atendimento', avaliacao:'Avaliação', documento:'Documento', diagnostico:'CID', horario:'Agenda',
+  recebimento:'Recebimento', pacote:'Pacote', despesa:'Despesa', nota:'Nota fiscal', configuracao:'Configurações', modelo:'Modelo de documento', mensagens:'Mensagens', dados:'Dados' };
+const ACAO_HIST = { criou:'criou', alterou:'alterou', apagou:'apagou', desativou:'desativou', reativou:'reativou' };
+const CAMPO_H = { name:'nome', birth:'nascimento', phone:'telefone', anam:'anamnese', alerts:'alertas', queixas:'queixas', relacionamento:'relacionamento', marcas:'marcações do mapa',
+  'cadastro.cpf':'CPF', 'cadastro.email':'e-mail', 'cadastro.endereco':'endereço', 'cadastro.cidade':'cidade', 'cadastro.hemisferio':'hemisfério', 'cadastro.contatoEmergencia':'contato de emergência',
+  data:'data', date:'data', time:'horário', status:'situação', done:'atendido', valor:'valor', forma:'forma de pagamento', texto:'texto', assinado:'assinatura', edicoes:'correções', ativo:'ativo' };
+const campoTxt = c => CAMPO_H[c] || String(c).replace(/^cadastro\./, '').replace(/([A-Z])/g, ' $1').toLowerCase();
 // dados pela API REST, com as regras de acesso do banco (supabase/001_inicio.sql) decidindo o que cada
 // conta enxerga. A chave abaixo é a pública (publishable): pode ficar no código do site.
 // Nesta primeira parte cada clínica guarda o documento inteiro do sistema, com versão (salvar_dados).
+
 
 const NUVEM = { url:'https://lmucimqjrzjewfyhcfoh.supabase.co', chave:'sb_publishable_kRmZNwp0_Xq4jPPMgTzKKA_SyLsreZS' };
 const KEY_SESSAO = 'musubi-sessao';
@@ -2792,7 +2862,7 @@ const erroDe = (status, corpo) => {
 function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(...a), mem = localStorage, agora = () => Date.now() } = {}){
   const lerSessao = () => { try { return JSON.parse(mem.getItem(KEY_SESSAO)) || null; } catch (e) { return null; } };
   const gravarSessao = s => { try { s ? mem.setItem(KEY_SESSAO, JSON.stringify(s)) : mem.removeItem(KEY_SESSAO); } catch (e) {} };
-  let sessao = lerSessao();
+  let sessao = lerSessao(), semHistorico = false;
 
   const chamar = async (caminho, { metodo = 'GET', corpo, token, cab = {} } = {}) => {
     let r;
@@ -2869,7 +2939,18 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     // Nome, cidade e estado da clínica (só o administrador consegue: regra clinicas_mudar).
     mudarClinica:async (clinica, { nome, cidade, uf, whats }) => { await rest(`clinicas?id=eq.${clinica}`, { metodo:'PATCH', corpo:{ nome, cidade, uf, whats }, cab:{ Prefer:'return=minimal' } }); return true; },
     souDono:async () => ((await rest(`donos?select=user_id&user_id=eq.${sessao.user.id}`)) || []).length > 0,
-    salvar:async (clinica, doc, versao) => rest('rpc/salvar_dados', { metodo:'POST', corpo:{ p_clinica:clinica, p_doc:doc, p_versao:versao } }),
+    // Salva o documento e, junto, os eventos do histórico (supabase/006_historico.sql). Servidor sem o 006: salva
+    // só os dados (e avisa em semHistorico, para a tela do histórico dizer o que falta).
+    salvar:async (clinica, doc, versao, eventos = []) => {
+      if (!semHistorico) {
+        try { return await rest('rpc/salvar_dados', { metodo:'POST', corpo:{ p_clinica:clinica, p_doc:doc, p_versao:versao, p_eventos:eventos } }); }
+        catch (e) { if (!(e.status === 404 || e.codigo === 'PGRST202')) throw e; semHistorico = true; }
+      }
+      return rest('rpc/salvar_dados', { metodo:'POST', corpo:{ p_clinica:clinica, p_doc:doc, p_versao:versao } });
+    },
+    semHistorico:() => semHistorico,
+    // Histórico de alterações (só o administrador lê). F = { paciente, antes (iso), limite }.
+    historico:async (clinica, F = {}) => rest(`historico?select=id,em,pessoa,email,tipo,acao,alvo,paciente_id,titulo,campos&clinica_id=eq.${clinica}${F.paciente ? `&paciente_id=eq.${encodeURIComponent(F.paciente)}` : ''}${F.antes ? `&em=lt.${encodeURIComponent(F.antes)}` : ''}&order=em.desc&limit=${F.limite || 100}`),
     // Pagamento do MUSUBI pela InfinitePay (função cobranca, supabase/functions/cobranca). Devolve { url } do link.
     pagar:async (clinica, plano, periodo, teste = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo, ...(teste ? { teste:true } : {}) }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
@@ -2929,7 +3010,7 @@ function criarSincronia({ nuvem, clinica, obter, aplicar, aoMudar = () => {}, me
     h = null; if (enviando) { pendente = true; return; }
     enviando = true; pendente = false; mudar('salvando');
     try {
-      const enviado = copiar(obter()), v = await nuvem.salvar(clinica, enviado, versao);
+      const enviado = copiar(obter()), v = await nuvem.salvar(clinica, enviado, versao, base ? eventosEntre(base, enviado) : []);
       if (v > 0) { versao = v; base = enviado; mudar(pendente ? 'salvando' : 'salvo'); }
       else {
         // Outra pessoa salvou antes: junta as duas versões e manda de novo (nada se perde).
@@ -3321,9 +3402,9 @@ function ligarAcesso(){
 const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
   ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
 const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', atendimento:'Atendimento', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
-  crm:'Relacionamento', mensagens:'Modelos de mensagens', equipe:'Equipe e permissões', configuracoes:'Configurações', musubi:'Painel do MUSUBI'};
+  crm:'Relacionamento', mensagens:'Modelos de mensagens', equipe:'Equipe e permissões', historico:'Histórico de alterações', configuracoes:'Configurações', musubi:'Painel do MUSUBI'};
 // Item do menu que fica marcado em cada tela.
-const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', mensagens:'administracao', equipe:'administracao', configuracoes:'administracao', musubi:'administracao'};
+const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', mensagens:'administracao', equipe:'administracao', historico:'administracao', configuracoes:'administracao', musubi:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
 const PROF = {nome:'Maicon Farinelli', papel:'Profissional responsável'};
 
@@ -4823,6 +4904,74 @@ function revisarPosicao(d, c, ok, por, em){
   r.hist.unshift({ acao: ok ? 'Posição marcada como revisada' : 'Revisão retirada', por, em });
   return r;
 }
+// paciente: quem criou, alterou ou apagou o quê, com data e hora. Só o administrador da clínica vê. Os registros
+// vêm do servidor (supabase/006_historico.sql) e ninguém consegue alterá-los ou apagá-los pelo sistema.
+
+const hs = { lista:null, carregando:false, erro:'', falta006:false, paciente:'', pessoa:'', tipo:'', fim:false };
+let hsApp = { render:() => {} };
+const POR_VEZ = 100;
+const ligadoHist = () => conta.modo === 'nuvem' && !!conta.clinica?.id && !!conta.nuvem;
+const nomePac = id => [...db.patients, ...(db.desativados || [])].find(p => String(p.id) === String(id))?.name || '';
+const horaTxt = iso => { const d = new Date(iso); return `${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' })}`; };
+
+async function carregarHist(mais = false){
+  if (!ligadoHist() || hs.carregando) return;
+  hs.carregando = true; hs.erro = ''; if (!mais) { hs.lista = null; hs.fim = false; }
+  try {
+    const L = await conta.nuvem.historico(conta.clinica.id, { paciente:hs.paciente || undefined, antes:mais ? hs.lista?.at(-1)?.em : undefined, limite:POR_VEZ });
+    hs.lista = mais ? [...(hs.lista || []), ...L] : L; hs.fim = L.length < POR_VEZ; hs.falta006 = false;
+  } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') { hs.falta006 = true; hs.lista = []; } else hs.erro = e.message; }
+  hs.carregando = false; hsApp.render(true);
+}
+
+// Botão no prontuário (só o administrador, com conta).
+const botaoHistorico = pid => ligadoHist() && souAdm() ? `<a class="btn ghost" href="#historico" data-hs="paciente" data-pid="${esc(pid)}">${ic('historico')}Histórico</a>` : '';
+
+function vHistorico(){
+  const cab = `<div class="head"><div><h1>Histórico de alterações</h1><p>Quem criou, alterou ou apagou cada registro, com data e hora</p></div></div>`;
+  if (conta.modo !== 'nuvem') return cab + vazio('historico', 'Histórico só com conta no servidor', 'Neste aparelho o sistema funciona sem conta. Com a conta no servidor, cada alteração fica registrada com o login de quem fez, a data e a hora.');
+  if (!souAdm()) return semPermissao();
+  if (hs.lista === null && !hs.carregando && !hs.erro) carregarHist();
+  const L = (hs.lista || []).filter(h => (!hs.pessoa || h.email === hs.pessoa) && (!hs.tipo || h.tipo === hs.tipo));
+  const pessoas = [...new Map((hs.lista || []).map(h => [h.email, h.pessoa || h.email])).entries()];
+  const tipos = [...new Set((hs.lista || []).map(h => h.tipo))];
+  const pacientes = [...db.patients, ...(db.desativados || [])].filter(p => !p.exemplo || String(p.id) === hs.paciente).sort((a, b) => a.name.localeCompare(b.name));
+  return `${cab}
+  ${hs.falta006 || conta.nuvem.semHistorico?.() ? `<div class="notice" id="hs-falta">${ic('info')}<div>Para começar a registrar o histórico, rode uma vez o arquivo <b>supabase/006_historico.sql</b> no SQL Editor do Supabase.</div></div>` : ''}
+  ${hs.erro ? `<div class="notice">${ic('alerta')}<div>${esc(hs.erro)} <button class="btn sm ghost" data-hs="recarregar">Tentar de novo</button></div></div>` : ''}
+  <div class="card" id="hs-l"><div class="card-h"><h2>Registros<small>ninguém consegue alterar ou apagar este histórico pelo sistema</small></h2></div>
+    <div class="form hs-f">
+      <label class="field"><span class="lbl">Paciente</span><select data-hs="filtro" name="paciente"><option value="">Todos</option>${pacientes.map(p => `<option value="${esc(p.id)}" ${String(p.id) === hs.paciente ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+      <label class="field"><span class="lbl">Quem</span><select data-hs="filtro" name="pessoa"><option value="">Todos</option>${pessoas.map(([e, n]) => `<option value="${esc(e)}" ${e === hs.pessoa ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
+      <label class="field"><span class="lbl">O quê</span><select data-hs="filtro" name="tipo"><option value="">Tudo</option>${tipos.map(t => `<option value="${esc(t)}" ${t === hs.tipo ? 'selected' : ''}>${esc(TIPO_HIST[t] || t)}</option>`).join('')}</select></label>
+    </div>
+    ${hs.lista === null ? `<p class="muted sm">${ic('carregando')} Carregando o histórico…</p>`
+    : !L.length ? `<p class="muted sm" id="hs-vazio">${hs.paciente ? `Nenhuma alteração registrada para ${esc(nomePac(hs.paciente) || 'este paciente')}.` : 'Nenhuma alteração registrada ainda.'}</p>`
+    : `<div class="list hs-lista">${L.map(h => `<div class="row hs-r"><span class="tico sm ${h.acao === 'apagou' ? 'crit' : 'acc'}">${ic(h.acao === 'criou' ? 'mais' : h.acao === 'apagou' ? 'x' : h.acao === 'desativou' || h.acao === 'reativou' ? 'retorno' : 'editar')}</span>
+        <div class="grow"><b>${esc(h.pessoa || h.email)} ${esc(ACAO_HIST[h.acao] || h.acao)} ${esc((TIPO_HIST[h.tipo] || h.tipo).toLowerCase())}</b>
+          <small class="muted">${esc(h.titulo || '')}${h.campos?.length ? ` · ${esc(h.campos.map(campoTxt).join(', '))}` : ''}</small>
+          <small class="muted">${horaTxt(h.em)}${h.pessoa && h.email ? ` · ${esc(h.email)}` : ''}</small></div></div>`).join('')}</div>
+      ${hs.fim ? '' : `<div class="cf-acoes"><button class="btn ghost" data-hs="mais" ${hs.carregando ? 'disabled' : ''}>${hs.carregando ? 'Carregando…' : 'Ver mais antigos'}</button></div>`}`}
+  </div>`;
+}
+
+function ligarHistorico(render){
+  hsApp = { render };
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-hs]'); if (!b || b.matches('select')) return; const a = b.dataset.hs;
+    if (a === 'paciente') { hs.paciente = b.dataset.pid || ''; hs.manter = true; }
+    else if (a === 'recarregar') { hs.erro = ''; carregarHist(); }
+    else if (a === 'mais') carregarHist(true);
+  });
+  document.addEventListener('change', ev => {
+    const s = ev.target; if (s.dataset?.hs !== 'filtro') return;
+    if (s.name === 'paciente') { hs.paciente = s.value; carregarHist(); }
+    else { hs[s.name] = s.value; render(true); }
+  });
+}
+// Ao trocar de clínica ou sair da conta.
+// Entrando pelo botão do prontuário, abre já filtrado naquele paciente.
+const esquecerHistorico = () => { hs.lista = null; hs.erro = ''; hs.pessoa = ''; hs.tipo = ''; if (!hs.manter) hs.paciente = ''; hs.manter = false; };
 // embutido: aba "Pentagrama" dentro do prontuário do paciente aberto.
 function vPentagrama(embutido=false){
   const p=patient(ui.pid);
@@ -5132,7 +5281,7 @@ function vProntuario(){
   return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
     ${alerts.length||cids.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}${cids.map(d=>`<button class="pill cid-pill" data-act="tab" data-t="cid" data-tip="${esc(d.descricao)}">CID ${esc(d.codigo)}</button>`).join('')}</div>`:''}</div>
-    <div class="perfil-a"><button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
+    <div class="perfil-a">${botaoHistorico(p.id)}<button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
     <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic((k==='avaliacao'||k==='pentagrama')&&!pode('mtc')?'cadeado':i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}`;
 }
 // alertas, preenchimento por etapa e salvamento automático. Usa, sem alterar, o raciocínio clínico
@@ -5639,6 +5788,7 @@ const MODULOS = {
   financeiro:{etapa:8,i:'financeiro',feito:true,texto:'Gestão financeira da clínica, separando o valor contratado do valor efetivamente recebido.',itens:['Contas a pagar e a receber','Fluxo de caixa','Pagamentos parciais e recorrentes','Pacotes terapêuticos e comissões','Inadimplência','Emissão de NFS-e por provedor integrador']},
   relatorios:{etapa:9,i:'relatorios',feito:true,texto:'Indicadores clínicos, comerciais e financeiros.',itens:['Desempenho clínico','Conversão comercial','Agenda e ocupação','Financeiro','Desempenho por profissional','Desempenho por serviço']},
   equipe:{etapa:10,i:'pacientes',feito:true,texto:'Quem usa o sistema nesta clínica, convites e o que cada perfil abre.',itens:['Perfil único por profissional','Especialidades e modalidades','Permissões por perfil','Várias clínicas','Pacientes compartilhados conforme permissão','Registro de atividades']},
+  historico:{etapa:10,i:'historico',feito:true,texto:'Quem criou, alterou ou apagou cada registro, com data e hora (LGPD).'},
   configuracoes:{etapa:10,i:'admin',feito:true,texto:'Dados da clínica, serviços e preços, horário de atendimento, sua conta e segurança.',itens:['Dados da clínica e local de atendimento','Serviços, duração e valores','Modalidades terapêuticas','Modelos de documento','Preferências de agenda','Privacidade e LGPD']}
 };
 const EM_BREVE = Object.keys(MODULOS).filter(k => !MODULOS[k].feito);
@@ -5653,7 +5803,7 @@ function vEmBreve(k){
 function vAdministracao(){
   return `<div class="head"><div><h1>Administração</h1><p>Equipe, configurações da clínica e relacionamento com pacientes</p></div></div>
   ${conta.dono?`<a class="adm-c pd-adm" href="#musubi"><span class="tico acc">${ic('estrela')}</span><span class="grow"><b>Painel do MUSUBI</b><small>Clínicas que usam o sistema, pacotes, acesso grátis e interessados. Só a sua conta vê.</small></span><span class="pill acc">dono</span></a>`:''}
-  <div class="adm">${['equipe','configuracoes','crm','mensagens'].map(k=>{const m=MODULOS[k]; return `<a class="adm-c" href="#${k}"><span class="tico acc">${ic(m.i)}</span><span class="grow"><b>${LABEL[k]}</b><small>${m.texto}</small></span>${m.feito?'<span class="pill ok">disponível</span>':`<span class="pill">etapa ${m.etapa}</span>`}</a>`;}).join('')}</div>
+  <div class="adm">${['equipe','configuracoes','crm','mensagens'].concat(conta.modo==='nuvem'&&(conta.clinica?.perfil||'adm')==='adm'?['historico']:[]).map(k=>{const m=MODULOS[k]; return `<a class="adm-c" href="#${k}"><span class="tico acc">${ic(m.i)}</span><span class="grow"><b>${LABEL[k]}</b><small>${m.texto}</small></span>${m.feito?'<span class="pill ok">disponível</span>':`<span class="pill">etapa ${m.etapa}</span>`}</a>`;}).join('')}</div>
   <div class="grid g2" style="margin-top:20px">
     <div class="card" id="dados"><div class="card-h"><h2>Dados e cópia de segurança</h2><span class="tico sm acc">${ic('escudo')}</span></div>
       <div class="ac-s" style="margin-bottom:14px"><div><small>Pacientes</small><b>${db.patients.length}</b></div><div><small>Atendimentos</small><b>${db.patients.reduce((n,p)=>n+p.atendimentos.length,0)}</b></div><div><small>Agendamentos</small><b>${db.appts.length}</b></div></div>
@@ -6291,7 +6441,7 @@ function vAtlas(){
     <aside class="fx-panel${A.sel || A.traj ? ' aberta' : ''}" aria-label="Ficha"><div class="card">${painel}</div></aside>
   </div>`;
 }
-const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,equipe:vEquipe,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
+const VIEWS={painel:vPainel,agenda:vAgenda,pacientes:vPacientes,prontuario:vProntuario,cadastro:vCadastro,atendimento:vAtendimento,avaliacao:vAvaliacao,pentagrama:vPentagrama,pontos:vPontos,biblioteca:vPontos,administracao:vAdministracao,documentos:vDocumentos,crm:vRelacionamento,mensagens:vMensagens,relatorios:vRelatorios,configuracoes:vConfiguracoes,equipe:vEquipe,historico:vHistorico,musubi:vPainelDono,financeiro:()=>{ if(financeiroDe(db,TODAY)[1]) save(); return vFinanceiro(); }};
 EM_BREVE.forEach(k=>VIEWS[k]=()=>vEmBreve(k));
 function route(){ const r=location.hash.slice(1); return VIEWS[r]?r:'painel'; }
 let ultimaRota='';
@@ -6300,6 +6450,7 @@ function render(keepScroll){
   if(['avaliacao','pentagrama'].includes(location.hash.slice(1))){ ui.tab=location.hash.slice(1); history.replaceState(null,'','#prontuario'); }
   const r=route(), y=scrollY, v=document.getElementById('view');
   if(r==='equipe'&&ultimaRota!=='equipe') esquecerEquipe();
+  if(r==='historico'&&ultimaRota!=='historico') esquecerHistorico();
   ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=!podeVer(PERM_ROTA[r])?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${semPermissao()}`:rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
   v.innerHTML=html;
   if(ui.ov==='ass'){ document.getElementById('camada').innerHTML=painelAss(); ligarPad(); }
@@ -6753,6 +6904,7 @@ ligarConfig(save, manter => render(manter), toast);
 ligarNfse(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
 ligarEquipe(manter => { if(route()==='equipe') render(manter); }, toast);
+ligarHistorico(manter => { if(route()==='historico') render(manter); });
 iniciarConta(manter => render(manter));
 render();
 </script>

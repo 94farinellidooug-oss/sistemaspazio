@@ -14,9 +14,9 @@ import { RECURSO_ROTA } from '../dados/planos.js';
 export const NAV = [['painel','Painel','painel'],['agenda','Agenda','agenda'],['pacientes','Pacientes','pacientes'],['biblioteca','Biblioteca clínica','biblioteca'],
   ['financeiro','Financeiro','financeiro'],['documentos','Documentos','doc'],['relatorios','Relatórios','relatorios'],['administracao','Administração','admin']];
 export const LABEL = {...Object.fromEntries(NAV.map(([k,l])=>[k,l])), pontos:'Biblioteca clínica', prontuario:'Prontuário', cadastro:'Cadastro do paciente', atendimento:'Atendimento', avaliacao:'Avaliação energética', pentagrama:'Pentagrama',
-  crm:'Relacionamento', mensagens:'Modelos de mensagens', equipe:'Equipe e permissões', configuracoes:'Configurações', musubi:'Painel do MUSUBI'};
+  crm:'Relacionamento', mensagens:'Modelos de mensagens', equipe:'Equipe e permissões', historico:'Histórico de alterações', configuracoes:'Configurações', musubi:'Painel do MUSUBI'};
 // Item do menu que fica marcado em cada tela.
-const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', mensagens:'administracao', equipe:'administracao', configuracoes:'administracao', musubi:'administracao'};
+const ATIVO = {prontuario:'pacientes', cadastro:'pacientes', atendimento:'pacientes', avaliacao:'pacientes', pentagrama:'pacientes', pontos:'biblioteca', crm:'administracao', mensagens:'administracao', equipe:'administracao', historico:'administracao', configuracoes:'administracao', musubi:'administracao'};
 // Profissional exibido no topo. Passa a vir do login no multiusuário (etapa 10).
 export const PROF = {nome:'Maicon Farinelli', papel:'Profissional responsável'};
 
