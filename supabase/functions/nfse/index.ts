@@ -116,7 +116,7 @@ export function montarDps(n){
   const t = n.tomador, td = t && soDigitos(t.doc);
   const corpo = [
     tx('tpAmb', TP_AMB[n.ambiente]), tx('dhEmi', n.dhEmi), tx('verAplic', VER_APLIC), tx('serie', String(Number(n.serie))), tx('nDPS', String(n.nDPS)),
-    tx('dCompet', n.dCompet), tx('tpEmit', '1'), tx('cLocEmi', n.cLocEmi),
+    tx('dCompet', n.dCompet), tx('tpEmit', '1'), tx('finNFSe', '0'), tx('cLocEmi', n.cLocEmi),   // finNFSe 0 = NFS-e regular (leiaute da Reforma Tributária)
     el('prest', tx(doc.length === 14 ? 'CNPJ' : 'CPF', doc) + el('regTrib', tx('opSimpNac', regime) + tx('regEspTrib', String(P.regEspTrib ?? '0')))),
     t ? el('toma', tx(td.length === 14 ? 'CNPJ' : 'CPF', td) + tx('xNome', t.nome.slice(0, 300)) + tx('email', limpo(t.email).slice(0, 80))) : '',
     el('serv', el('locPrest', tx('cLocPrestacao', n.cLocEmi)) + el('cServ', tx('cTribNac', cTribNac) + tx('xDescServ', desc) + tx('cNBS', S.cNBS ? soDigitos(S.cNBS) : ''))),
