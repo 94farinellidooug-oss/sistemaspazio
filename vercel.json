@@ -25,5 +25,13 @@
         }
       ]
     }
-  ]
+  ],
+  "regions": [
+    "gru1"
+  ],
+  "functions": {
+    "api/nfse-ponte.js": {
+      "maxDuration": 60
+    }
+  }
 }

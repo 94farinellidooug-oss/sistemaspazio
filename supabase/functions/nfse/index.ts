@@ -10,6 +10,7 @@
 // quem administra o MUSUBI e guardada só no Supabase. Ela tranca os certificados das clínicas no banco. Se for
 // trocada, cada clínica precisa enviar o certificado de novo. SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY o Supabase
 // já fornece.
+// O envio à Receita passa pela ponte api/nfse-ponte.js do site na Vercel (ver o fim deste arquivo).
 //
 // Pedidos (POST, JSON, com o login de alguém da clínica):
 //   { acao:'situacao', clinica }  devolve { certificado:{ titular, documento, validade } | null }
@@ -217,7 +218,7 @@ const erro = (status, codigo, msg, extra = {}) => resp(status, { erro:codigo, ms
 const UUID = /^[0-9a-f-]{36}$/i;
 const MSG_CERT = { senha:'A senha do certificado não confere.', arquivo:'Não foi possível ler o arquivo. Envie o certificado A1 (.pfx ou .p12).' };
 
-// mtls(url, { metodo, corpo }, { certPem, chavePem }) → { status, texto }: conexão com a Receita usando o certificado.
+// mtls(url, { metodo, corpo, token }, { certPem, chavePem }) → { status, texto }: conexão com a Receita usando o certificado.
 // forge: a biblioteca node-forge. agora: relógio (testes).
 export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora = () => new Date(), novoId = () => crypto.randomUUID() }){
   const SB = env('SUPABASE_URL'), SR = env('SUPABASE_SERVICE_ROLE_KEY'), SEGREDO = env('NFSE_SEGREDO') || '';
@@ -243,8 +244,9 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
     if (!C[0]) return null;
     return { ...(await decifrar(C[0], SEGREDO)), documento:C[0].documento, validade:C[0].validade };
   };
-  const sefin = async (ambiente, caminho, cert, corpo) => {
-    const r = await mtls(SEFIN[ambiente] + caminho, { metodo:corpo ? 'POST' : 'GET', corpo:corpo ? JSON.stringify(corpo) : undefined }, cert);
+  const sefin = async (ambiente, caminho, cert, corpo, req) => {
+    const token = (req?.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+    const r = await mtls(SEFIN[ambiente] + caminho, { metodo:corpo ? 'POST' : 'GET', corpo:corpo ? JSON.stringify(corpo) : undefined, token }, cert);
     let j = null; try { j = r.texto ? JSON.parse(r.texto) : null; } catch (e) {}
     return { status:r.status, j, texto:r.texto };
   };
@@ -315,7 +317,7 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
         }
         const xml = assinarDps(dps, cert, forge);
         let r;
-        try { r = await sefin(ambiente, '/nfse', cert, { dpsXmlGZipB64:await gzipB64(xml) }); }
+        try { r = await sefin(ambiente, '/nfse', cert, { dpsXmlGZipB64:await gzipB64(xml) }, req); }
         catch (e) { console.error(e); return erro(504, 'sem_resposta', 'A Receita não respondeu. Em instantes, toque em "Conferir" para saber se a nota saiu. (Motivo: ' + String(e?.message || e).replace(/\s+/g, ' ').slice(0, 240) + ')', { id, situacao:'enviando' }); }
         const b = r.j?.nfseXmlGZipB64 || r.j?.NfseXmlGZipB64;
         if (r.status >= 200 && r.status < 300 && b) return resp(200, await autorizada(linha, await gunzipB64(b), r.j.chaveAcesso));
@@ -335,14 +337,14 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
         if (linha.situacao !== 'enviando') return resp(200, { id:linha.id, situacao:linha.situacao, chave:linha.chave, numero:linha.numero, ndps:linha.ndps, serie:linha.serie, ambiente:linha.ambiente, emitidaEm:linha.emitida_em, erros:linha.erros,
           consulta:linha.chave ? `${CONSULTA_PUBLICA}?tpc=1&chave=${linha.chave}` : '' });
         const cert = await certificadoDe(clinica); if (!cert) return erro(400, 'sem_certificado', 'Envie o certificado digital A1 da clínica em Configurações > Nota fiscal.');
-        const d = await sefin(linha.ambiente, `/dps/${linha.id_dps}`, cert);
+        const d = await sefin(linha.ambiente, `/dps/${linha.id_dps}`, cert, undefined, req);
         const chave = d.j?.chaveAcesso;
         if (d.status === 404 || (d.status < 300 && !chave)) {
           await banco(`nfse_notas?id=eq.${linha.id}`, { metodo:'PATCH', corpo:{ situacao:'rejeitada', erros:[{ codigo:'', descricao:'A Receita não recebeu esta nota.', complemento:'' }] }, cab:{ Prefer:'return=minimal' } });
           return resp(200, { id:linha.id, situacao:'rejeitada', msg:'A Receita não recebeu esta nota. Pode emitir de novo.' });
         }
         if (!chave) return erro(502, 'sem_resposta', 'A Receita ainda não respondeu. Tente de novo em instantes.');
-        const nf = await sefin(linha.ambiente, `/nfse/${chave}`, cert);
+        const nf = await sefin(linha.ambiente, `/nfse/${chave}`, cert, undefined, req);
         const b = nf.j?.nfseXmlGZipB64 || nf.j?.NfseXmlGZipB64;
         if (!b) return erro(502, 'sem_resposta', 'A Receita ainda não respondeu. Tente de novo em instantes.');
         return resp(200, await autorizada(linha, await gunzipB64(b), chave));
@@ -359,10 +361,23 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
 // No Supabase (Deno): conexão com o certificado da clínica e a biblioteca node-forge. Nos testes (node) só as funções acima são usadas.
 const D = globalThis.Deno;
 if (D?.serve) {
-  const mtls = async (url, { metodo, corpo }, cert) => {
-    // A Sefin Nacional só aceita HTTP/1.1 (com HTTP/2 responde "endpoint requires HTTP/1.1").
-    const client = D.createHttpClient({ cert:cert.certPem, key:cert.chavePem, certChain:cert.certPem, privateKey:cert.chavePem, http1:true, http2:false });
+  // A Sefin (IIS) pede o certificado numa renegociação do TLS 1.2, que o Deno não faz (a conexão cai com
+  // "Connection reset by peer"). Por isso o envio passa pela ponte em Node do próprio site (api/nfse-ponte.js, na
+  // Vercel), que só transporta. NFSE_PONTE_URL troca o endereço; NFSE_PONTE_URL=direto tenta sem a ponte.
+  const PONTE = D.env.get('NFSE_PONTE_URL') || 'https://sistemaspazio.vercel.app/api/nfse-ponte';
+  const mtls = async (url, { metodo, corpo, token }, cert) => {
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 60000);
+    if (PONTE !== 'direto') {
+      try {
+        const r = await fetch(PONTE, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` }, signal:ctl.signal,
+          body:JSON.stringify({ url, metodo, corpo, cert:cert.certPem, chave:cert.chavePem }) });
+        const j = await r.json().catch(() => null);
+        if (r.ok && j && typeof j.status === 'number') return { status:j.status, texto:String(j.texto ?? '') };
+        throw new Error(`ponte ${r.status}: ${j?.erro || ''} ${j?.msg || ''}`.trim());
+      } finally { clearTimeout(t); }
+    }
+    // Sem a ponte (só HTTP/1.1: com HTTP/2 a Sefin responde "endpoint requires HTTP/1.1").
+    const client = D.createHttpClient({ cert:cert.certPem, key:cert.chavePem, http1:true, http2:false });
     try {
       const r = await fetch(url, { method:metodo, headers:{ Accept:'application/json', ...(corpo ? { 'Content-Type':'application/json' } : {}) }, body:corpo, client, signal:ctl.signal });
       return { status:r.status, texto:await r.text() };
