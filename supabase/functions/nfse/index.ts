@@ -27,6 +27,10 @@
 export const NS = 'http://www.sped.fazenda.gov.br/nfse';
 export const VERSAO = '1.01';
 export const VER_APLIC = 'MUSUBI 1.0';
+// Parâmetros municipais (ADN): convênio da prefeitura e alíquota de cada código de serviço.
+export const ADN_PARAM = { producao:'https://adn.nfse.gov.br/parametrizacao', homologacao:'https://adn.producaorestrita.nfse.gov.br/parametrizacao' };
+// Código completo da parametrização: II.SS.DD.CCC (cTribNac com pontos + complemento municipal).
+export const codigoCompleto = (cTribNac, comp = '000') => soDigitos(cTribNac).replace(/^(\d{2})(\d{2})(\d{2})$/, '$1.$2.$3') + '.' + comp;
 export const SEFIN = { producao:'https://sefin.nfse.gov.br/SefinNacional', homologacao:'https://sefin.producaorestrita.nfse.gov.br/SefinNacional' };
 export const CONSULTA_PUBLICA = 'https://www.nfse.gov.br/consultapublica';
 const TP_AMB = { producao:'1', homologacao:'2' };
@@ -76,7 +80,7 @@ export const REGIMES = { '1':'Fora do Simples Nacional', '2':'MEI', '3':'Simples
 // Confere os dados e monta a DPS (leiaute 1.01). Devolve { erros } ou { id, inf (infDPS canônico), xml }.
 // nota = { ambiente, dhEmi, dCompet, serie, nDPS, cLocEmi,
 //   prestador:{ doc, regime:'1'|'2'|'3', regEspTrib }, tomador?:{ doc, nome, email },
-//   servico:{ cTribNac, descricao, cNBS }, valor (centavos),
+//   servico:{ cTribNac, cTribMun (3 números, código próprio da prefeitura, opcional), descricao, cNBS }, valor (centavos),
 //   tributos:{ pTotTribSN } (Simples ME/EPP) | { fed, est, mun } (fora do Simples) | nada (MEI), aliquota? (ISS %) }
 export function montarDps(n){
   const E = [], P = n.prestador || {}, S = n.servico || {}, T = n.tributos || {};
@@ -90,6 +94,8 @@ export function montarDps(n){
   const cTribNac = soDigitos(S.cTribNac);
   if (cTribNac.length !== 6) E.push('Confira o código do serviço (6 números, por exemplo 04.05.01).');
   if (S.cNBS && soDigitos(S.cNBS).length !== 9) E.push('O código NBS tem 9 números.');
+  const cTribMun = soDigitos(S.cTribMun);
+  if (cTribMun && cTribMun.length !== 3) E.push('O complemento municipal do código do serviço tem 3 números.');
   const desc = limpo(S.descricao);
   if (!desc) E.push('Escreva a descrição do serviço.'); else if (desc.length > 1000) E.push('A descrição do serviço passou de 1000 letras.');
   if (!Number.isInteger(n.valor) || n.valor < 1 || n.valor > 99999999999) E.push('Valor da nota inválido.');
@@ -119,7 +125,7 @@ export function montarDps(n){
     tx('dCompet', n.dCompet), tx('tpEmit', '1'), tx('finNFSe', '0'), tx('cLocEmi', n.cLocEmi),   // finNFSe 0 = NFS-e regular (leiaute da Reforma Tributária)
     el('prest', tx(doc.length === 14 ? 'CNPJ' : 'CPF', doc) + el('regTrib', tx('opSimpNac', regime) + tx('regEspTrib', String(P.regEspTrib ?? '0')))),
     t ? el('toma', tx(td.length === 14 ? 'CNPJ' : 'CPF', td) + tx('xNome', t.nome.slice(0, 300)) + tx('email', limpo(t.email).slice(0, 80))) : '',
-    el('serv', el('locPrest', tx('cLocPrestacao', n.cLocEmi)) + el('cServ', tx('cTribNac', cTribNac) + tx('xDescServ', desc) + tx('cNBS', S.cNBS ? soDigitos(S.cNBS) : ''))),
+    el('serv', el('locPrest', tx('cLocPrestacao', n.cLocEmi)) + el('cServ', tx('cTribNac', cTribNac) + tx('cTribMun', cTribMun && cTribMun !== '000' ? cTribMun : '') + tx('cNBS', S.cNBS ? soDigitos(S.cNBS) : '') + tx('xDescServ', desc))),
     el('valores', el('vServPrest', tx('vServ', reais(n.valor))) + el('trib',
       el('tribMun', tx('tribISSQN', '1') + tx('tpRetISSQN', '1') + (aliq !== null && regime !== '1' ? tx('pAliq', pct(aliq)) : '')) + el('totTrib', totTrib)))
   ].join('');
@@ -244,9 +250,10 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
     if (!C[0]) return null;
     return { ...(await decifrar(C[0], SEGREDO)), documento:C[0].documento, validade:C[0].validade };
   };
-  const sefin = async (ambiente, caminho, cert, corpo, req) => {
+  const sefin = async (ambiente, caminho, cert, corpo, req) => sefinUrl(SEFIN[ambiente] + caminho, cert, req, corpo);
+  const sefinUrl = async (url, cert, req, corpo) => {
     const token = (req?.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
-    const r = await mtls(SEFIN[ambiente] + caminho, { metodo:corpo ? 'POST' : 'GET', corpo:corpo ? JSON.stringify(corpo) : undefined, token }, cert);
+    const r = await mtls(url, { metodo:corpo ? 'POST' : 'GET', corpo:corpo ? JSON.stringify(corpo) : undefined, token }, cert);
     let j = null; try { j = r.texto ? JSON.parse(r.texto) : null; } catch (e) {}
     return { status:r.status, j, texto:r.texto };
   };
@@ -324,10 +331,28 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
         const E = errosSefin(r.j);
         if (r.status >= 400 && r.status < 500 && E.length) {
           await banco(`nfse_notas?id=eq.${id}`, { metodo:'PATCH', corpo:{ situacao:'rejeitada', erros:E }, cab:{ Prefer:'return=minimal' } });
-          return erro(422, 'rejeitada', `A Receita recusou: ${E[0].codigo} ${E[0].descricao}${E[0].complemento ? ' (' + E[0].complemento + ')' : ''}`.trim(), { id, situacao:'rejeitada', erros:E });
+          const dica = E.some(e => ['E0310', 'E0312'].includes(e.codigo)) ? ' Em Configurações > Nota fiscal, toque em "Conferir o código na prefeitura".' : '';
+          return erro(422, 'rejeitada', (`A Receita recusou: ${E[0].codigo} ${E[0].descricao}${E[0].complemento ? ' (' + E[0].complemento + ')' : ''}`.trim() + dica), { id, situacao:'rejeitada', erros:E });
         }
         console.error('sefin', r.status, String(r.texto).slice(0, 300));
         return erro(502, 'sem_resposta', 'A Receita respondeu com erro. Em instantes, toque em "Conferir" para saber se a nota saiu.', { id, situacao:'enviando' });
+      }
+
+      // Pergunta ao sistema nacional se a prefeitura está no convênio e se administra o código do serviço
+      // (o E0312 da Receita). Tenta o código sem complemento (000) e, se não houver, os complementos 001 a 009.
+      if (acao === 'conferir_codigo') {
+        const ambiente = corpo.ambiente === 'producao' ? 'producao' : 'homologacao', mun = String(corpo.municipio || ''), cod = soDigitos(corpo.codigo);
+        if (!/^\d{7}$/.test(mun) || cod.length !== 6) return erro(400, 'dados', 'Confira a cidade da clínica e o código do serviço.');
+        const cert = await certificadoDe(clinica); if (!cert) return erro(400, 'sem_certificado', 'Envie o certificado digital A1 da clínica em Configurações > Nota fiscal.');
+        const base = ADN_PARAM[ambiente] + '/' + mun, comp = (corpo.competencia && /^\d{4}-\d{2}-\d{2}$/.test(corpo.competencia) ? corpo.competencia : agora().toISOString().slice(0, 10)).slice(0, 8) + '01';
+        const pegar = async caminho => { try { return await sefinUrl(base + caminho, cert, req); } catch (e) { console.error('param', caminho, e?.message || e); return { status:0, j:null, falha:String(e?.message || e).slice(0, 200) }; } };
+        const cv = await pegar('/convenio'), P = cv.j?.parametrosConvenio;
+        const convenio = { ativo:cv.status === 200 && !!P && P.aderenteAmbienteNacional === 1, emissorNacional:P ? P.aderenteEmissorNacional === 1 : null, mensagem:String(cv.j?.mensagem || cv.falha || (cv.status ? `resposta ${cv.status}` : '')).slice(0, 300) };
+        const aliq = async c => { const r = await pegar(`/${codigoCompleto(cod, c)}/${comp}/aliquota`); const L = r.j?.aliquotas?.[codigoCompleto(cod, c)]; return r.status === 200 && Array.isArray(L) && L.length ? { complemento:c, codigo:codigoCompleto(cod, c), aliquota:L[0].Aliq ?? null, incidencia:L[0].Incidencia ?? '' } : { complemento:c, nao:true, status:r.status, mensagem:String(r.j?.mensagem || r.falha || '').slice(0, 200) }; };
+        let R = [await aliq('000')];
+        if (R[0].nao && R[0].status === 404) R = R.concat(await Promise.all(['001', '002', '003', '004', '005', '006', '007', '008', '009'].map(aliq)));
+        const achados = R.filter(x => !x.nao).map(({ complemento, codigo, aliquota, incidencia }) => ({ complemento, codigo, aliquota, incidencia }));
+        return resp(200, { ambiente, municipio:mun, competencia:comp, convenio, achados, mensagem:achados.length ? '' : String(R[0].mensagem || '') });
       }
 
       if (acao === 'conferir') {

@@ -87,6 +87,13 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await M.selectOption('#nf-f-dados [name=codigoSel]', 'outro'); await M.waitForTimeout(200);
   ok(await tem(M, '#nf-f-dados [name=codigo]'), `${rot}: "Outro código" abre o campo do código`);
   await M.selectOption('#nf-f-dados [name=codigoSel]', '040501'); await M.waitForTimeout(150);
+  // Conferir o código na prefeitura: sem o código, avisa; com complemento, oferece usar e a nota leva o cTribMun.
+  S.nfse.complemento = ''; await clicar(M, '[data-nf=conferir-codigo]'); await M.waitForTimeout(400);
+  ok(await tem(M, '#nf-cod-res', 'não tem o código 04.05.01') && S.nfse.pedidos.at(-1).acao === 'conferir_codigo' && S.nfse.pedidos.at(-1).municipio === '4305108', `${rot}: consulta a prefeitura e avisa quando ela não tem o código`);
+  S.nfse.complemento = '003'; await clicar(M, '[data-nf=conferir-codigo]'); await M.waitForTimeout(400);
+  ok(await tem(M, '#nf-cod-res', '04.05.01.003') && await tem(M, '#nf-cod-res', 'ISS 2%'), `${rot}: mostra o código completo que a prefeitura aceita`);
+  await clicar(M, '[data-nf=usar-comp]'); await M.waitForTimeout(300);
+  ok(await M.inputValue('#nf-f-dados [name=codigoMun]') === '003' && !(await tem(M, '[data-nf=usar-comp]')), `${rot}: "Usar o complemento" guarda o 003`);
 
   // Emitir
   await ir(M, 'financeiro'); await M.waitForSelector('.fin-t');
@@ -96,7 +103,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await M.fill('#nf-desc', 'Sessão de acupuntura em 07/11/2026'); await clicar(M, '#f-nfse button.pri'); await M.waitForTimeout(300);
   const E = S.nfse.pedidos.at(-1);
   ok(E.acao === 'emitir' && E.ambiente === 'homologacao' && E.nota.cLocEmi === '4305108' && E.nota.prestador.doc === '11222333000181' && E.nota.prestador.regime === '3' && E.nota.tributos.pTotTribSN === '6.5'
-    && E.nota.servico.cTribNac === '040501' && E.nota.servico.descricao === 'Sessão de acupuntura em 07/11/2026' && Number.isInteger(E.nota.valor) && E.nota.valor > 0 && !E.nota.tomador && E.referencia, `${rot}: o pedido leva cidade, CNPJ, regime, tributos, serviço, descrição e valor em centavos`);
+    && E.nota.servico.cTribNac === '040501' && E.nota.servico.cTribMun === '003' && E.nota.servico.descricao === 'Sessão de acupuntura em 07/11/2026' && Number.isInteger(E.nota.valor) && E.nota.valor > 0 && !E.nota.tomador && E.referencia, `${rot}: o pedido leva cidade, CNPJ, regime, tributos, serviço, descrição e valor em centavos`);
   ok(!(await tem(M, '#f-nfse')) && await tem(M, '#f-recs .nf-n', 'NFS-e 1 · teste') && await tem(M, '.toast, #toast', 'Nota 1 emitida'), `${rot}: nota emitida aparece com o número no recebimento`);
   await clicar(M, '#f-recs [data-nf=imprimir] >> nth=0');
   ok(await M.evaluate(() => window.__imprimiu) === 1 && await tem(M, '#imp', 'SEM VALOR FISCAL') && await tem(M, '#imp', S.nfse.notas[0].chave) && await tem(M, '#imp', 'Sessão de acupuntura'), `${rot}: imprimir a nota traz chave, descrição e o aviso de teste`);

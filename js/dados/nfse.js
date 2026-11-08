@@ -2,7 +2,8 @@
 // da Receita com o certificado A1 da própria clínica, sem intermediário pago). Quem emite é a função nfse do
 // servidor (supabase/functions/nfse); aqui ficam a configuração fiscal da clínica e as notas emitidas.
 //
-// db.config.nfse = { ambiente:'homologacao'|'producao', regime:'1'|'2'|'3', codigo (6 números), pTotTribSN,
+// db.config.nfse = { ambiente:'homologacao'|'producao', regime:'1'|'2'|'3', codigo (6 números), codigoMun (complemento
+//   de 3 números que algumas prefeituras usam, opcional), pTotTribSN,
 //   fed, est, mun (percentuais aproximados de tributos), aliquota (ISS %, opcional), serie, proximo }
 // db.financeiro.notas = [{ id (no servidor), rec (recebimento), situacao:'emitida'|'enviando'|'rejeitada',
 //   numero, chave, ndps, serie, ambiente, valor, tomador, cpf, descricao, data, emitidaEm, consulta, msg, em, por }]
@@ -21,7 +22,7 @@ export const CODIGOS_SERVICO = [
 ];
 export const REGIMES_NOTA = [['2', 'MEI'], ['3', 'Simples Nacional (ME ou EPP)'], ['1', 'Fora do Simples Nacional']];
 export const AMBIENTES = { homologacao:'Homologação (teste, sem valor fiscal)', producao:'Produção (nota com valor fiscal)' };
-const PADRAO = { ambiente:'homologacao', regime:'', codigo:'040501', pTotTribSN:'', fed:'', est:'', mun:'', aliquota:'', serie:'1', proximo:'' };
+const PADRAO = { ambiente:'homologacao', regime:'', codigo:'040501', codigoMun:'', pTotTribSN:'', fed:'', est:'', mun:'', aliquota:'', serie:'1', proximo:'' };
 
 export const codigoTxt = c => String(c || '').replace(/^(\d{2})(\d{2})(\d{2})$/, '$1.$2.$3');
 export const nomeCodigo = c => CODIGOS_SERVICO.find(x => x[0] === c)?.[1] || '';
@@ -32,12 +33,13 @@ const pctOk = v => v !== '' && Number(v) >= 0 && Number(v) <= 100;
 // Salva a configuração fiscal. Devolve a mensagem de erro, ou ''.
 export function salvarConfigNota(db, D){
   const N = { ...configNota(db) };
-  for (const k of ['ambiente', 'regime', 'codigo', 'serie', 'proximo']) if (D[k] !== undefined) N[k] = String(D[k]).trim();
+  for (const k of ['ambiente', 'regime', 'codigo', 'codigoMun', 'serie', 'proximo']) if (D[k] !== undefined) N[k] = String(D[k]).trim();
   for (const k of ['pTotTribSN', 'fed', 'est', 'mun', 'aliquota']) if (D[k] !== undefined) N[k] = num(D[k]);
-  N.codigo = N.codigo.replace(/\D/g, '');
+  N.codigo = N.codigo.replace(/\D/g, ''); N.codigoMun = String(N.codigoMun || '').replace(/\D/g, '');
   if (!AMBIENTES[N.ambiente]) return 'Escolha homologação ou produção.';
   if (!REGIMES_NOTA.some(r => r[0] === N.regime)) return 'Escolha o regime tributário da clínica.';
   if (N.codigo.length !== 6) return 'O código do serviço tem 6 números (por exemplo 04.05.01).';
+  if (N.codigoMun !== '' && N.codigoMun.length !== 3) return 'O complemento da prefeitura tem 3 números (por exemplo 001), ou deixe em branco.';
   if (N.regime === '3' && !pctOk(N.pTotTribSN)) return 'Informe o percentual aproximado de tributos do Simples (de 0 a 100).';
   if (N.regime === '1' && !['fed', 'est', 'mun'].every(k => pctOk(N[k]))) return 'Informe os três percentuais aproximados de tributos (de 0 a 100).';
   if (N.aliquota !== '' && !(Number(N.aliquota) > 0 && Number(N.aliquota) <= 5)) return 'A alíquota do ISS fica entre 0,01% e 5% (ou deixe em branco).';
@@ -87,6 +89,6 @@ export function pedidoNota({ clinica, nota, ibge, valor, data, descricao, pacien
     nota:{ serie:nota.serie, proximo:nota.proximo ? Number(nota.proximo) : undefined, cLocEmi:ibge, dCompet:data,
       prestador:{ doc:String(clinica.doc || '').replace(/\D/g, ''), regime:nota.regime },
       tomador:comCpf && cpfConfere(cpf) ? { doc:cpf, nome:paciente.name, email:paciente.cadastro?.email || '' } : undefined,
-      servico:{ cTribNac:nota.codigo, descricao }, valor:Math.round(valor * 100), tributos:T, aliquota:nota.aliquota }
+      servico:{ cTribNac:nota.codigo, cTribMun:nota.codigoMun || undefined, descricao }, valor:Math.round(valor * 100), tributos:T, aliquota:nota.aliquota }
   };
 }

@@ -10,7 +10,7 @@ import { PROF } from './menu.js';
 import { brl, esc, fmt } from '../util.js';
 
 // cert: undefined (ainda não perguntado), null (sem certificado) ou { titular, documento, validade }
-const nf = { cert:undefined, buscando:false, ocupado:false, rasc:null, tirar:false, janela:null, erro:'', municipios:null, carregandoM:false };
+const nf = { codRes:null, codBusca:false, cert:undefined, buscando:false, ocupado:false, rasc:null, tirar:false, janela:null, erro:'', municipios:null, carregandoM:false };
 let app = { save:() => {}, render:() => {}, toast:() => {} };
 const dataBr = iso => iso ? new Date(iso).toLocaleDateString('pt-BR') : '';
 const docTxt = d => { const x = String(d || '').replace(/\D/g, ''); return x.length === 14 ? x.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : x.length === 11 ? x.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : x; };
@@ -60,11 +60,13 @@ export function cfNota(){
         <label class="field"><span class="lbl">Regime tributário</span><select name="regime" data-nf="campo"><option value="">Escolha</option>${REGIMES_NOTA.map(([k, l]) => `<option value="${k}" ${N.regime === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <label class="field full"><span class="lbl">Serviço (código nacional)</span><select name="codigoSel" data-nf="campo">${CODIGOS_SERVICO.map(([k, l]) => `<option value="${k}" ${N.codigo === k ? 'selected' : ''}>${codigoTxt(k)} · ${l}</option>`).join('')}<option value="outro" ${outro ? 'selected' : ''}>Outro código</option></select></label>
         ${outro ? `<label class="field"><span class="lbl">Código do serviço</span><input name="codigo" inputmode="numeric" value="${esc(codigoTxt(N.codigo))}" placeholder="00.00.00"></label>` : ''}
+        ${K && ibge ? `<div class="field full nf-cod"><button type="button" class="btn ghost sm" data-nf="conferir-codigo" ${nf.codBusca ? 'disabled' : ''}>${ic('busca')}${nf.codBusca ? 'Consultando a prefeitura…' : 'Conferir o código na prefeitura'}</button>${resultadoCodigo(N, C)}</div>` : ''}
         ${N.regime === '3' ? pctCampo('pTotTribSN', 'Tributos aproximados do Simples (%)') : ''}
         ${N.regime === '1' ? pctCampo('fed', 'Tributos federais (%)') + pctCampo('est', 'Tributos estaduais (%)') + pctCampo('mun', 'Tributos municipais (%)') : ''}
       </div>
       <details class="cf-mais" ${N.aliquota || N.proximo || N.serie !== '1' ? 'open' : ''}><summary>Mais (opcional)</summary><div class="form">
         ${N.regime === '3' ? `<label class="field"><span class="lbl">Alíquota do ISS (%)</span><input name="aliquota" inputmode="decimal" value="${esc(String(N.aliquota).replace('.', ','))}" placeholder="a da prefeitura"></label>` : ''}
+        <label class="field"><span class="lbl">Complemento da prefeitura</span><input name="codigoMun" inputmode="numeric" value="${esc(N.codigoMun || '')}" placeholder="000"></label>
         <label class="field"><span class="lbl">Série</span><input name="serie" inputmode="numeric" value="${esc(N.serie)}"></label>
         <label class="field"><span class="lbl">Número inicial da DPS</span><input name="proximo" inputmode="numeric" value="${esc(N.proximo)}" placeholder="1"></label>
         <small class="muted full">Preencha o número inicial só se a clínica já emitiu notas por outro sistema com a mesma série.</small></div></details>
@@ -72,6 +74,24 @@ export function cfNota(){
       <p class="erro-c" id="nf-dados-erro" hidden></p>
       <div class="cf-acoes"><button class="btn pri" type="submit">${ic('check')}Salvar</button></div>
       ${falta.length ? `<p class="muted sm cf-obs" id="nf-falta">Para emitir, falta ${falta.join(', ')}.</p>` : K ? `<p class="cf-obs nf-pronto" id="nf-pronto">${ic('okc')} Pronto para emitir em ${N.ambiente === 'producao' ? 'produção' : 'homologação'}. Use <b>Emitir nota</b> nos recebimentos do Financeiro.</p>` : ''}</form></div>`;
+}
+
+// Resposta da consulta à prefeitura (convênio e código do serviço).
+function resultadoCodigo(N, C){
+  const R = nf.codRes; if (!R) return '';
+  if (R.erro) return `<p class="erro-a" id="nf-cod-res">${esc(R.erro)}</p>`;
+  const amb = R.ambiente === 'producao' ? 'produção' : 'homologação', cid = `${esc(C.cidade)}`;
+  if (!R.convenio?.ativo) return `<p class="erro-a" id="nf-cod-res">A prefeitura de ${cid} não aparece ativa no sistema nacional em ${amb}${R.convenio?.mensagem ? ` (${esc(R.convenio.mensagem)})` : ''}. Enquanto ela não ativar, a nota não sai pelo padrão nacional.</p>`;
+  if (!R.achados?.length) return `<p class="erro-a" id="nf-cod-res">A prefeitura de ${cid} não tem o código ${codigoTxt(R.codigo)} cadastrado em ${amb}. Confira com o seu contador ou com a prefeitura qual código ela usa para este serviço.</p>`;
+  const A = R.achados[0], usar = A.complemento !== '000' && (N.codigoMun || '000') !== A.complemento;
+  return `<p class="nf-pronto" id="nf-cod-res">${ic('okc')} A prefeitura de ${cid} aceita o código <b>${esc(A.codigo)}</b>${A.aliquota != null ? ` (ISS ${String(A.aliquota).replace('.', ',')}%)` : ''} em ${amb}.${usar ? ` A nota precisa levar o complemento <b>${esc(A.complemento)}</b>.` : ''}</p>
+    ${usar ? `<button type="button" class="btn sm" data-nf="usar-comp" data-c="${esc(A.complemento)}">${ic('check')}Usar o complemento ${esc(A.complemento)}</button>` : ''}`;
+}
+async function conferirCodigo(){
+  const N = nf.rasc || configNota(db), ibge = ibgeDaClinica(); if (!ibge || nf.codBusca) return;
+  nf.codBusca = true; nf.codRes = null; app.render(true);
+  const r = await nfseConta('conferir_codigo', { ambiente:N.ambiente, municipio:ibge, codigo:N.codigo });
+  nf.codBusca = false; nf.codRes = { ...r, codigo:N.codigo }; app.render(true);
 }
 
 /* ---------- Financeiro ---------- */
@@ -188,6 +208,8 @@ export function ligarNfse(s, r, t){
     else if (a === 'conferir') conferir(b.dataset.r);
     else if (a === 'imprimir') { const n = notaDe(db, b.dataset.r); if (!n) return; document.getElementById('imp').innerHTML = folhaNota(n); window.print(); }
     else if (a === 'tirar') { nf.tirar = true; app.render(true); }
+    else if (a === 'conferir-codigo') conferirCodigo();
+    else if (a === 'usar-comp') { const e = salvarConfigNota(db, { codigoMun:b.dataset.c }); if (e) { t(e, 'info'); return; } if (nf.rasc) nf.rasc.codigoMun = b.dataset.c; app.save(); app.render(true); t('Complemento da prefeitura salvo', 'ok'); }
     else if (a === 'tirar-n') { nf.tirar = false; app.render(true); }
     else if (a === 'tirar-ok') { nf.tirar = false; nf.ocupado = true; app.render(true);
       nfseConta('tirar_certificado').then(res => { nf.ocupado = false; if (!res.erro) nf.cert = null; app.render(true); t(res.erro || 'Certificado tirado do servidor', res.erro ? 'info' : 'ok'); }); }
@@ -211,7 +233,7 @@ export function ligarNfse(s, r, t){
     (db.config ||= {}).clinica = { ...configDe(db).clinica, doc };
     nf.rasc = null; app.save(); app.render(true); app.toast('Dados da nota fiscal salvos');
   });
-  addEventListener('hashchange', () => { nf.janela = null; nf.erro = ''; nf.rasc = null; nf.tirar = false; });
+  addEventListener('hashchange', () => { nf.codRes = null; nf.janela = null; nf.erro = ''; nf.rasc = null; nf.tirar = false; });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && nf.janela) { nf.janela = null; nf.erro = ''; app.render(true); } });
 }
 export const notaAberta = () => !!nf.janela;

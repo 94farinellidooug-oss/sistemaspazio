@@ -63,7 +63,7 @@ r = await chamar(ponte, { corpo:{ ...pedido, url:'https://exemplo.com/SefinNacio
 r = await chamar(ponte, { corpo:{ ...pedido, url:base + '../outra' } }); ok(r.status === 400, 'não aceita caminho com ..');
 r = await chamar(ponte, { corpo:{ ...pedido, chave:'' } }); ok(r.status === 400, 'sem o certificado, recusa');
 r = await chamar(ponte, { metodo:'GET', corpo:pedido }); ok(r.status === 405, 'só aceita POST');
-ok(BASES.every(b => b.startsWith('https://sefin.') && b.endsWith('.nfse.gov.br/SefinNacional/')), 'endereços reais da Sefin Nacional');
+ok(BASES.every(b => /^https:\/\/(sefin\.(producaorestrita\.)?nfse\.gov\.br\/SefinNacional|adn\.(producaorestrita\.)?nfse\.gov\.br\/parametrizacao)\/$/.test(b)), 'endereços reais da Sefin Nacional e do ADN');
 
 srv.close();
 if (falhas) { console.log(`\n${falhas} falha(s) na ponte da nota fiscal.`); process.exit(1); }
