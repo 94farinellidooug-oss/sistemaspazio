@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import forge from 'node-forge';
 import { SignedXml } from 'xml-crypto';
-import { assinarDps, cifrar, cnpjValido, cpfValido, criarNfse, dataHoraBrasilia, decifrar, gunzipB64, gzipB64, idDps, lerNfse, lerPfx, montarDps } from '../supabase/functions/nfse/index.ts';
+import { assinarDps, cifrar, cnpjValido, cpfValido, criarNfse, dataHoraBrasilia, decifrar, gunzipB64, gzipB64, idDps, lerNfse, lerPfx, montarDps, inicioDoMes } from '../supabase/functions/nfse/index.ts';
 
 let falhas = 0;
 const ok = (c, m) => { console.log(`${c ? 'ok   ' : 'FALHA'} ${m}`); if (!c) falhas++; };
@@ -84,14 +84,15 @@ ok(ruins.erros?.length >= 5 && ruins.erros.some(e => e.includes('CNPJ')) && ruin
 
 // Função completa: banco, login e Receita simulados
 function cenario({ segredo = 'frase-longa-do-servidor-123456', resposta = 'ok' } = {}){
-  const S = { membros:[{ clinica_id:C1, user_id:'u1', perfil:'adm', ativo:true }, { clinica_id:C1, user_id:'u2', perfil:'rec', ativo:true }], certs:[], notas:[], envios:[], resposta };
+  const S = { assinaturas:[], membros:[{ clinica_id:C1, user_id:'u1', perfil:'adm', ativo:true }, { clinica_id:C1, user_id:'u2', perfil:'rec', ativo:true }], certs:[], notas:[], envios:[], resposta };
   const json = (status, j) => new Response(j === undefined ? null : JSON.stringify(j), { status });
-  const filtro = (L, u) => L.filter(x => [...u.searchParams].every(([k, v]) => ['select', 'order', 'limit', 'on_conflict'].includes(k) || String(x[k]) === v.replace(/^(eq|is)\./, '')));
+  const filtro = (L, u) => L.filter(x => [...u.searchParams].every(([k, v]) => ['select', 'order', 'limit', 'on_conflict'].includes(k)
+    || (v.startsWith('in.(') ? v.slice(4, -1).split(',').includes(String(x[k])) : v.startsWith('gte.') ? String(x[k] || new Date().toISOString()) >= v.slice(4) : String(x[k]) === v.replace(/^(eq|is)\./, ''))));
   const f = async (url, op = {}) => {
     const u = new URL(url), corpo = op.body ? JSON.parse(op.body) : undefined;
     if (op.headers.apikey !== 'service') ok(false, 'banco chamado sem a chave do servidor');
     if (u.pathname === '/auth/v1/user') { const t = op.headers.Authorization.replace('Bearer ', ''); return t === 'tk-u1' ? json(200, { id:'u1' }) : t === 'tk-u2' ? json(200, { id:'u2' }) : t === 'tk-u3' ? json(200, { id:'u3' }) : json(401, {}); }
-    const tab = { membros:S.membros, nfse_certificados:S.certs, nfse_notas:S.notas }[u.pathname.replace('/rest/v1/', '')];
+    const tab = { membros:S.membros, nfse_certificados:S.certs, nfse_notas:S.notas, assinaturas:S.assinaturas }[u.pathname.replace('/rest/v1/', '')];
     if (!tab) throw new Error('banco inesperado: ' + url);
     const m = op.method || 'GET';
     if (m === 'GET') { const L = filtro(tab, u); if (u.searchParams.get('order') === 'ndps.desc') L.sort((a, b) => b.ndps - a.ndps); return json(200, L.slice(0, Number(u.searchParams.get('limit')) || 99)); }
@@ -172,6 +173,17 @@ S.param = { convenio:{ status:404, j:{ parametrosConvenio:null, mensagem:'O conv
 const cc2 = await pedir('tk-u1', { acao:'conferir_codigo', clinica:C1, ambiente:'producao', municipio:'4305108', codigo:'040501' });
 ok(!cc2.j.convenio.ativo && cc2.j.convenio.mensagem.includes('não está ativo') && !cc2.j.achados.length && S.envios.at(-1).url.startsWith('https://adn.nfse.gov.br/'), 'prefeitura fora do convênio volta com o motivo');
 ok((await pedir('tk-u1', { acao:'conferir_codigo', clinica:C1, ambiente:'homologacao', municipio:'43', codigo:'0405' })).status === 400, 'cidade ou código incompletos não consultam');
+// Limite de notas por mês em produção (Essencial 30, Profissional 100, Clínica 300); homologação não conta.
+ok(inicioDoMes(new Date('2026-11-01T02:00:00Z')) === '2026-10-01T03:00:00.000Z' && inicioDoMes(new Date('2026-11-08T12:00:00Z')) === '2026-11-01T03:00:00.000Z', 'o mês começa à meia-noite de Brasília');
+S.assinaturas.push({ clinica_id:C1, plano:'essencial' }); S.resposta = 'ok';
+const usoAntes = (await pedir('tk-u1', { acao:'situacao', clinica:C1 })).j.uso;
+ok(usoAntes.plano === 'essencial' && usoAntes.limite === 30 && usoAntes.usadas === S.notas.filter(n => n.ambiente === 'producao').length, 'a situação mostra quantas notas de produção o mês já usou e o limite do pacote');
+for (let i = usoAntes.usadas; i < 30; i++) S.notas.push({ id:'x' + i, clinica_id:C1, ambiente:'producao', serie:'1', ndps:1000 + i, situacao:'emitida', criado_em:new Date().toISOString() });
+const nEnvios = S.envios.length, barrada = await pedir('tk-u1', { acao:'emitir', clinica:C1, ambiente:'producao', nota:notaPedido });
+ok(barrada.status === 403 && barrada.j.erro === 'limite_notas' && barrada.j.msg.includes('30 notas por mês') && S.envios.length === nEnvios, 'no limite do pacote, a nota de produção não é enviada');
+ok((await pedir('tk-u1', { acao:'emitir', clinica:C1, ambiente:'homologacao', nota:notaPedido })).j.situacao === 'emitida', 'em homologação o limite não vale');
+S.assinaturas[0].plano = 'clinica';
+ok((await pedir('tk-u1', { acao:'emitir', clinica:C1, ambiente:'producao', nota:notaPedido })).j.situacao === 'emitida', 'com o pacote Clínica (300 por mês) volta a emitir');
 const semSeg = cenario({ segredo:'' });
 ok((await semSeg.pedir('tk-u1', { acao:'situacao', clinica:C1 })).j.erro === 'sem_segredo', 'sem o segredo NFSE_SEGREDO no servidor, avisa que falta ligar');
 ok(lerNfse('<NFSe><infNFSe Id="NFS' + '1'.repeat(50) + '"><nNFSe>12</nNFSe></infNFSe></NFSe>').numero === '12', 'lê número e chave da nota devolvida');

@@ -7,6 +7,7 @@ import { configDe } from '../dados/config.js';
 import { AMBIENTES, CODIGOS_SERVICO, REGIMES_NOTA, codigoMunicipio, codigoTxt, configNota, cpfDe, cpfConfere, descricaoNota, faltaParaNota, guardarNota, lerMunicipios, nomeCodigo, notaDe, pedidoNota, salvarConfigNota } from '../dados/nfse.js';
 import { cobrancaLigada, nfseConta, souAdm } from './conta.js';
 import { PROF } from './menu.js';
+import { planoDe } from '../dados/planos.js';
 import { brl, esc, fmt } from '../util.js';
 
 // cert: undefined (ainda não perguntado), null (sem certificado) ou { titular, documento, validade }
@@ -27,7 +28,7 @@ const ibgeDaClinica = () => { if (!nf.municipios) { carregarMunicipios(); return
 async function buscarCertificado(){
   if (nf.buscando || nf.cert !== undefined || !cobrancaLigada()) return; nf.buscando = true;
   const r = await nfseConta('situacao'); nf.buscando = false;
-  nf.cert = r.erro ? null : r.certificado; nf.erroServ = r.erro || ''; app.render(true);
+  nf.cert = r.erro ? null : r.certificado; nf.uso = r.uso || null; nf.erroServ = r.erro || ''; app.render(true);
 }
 
 /* ---------- Configurações > Nota fiscal ---------- */
@@ -73,7 +74,8 @@ export function cfNota(){
       <p class="muted sm cf-obs">Cidade da nota: <b>${esc(C.cidade)} - ${esc(C.uf)}</b>${ibge ? ` (IBGE ${ibge})` : ibge === '' ? ' · <span class="erro-a" style="display:inline">não encontrada no IBGE; confira em Dados da clínica</span>' : ''}.</p>
       <p class="erro-c" id="nf-dados-erro" hidden></p>
       <div class="cf-acoes"><button class="btn pri" type="submit">${ic('check')}Salvar</button></div>
-      ${falta.length ? `<p class="muted sm cf-obs" id="nf-falta">Para emitir, falta ${falta.join(', ')}.</p>` : K ? `<p class="cf-obs nf-pronto" id="nf-pronto">${ic('okc')} Pronto para emitir em ${N.ambiente === 'producao' ? 'produção' : 'homologação'}. Use <b>Emitir nota</b> nos recebimentos do Financeiro.</p>` : ''}</form></div>`;
+      ${falta.length ? `<p class="muted sm cf-obs" id="nf-falta">Para emitir, falta ${falta.join(', ')}.</p>` : K ? `<p class="cf-obs nf-pronto" id="nf-pronto">${ic('okc')} Pronto para emitir em ${N.ambiente === 'producao' ? 'produção' : 'homologação'}. Use <b>Emitir nota</b> nos recebimentos do Financeiro.</p>` : ''}
+      ${nf.uso ? `<p class="muted sm cf-obs" id="nf-uso">Notas fiscais de produção neste mês: <b>${nf.uso.usadas} de ${nf.uso.limite}</b> (pacote ${esc(planoDe(nf.uso.plano).nome)}). As de homologação não contam.</p>` : ''}</form></div>`;
 }
 
 // Resposta da consulta à prefeitura (convênio e código do serviço).

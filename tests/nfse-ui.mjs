@@ -84,6 +84,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   const D = await dados(M);
   ok(D.config.nfse.regime === '3' && D.config.nfse.pTotTribSN === '6.5' && D.config.nfse.codigo === '040501' && D.config.clinica.doc === '11222333000181', `${rot}: dados fiscais salvos (regime, tributos, acupuntura 04.05.01, CNPJ)`);
   ok(await tem(M, '#nf-pronto', 'Pronto para emitir em homologação') && await tem(M, '#nf-f-dados', 'IBGE 4305108'), `${rot}: pronto para emitir, com a cidade no código do IBGE`);
+  ok(await tem(M, '#nf-uso', '0 de 100') && await tem(M, '#nf-uso', 'Profissional'), `${rot}: mostra as notas do mês e o limite do pacote`);
   await M.selectOption('#nf-f-dados [name=codigoSel]', 'outro'); await M.waitForTimeout(200);
   ok(await tem(M, '#nf-f-dados [name=codigo]'), `${rot}: "Outro código" abre o campo do código`);
   await M.selectOption('#nf-f-dados [name=codigoSel]', '040501'); await M.waitForTimeout(150);

@@ -102,7 +102,7 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       const N = S.nfse; if (!N) return resp(404, { code:'NOT_FOUND', message:'Requested function was not found' });
       const m = eu_m(corpo.clinica); if (!m) return resp(403, { erro:'sem_acesso', msg:'Você não faz parte desta clínica.' });
       (N.pedidos ||= []).push(corpo); N.notas ||= [];
-      if (corpo.acao === 'situacao') return resp(200, { certificado:N.cert || null });
+      if (corpo.acao === 'situacao') return resp(200, { certificado:N.cert || null, uso:{ plano:'profissional', limite:100, usadas:N.notas.filter(x => x.ambiente === 'producao').length } });
       if (corpo.acao === 'certificado') { if (m.perfil !== 'adm') return resp(403, { erro:'sem_acesso', msg:'Só o administrador da clínica envia o certificado.' });
         if (corpo.senha !== 'certo') return resp(400, { erro:'senha', msg:'A senha do certificado não confere.' });
         N.cert = { titular:'SPAZIO STABILITA LTDA', documento:'11222333000181', validade:new Date(Date.now() + 300 * 864e5).toISOString(), enviadoEm:new Date().toISOString() }; return resp(200, { certificado:N.cert }); }
