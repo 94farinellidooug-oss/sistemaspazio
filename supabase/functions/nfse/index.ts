@@ -360,7 +360,8 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
 const D = globalThis.Deno;
 if (D?.serve) {
   const mtls = async (url, { metodo, corpo }, cert) => {
-    const client = D.createHttpClient({ cert:cert.certPem, key:cert.chavePem, certChain:cert.certPem, privateKey:cert.chavePem });
+    // A Sefin Nacional só aceita HTTP/1.1 (com HTTP/2 responde "endpoint requires HTTP/1.1").
+    const client = D.createHttpClient({ cert:cert.certPem, key:cert.chavePem, certChain:cert.certPem, privateKey:cert.chavePem, http1:true, http2:false });
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 60000);
     try {
       const r = await fetch(url, { method:metodo, headers:{ Accept:'application/json', ...(corpo ? { 'Content-Type':'application/json' } : {}) }, body:corpo, client, signal:ctl.signal });
