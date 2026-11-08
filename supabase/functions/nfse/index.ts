@@ -3,8 +3,9 @@
 // API oficial da Receita (Sefin Nacional), com o certificado digital A1 da própria clínica. Sem intermediário pago.
 //
 // Como publicar: no Supabase, rode antes supabase/005_nfse.sql (SQL Editor). Depois, Edge Functions > Deploy a new
-// function > Via Editor, nome "nfse", cole este arquivo inteiro e clique em Deploy (aqui o "Enforce JWT verification"
-// pode ficar ligado: todo pedido vem do sistema, com login).
+// function > Via Editor, nome "nfse", cole este arquivo inteiro e clique em Deploy. Depois, em Details, desligue
+// "Enforce JWT verification" (ligado, o Supabase barra a consulta prévia do navegador e o sistema mostra "Sem conexão";
+// a função confere o login sozinha).
 // Segredo (Edge Functions > Secrets): NFSE_SEGREDO = uma frase longa qualquer (40 letras ou mais), inventada por
 // quem administra o MUSUBI e guardada só no Supabase. Ela tranca os certificados das clínicas no banco. Se for
 // trocada, cada clínica precisa enviar o certificado de novo. SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY o Supabase
@@ -139,16 +140,32 @@ export function assinarDps(dps, cert, forge){
 // ---------- Certificado A1 (.pfx / .p12) ----------
 // Lê o arquivo com a senha. Devolve { chavePem, certPem (com a cadeia), certB64, titular, documento, inicio, validade }.
 export function lerPfx(pfxB64, senha, forge){
-  let p12;
-  try { p12 = forge.pkcs12.pkcs12FromAsn1(forge.asn1.fromDer(forge.util.decode64(String(pfxB64 || ''))), false, String(senha ?? '')); }
-  catch (e) { throw new Error(/mac|password|senha|invalid/i.test(e.message || '') ? 'senha' : 'arquivo'); }
-  const bolsas = t => (p12.getBags({ bagType:t })[t] || []);
-  const chaveBag = bolsas(forge.pki.oids.pkcs8ShroudedKeyBag)[0] || bolsas(forge.pki.oids.keyBag)[0];
-  const certs = bolsas(forge.pki.oids.certBag).map(b => b.cert).filter(Boolean);
-  if (!chaveBag?.key || !certs.length) throw new Error('arquivo');
-  const chave = chaveBag.key;
-  // O certificado do titular é o que tem a mesma chave pública.
-  const titularCert = certs.find(c => c.publicKey?.n && c.publicKey.n.equals(chave.n)) || certs[0];
+  let der;
+  try { der = forge.util.decode64(String(pfxB64 || '')); forge.asn1.fromDer(der, false); } catch (e) { console.error('pfx', e.message); throw new Error('arquivo'); }
+  // Abre o arquivo com a senha. Alguns emissores gravam o .pfx de um jeito (BER) em que a conferência da senha
+  // pelo código do arquivo (MAC) falha mesmo com a senha certa; nesse caso abre sem o MAC e só aceita se a chave
+  // decifrada combinar com o certificado (com a senha errada, a chave não decifra). Também tenta sem espaços nas pontas.
+  const abrir = (s, semMac) => {
+    const obj = forge.asn1.fromDer(der, false);
+    if (semMac && Array.isArray(obj.value) && obj.value.length > 2) obj.value = obj.value.slice(0, 2);
+    const p12 = forge.pkcs12.pkcs12FromAsn1(obj, false, s);
+    const bolsas = t => (p12.getBags({ bagType:t })[t] || []);
+    const chaveBag = bolsas(forge.pki.oids.pkcs8ShroudedKeyBag)[0] || bolsas(forge.pki.oids.keyBag)[0];
+    const certs = bolsas(forge.pki.oids.certBag).map(b => b.cert).filter(Boolean);
+    if (!chaveBag?.key || !certs.length) throw new Error(chaveBag || certs.length ? 'arquivo' : 'senha');
+    // O certificado do titular é o que tem a mesma chave pública.
+    const titularCert = certs.find(c => c.publicKey?.n && c.publicKey.n.equals(chaveBag.key.n));
+    if (!titularCert) throw new Error(semMac ? 'senha' : 'arquivo');
+    return { chave:chaveBag.key, certs, titularCert };
+  };
+  const senhas = [...new Set([String(senha ?? ''), String(senha ?? '').trim()])];
+  let A = null, ultimo = 'senha';
+  for (const s of senhas) for (const semMac of [false, true]) {
+    if (A) break;
+    try { A = abrir(s, semMac); } catch (e) { console.error('pfx', semMac ? 'sem MAC' : 'com MAC', e.message); ultimo = e.message === 'arquivo' ? 'arquivo' : 'senha'; }
+  }
+  if (!A) throw new Error(ultimo);
+  const { chave, certs, titularCert } = A;
   const cadeia = [titularCert, ...certs.filter(c => c !== titularCert && !(c.subject.hash === c.issuer.hash))];
   const cn = titularCert.subject.getField('CN')?.value || '';
   let documento = (cn.match(/:(\d{14}|\d{11})\s*$/) || [])[1] || '';
@@ -156,9 +173,9 @@ export function lerPfx(pfxB64, senha, forge){
     const alt = titularCert.getExtension('subjectAltName'), bruto = alt?.value || '';
     documento = (bruto.match(/\d{14}/) || [])[0] || '';
   }
-  const der = forge.asn1.toDer(forge.pki.certificateToAsn1(titularCert)).getBytes();
+  const certDer = forge.asn1.toDer(forge.pki.certificateToAsn1(titularCert)).getBytes();
   return {
-    chavePem:forge.pki.privateKeyToPem(chave), certPem:cadeia.map(c => forge.pki.certificateToPem(c)).join(''), certB64:forge.util.encode64(der),
+    chavePem:forge.pki.privateKeyToPem(chave), certPem:cadeia.map(c => forge.pki.certificateToPem(c)).join(''), certB64:forge.util.encode64(certDer),
     titular:cn.replace(/:\d{11,14}\s*$/, '').trim() || cn, documento, inicio:titularCert.validity.notBefore.toISOString(), validade:titularCert.validity.notAfter.toISOString()
   };
 }
@@ -342,14 +359,26 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
 // No Supabase (Deno): conexão com o certificado da clínica e a biblioteca node-forge. Nos testes (node) só as funções acima são usadas.
 const D = globalThis.Deno;
 if (D?.serve) {
-  const forge = (await import('npm:node-forge@1.4.2')).default;
   const mtls = async (url, { metodo, corpo }, cert) => {
-    const client = D.createHttpClient({ cert:cert.certPem, key:cert.chavePem, certChain:cert.certPem, privateKey:cert.chavePem });
+    // A Sefin Nacional só aceita HTTP/1.1 (com HTTP/2 responde "endpoint requires HTTP/1.1").
+    const client = D.createHttpClient({ cert:cert.certPem, key:cert.chavePem, certChain:cert.certPem, privateKey:cert.chavePem, http1:true, http2:false });
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 60000);
     try {
       const r = await fetch(url, { method:metodo, headers:{ Accept:'application/json', ...(corpo ? { 'Content-Type':'application/json' } : {}) }, body:corpo, client, signal:ctl.signal });
       return { status:r.status, texto:await r.text() };
     } finally { clearTimeout(t); client.close(); }
   };
-  D.serve(criarNfse({ env:k => D.env.get(k), forge, mtls }));
+  // A biblioteca só é carregada no primeiro pedido, e qualquer falha (de início ou inesperada) volta como resposta
+  // com CORS: assim o MUSUBI mostra o motivo em vez de "Sem conexão".
+  let tratar = null;
+  D.serve(async req => {
+    if (req.method === 'OPTIONS') return new Response(null, { status:204, headers:CORS });
+    try {
+      if (!tratar) { const forge = (await import('npm:node-forge@1.4.2')).default; tratar = criarNfse({ env:k => D.env.get(k), forge, mtls }); }
+      return await tratar(req);
+    } catch (e) {
+      console.error('nfse', e);
+      return resp(500, { erro:'falha_funcao', msg:'A função nfse falhou ao responder: ' + String(e?.message || e).slice(0, 300) });
+    }
+  });
 }
