@@ -57,6 +57,7 @@ export function cfNota(){
       <div class="form">
         <fieldset class="field full nf-amb"><legend class="lbl">Ambiente</legend><div class="chips">${Object.entries(AMBIENTES).map(([k, l]) => `<label class="chip ${N.ambiente === k ? 'on' : ''}"><input type="radio" name="ambiente" value="${k}" data-nf="campo" ${N.ambiente === k ? 'checked' : ''}> ${l}</label>`).join('')}</div></fieldset>
         <label class="field"><span class="lbl">CNPJ ou CPF da clínica</span><input name="doc" inputmode="numeric" value="${esc(docTxt(N.doc ?? C.doc))}" placeholder="00.000.000/0000-00"></label>
+        <label class="field"><span class="lbl">Inscrição municipal</span><input name="im" value="${esc(N.im || '')}" placeholder="a da prefeitura"></label>
         <label class="field"><span class="lbl">Regime tributário</span><select name="regime" data-nf="campo"><option value="">Escolha</option>${REGIMES_NOTA.map(([k, l]) => `<option value="${k}" ${N.regime === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <label class="field full"><span class="lbl">Serviço (código nacional)</span><select name="codigoSel" data-nf="campo">${CODIGOS_SERVICO.map(([k, l]) => `<option value="${k}" ${N.codigo === k ? 'selected' : ''}>${codigoTxt(k)} · ${l}</option>`).join('')}<option value="outro" ${outro ? 'selected' : ''}>Outro código</option></select></label>
         ${outro ? `<label class="field"><span class="lbl">Código do serviço</span><input name="codigo" inputmode="numeric" value="${esc(codigoTxt(N.codigo))}" placeholder="00.00.00"></label>` : ''}

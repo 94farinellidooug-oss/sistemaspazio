@@ -79,12 +79,13 @@ export const REGIMES = { '1':'Fora do Simples Nacional', '2':'MEI', '3':'Simples
 
 // Confere os dados e monta a DPS (leiaute 1.01). Devolve { erros } ou { id, inf (infDPS canônico), xml }.
 // nota = { ambiente, dhEmi, dCompet, serie, nDPS, cLocEmi,
-//   prestador:{ doc, regime:'1'|'2'|'3', regEspTrib }, tomador?:{ doc, nome, email },
+//   prestador:{ doc, regime:'1'|'2'|'3', regEspTrib, im (inscrição municipal, opcional) }, tomador?:{ doc, nome, email },
 //   servico:{ cTribNac, cTribMun (3 números, código próprio da prefeitura, opcional), descricao, cNBS }, valor (centavos),
 //   tributos:{ pTotTribSN } (Simples ME/EPP) | { fed, est, mun } (fora do Simples) | nada (MEI), aliquota? (ISS %) }
 export function montarDps(n){
   const E = [], P = n.prestador || {}, S = n.servico || {}, T = n.tributos || {};
-  const doc = soDigitos(P.doc), regime = String(P.regime || '');
+  const doc = soDigitos(P.doc), regime = String(P.regime || ''), im = limpo(P.im || '').replace(/[^0-9A-Za-z]/g, '');
+  if (im.length > 15) E.push('A inscrição municipal tem no máximo 15 caracteres.');
   if (!TP_AMB[n.ambiente]) E.push('Escolha homologação ou produção.');
   if (!(doc.length === 14 ? cnpjValido(doc) : cpfValido(doc))) E.push('Confira o CNPJ (ou CPF) da clínica em Configurações.');
   if (!REGIMES[regime]) E.push('Escolha o regime tributário da clínica.');
@@ -123,7 +124,7 @@ export function montarDps(n){
   const corpo = [
     tx('tpAmb', TP_AMB[n.ambiente]), tx('dhEmi', n.dhEmi), tx('verAplic', VER_APLIC), tx('serie', String(Number(n.serie))), tx('nDPS', String(n.nDPS)),
     tx('dCompet', n.dCompet), tx('tpEmit', '1'), tx('finNFSe', '0'), tx('cLocEmi', n.cLocEmi),   // finNFSe 0 = NFS-e regular (leiaute da Reforma Tributária)
-    el('prest', tx(doc.length === 14 ? 'CNPJ' : 'CPF', doc) + el('regTrib', tx('opSimpNac', regime) + tx('regEspTrib', String(P.regEspTrib ?? '0')))),
+    el('prest', tx(doc.length === 14 ? 'CNPJ' : 'CPF', doc) + tx('IM', im) + el('regTrib', tx('opSimpNac', regime) + tx('regEspTrib', String(P.regEspTrib ?? '0')))),
     t ? el('toma', tx(td.length === 14 ? 'CNPJ' : 'CPF', td) + tx('xNome', t.nome.slice(0, 300)) + tx('email', limpo(t.email).slice(0, 80))) : '',
     el('serv', el('locPrest', tx('cLocPrestacao', n.cLocEmi)) + el('cServ', tx('cTribNac', cTribNac) + tx('cTribMun', cTribMun && cTribMun !== '000' ? cTribMun : '') + tx('cNBS', S.cNBS ? soDigitos(S.cNBS) : '') + tx('xDescServ', desc))),
     el('valores', el('vServPrest', tx('vServ', reais(n.valor))) + el('trib',
@@ -331,7 +332,8 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
         const E = errosSefin(r.j);
         if (r.status >= 400 && r.status < 500 && E.length) {
           await banco(`nfse_notas?id=eq.${id}`, { metodo:'PATCH', corpo:{ situacao:'rejeitada', erros:E }, cab:{ Prefer:'return=minimal' } });
-          const dica = E.some(e => ['E0310', 'E0312'].includes(e.codigo)) ? ' Em Configurações > Nota fiscal, toque em "Conferir o código na prefeitura".' : '';
+          const dica = E.some(e => ['E0310', 'E0312'].includes(e.codigo)) ? ' Em Configurações > Nota fiscal, toque em "Conferir o código na prefeitura".'
+            : E.some(e => e.codigo === 'E0099') ? ' A clínica (ou o profissional, se emite por CPF) precisa estar cadastrada como prestadora na prefeitura. Confira a inscrição municipal com a prefeitura ou o contador e preencha em Configurações > Nota fiscal.' : '';
           return erro(422, 'rejeitada', (`A Receita recusou: ${E[0].codigo} ${E[0].descricao}${E[0].complemento ? ' (' + E[0].complemento + ')' : ''}`.trim() + dica), { id, situacao:'rejeitada', erros:E });
         }
         console.error('sefin', r.status, String(r.texto).slice(0, 300));
