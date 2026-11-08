@@ -37,6 +37,11 @@ ok(C.documento === CNPJ && C.titular === 'SPAZIO STABILITA LTDA' && C.chavePem.i
 let e1 = ''; try { lerPfx(A.b64, 'errada', forge); } catch (e) { e1 = e.message; }
 let e2 = ''; try { lerPfx(btoa('nao e certificado'), 'x', forge); } catch (e) { e2 = e.message; }
 ok(e1 === 'senha' && e2 === 'arquivo', 'senha errada e arquivo que não é certificado são avisados');
+ok(lerPfx(A.b64, '  segredo-1 ', forge).documento === CNPJ, 'senha com espaço nas pontas (copiada e colada) também abre');
+// Arquivo cujo código de conferência (MAC) não bate com a senha certa, como sai de alguns emissores: abre pela chave.
+const semMac = (() => { const o = forge.asn1.fromDer(forge.util.decode64(A.b64)); const d = o.value[2].value[0].value[1]; d.value = 'x'.repeat(d.value.length); return forge.util.encode64(forge.asn1.toDer(o).getBytes()); })();
+let e4 = ''; try { lerPfx(semMac, 'errada', forge); } catch (e) { e4 = e.message; }
+ok(lerPfx(semMac, 'segredo-1', forge).documento === CNPJ && e4 === 'senha', 'arquivo com o MAC diferente abre com a senha certa e continua recusando a errada');
 const cof = await cifrar({ chavePem:C.chavePem }, 'frase-longa-do-servidor-123456');
 ok(!cof.cifrado.includes('PRIVATE') && (await decifrar(cof, 'frase-longa-do-servidor-123456')).chavePem === C.chavePem, 'o certificado fica cifrado e só abre com o segredo do servidor');
 let e3 = false; try { await decifrar(cof, 'outra-frase-qualquer-123456789'); } catch (e) { e3 = true; }
