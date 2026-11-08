@@ -31,6 +31,10 @@ export const VER_APLIC = 'MUSUBI 1.0';
 export const ADN_PARAM = { producao:'https://adn.nfse.gov.br/parametrizacao', homologacao:'https://adn.producaorestrita.nfse.gov.br/parametrizacao' };
 // Código completo da parametrização: II.SS.DD.CCC (cTribNac com pontos + complemento municipal).
 export const codigoCompleto = (cTribNac, comp = '000') => soDigitos(cTribNac).replace(/^(\d{2})(\d{2})(\d{2})$/, '$1.$2.$3') + '.' + comp;
+// Notas por mês em produção, por pacote (js/dados/planos.js tem a mesma tabela). Homologação não conta.
+export const LIMITE_NOTAS = { essencial:30, profissional:100, clinica:300 };
+// Começo do mês em Brasília (UTC-3), em ISO.
+export const inicioDoMes = d => { const b = new Date(d.getTime() - 3 * 3600e3); return new Date(Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), 1, 3)).toISOString(); };
 export const SEFIN = { producao:'https://sefin.nfse.gov.br/SefinNacional', homologacao:'https://sefin.producaorestrita.nfse.gov.br/SefinNacional' };
 export const CONSULTA_PUBLICA = 'https://www.nfse.gov.br/consultapublica';
 const TP_AMB = { producao:'1', homologacao:'2' };
@@ -246,6 +250,13 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
     const C = (await banco(`nfse_certificados?select=titular,documento,validade,enviado_em&clinica_id=eq.${clinica}`)) || [];
     return C[0] ? { titular:C[0].titular, documento:C[0].documento, validade:C[0].validade, enviadoEm:C[0].enviado_em } : null;
   };
+  // Notas de produção deste mês e o limite do pacote (sem assinatura conta como Profissional, como no sistema).
+  const uso = async clinica => {
+    const A = (await banco(`assinaturas?select=plano&clinica_id=eq.${clinica}`)) || [];
+    const plano = LIMITE_NOTAS[A[0]?.plano] ? A[0].plano : 'profissional';
+    const L = (await banco(`nfse_notas?select=id&clinica_id=eq.${clinica}&ambiente=eq.producao&situacao=in.(emitida,enviando,cancelada)&criado_em=gte.${encodeURIComponent(inicioDoMes(agora()))}`)) || [];
+    return { plano, limite:LIMITE_NOTAS[plano], usadas:L.length };
+  };
   const certificadoDe = async clinica => {
     const C = (await banco(`nfse_certificados?select=cifrado,iv,documento,validade&clinica_id=eq.${clinica}`)) || [];
     if (!C[0]) return null;
@@ -282,7 +293,7 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
       const adm = M[0].perfil === 'adm';
       if (SEGREDO.length < 20) return erro(503, 'sem_segredo', 'A nota fiscal ainda não foi ligada no servidor (falta o segredo NFSE_SEGREDO).');
 
-      if (acao === 'situacao') return resp(200, { certificado:await situacao(clinica) });
+      if (acao === 'situacao') return resp(200, { certificado:await situacao(clinica), uso:await uso(clinica) });
 
       if (acao === 'certificado') {
         if (!adm) return erro(403, 'sem_acesso', 'Só o administrador da clínica envia o certificado.');
@@ -308,6 +319,10 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
         if (!cert) return erro(400, 'sem_certificado', 'Envie o certificado digital A1 da clínica em Configurações > Nota fiscal.');
         if (new Date(cert.validade) <= agora()) return erro(400, 'vencido', 'O certificado digital da clínica venceu. Envie o novo em Configurações > Nota fiscal.');
         if (cert.documento && soDigitos(n.prestador?.doc) !== cert.documento) return erro(400, 'documento', `O CNPJ/CPF da clínica em Configurações é diferente do certificado (${cert.documento}).`);
+        if (ambiente === 'producao') {
+          const U = await uso(clinica);
+          if (U.usadas >= U.limite) return erro(403, 'limite_notas', `O pacote da clínica emite até ${U.limite} notas por mês, e esse limite já foi usado neste mês. Para emitir mais, troque de pacote em Minha conta.`, { uso:U });
+        }
         // Próximo número da DPS desta clínica, série e ambiente (nunca repete, nem depois de recusa).
         const U = (await banco(`nfse_notas?select=ndps&clinica_id=eq.${clinica}&ambiente=eq.${ambiente}&serie=eq.${serie}&order=ndps.desc&limit=1`)) || [];
         let nDPS = Math.max((U[0]?.ndps || 0) + 1, Number(n.proximo) || 1);

@@ -2965,11 +2965,11 @@ function criarSincronia({ nuvem, clinica, obter, aplicar, aoMudar = () => {}, me
 // o dono do MUSUBI pode dar acesso grátis (com prazo ou sem prazo) pelo Painel do MUSUBI.
 const PLANOS = [
   { k:'essencial', nome:'Essencial', preco:79, resumo:'Para começar a organizar a clínica.',
-    itens:['Agenda', 'Pacientes e prontuário', 'Documentos editáveis', 'WhatsApp com mensagem pronta', 'Financeiro básico'] },
+    itens:['Agenda', 'Pacientes e prontuário', 'Documentos editáveis', 'WhatsApp com mensagem pronta', 'Financeiro básico', 'Nota fiscal (até 30 por mês)'] },
   { k:'profissional', nome:'Profissional', preco:149, resumo:'O MUSUBI completo para quem atende com MTC.', destaque:true,
-    itens:['Tudo do Essencial', 'Avaliação MTC e pentagrama', 'Mapa corporal e pontos indicados', 'Dicas de vasos e estações', 'Evolução comparada', 'Relatórios'] },
+    itens:['Tudo do Essencial', 'Avaliação MTC e pentagrama', 'Mapa corporal e pontos indicados', 'Dicas de vasos e estações', 'Evolução comparada', 'Relatórios', 'Nota fiscal (até 100 por mês)'] },
   { k:'clinica', nome:'Clínica', preco:299, aPartir:true, resumo:'Para equipes com mais de um profissional.',
-    itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até um limite)'] }
+    itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até 300 por mês)'] }
 ];
 // O que cada pacote libera (etapa 10). O Essencial fica sem a parte de MTC (avaliação energética, pentagrama,
 // síntese, mapa corporal, Biblioteca clínica e dicas de vasos e estações) e sem os relatórios. Nada é apagado:
@@ -2984,6 +2984,9 @@ const pacoteDoRecurso = r => PLANOS.find(p => temRecurso(p.k, r)) || PLANOS[1];
 const planoDe = k => PLANOS.find(p => p.k === k) || PLANOS[1];
 const precoTxt = p => `${p.aPartir ? 'a partir de ' : ''}R$ ${p.preco}/mês`;
 const DIAS_TESTE = 7;
+// Notas fiscais por mês em produção (decisão do Maicon em 08/11/2026). As de homologação (teste) não contam.
+// A função nfse do servidor tem a mesma tabela e é ela que barra.
+const LIMITE_NOTAS = { essencial:30, profissional:100, clinica:300 };
 // Pagamento pela InfinitePay (Pix ou cartão): mensal, ou anual com 2 meses grátis (paga 10 meses).
 const PERIODOS_PAG = [['mensal', 'Mensal'], ['anual', 'Anual']];
 const valorPeriodo = (p, periodo) => p.preco * (periodo === 'anual' ? 10 : 1);
@@ -3887,7 +3890,7 @@ const ibgeDaClinica = () => { if (!nf.municipios) { carregarMunicipios(); return
 async function buscarCertificado(){
   if (nf.buscando || nf.cert !== undefined || !cobrancaLigada()) return; nf.buscando = true;
   const r = await nfseConta('situacao'); nf.buscando = false;
-  nf.cert = r.erro ? null : r.certificado; nf.erroServ = r.erro || ''; app.render(true);
+  nf.cert = r.erro ? null : r.certificado; nf.uso = r.uso || null; nf.erroServ = r.erro || ''; app.render(true);
 }
 
 /* ---------- Configurações > Nota fiscal ---------- */
@@ -3934,7 +3937,8 @@ function cfNota(){
       <p class="muted sm cf-obs">Cidade da nota: <b>${esc(C.cidade)} - ${esc(C.uf)}</b>${ibge ? ` (IBGE ${ibge})` : ibge === '' ? ' · <span class="erro-a" style="display:inline">não encontrada no IBGE; confira em Dados da clínica</span>' : ''}.</p>
       <p class="erro-c" id="nf-dados-erro" hidden></p>
       <div class="cf-acoes"><button class="btn pri" type="submit">${ic('check')}Salvar</button></div>
-      ${falta.length ? `<p class="muted sm cf-obs" id="nf-falta">Para emitir, falta ${falta.join(', ')}.</p>` : K ? `<p class="cf-obs nf-pronto" id="nf-pronto">${ic('okc')} Pronto para emitir em ${N.ambiente === 'producao' ? 'produção' : 'homologação'}. Use <b>Emitir nota</b> nos recebimentos do Financeiro.</p>` : ''}</form></div>`;
+      ${falta.length ? `<p class="muted sm cf-obs" id="nf-falta">Para emitir, falta ${falta.join(', ')}.</p>` : K ? `<p class="cf-obs nf-pronto" id="nf-pronto">${ic('okc')} Pronto para emitir em ${N.ambiente === 'producao' ? 'produção' : 'homologação'}. Use <b>Emitir nota</b> nos recebimentos do Financeiro.</p>` : ''}
+      ${nf.uso ? `<p class="muted sm cf-obs" id="nf-uso">Notas fiscais de produção neste mês: <b>${nf.uso.usadas} de ${nf.uso.limite}</b> (pacote ${esc(planoDe(nf.uso.plano).nome)}). As de homologação não contam.</p>` : ''}</form></div>`;
 }
 
 // Resposta da consulta à prefeitura (convênio e código do serviço).

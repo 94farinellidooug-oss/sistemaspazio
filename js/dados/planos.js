@@ -3,11 +3,11 @@
 // o dono do MUSUBI pode dar acesso grátis (com prazo ou sem prazo) pelo Painel do MUSUBI.
 export const PLANOS = [
   { k:'essencial', nome:'Essencial', preco:79, resumo:'Para começar a organizar a clínica.',
-    itens:['Agenda', 'Pacientes e prontuário', 'Documentos editáveis', 'WhatsApp com mensagem pronta', 'Financeiro básico'] },
+    itens:['Agenda', 'Pacientes e prontuário', 'Documentos editáveis', 'WhatsApp com mensagem pronta', 'Financeiro básico', 'Nota fiscal (até 30 por mês)'] },
   { k:'profissional', nome:'Profissional', preco:149, resumo:'O MUSUBI completo para quem atende com MTC.', destaque:true,
-    itens:['Tudo do Essencial', 'Avaliação MTC e pentagrama', 'Mapa corporal e pontos indicados', 'Dicas de vasos e estações', 'Evolução comparada', 'Relatórios'] },
+    itens:['Tudo do Essencial', 'Avaliação MTC e pentagrama', 'Mapa corporal e pontos indicados', 'Dicas de vasos e estações', 'Evolução comparada', 'Relatórios', 'Nota fiscal (até 100 por mês)'] },
   { k:'clinica', nome:'Clínica', preco:299, aPartir:true, resumo:'Para equipes com mais de um profissional.',
-    itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até um limite)'] }
+    itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até 300 por mês)'] }
 ];
 // O que cada pacote libera (etapa 10). O Essencial fica sem a parte de MTC (avaliação energética, pentagrama,
 // síntese, mapa corporal, Biblioteca clínica e dicas de vasos e estações) e sem os relatórios. Nada é apagado:
@@ -22,6 +22,9 @@ export const pacoteDoRecurso = r => PLANOS.find(p => temRecurso(p.k, r)) || PLAN
 export const planoDe = k => PLANOS.find(p => p.k === k) || PLANOS[1];
 export const precoTxt = p => `${p.aPartir ? 'a partir de ' : ''}R$ ${p.preco}/mês`;
 export const DIAS_TESTE = 7;
+// Notas fiscais por mês em produção (decisão do Maicon em 08/11/2026). As de homologação (teste) não contam.
+// A função nfse do servidor tem a mesma tabela e é ela que barra.
+export const LIMITE_NOTAS = { essencial:30, profissional:100, clinica:300 };
 // Pagamento pela InfinitePay (Pix ou cartão): mensal, ou anual com 2 meses grátis (paga 10 meses).
 export const PERIODOS_PAG = [['mensal', 'Mensal'], ['anual', 'Anual']];
 export const valorPeriodo = (p, periodo) => p.preco * (periodo === 'anual' ? 10 : 1);
