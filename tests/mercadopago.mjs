@@ -27,7 +27,7 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
         const c = eq(u, 'clinica_id'), id = eq(u, 'cartao_id');
         return json(200, (c && S.assin.clinica_id === c) || (id && S.assin.cartao_id === id) ? [S.assin] : []);
       }
-      if (u.pathname === '/rest/v1/aceites' && op.method === 'POST') { S.aceites.push(corpo); return json(201); }
+      if (u.pathname === '/rest/v1/aceites' && op.method === 'POST') { if (S.semColunasAceite && 'ip' in corpo) return json(400, { code:'PGRST204', message:"Could not find the 'agente' column" }); S.aceites.push(corpo); return json(201); }
       if (u.pathname === '/rest/v1/pagamentos' && u.searchParams.get('meio')) return json(200, S.pagamentos.filter(p => p.meio === eq(u, 'meio') && p.situacao === eq(u, 'situacao')));
       if (u.pathname === '/rest/v1/pagamentos' && op.method === 'POST') { S.pagamentos.push({ ...corpo, situacao:'aberto' }); return json(201); }
       if (u.pathname === '/rest/v1/pagamentos') return json(200, S.pagamentos.filter(p => p.order_nsu === eq(u, 'order_nsu')));
@@ -95,9 +95,14 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
 { const { S, pedir } = cenario();
   let r = await pedir({ acao:'assinar', clinica:C1, plano:'profissional', periodo:'mensal', email:'a@b.com' }, 'tk-u1');
   ok(r.status === 400 && (await r.json()).erro === 'aceite' && !S.criadas.length, 'sem aceitar o contrato não assina no cartão');
-  r = await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal', email:'a@b.com' }, 'tk-u1');
+  r = await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal', email:'a@b.com' }, 'tk-u1', '', { 'x-forwarded-for':'200.1.2.3, 10.0.0.1', 'user-agent':'Navegador de teste' });
+  ok(S.aceites[0]?.ip === '200.1.2.3' && S.aceites[0].agente === 'Navegador de teste', 'o aceite guarda o endereço de internet e o navegador');
   ok(r.status === 200 && S.aceites.length === 1 && S.aceites[0].meio === 'mercadopago' && S.aceites[0].versao === '2026-11-11' && S.aceites[0].plano === 'profissional', 'aceite registrado na assinatura no cartão');
   ok(S.assin.cartao_compromisso_ate === null && S.assin.cartao_inicio, 'mensal não tem compromisso de 12 meses');
+}
+{ const { S, pedir } = cenario(); S.semColunasAceite = true;
+  const r = await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal', email:'a@b.com' }, 'tk-u1');
+  ok(r.status === 200 && S.aceites.length === 1 && !('ip' in S.aceites[0]), 'banco sem o 012: o aceite é gravado mesmo assim (sem o IP)');
 }
 // Anual com pagamento mensal: 15% de desconto, 12 meses, multa justa ao cancelar antes
 { const { S, pedir } = cenario();
@@ -125,6 +130,13 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
 { const c = cicloFidelidade('2026-01-10T12:00:00.000Z', Date.parse('2027-03-01T00:00:00Z'));
   ok(c.ini === '2027-01-10T12:00:00.000Z' && c.fim === '2028-01-10T12:00:00.000Z', 'passados os 12 meses, renova por mais 12 (novo ciclo de compromisso)');
   ok(cicloFidelidade('2027-01-10T12:00:00.000Z', Date.parse('2026-06-01T00:00:00Z')).fim === '2027-01-10T12:00:00.000Z' && cicloFidelidade(null) === null, 'dentro dos 12 meses o ciclo é o primeiro');
+}
+{ const { S, pedir } = cenario();
+  await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'essencial', periodo:'anual12', email:'a@b.com' }, 'tk-u1');
+  S.assin.cartao_situacao = 'ativa'; S.assin.cartao_compromisso_ate = new Date(Date.now() + 20 * DIA).toISOString();
+  S.pagamentos.push(...Array.from({ length:11 }, (_, i) => ({ order_nsu:'MPAx' + i, meio:'mercadopago', situacao:'pago' })));
+  const j = await (await pedir({ acao:'cancelar_cartao', clinica:C1 }, 'tk-u1')).json();
+  ok(j.situacao === 'cancelada' && !j.confirmar && S.assin.cartao_multa === 0, 'nos últimos 30 dias do ciclo, cancelar é não renovar: sem multa');
 }
 // Dono do MUSUBI encerra o cartão de uma clínica que desistiu (antes de excluir)
 { const { S, pedir } = cenario();

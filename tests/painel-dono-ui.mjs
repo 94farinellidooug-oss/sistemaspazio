@@ -34,6 +34,7 @@ const entrar = async (p, email, senha) => { await p.fill('#acesso [name=email]',
 const ir = async (p, h) => { await p.evaluate(x => { location.hash = x; }, h); await p.waitForTimeout(200); };
 
 for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/spazio.html']]) {
+  delete S.forn;
   S.usuarios = { 'maicon@x.com':{ id:'u1', senha:'segredo123', nome:'Maicon' }, 'ana@y.com':{ id:'u2', senha:'outrasenha', nome:'Ana' } };
   S.clinicas.length = 0; S.dados = {}; S.interessados.length = 0; S.donos = ['u1']; S.pagamentos = []; S.cobranca = false; S.mp = null; S.excluidas = []; S.encerrados = []; S.rel = {};
   // Ana cria a clínica escolhendo o Essencial
@@ -143,6 +144,21 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await clicar(M, '[data-pd=aba][data-k=pagamentos]');
   ok(await M.locator('#pd-pag .pd-g-l').count() === 2 && await tem(M, '#pd-pag .pd-g-l', 'Clínica Sol') && await tem(M, '#pd-pag', 'R$ 790,00') && await tem(M, '#pd-pag .pd-g-l', 'Não concluído'), `${rot}: painel lista os pagamentos de todas as clínicas`);
   ok(await tem(M, '#pd-pag [data-pd=teste]', 'Testar pagamento (R$ 1,00)'), `${rot}: dono vê o botão de pagamento de teste`);
+  // Dados de quem vende, só no contrato da tela de assinatura (013_fornecedor.sql)
+  ok(await tem(M, '#pd-pag .pd-forn[open] .pill', 'Falta preencher'), `${rot}: avisa que faltam os dados do contrato`);
+  await M.fill('#pd-forn [name=nome]', 'Fulano de Tal'); await M.fill('#pd-forn [name=documento]', '123'); await M.fill('#pd-forn [name=endereco]', 'Rua das Flores, 10, Centro, Caxias do Sul - RS');
+  await clicar(M, '#pd-forn [type=submit]'); await M.waitForTimeout(150);
+  ok(!S.forn && await tem(M, '#toast', 'CPF (11 números)'), `${rot}: CPF incompleto não é salvo`);
+  await M.fill('#pd-forn [name=documento]', '111.222.333-44'); await clicar(M, '#pd-forn [type=submit]'); await M.waitForTimeout(200);
+  ok(S.forn?.documento === '111.222.333-44' && await tem(M, '#pd-pag .pd-forn .pill', 'Preenchido'), `${rot}: dono salva nome, CPF e endereço do contrato`);
+  if (url === 'index.html') {
+    await clicar(M, '#pd-pag .pd-forn summary');
+    const [jan] = await Promise.all([M.waitForEvent('popup'), clicar(M, '#pd-forn [data-contrato]')]);
+    await jan.waitForURL(/^blob:/); await jan.waitForLoadState();
+    const txt = await jan.locator('main').innerText();
+    ok(txt.includes('inscrito no CPF sob o nº 111.222.333-44') && txt.includes('Rua das Flores, 10') && txt.includes('Fulano de Tal') && await jan.locator('#contrato-baixar[download]').count() === 1, `${rot}: o contrato abre com os dados de quem vende e o botão de baixar`);
+    await jan.close();
+  }
   const antes = S.pagamentos.length;
   await Promise.all([M.waitForURL(/checkout\.infinitepay\.io/, { timeout:5000 }).catch(() => {}), clicar(M, '#pd-pag [data-pd=teste]')]);
   ok(S.pagamentos.length === antes + 1 && S.pagamentos[0].valor === 100 && S.pagamentos[0].periodo === 'mensal' && /checkout\.infinitepay\.io/.test(M.url()), `${rot}: teste abre o pagamento de R$ 1,00 na InfinitePay`);

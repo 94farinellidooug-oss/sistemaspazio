@@ -1675,6 +1675,9 @@ body.com-acesso{overflow:hidden}
 .pd-nota{display:flex;gap:6px;align-items:flex-start;font-size:.82rem;margin-top:2px;overflow-wrap:anywhere}
 .pd-notas{margin:4px 0 10px;padding-left:18px;font-size:.84rem;display:grid;gap:4px;overflow-wrap:anywhere}
 .pd-anot textarea{width:100%}
+.pd-forn{margin:14px 0;border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px}
+.pd-forn summary{cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pd-forn .pd-g{margin:10px 0 0;width:100%}
 </style>
 
 
@@ -3038,6 +3041,10 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     relacionamento:async () => { try { return (await rest('relacionamento_musubi?select=ref,notas,retornar_em,atualizado_em')) || []; }
       catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
     salvarRelacionamento:async (ref, { notas, retornar_em }) => rest('relacionamento_musubi?on_conflict=ref', { metodo:'POST', corpo:{ ref, notas, retornar_em:retornar_em || null, atualizado_em:new Date().toISOString(), atualizado_por:sessao.user.id }, cab:{ Prefer:'resolution=merge-duplicates,return=minimal' } }),
+    // Quem vende o MUSUBI, para o Contrato de assinatura (supabase/013_fornecedor.sql). {} se vazio; null quando ainda não há a tabela.
+    fornecedor:async () => { try { return (await rest('musubi_fornecedor?select=nome,documento,endereco&id=eq.1'))?.[0] || {}; }
+      catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    salvarFornecedor:async ({ nome, documento, endereco }) => rest('musubi_fornecedor?on_conflict=id', { metodo:'POST', corpo:{ id:1, nome:nome.trim(), documento:documento.trim(), endereco:endereco.trim(), atualizado_em:new Date().toISOString() }, cab:{ Prefer:'resolution=merge-duplicates,return=minimal' } }),
     estenderTeste:async (clinica, dias) => rest('rpc/estender_teste', { metodo:'POST', corpo:{ p_clinica:clinica, p_dias:dias } }),
     interessados:async () => (await rest('interessados?select=id,nome,whats,situacao,criado_em&order=criado_em.desc')) || [],
     mudarInteressado:async (id, situacao) => rest(`interessados?id=eq.${id}`, { metodo:'PATCH', corpo:{ situacao }, cab:{ Prefer:'return=minimal' } }),
@@ -3314,8 +3321,11 @@ const pagarConta = (plano, periodo, teste = false) => tentarC(async () => { cons
 const reaisC = c => ((c || 0) / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 const diaC = d => new Date(d).toLocaleDateString('pt-BR');
 // Aviso 7 dias antes de cada cobrança no cartão.
-const avisoCobranca = c => { if (c?.situacao !== 'ativa' || !c.proxima) return ''; const falta = new Date(c.proxima).getTime() - Date.now();
-  return falta > 0 && falta <= 7 * 864e5 ? `Aviso: a assinatura do MUSUBI será cobrada no cartão em ${diaC(c.proxima)}, no valor de ${reaisC(c.valor)}.` : ''; };
+// No anual com pagamento mensal, também avisa 30 dias antes do fim de cada ciclo de 12 meses (cláusula 3 do contrato).
+const avisoCobranca = c => { if (!['ativa', 'pausada'].includes(c?.situacao)) return '';
+  const falta = c.proxima ? new Date(c.proxima).getTime() - Date.now() : 0, fim = c.periodo === 'anual12' && c.compromisso ? new Date(c.compromisso).getTime() - Date.now() : 0;
+  return [c.situacao === 'ativa' && falta > 0 && falta <= 7 * 864e5 ? `Aviso: a assinatura do MUSUBI será cobrada no cartão em ${diaC(c.proxima)}, no valor de ${reaisC(c.valor)}.` : '',
+    fim > 0 && fim <= 30 * 864e5 ? `O ciclo de 12 meses do anual com pagamento mensal termina em ${diaC(c.compromisso)}. Se não cancelar até essa data, ele renova por mais 12 meses com o mesmo desconto; cancelando antes, não há multa.` : ''].filter(Boolean).join(' '); };
 const cartaoConta = () => conta.modo === 'nuvem' ? conta.cartao : null;
 const assinarCartaoConta = async (plano, periodo, email) => { try { const r = await conta.nuvem.assinarCartao(conta.clinica.id, plano, periodo, email); location.href = r.url; return ''; }
   catch (e) { return e.codigo === 'acao' || (e.status === 404 && !e.corpo) ? 'A assinatura no cartão ainda não foi ligada no servidor (falta atualizar a função cobranca).' : e.message || 'Não foi possível agora. Tente de novo.'; } };
@@ -3369,7 +3379,34 @@ const clinicaNoServidor = D => conta.modo === 'nuvem' && conta.clinica?.id ? ten
 /* ---------- Tela de acesso ---------- */
 const escolherPlano = rot => `<div class="acesso-opc acesso-plano" role="radiogroup" aria-label="Pacote"><p><b>${rot}</b></p>${PLANOS.map(p => `<label class="${conta.plano === p.k ? 'on' : ''}"><input type="radio" name="plano" value="${p.k}" data-ac="plano" ${conta.plano === p.k ? 'checked' : ''}><span><b>${p.nome} <span class="acesso-preco">${precoTxt(p)}</span></b><small>${p.resumo}</small></span></label>`).join('')}</div>`;
 // Aceite do Contrato de assinatura (obrigatório para pagar ou assinar; o servidor registra quem, quando e a versão).
-const TEXTO_ACEITE = 'Li e concordo com o <a class="lnk" href="inicio/contrato.html" target="_blank" rel="noopener">Contrato de assinatura</a> e os <a class="lnk" href="inicio/termos.html" target="_blank" rel="noopener">Termos de uso</a>.';
+const TEXTO_ACEITE = 'Li e concordo com o <a class="lnk" href="inicio/contrato.html" target="_blank" rel="noopener" data-contrato>Contrato de assinatura</a> e os <a class="lnk" href="inicio/termos.html" target="_blank" rel="noopener">Termos de uso</a>.';
+// O contrato abre já com o nome, o CPF ou CNPJ e o endereço de quem vende (supabase/013_fornecedor.sql), só para quem está
+// assinando: esses dados não ficam no código nem na página pública. Dá para imprimir, salvar em PDF ou baixar.
+const docFornecedor = d => { const n = String(d || '').replace(/\D/g, ''); return n.length === 14 ? 'CNPJ' : 'CPF'; };
+function montarContrato(html, f, base){
+  let s = html.replace(/<head>/i, `<head><base href="${base}">`);
+  if (f?.documento) {
+    if (f.nome) s = s.replace(/<span data-f="nome">[^<]*<\/span>/, `<span data-f="nome">${esc(f.nome)}</span>`);
+    s = s.replace(/<span data-f="doc">[^<]*<\/span>/, `<span data-f="doc">inscrito no ${docFornecedor(f.documento)} sob o nº ${esc(f.documento)}${f.endereco ? `, com endereço em ${esc(f.endereco)}` : ''}</span>`);
+  }
+  const barra = `<style>.contrato-acoes{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 24px}@media print{.contrato-acoes,.topo,.rodape{display:none!important}}</style>
+  <div class="contrato-acoes"><button class="btn" type="button" onclick="print()">Imprimir ou salvar em PDF</button><a class="btn linha" id="contrato-baixar" download="Contrato de assinatura MUSUBI.html">Baixar o contrato</a></div>
+  <script>document.getElementById('contrato-baixar').href=location.href;<\/script>`;
+  return s.replace(/(<main class="legal"><div class="caixa estreita">)/, `$1${barra}`);
+}
+const abrirContrato = async () => {
+  const w = window.open('', '_blank'), base = new URL('inicio/', location.href).href;
+  try {
+    const [html, f] = await Promise.all([fetch(base + 'contrato.html').then(r => { if (!r.ok) throw new Error('contrato'); return r.text(); }),
+      conta.modo === 'nuvem' && conta.nuvem ? conta.nuvem.fornecedor().catch(() => null) : null]);
+    const url = URL.createObjectURL(new Blob([montarContrato(html, f, base)], { type:'text/html' }));
+    if (w) w.location.href = url; else location.href = url;
+  } catch (e) { if (w) w.location.href = base + 'contrato.html'; }
+}
+if (typeof document !== 'undefined') document.addEventListener('click', ev => {
+  const a = ev.target.closest?.('a[data-contrato]'); if (!a || ev.ctrlKey || ev.metaKey) return;
+  ev.preventDefault(); abrirContrato();
+});
 const FALTA_ACEITE = 'Para continuar, marque que leu e concorda com o Contrato de assinatura.';
 const marcarAceite = () => `<label class="aceite-c"><input type="checkbox" name="aceite" data-ac="aceite" ${conta.aceite ? 'checked' : ''}><span>${TEXTO_ACEITE}</span></label>`;
 const escolherPeriodo = () => `<div class="acesso-opc acesso-periodo" role="radiogroup" aria-label="Período">${PERIODOS_PAG.map(([k, l]) => `<label class="${conta.periodo === k ? 'on' : ''}"><input type="radio" name="periodo" value="${k}" data-ac="periodo" ${conta.periodo === k ? 'checked' : ''}><span><b>${l} <span class="acesso-preco">${precoPeriodoTxt(planoDe(conta.plano), k)}</span></b>${k === 'anual' ? '<small>2 meses grátis</small>' : k === 'anual12' ? '<small>15% de desconto, 12 meses de compromisso, só no cartão</small>' : ''}</span></label>`).join('')}</div>`;
@@ -6249,7 +6286,7 @@ const DICAS_VENDA = [
 // lista os interessados da página de apresentação e os pagamentos feitos pela InfinitePay.
 // Excluir clínica (009_excluir_clinica.sql): para quem desistiu; cancela o cartão antes e guarda só o resumo comercial.
 
-const pd = { aba:'hoje', rel:null, filtro:'todos', buscaR:'', anotar:null, salvando:false, lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'', excluir:null, excl:null, excluindo:false };
+const pd = { aba:'hoje', rel:null, filtro:'todos', buscaR:'', anotar:null, salvando:false, lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'', excluir:null, excl:null, excluindo:false, forn:undefined };
 const CARTAO_VIVO = ['ativa', 'pausada', 'pendente'];
 let pdApp = { render:() => {}, toast:() => {} };
 const SITU_INT = [['novo', 'Novo'], ['chamei', 'Já chamei'], ['cliente', 'Virou cliente'], ['nao', 'Não quis']];
@@ -6261,8 +6298,8 @@ const ehDono = () => conta.modo === 'nuvem' && conta.dono;
 
 async function carregarPd(){
   if (pd.carregando) return; pd.carregando = true; pd.erro = ''; pdApp.render(true);
-  try { const [L, I, G, X, R] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => []), conta.nuvem.clinicasExcluidas().catch(() => null), conta.nuvem.relacionamento().catch(() => null)]);
-    pd.lista = L; pd.inter = I; pd.pags = G; pd.excl = X; pd.rel = R ? Object.fromEntries(R.map(r => [r.ref, r])) : null; }
+  try { const [L, I, G, X, R, F] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => []), conta.nuvem.clinicasExcluidas().catch(() => null), conta.nuvem.relacionamento().catch(() => null), conta.nuvem.fornecedor().catch(() => null)]);
+    pd.lista = L; pd.inter = I; pd.pags = G; pd.excl = X; pd.rel = R ? Object.fromEntries(R.map(r => [r.ref, r])) : null; pd.forn = F; }
   catch (e) { pd.erro = e.message; }
   pd.carregando = false; pdApp.render(true);
 }
@@ -6388,6 +6425,26 @@ function pdAnotar(k){
     ${(k.notas || []).length ? `<ul class="pd-notas">${k.notas.slice(0, 5).map(n => `<li><small class="muted">${dataBR(n.em)}</small> ${esc(n.texto)}</li>`).join('')}</ul>` : ''}
     <div class="cf-acoes"><button class="btn pri" type="submit" ${pd.salvando ? 'disabled' : ''}>${ic('check')}${pd.salvando ? 'Salvando…' : 'Salvar'}</button><button class="btn ghost" type="button" data-pd="anotar-fechar">Cancelar</button></div></form>`;
 }
+// Quem vende o MUSUBI (013_fornecedor.sql): aparece só no contrato da tela de assinatura, nunca na página pública.
+function pdFornecedor(){
+  const f = pd.forn || {}, falta = !f.documento;
+  return `<details class="pd-forn" ${falta ? 'open' : ''}><summary><b>Seus dados no contrato</b> <span class="pill ${falta ? 'warn' : 'ok'}">${falta ? 'Falta preencher' : 'Preenchido'}</span></summary>
+    <form class="pd-g" id="pd-forn" novalidate><p class="muted sm cf-obs">A lei pede a identificação de quem vende. Estes dados aparecem só no contrato que a pessoa vê ao assinar (com botão para baixar), não na página pública.</p>
+      <div class="form"><label class="field"><span class="lbl">Nome completo</span><input name="nome" maxlength="160" value="${esc(f.nome || '')}" autocomplete="name"></label>
+      <label class="field"><span class="lbl">CPF ou CNPJ</span><input name="documento" maxlength="30" inputmode="numeric" value="${esc(f.documento || '')}"></label>
+      <label class="field"><span class="lbl">Endereço completo</span><input name="endereco" maxlength="300" value="${esc(f.endereco || '')}" placeholder="Rua, número, bairro, cidade - UF, CEP"></label></div>
+      ${pd.forn === null ? '<p class="muted sm cf-obs">Falta rodar o 013_fornecedor.sql no Supabase.</p>' : ''}
+      <div class="cf-acoes"><button class="btn pri" type="submit" ${pd.salvando || pd.forn === null ? 'disabled' : ''}>${ic('check')}Salvar</button><a class="btn ghost" href="inicio/contrato.html" target="_blank" rel="noopener" data-contrato>Ver o contrato</a></div></form></details>`;
+}
+async function salvarFornecedorPd(f){
+  const d = { nome:f.elements.nome.value, documento:f.elements.documento.value, endereco:f.elements.endereco.value };
+  const n = d.documento.replace(/\D/g, '');
+  if (!d.nome.trim() || (n.length !== 11 && n.length !== 14) || d.endereco.trim().length < 10) { pdApp.toast('Preencha o nome, um CPF (11 números) ou CNPJ (14) e o endereço completo.', 'info'); return; }
+  pd.salvando = true;
+  try { await conta.nuvem.salvarFornecedor(d); pd.forn = { ...d }; pdApp.toast('Dados do contrato salvos'); }
+  catch (e) { pdApp.toast(e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205' ? 'Falta rodar o 013_fornecedor.sql no Supabase.' : e.message, 'info'); }
+  pd.salvando = false; pdApp.render(true);
+}
 async function salvarAnotacao(f){
   const ref = pd.anotar, atual = pd.rel?.[ref] || {}, texto = f.elements.texto.value.trim(), retornar = f.elements.retornar.value;
   if (!texto && retornar === (atual.retornar_em || '')) { pd.anotar = null; pdApp.render(true); return; }
@@ -6411,6 +6468,7 @@ function pdPagamentos(L, G){
     <div class="list">${G.map(g => `<div class="row pd-g-l"><span class="tico sm ${g.situacao === 'pago' ? 'acc' : ''}">${ic('dinheiro')}</span>
       <div class="grow"><b>${esc(nomeC(g.clinica_id))}</b><small class="muted">${g.valor === 100 ? 'Teste de pagamento' : `${esc(planoDe(g.plano).nome)} · ${g.periodo === 'anual' ? 'anual' : 'mensal'}`} · ${dataBR(g.pago_em || g.criado_em)}${g.forma ? ' · ' + (FORMA_PD[g.forma] || esc(g.forma)) : ''}</small></div>
       <b>${reaisPd(g.valor)}</b><span class="pill ${g.situacao === 'pago' ? 'ok' : ''}">${g.situacao === 'pago' ? 'Pago' : 'Não concluído'}</span>${g.recibo ? `<a class="btn sm ghost" href="${esc(g.recibo)}" target="_blank" rel="noopener">Recibo</a>` : ''}</div>`).join('') || '<p class="muted sm">Nenhum pagamento ainda.</p>'}</div>
+    ${pdFornecedor()}
     <p class="muted sm cf-obs">Pacotes: ${PLANOS.map(p => `<b>${p.nome}</b> (${precoTxt(p)})`).join(', ')}. O pagamento confirmado pela InfinitePay libera o acesso da clínica sozinho. "Não concluído" é quem abriu o pagamento e não terminou.</p></div>`;
 }
 
@@ -6445,6 +6503,7 @@ function ligarPainelDono(r, t){
     pdApp.render(true); const i = document.querySelector(`[data-pd="${k}"]`); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } });
   document.addEventListener('submit', ev => {
     if (ev.target.id === 'pd-x') { ev.preventDefault(); excluirPd(ev.target); return; }
+    if (ev.target.id === 'pd-forn') { ev.preventDefault(); if (!pd.salvando) salvarFornecedorPd(ev.target); return; }
     if (ev.target.id === 'pd-anot') { ev.preventDefault(); if (!pd.salvando) salvarAnotacao(ev.target); return; }
     if (ev.target.id !== 'pd-g') return; ev.preventDefault();
     const f = ev.target, prazo = f.elements.prazo.value, c = pd.gratis, nome = pd.lista?.find(x => x.id === c)?.nome || '';

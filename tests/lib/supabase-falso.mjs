@@ -57,6 +57,12 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       if (op.method === 'POST') { S.rel[corpo.ref] = { ...corpo }; return resp(201); }
       return resp(200, Object.values(S.rel));
     }
+    // Quem vende o MUSUBI (013): todos leem, só o dono grava. S.semForn = servidor sem o 013.
+    if (u.pathname === '/rest/v1/musubi_fornecedor') {
+      if (S.semForn) return resp(404, { code:'PGRST205', message:'Could not find the table' });
+      if (op.method === 'POST') { if (!dono()) return resp(403, { code:'42501', message:'permission denied' }); S.forn = { nome:corpo.nome, documento:corpo.documento, endereco:corpo.endereco }; return resp(201); }
+      return resp(200, S.forn ? [S.forn] : []);
+    }
     if (u.pathname === '/rest/v1/clinicas_excluidas') return S.semExcluir ? resp(404, { code:'PGRST205', message:'Could not find the table' }) : resp(200, dono() ? S.excluidas || [] : []);
     if (u.pathname === '/rest/v1/interessados' && op.method === 'GET') return resp(200, dono() ? S.interessados.map((x, i) => ({ id:x.id || 'i' + i, situacao:'novo', criado_em:'2026-11-06T12:00:00Z', ...x })) : []);
     if (u.pathname === '/rest/v1/interessados' && op.method === 'PATCH') { const id = u.searchParams.get('id').replace('eq.', ''); S.interessados.forEach((x, i) => { if ((x.id || 'i' + i) === id && dono()) x.situacao = corpo.situacao; }); return resp(204); }

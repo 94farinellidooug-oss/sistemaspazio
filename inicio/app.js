@@ -48,7 +48,7 @@ const PERGUNTAS = [
   ['É possível usar com uma equipe?', 'Sim. Cada profissional tem o seu próprio acesso, e todos os registros identificam o autor, a data e a hora.'],
   ['O sistema faz diagnóstico?', 'Não. As hipóteses e sugestões apoiam o raciocínio clínico; a decisão é sempre do profissional.'],
   ['O sistema emite nota fiscal?', 'Sim. A nota fiscal de serviço (NFS-e) sai direto do financeiro, pelo padrão nacional da Receita, com o certificado digital da própria clínica e sem intermediário. Cada pacote tem um limite de notas por mês.'],
-  ['Quais são as formas de assinatura?', 'Mensal, sem fidelidade; anual com pagamento mensal no cartão, com 15% de desconto e compromisso de 12 meses; ou anual à vista, que equivale a 10 mensalidades. As regras estão no <a href="contrato.html">Contrato de assinatura</a>.'],
+  ['Quais são as formas de assinatura?', 'Mensal, sem fidelidade; anual com pagamento mensal no cartão, com 15% de desconto e compromisso de 12 meses; ou anual à vista, que equivale a 10 mensalidades. As regras estão no Contrato de assinatura, apresentado na hora de assinar.'],
   ['Como agendar uma demonstração?', 'Preencha o formulário acima com seu nome e WhatsApp. Nossa equipe entrará em contato para apresentar o sistema.']
 ];
 

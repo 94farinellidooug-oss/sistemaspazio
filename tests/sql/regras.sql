@@ -310,5 +310,20 @@ select pg_temp.checar((select count(*) from relacionamento_musubi) = 0, 'quem n�
 do $$ begin insert into relacionamento_musubi (ref) values ('i:x'); raise exception 'FALHA: não dono gravou';
 exception when insufficient_privilege then raise notice 'ok    quem não é dono não grava no relacionamento'; end $$;
 reset role;
+select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'aceites' and column_name in ('ip', 'agente')) = 2, 'o aceite guarda o endereço de internet e o navegador (012_aceite_registro.sql)');
+-- Quem vende o MUSUBI (013_fornecedor.sql): o dono grava, quem está logado lê, os outros não mudam
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+insert into musubi_fornecedor (id, nome, documento, endereco) values (1, 'Fulano', '000.000.000-00', 'Rua A, 1');
+select pg_temp.checar((select documento from musubi_fornecedor) = '000.000.000-00', 'o dono grava os dados do contrato');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+set role authenticated;
+select pg_temp.checar((select nome from musubi_fornecedor) = 'Fulano', 'quem vai assinar lê os dados do contrato');
+update musubi_fornecedor set nome = 'Outro';
+reset role;
+select pg_temp.checar((select nome from musubi_fornecedor) = 'Fulano', 'quem não é dono não muda os dados do contrato');
+do $$ begin insert into musubi_fornecedor (id) values (2); raise exception 'FALHA: aceitou segunda linha';
+exception when check_violation then raise notice 'ok    só existe uma linha de dados do contrato'; end $$;
 select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'nfse_notas' and column_name in ('cancelada_em', 'cancelamento')) = 2, 'nota guarda quando e por que foi cancelada (011_nfse_cancelar.sql)');
 \echo 'Todas as regras do banco passaram.'
