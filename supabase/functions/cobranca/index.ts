@@ -132,7 +132,13 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
   };
   const NOME_PERIODO = { mensal:'mensal', anual12:'anual com pagamento mensal', anual:'anual à vista' };
   // Aceite do contrato: quem, quando e qual versão (supabase/008_contrato.sql).
-  const registrarAceite = (clinica, u, plano, periodo, meio) => banco('aceites', { metodo:'POST', corpo:{ clinica_id:clinica, user_id:u.id, email:u.email || '', versao:CONTRATO_VERSAO, plano, periodo, meio }, cab:{ Prefer:'return=minimal' } });
+  // Também o endereço de internet e o navegador de quem aceitou (012_aceite_registro.sql); sem essas colunas, grava o resto.
+  const registrarAceite = async (clinica, u, plano, periodo, meio, req) => {
+    const base = { clinica_id:clinica, user_id:u.id, email:u.email || '', versao:CONTRATO_VERSAO, plano, periodo, meio };
+    const ip = String(req?.headers.get('x-forwarded-for') || req?.headers.get('cf-connecting-ip') || '').split(',')[0].trim().slice(0, 64), agente = String(req?.headers.get('user-agent') || '').slice(0, 300);
+    try { await banco('aceites', { metodo:'POST', corpo:{ ...base, ip, agente }, cab:{ Prefer:'return=minimal' } }); }
+    catch (e) { if (!/^banco 400/.test(e.message)) throw e; await banco('aceites', { metodo:'POST', corpo:base, cab:{ Prefer:'return=minimal' } }); }
+  };
   // Meses já pagos no cartão desde o início da assinatura atual (para a multa justa do anual com pagamento mensal).
   const mesesPagosCartao = async (A, desde) => ((await banco(`pagamentos?select=id&clinica_id=eq.${A.clinica_id}&meio=eq.mercadopago&situacao=eq.pago${desde ? `&pago_em=gte.${encodeURIComponent(desde)}` : ''}`)) || []).length;
   const situacaoCartao = A => ({ situacao:A?.cartao_situacao || '', plano:A?.cartao_plano || '', periodo:A?.cartao_periodo || '', valor:A?.cartao_valor || null, proxima:A?.cartao_proxima || null, compromisso:A?.cartao_periodo === 'anual12' && A?.cartao_situacao !== 'cancelada' ? cicloFidelidade(A.cartao_compromisso_ate)?.fim || null : A?.cartao_compromisso_ate || null, multa:A?.cartao_multa || 0, email:A?.cartao_email || '', novos:A?.novos || 0 });
@@ -206,7 +212,7 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
         const comeca = auto.start_date || new Date().toISOString(), fim = new Date(comeca); fim.setMonth(fim.getMonth() + 12);
         await mudarAssinatura(clinica, { cartao_id:String(p.id), cartao_situacao:'pendente', cartao_plano:plano, cartao_periodo:periodo, cartao_valor:valor, cartao_email:email, cartao_proxima:p.next_payment_date || auto.start_date || null, cartao_aviso_para:null,
           cartao_inicio:comeca, cartao_compromisso_ate:periodo === 'anual12' ? fim.toISOString() : null, cartao_multa:0 });
-        await registrarAceite(clinica, u, plano, periodo, 'mercadopago');
+        await registrarAceite(clinica, u, plano, periodo, 'mercadopago', req);
         return resp(200, { url:p.init_point, valor });
       }
       // Dono do MUSUBI, antes de excluir uma clínica que desistiu: cancela a assinatura no cartão dela (sem multa).
@@ -232,8 +238,9 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
           if (!A?.cartao_id) return resp(200, situacaoCartao(A));
           // Anual com pagamento mensal antes dos 12 meses: mostra a multa justa (o desconto já recebido) e pede confirmação.
           let multa = 0;
+          // Nos últimos 30 dias do ciclo (o aviso de renovação), cancelar é só não renovar: sem multa.
           const ciclo = A.cartao_periodo === 'anual12' && ['ativa', 'pausada'].includes(A.cartao_situacao) ? cicloFidelidade(A.cartao_compromisso_ate) : null;
-          if (ciclo) {
+          if (ciclo && new Date(ciclo.fim).getTime() - Date.now() > 30 * 864e5) {
             const meses = await mesesPagosCartao(A, ciclo.ini); multa = multaFidelidade(A.cartao_plano, meses);
             if (multa && corpo.confirmarMulta !== true) return resp(200, { ...situacaoCartao(A), confirmar:true, multa, meses, compromisso:ciclo.fim });
           }
@@ -276,7 +283,7 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
       if (teste && !((await banco(`donos?select=user_id&user_id=eq.${u.id}`)) || []).length) return erro(403, 'sem_acesso', 'Só o dono do MUSUBI faz o pagamento de teste.');
       const valor = teste ? VALOR_TESTE : valorDe(plano, periodo), order_nsu = numeroPedido(novoId());
       await banco('pagamentos', { metodo:'POST', corpo:{ clinica_id:clinica, plano, periodo, valor, order_nsu, pedido_por:u.id }, cab:{ Prefer:'return=minimal' } });
-      if (!teste) await registrarAceite(clinica, u, plano, periodo, 'infinitepay');
+      if (!teste) await registrarAceite(clinica, u, plano, periodo, 'infinitepay', req);
       const r = await f(`${INFINITEPAY}/links`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({
         handle:HANDLE, order_nsu,
         items:[{ description:semAcento(teste ? 'MUSUBI - teste de pagamento' : `MUSUBI ${NOMES[plano]} - ${periodo === 'anual' ? '12 meses' : '1 mes'}`), price:valor, quantity:1 }],

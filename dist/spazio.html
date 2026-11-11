@@ -3314,8 +3314,11 @@ const pagarConta = (plano, periodo, teste = false) => tentarC(async () => { cons
 const reaisC = c => ((c || 0) / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 const diaC = d => new Date(d).toLocaleDateString('pt-BR');
 // Aviso 7 dias antes de cada cobrança no cartão.
-const avisoCobranca = c => { if (c?.situacao !== 'ativa' || !c.proxima) return ''; const falta = new Date(c.proxima).getTime() - Date.now();
-  return falta > 0 && falta <= 7 * 864e5 ? `Aviso: a assinatura do MUSUBI será cobrada no cartão em ${diaC(c.proxima)}, no valor de ${reaisC(c.valor)}.` : ''; };
+// No anual com pagamento mensal, também avisa 30 dias antes do fim de cada ciclo de 12 meses (cláusula 3 do contrato).
+const avisoCobranca = c => { if (!['ativa', 'pausada'].includes(c?.situacao)) return '';
+  const falta = c.proxima ? new Date(c.proxima).getTime() - Date.now() : 0, fim = c.periodo === 'anual12' && c.compromisso ? new Date(c.compromisso).getTime() - Date.now() : 0;
+  return [c.situacao === 'ativa' && falta > 0 && falta <= 7 * 864e5 ? `Aviso: a assinatura do MUSUBI será cobrada no cartão em ${diaC(c.proxima)}, no valor de ${reaisC(c.valor)}.` : '',
+    fim > 0 && fim <= 30 * 864e5 ? `O ciclo de 12 meses do anual com pagamento mensal termina em ${diaC(c.compromisso)}. Se não cancelar até essa data, ele renova por mais 12 meses com o mesmo desconto; cancelando antes, não há multa.` : ''].filter(Boolean).join(' '); };
 const cartaoConta = () => conta.modo === 'nuvem' ? conta.cartao : null;
 const assinarCartaoConta = async (plano, periodo, email) => { try { const r = await conta.nuvem.assinarCartao(conta.clinica.id, plano, periodo, email); location.href = r.url; return ''; }
   catch (e) { return e.codigo === 'acao' || (e.status === 404 && !e.corpo) ? 'A assinatura no cartão ainda não foi ligada no servidor (falta atualizar a função cobranca).' : e.message || 'Não foi possível agora. Tente de novo.'; } };

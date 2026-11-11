@@ -310,4 +310,5 @@ select pg_temp.checar((select count(*) from relacionamento_musubi) = 0, 'quem n�
 do $$ begin insert into relacionamento_musubi (ref) values ('i:x'); raise exception 'FALHA: não dono gravou';
 exception when insufficient_privilege then raise notice 'ok    quem não é dono não grava no relacionamento'; end $$;
 reset role;
+select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'aceites' and column_name in ('ip', 'agente')) = 2, 'o aceite guarda o endereço de internet e o navegador (012_aceite_registro.sql)');
 \echo 'Todas as regras do banco passaram.'
