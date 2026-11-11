@@ -25,7 +25,11 @@ const MSG_NUVEM = {
   ja_convidado:'Esse e-mail já foi convidado.',
   email_invalido:'Confira o e-mail.',
   nao_a_si_mesmo:'Você não pode mudar o seu próprio perfil.',
-  sem_login:'Entre de novo para continuar.'
+  sem_login:'Entre de novo para continuar.',
+  nome_diferente:'O nome digitado não confere com o nome da clínica.',
+  cartao_ativo:'A clínica ainda tem assinatura no cartão ativa. Cancele antes de excluir.',
+  propria_clinica:'Você não pode excluir a sua própria clínica por aqui.',
+  nao_encontrada:'Essa clínica já não existe. Atualize o painel.'
 };
 export const ErroNuvem = class extends Error { constructor(msg, codigo, status){ super(msg); this.codigo = codigo; this.status = status; } };
 const erroDe = (status, corpo) => {
@@ -109,6 +113,11 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     painelDono:async () => (await rest('rpc/painel_dono', { metodo:'POST', corpo:{} })) || [],
     darGratis:async (clinica, ate, motivo = '', tirar = false) => rest('rpc/dar_gratis', { metodo:'POST', corpo:{ p_clinica:clinica, p_ate:ate, p_motivo:motivo, p_tirar:tirar } }),
     mudarPlano:async (clinica, plano) => rest('rpc/mudar_plano', { metodo:'POST', corpo:{ p_clinica:clinica, p_plano:plano } }),
+    // Excluir clínica que desistiu (supabase/009_excluir_clinica.sql): antes, cancela o cartão dela pela função cobranca.
+    encerrarCartao:async clinica => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'encerrar_cartao', clinica }, token:await token() }),
+    excluirClinica:async (clinica, nome, motivo = '') => rest('rpc/excluir_clinica', { metodo:'POST', corpo:{ p_clinica:clinica, p_nome:nome, p_motivo:motivo } }),
+    clinicasExcluidas:async () => { try { return (await rest('clinicas_excluidas?select=id,clinica_id,nome,cidade,uf,whats,email_dono,plano,criada_em,pacientes,pago_total,motivo,excluida_em&order=excluida_em.desc')) || []; }
+      catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
     estenderTeste:async (clinica, dias) => rest('rpc/estender_teste', { metodo:'POST', corpo:{ p_clinica:clinica, p_dias:dias } }),
     interessados:async () => (await rest('interessados?select=id,nome,whats,situacao,criado_em&order=criado_em.desc')) || [],
     mudarInteressado:async (id, situacao) => rest(`interessados?id=eq.${id}`, { metodo:'PATCH', corpo:{ situacao }, cab:{ Prefer:'return=minimal' } }),

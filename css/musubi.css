@@ -1287,6 +1287,11 @@ body.com-acesso{overflow:hidden}
 .pd-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-left:50px;width:calc(100% - 50px)}
 .pd-ctl select{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:6px 8px;font-size:.84rem;color:var(--ink)}
 .pd-g{width:100%;margin-left:50px;width:calc(100% - 50px);border:1px solid var(--accent-line);background:var(--accent-soft);border-radius:var(--r-sm);padding:12px}
+.pd-x{border-color:var(--crit);background:var(--surface)}
+.pd-x .notice{margin:0 0 10px}
+.pd-ctl [data-pd=excluir]{color:var(--crit)}
+.pd-ex{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.pd-ex summary{cursor:pointer;font-weight:600;font-size:.9rem}
 .pd-i.st-novo .pd-ctl select{border-color:var(--accent);color:var(--accent);font-weight:600}
 @media (min-width:761px){ .pd-i .pd-ctl{margin:0;width:auto} }
 @media (max-width:560px){ .tb-r > [data-act=atalhos]{display:none} }

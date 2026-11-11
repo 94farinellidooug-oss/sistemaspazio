@@ -17,7 +17,8 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
   const f = async (url, op = {}) => {
     const u = new URL(url), corpo = op.body ? JSON.parse(op.body) : undefined;
     if (u.origin === 'https://sb.test') {
-      if (u.pathname === '/auth/v1/user') { const t = op.headers.Authorization.replace('Bearer ', ''); return t === 'tk-u1' ? json(200, { id:'u1', email:'adm@x.com' }) : t === 'tk-u2' ? json(200, { id:'u2', email:'rec@x.com' }) : json(401, {}); }
+      if (u.pathname === '/auth/v1/user') { const t = op.headers.Authorization.replace('Bearer ', ''); return t === 'tk-u1' ? json(200, { id:'u1', email:'adm@x.com' }) : t === 'tk-u2' ? json(200, { id:'u2', email:'rec@x.com' }) : t === 'tk-u9' ? json(200, { id:'u9', email:'dono@musubi.com' }) : json(401, {}); }
+      if (u.pathname === '/rest/v1/donos') return json(200, eq(u, 'user_id') === 'u9' ? [{ user_id:'u9' }] : []);
       if (u.pathname === '/rest/v1/membros') return json(200, S.membros.filter(m => m.clinica_id === eq(u, 'clinica_id') && m.user_id === eq(u, 'user_id')));
       if (u.pathname === '/rest/v1/assinaturas' && op.method === 'PATCH') { Object.assign(S.assin, corpo); return json(204); }
       if (u.pathname === '/rest/v1/assinaturas') {
@@ -124,6 +125,17 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
 { const c = cicloFidelidade('2026-01-10T12:00:00.000Z', Date.parse('2027-03-01T00:00:00Z'));
   ok(c.ini === '2027-01-10T12:00:00.000Z' && c.fim === '2028-01-10T12:00:00.000Z', 'passados os 12 meses, renova por mais 12 (novo ciclo de compromisso)');
   ok(cicloFidelidade('2027-01-10T12:00:00.000Z', Date.parse('2026-06-01T00:00:00Z')).fim === '2027-01-10T12:00:00.000Z' && cicloFidelidade(null) === null, 'dentro dos 12 meses o ciclo é o primeiro');
+}
+// Dono do MUSUBI encerra o cartão de uma clínica que desistiu (antes de excluir)
+{ const { S, pedir } = cenario();
+  await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'anual12', email:'a@b.com' }, 'tk-u1');
+  S.assin.cartao_situacao = 'ativa';
+  let r = await pedir({ acao:'encerrar_cartao', clinica:C1 }, 'tk-u1');
+  ok(r.status === 403 && !S.puts.length, 'só o dono do MUSUBI encerra o cartão de uma clínica');
+  r = await pedir({ acao:'encerrar_cartao', clinica:C1 }, 'tk-u9');
+  ok(r.status === 200 && S.puts[0]?.status === 'cancelled' && S.assin.cartao_situacao === 'cancelada' && !S.assin.cartao_multa, 'dono encerra: o Mercado Pago para de cobrar, sem multa');
+  r = await pedir({ acao:'encerrar_cartao', clinica:C1 }, 'tk-u9');
+  ok(r.status === 200 && S.puts.length === 1, 'sem cartão ativo, encerrar não chama o Mercado Pago');
 }
 // Ainda com período pago ou teste: a primeira cobrança fica para quando ele acabar.
 { const ate = new Date(Date.now() + 20 * DIA).toISOString(), { S, pedir } = cenario({ pagoAte:ate });

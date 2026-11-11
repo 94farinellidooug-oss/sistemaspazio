@@ -260,4 +260,38 @@ set role authenticated;
 select pg_temp.checar((select count(*) from aceites) = 0, 'outra clínica não vê os aceites');
 reset role;
 select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'assinaturas' and column_name in ('cartao_inicio', 'cartao_compromisso_ate', 'cartao_multa')) = 3, 'assinatura guarda o compromisso de 12 meses e a multa');
+-- Excluir clínica (009_excluir_clinica.sql): só o dono, com o nome certo, sem cartão ativo; fica só o resumo comercial
+select set_config('teste.c2', :'c2', false) \g /dev/null
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+do $$ begin perform public.excluir_clinica(current_setting('teste.c2')::uuid, 'Clínica Sol'); raise exception 'FALHA: administrador comum excluiu';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    só o dono do MUSUBI exclui clínica'; end $$;
+reset role;
+select count(*) as pagos_c2 from pagamentos where clinica_id = :'c2' and situacao = 'pago' \gset
+update assinaturas set cartao_id = 'pre9', cartao_situacao = 'ativa' where clinica_id = :'c2';
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select pg_temp.checar((select cartao_situacao = 'ativa' from public.painel_dono() where id = :'c2'), 'painel mostra a assinatura no cartão da clínica');
+do $$ begin perform public.excluir_clinica(current_setting('teste.c2')::uuid, 'Outro nome'); raise exception 'FALHA: excluiu com o nome errado';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    nome errado não exclui'; end $$;
+do $$ begin perform public.excluir_clinica(current_setting('teste.c2')::uuid, 'Clínica Sol'); raise exception 'FALHA: excluiu com o cartão ativo';
+exception when raise_exception then if sqlerrm <> 'cartao_ativo' then raise; end if; raise notice 'ok    com assinatura no cartão ativa não exclui (cancelar antes)'; end $$;
+do $$ begin perform public.excluir_clinica(current_setting('teste.c1')::uuid, (select nome from clinicas where id = current_setting('teste.c1')::uuid)); raise exception 'FALHA: excluiu a própria clínica';
+exception when raise_exception then if sqlerrm <> 'propria_clinica' then raise; end if; raise notice 'ok    o dono não exclui a própria clínica'; end $$;
+reset role;
+update assinaturas set cartao_situacao = 'cancelada' where clinica_id = :'c2';
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select public.excluir_clinica(:'c2', '  clínica sol ', 'Desistiu: achou caro');
+select pg_temp.checar((select count(*) from public.painel_dono() where id = :'c2') = 0, 'clínica excluída sai do painel');
+select pg_temp.checar((select nome = 'Clínica Sol' and email_dono = 'outra@y.com' and motivo = 'Desistiu: achou caro' and jsonb_array_length(pagamentos) = :pagos_c2 and excluida_por = auth.uid() from clinicas_excluidas where clinica_id = :'c2'), 'fica o resumo comercial: nome, e-mail, motivo e pagamentos ao MUSUBI');
+update clinicas_excluidas set motivo = 'x';
+delete from clinicas_excluidas;
+select pg_temp.checar((select count(*) from clinicas_excluidas where motivo = 'Desistiu: achou caro') = 1, 'ninguém altera nem apaga o resumo das excluídas');
+reset role;
+select pg_temp.checar((select count(*) from membros where clinica_id = :'c2') + (select count(*) from dados where clinica_id = :'c2') + (select count(*) from assinaturas where clinica_id = :'c2') + (select count(*) from pagamentos where clinica_id = :'c2') = 0, 'equipe, dados dos pacientes, assinatura e pagamentos da clínica foram apagados');
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+set role authenticated;
+select pg_temp.checar((select count(*) from clinicas_excluidas) = 0, 'quem não é dono não vê as clínicas excluídas');
+reset role;
 \echo 'Todas as regras do banco passaram.'

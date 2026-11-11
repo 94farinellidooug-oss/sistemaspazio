@@ -35,7 +35,7 @@ const ir = async (p, h) => { await p.evaluate(x => { location.hash = x; }, h); a
 
 for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/spazio.html']]) {
   S.usuarios = { 'maicon@x.com':{ id:'u1', senha:'segredo123', nome:'Maicon' }, 'ana@y.com':{ id:'u2', senha:'outrasenha', nome:'Ana' } };
-  S.clinicas.length = 0; S.dados = {}; S.interessados.length = 0; S.donos = ['u1']; S.pagamentos = []; S.cobranca = false;
+  S.clinicas.length = 0; S.dados = {}; S.interessados.length = 0; S.donos = ['u1']; S.pagamentos = []; S.cobranca = false; S.mp = null; S.excluidas = []; S.encerrados = [];
   // Ana cria a clínica escolhendo o Essencial
   const A = await aparelho('A', url);
   await entrar(A, 'ana@y.com', 'outrasenha');
@@ -129,6 +129,21 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   const antes = S.pagamentos.length;
   await Promise.all([M.waitForURL(/checkout\.infinitepay\.io/, { timeout:5000 }).catch(() => {}), clicar(M, '#pd-pag [data-pd=teste]')]);
   ok(S.pagamentos.length === antes + 1 && S.pagamentos[0].valor === 100 && S.pagamentos[0].periodo === 'mensal' && /checkout\.infinitepay\.io/.test(M.url()), `${rot}: teste abre o pagamento de R$ 1,00 na InfinitePay`);
+  // Excluir clínica que desistiu: cancela o cartão antes, pede o nome, fica só o resumo
+  await M.goto(BASE + url); await M.waitForTimeout(500); await ir(M, 'musubi'); await M.waitForTimeout(300);
+  const propria = S.clinicas.find(c => c.nome === 'Spazio Stabilità');
+  ok(await tem(M, `${linha} [data-pd=excluir]`) && !(await tem(M, `#pd-cl .pd-c[data-c="${propria.id}"] [data-pd=excluir]`)), `${rot}: cada clínica tem Excluir, menos a própria`);
+  cA.assin.cartao_situacao = 'ativa'; S.mp = null; await clicar(M, '[data-pd=atualizar]'); await M.waitForTimeout(300);
+  await clicar(M, `${linha} [data-pd=excluir]`);
+  ok(await tem(M, '#pd-x', 'não dá para desfazer') && await tem(M, '#pd-x', 'assinatura no cartão (Mercado Pago) será cancelada') && await tem(M, '#pd-x', '30 dias'), `${rot}: excluir avisa o que apaga, os 30 dias para exportar e que o cartão será cancelado`);
+  await M.fill('#pd-x [name=nome]', 'Clínica Errada'); await clicar(M, '#pd-x [type=submit]');
+  ok(await tem(M, '#pd-x-erro:not([hidden])', 'não confere') && S.clinicas.includes(cA), `${rot}: nome errado não exclui`);
+  await M.fill('#pd-x [name=motivo]', 'Desistiu'); await M.fill('#pd-x [name=nome]', 'clínica sol'); await clicar(M, '#pd-x [type=submit]'); await M.waitForTimeout(300);
+  ok(await tem(M, '#pd-x-erro:not([hidden])', 'falta atualizar a função cobranca') && S.clinicas.includes(cA) && await M.inputValue('#pd-x [name=motivo]') === 'Desistiu', `${rot}: com cartão ativo e a função antiga, explica e não exclui`);
+  S.mp = {}; await clicar(M, '#pd-x [type=submit]'); await M.waitForTimeout(500);
+  ok(!S.clinicas.includes(cA) && S.encerrados.includes(cA.id) && !(await tem(M, linha)) && await tem(M, '#toast', 'As cobranças pararam'), `${rot}: excluída: o cartão foi cancelado antes e ela sai da lista`);
+  await M.click('#pd-ex summary'); await M.waitForTimeout(100);
+  ok(await tem(M, '#pd-ex', 'Clínicas excluídas (1)') && await tem(M, '#pd-ex', 'Clínica Sol') && await tem(M, '#pd-ex', 'Motivo: Desistiu'), `${rot}: excluídas ficam listadas com o motivo`);
   await M.context().close();
 }
 // Celular: painel sem rolagem lateral

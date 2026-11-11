@@ -49,7 +49,8 @@ begin
 end $$;
 
 -- Painel do MUSUBI: uma linha por clínica, com números gerais (nada dos pacientes além da contagem).
-create or replace function public.painel_dono()
+drop function if exists public.painel_dono();   -- o 009 acrescenta colunas; recriar evita erro de tipo ao rodar de novo
+create function public.painel_dono()
 returns table (id uuid, nome text, cidade text, uf text, criado_em timestamptz, email_dono text,
   plano text, teste_ate timestamptz, gratis_ate timestamptz, gratis_sempre boolean, gratis_motivo text, pago_ate timestamptz,
   pessoas integer, pessoas_ativas integer, pacientes integer, ultimo_uso timestamptz)

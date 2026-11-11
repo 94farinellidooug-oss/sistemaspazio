@@ -2,12 +2,14 @@
 // Mostra todas as clínicas com o pacote, a situação (teste, grátis, pago, vencido), quem usa e números gerais
 // (nunca os dados dos pacientes), permite dar ou tirar acesso grátis, trocar o pacote e dar mais dias de teste,
 // lista os interessados da página de apresentação e os pagamentos feitos pela InfinitePay.
+// Excluir clínica (009_excluir_clinica.sql): para quem desistiu; cancela o cartão antes e guarda só o resumo comercial.
 import { ic } from '../componentes/icones.js';
 import { PLANOS, planoDe, precoTxt, rotuloSituacao, situacaoAssinatura } from '../dados/planos.js';
 import { conta, pagarConta, situacaoConta } from './conta.js';
 import { esc } from '../util.js';
 
-const pd = { aba:'clinicas', lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'' };
+const pd = { aba:'clinicas', lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'', excluir:null, excl:null, excluindo:false };
+const CARTAO_VIVO = ['ativa', 'pausada', 'pendente'];
 let pdApp = { render:() => {}, toast:() => {} };
 const SITU_INT = [['novo', 'Novo'], ['chamei', 'Já chamei'], ['cliente', 'Virou cliente'], ['nao', 'Não quis']];
 const PRAZOS = [['30', '30 dias'], ['90', '90 dias'], ['365', '1 ano'], ['sempre', 'Sem prazo']];
@@ -19,7 +21,7 @@ export const ehDono = () => conta.modo === 'nuvem' && conta.dono;
 
 async function carregarPd(){
   if (pd.carregando) return; pd.carregando = true; pd.erro = ''; pdApp.render(true);
-  try { const [L, I, G] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => [])]); pd.lista = L; pd.inter = I; pd.pags = G; }
+  try { const [L, I, G, X] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => []), conta.nuvem.clinicasExcluidas().catch(() => null)]); pd.lista = L; pd.inter = I; pd.pags = G; pd.excl = X; }
   catch (e) { pd.erro = e.message; }
   pd.carregando = false; pdApp.render(true);
 }
@@ -53,12 +55,39 @@ function pdClinicas(L){
         <div class="pd-ctl"><span class="pill ${s.tipo === 'vencido' ? 'warn' : s.tipo === 'teste' ? '' : 'ok'}">${rotuloSituacao(s)}</span>
           <label><span class="so-leitor">Pacote de ${esc(c.nome)}</span><select data-pd="plano" data-c="${c.id}">${PLANOS.map(p => `<option value="${p.k}" ${p.k === (c.plano || 'profissional') ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></label>
           ${s.tipo === 'gratis' ? `<button class="btn sm ghost" data-pd="tirar" data-c="${c.id}">Tirar acesso grátis</button>` : `<button class="btn sm" data-pd="gratis" data-c="${c.id}">${ic('mais')}Dar acesso grátis</button>`}
-          ${s.tipo === 'teste' || s.tipo === 'vencido' ? `<button class="btn sm ghost" data-pd="mais7" data-c="${c.id}">+7 dias de teste</button>` : ''}</div>
+          ${s.tipo === 'teste' || s.tipo === 'vencido' ? `<button class="btn sm ghost" data-pd="mais7" data-c="${c.id}">+7 dias de teste</button>` : ''}
+          ${c.id !== conta.clinica?.id ? `<button class="btn sm ghost" data-pd="excluir" data-c="${c.id}">${ic('x')}Excluir</button>` : ''}</div>
+        ${pd.excluir === c.id ? pdExcluir(c) : ''}
         ${aberto ? `<form class="pd-g" id="pd-g" novalidate><div class="form">
             <label class="field"><span class="lbl">Por quanto tempo</span><select name="prazo">${PRAZOS.map(([k, l]) => `<option value="${k}" ${k === '90' ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
             <label class="field"><span class="lbl">Motivo (só você vê)</span><input name="motivo" placeholder="Ex.: testar o sistema" autocomplete="off"></label></div>
           <div class="cf-acoes"><button class="btn pri" type="submit">${ic('check')}Dar acesso grátis</button><button class="btn ghost" type="button" data-pd="gratis-fechar">Cancelar</button></div></form>` : ''}</div>`; }).join('') || '<p class="muted sm">Nenhuma clínica encontrada.</p>'}</div>
-    <p class="muted sm cf-obs">Os dados dos pacientes de cada clínica não aparecem aqui: só os números gerais.</p></div>`;
+    <p class="muted sm cf-obs">Os dados dos pacientes de cada clínica não aparecem aqui: só os números gerais.</p>
+    ${pd.excl?.length ? `<details class="pd-ex" id="pd-ex"><summary>Clínicas excluídas (${pd.excl.length})</summary><div class="list">${pd.excl.map(x => `<div class="row"><div class="grow"><b>${esc(x.nome)}</b>
+        <small class="muted">${esc([x.cidade, x.uf].filter(Boolean).join(' - '))}${x.email_dono ? ' · ' + esc(x.email_dono) : ''} · ${esc(planoDe(x.plano || 'profissional').nome)} · excluída em ${dataBR(x.excluida_em)}</small>
+        ${x.motivo ? `<small class="muted">Motivo: ${esc(x.motivo)}</small>` : ''}</div><b>${reaisPd(x.pago_total || 0)}</b></div>`).join('')}</div>
+      <p class="muted sm cf-obs">Fica só o resumo comercial e os pagamentos feitos ao MUSUBI. Nenhum dado de paciente.</p></details>` : ''}</div>`;
+}
+// Confirmação de exclusão: digita o nome da clínica; mostra o que será apagado e se o cartão será cancelado.
+function pdExcluir(c){
+  const cartao = CARTAO_VIVO.includes(c.cartao_situacao);
+  return `<form class="pd-g pd-x" id="pd-x" novalidate><p class="notice crit sm">${ic('alerta')}<span><b>Excluir apaga a clínica e todos os dados dela</b> (equipe, pacientes, prontuários, agenda, financeiro e notas) e não dá para desfazer. Antes, combine com a clínica a exportação dos dados: o contrato garante 30 dias para isso.${cartao ? ' A assinatura no cartão (Mercado Pago) será cancelada antes, e não haverá mais cobranças.' : ''}</span></p>
+    <div class="form"><label class="field"><span class="lbl">Motivo (só você vê)</span><input name="motivo" placeholder="Ex.: desistiu, achou caro" autocomplete="off"></label>
+      <label class="field"><span class="lbl">Digite o nome da clínica para confirmar: <b>${esc(c.nome)}</b></span><input name="nome" autocomplete="off"></label></div>
+    <p class="erro-a" id="pd-x-erro" role="alert" hidden></p>
+    <div class="cf-acoes"><button class="btn crit" type="submit" ${pd.excluindo ? 'disabled' : ''}>${ic('x')}${pd.excluindo ? 'Excluindo…' : 'Excluir definitivamente'}</button><button class="btn ghost" type="button" data-pd="excluir-fechar">Cancelar</button></div></form>`;
+}
+async function excluirPd(f){
+  const c = pd.lista?.find(x => x.id === pd.excluir); if (!c || pd.excluindo) return;
+  const nome = f.elements.nome.value, motivo = f.elements.motivo.value.trim(), erro = m => { const e = document.getElementById('pd-x-erro'); if (e) { e.textContent = m; e.hidden = false; } };
+  if (nome.trim().toLowerCase() !== c.nome.trim().toLowerCase()) { erro('O nome digitado não confere com o nome da clínica.'); return; }
+  pd.excluindo = true; pdApp.render(true);
+  const volta = m => { pd.excluindo = false; pdApp.render(true); const g = document.getElementById('pd-x'); if (g) { g.elements.nome.value = nome; g.elements.motivo.value = motivo; } erro(m); };
+  try { if (CARTAO_VIVO.includes(c.cartao_situacao)) await conta.nuvem.encerrarCartao(c.id); }
+  catch (e) { volta(e.codigo === 'acao' || (e.status === 404 && !e.corpo) ? 'Para cancelar o cartão desta clínica, falta atualizar a função cobranca no Supabase.' : e.message); return; }
+  try { await conta.nuvem.excluirClinica(c.id, nome, motivo); }
+  catch (e) { volta(e.status === 404 || e.codigo === 'PGRST202' ? 'Falta rodar o 009_excluir_clinica.sql no Supabase.' : e.message); return; }
+  pd.excluindo = false; pd.excluir = null; pdApp.toast(`${c.nome} foi excluída. As cobranças pararam.`); await carregarPd();
 }
 
 function pdInteressados(I){
@@ -96,6 +125,8 @@ export function ligarPainelDono(r, t){
     else if (a === 'aba') { pd.aba = b.dataset.k; pdApp.render(true); }
     else if (a === 'gratis') { pd.gratis = c; pdApp.render(true); document.querySelector('#pd-g [name=motivo]')?.focus(); }
     else if (a === 'gratis-fechar') { pd.gratis = null; pdApp.render(true); }
+    else if (a === 'excluir') { pd.excluir = c; pd.gratis = null; pdApp.render(true); document.querySelector('#pd-x [name=motivo]')?.focus(); }
+    else if (a === 'excluir-fechar') { pd.excluir = null; pdApp.render(true); }
     else if (a === 'tirar') pdFaz(() => conta.nuvem.darGratis(c, null, '', true), `Acesso grátis de ${nome()} retirado`);
     else if (a === 'teste') { pd.testando = true; pdApp.render(true); pagarConta(situacaoConta()?.plano.k || 'profissional', 'mensal', true).then(e => { if (e) { pd.testando = false; pdApp.render(true); pdApp.toast(e, 'info'); } }); }
     else if (a === 'mais7') pdFaz(() => conta.nuvem.estenderTeste(c, 7), `${nome()} ganhou mais 7 dias de teste`);
@@ -107,6 +138,7 @@ export function ligarPainelDono(r, t){
   });
   document.addEventListener('input', ev => { if (ev.target.dataset?.pd === 'busca') { pd.busca = ev.target.value; pdApp.render(true); const i = document.querySelector('.pd-busca'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } });
   document.addEventListener('submit', ev => {
+    if (ev.target.id === 'pd-x') { ev.preventDefault(); excluirPd(ev.target); return; }
     if (ev.target.id !== 'pd-g') return; ev.preventDefault();
     const f = ev.target, prazo = f.elements.prazo.value, c = pd.gratis, nome = pd.lista?.find(x => x.id === c)?.nome || '';
     const ate = prazo === 'sempre' ? null : new Date(Date.now() + Number(prazo) * 864e5).toISOString();
