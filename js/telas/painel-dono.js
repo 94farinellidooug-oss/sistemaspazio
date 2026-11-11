@@ -9,7 +9,7 @@ import { conta, pagarConta, situacaoConta } from './conta.js';
 import { esc } from '../util.js';
 import { DICAS_VENDA, contatosVenda, linkWhats, mensagemVenda, numerosGestao, tarefasDoDia } from '../dados/vendas.js';
 
-const pd = { aba:'hoje', rel:null, filtro:'todos', buscaR:'', anotar:null, salvando:false, lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'', excluir:null, excl:null, excluindo:false };
+const pd = { aba:'hoje', rel:null, filtro:'todos', buscaR:'', anotar:null, salvando:false, lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'', excluir:null, excl:null, excluindo:false, forn:undefined };
 const CARTAO_VIVO = ['ativa', 'pausada', 'pendente'];
 let pdApp = { render:() => {}, toast:() => {} };
 const SITU_INT = [['novo', 'Novo'], ['chamei', 'Já chamei'], ['cliente', 'Virou cliente'], ['nao', 'Não quis']];
@@ -21,8 +21,8 @@ export const ehDono = () => conta.modo === 'nuvem' && conta.dono;
 
 async function carregarPd(){
   if (pd.carregando) return; pd.carregando = true; pd.erro = ''; pdApp.render(true);
-  try { const [L, I, G, X, R] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => []), conta.nuvem.clinicasExcluidas().catch(() => null), conta.nuvem.relacionamento().catch(() => null)]);
-    pd.lista = L; pd.inter = I; pd.pags = G; pd.excl = X; pd.rel = R ? Object.fromEntries(R.map(r => [r.ref, r])) : null; }
+  try { const [L, I, G, X, R, F] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => []), conta.nuvem.clinicasExcluidas().catch(() => null), conta.nuvem.relacionamento().catch(() => null), conta.nuvem.fornecedor().catch(() => null)]);
+    pd.lista = L; pd.inter = I; pd.pags = G; pd.excl = X; pd.rel = R ? Object.fromEntries(R.map(r => [r.ref, r])) : null; pd.forn = F; }
   catch (e) { pd.erro = e.message; }
   pd.carregando = false; pdApp.render(true);
 }
@@ -148,6 +148,26 @@ function pdAnotar(k){
     ${(k.notas || []).length ? `<ul class="pd-notas">${k.notas.slice(0, 5).map(n => `<li><small class="muted">${dataBR(n.em)}</small> ${esc(n.texto)}</li>`).join('')}</ul>` : ''}
     <div class="cf-acoes"><button class="btn pri" type="submit" ${pd.salvando ? 'disabled' : ''}>${ic('check')}${pd.salvando ? 'Salvando…' : 'Salvar'}</button><button class="btn ghost" type="button" data-pd="anotar-fechar">Cancelar</button></div></form>`;
 }
+// Quem vende o MUSUBI (013_fornecedor.sql): aparece só no contrato da tela de assinatura, nunca na página pública.
+function pdFornecedor(){
+  const f = pd.forn || {}, falta = !f.documento;
+  return `<details class="pd-forn" ${falta ? 'open' : ''}><summary><b>Seus dados no contrato</b> <span class="pill ${falta ? 'warn' : 'ok'}">${falta ? 'Falta preencher' : 'Preenchido'}</span></summary>
+    <form class="pd-g" id="pd-forn" novalidate><p class="muted sm cf-obs">A lei pede a identificação de quem vende. Estes dados aparecem só no contrato que a pessoa vê ao assinar (com botão para baixar), não na página pública.</p>
+      <div class="form"><label class="field"><span class="lbl">Nome completo</span><input name="nome" maxlength="160" value="${esc(f.nome || '')}" autocomplete="name"></label>
+      <label class="field"><span class="lbl">CPF ou CNPJ</span><input name="documento" maxlength="30" inputmode="numeric" value="${esc(f.documento || '')}"></label>
+      <label class="field"><span class="lbl">Endereço completo</span><input name="endereco" maxlength="300" value="${esc(f.endereco || '')}" placeholder="Rua, número, bairro, cidade - UF, CEP"></label></div>
+      ${pd.forn === null ? '<p class="muted sm cf-obs">Falta rodar o 013_fornecedor.sql no Supabase.</p>' : ''}
+      <div class="cf-acoes"><button class="btn pri" type="submit" ${pd.salvando || pd.forn === null ? 'disabled' : ''}>${ic('check')}Salvar</button><a class="btn ghost" href="inicio/contrato.html" target="_blank" rel="noopener" data-contrato>Ver o contrato</a></div></form></details>`;
+}
+async function salvarFornecedorPd(f){
+  const d = { nome:f.elements.nome.value, documento:f.elements.documento.value, endereco:f.elements.endereco.value };
+  const n = d.documento.replace(/\D/g, '');
+  if (!d.nome.trim() || (n.length !== 11 && n.length !== 14) || d.endereco.trim().length < 10) { pdApp.toast('Preencha o nome, um CPF (11 números) ou CNPJ (14) e o endereço completo.', 'info'); return; }
+  pd.salvando = true;
+  try { await conta.nuvem.salvarFornecedor(d); pd.forn = { ...d }; pdApp.toast('Dados do contrato salvos'); }
+  catch (e) { pdApp.toast(e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205' ? 'Falta rodar o 013_fornecedor.sql no Supabase.' : e.message, 'info'); }
+  pd.salvando = false; pdApp.render(true);
+}
 async function salvarAnotacao(f){
   const ref = pd.anotar, atual = pd.rel?.[ref] || {}, texto = f.elements.texto.value.trim(), retornar = f.elements.retornar.value;
   if (!texto && retornar === (atual.retornar_em || '')) { pd.anotar = null; pdApp.render(true); return; }
@@ -171,6 +191,7 @@ function pdPagamentos(L, G){
     <div class="list">${G.map(g => `<div class="row pd-g-l"><span class="tico sm ${g.situacao === 'pago' ? 'acc' : ''}">${ic('dinheiro')}</span>
       <div class="grow"><b>${esc(nomeC(g.clinica_id))}</b><small class="muted">${g.valor === 100 ? 'Teste de pagamento' : `${esc(planoDe(g.plano).nome)} · ${g.periodo === 'anual' ? 'anual' : 'mensal'}`} · ${dataBR(g.pago_em || g.criado_em)}${g.forma ? ' · ' + (FORMA_PD[g.forma] || esc(g.forma)) : ''}</small></div>
       <b>${reaisPd(g.valor)}</b><span class="pill ${g.situacao === 'pago' ? 'ok' : ''}">${g.situacao === 'pago' ? 'Pago' : 'Não concluído'}</span>${g.recibo ? `<a class="btn sm ghost" href="${esc(g.recibo)}" target="_blank" rel="noopener">Recibo</a>` : ''}</div>`).join('') || '<p class="muted sm">Nenhum pagamento ainda.</p>'}</div>
+    ${pdFornecedor()}
     <p class="muted sm cf-obs">Pacotes: ${PLANOS.map(p => `<b>${p.nome}</b> (${precoTxt(p)})`).join(', ')}. O pagamento confirmado pela InfinitePay libera o acesso da clínica sozinho. "Não concluído" é quem abriu o pagamento e não terminou.</p></div>`;
 }
 
@@ -205,6 +226,7 @@ export function ligarPainelDono(r, t){
     pdApp.render(true); const i = document.querySelector(`[data-pd="${k}"]`); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } });
   document.addEventListener('submit', ev => {
     if (ev.target.id === 'pd-x') { ev.preventDefault(); excluirPd(ev.target); return; }
+    if (ev.target.id === 'pd-forn') { ev.preventDefault(); if (!pd.salvando) salvarFornecedorPd(ev.target); return; }
     if (ev.target.id === 'pd-anot') { ev.preventDefault(); if (!pd.salvando) salvarAnotacao(ev.target); return; }
     if (ev.target.id !== 'pd-g') return; ev.preventDefault();
     const f = ev.target, prazo = f.elements.prazo.value, c = pd.gratis, nome = pd.lista?.find(x => x.id === c)?.nome || '';

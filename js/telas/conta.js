@@ -199,7 +199,34 @@ export const clinicaNoServidor = D => conta.modo === 'nuvem' && conta.clinica?.i
 /* ---------- Tela de acesso ---------- */
 const escolherPlano = rot => `<div class="acesso-opc acesso-plano" role="radiogroup" aria-label="Pacote"><p><b>${rot}</b></p>${PLANOS.map(p => `<label class="${conta.plano === p.k ? 'on' : ''}"><input type="radio" name="plano" value="${p.k}" data-ac="plano" ${conta.plano === p.k ? 'checked' : ''}><span><b>${p.nome} <span class="acesso-preco">${precoTxt(p)}</span></b><small>${p.resumo}</small></span></label>`).join('')}</div>`;
 // Aceite do Contrato de assinatura (obrigatório para pagar ou assinar; o servidor registra quem, quando e a versão).
-export const TEXTO_ACEITE = 'Li e concordo com o <a class="lnk" href="inicio/contrato.html" target="_blank" rel="noopener">Contrato de assinatura</a> e os <a class="lnk" href="inicio/termos.html" target="_blank" rel="noopener">Termos de uso</a>.';
+export const TEXTO_ACEITE = 'Li e concordo com o <a class="lnk" href="inicio/contrato.html" target="_blank" rel="noopener" data-contrato>Contrato de assinatura</a> e os <a class="lnk" href="inicio/termos.html" target="_blank" rel="noopener">Termos de uso</a>.';
+// O contrato abre já com o nome, o CPF ou CNPJ e o endereço de quem vende (supabase/013_fornecedor.sql), só para quem está
+// assinando: esses dados não ficam no código nem na página pública. Dá para imprimir, salvar em PDF ou baixar.
+const docFornecedor = d => { const n = String(d || '').replace(/\D/g, ''); return n.length === 14 ? 'CNPJ' : 'CPF'; };
+export function montarContrato(html, f, base){
+  let s = html.replace(/<head>/i, `<head><base href="${base}">`);
+  if (f?.documento) {
+    if (f.nome) s = s.replace(/<span data-f="nome">[^<]*<\/span>/, `<span data-f="nome">${esc(f.nome)}</span>`);
+    s = s.replace(/<span data-f="doc">[^<]*<\/span>/, `<span data-f="doc">inscrito no ${docFornecedor(f.documento)} sob o nº ${esc(f.documento)}${f.endereco ? `, com endereço em ${esc(f.endereco)}` : ''}</span>`);
+  }
+  const barra = `<style>.contrato-acoes{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 24px}@media print{.contrato-acoes,.topo,.rodape{display:none!important}}</style>
+  <div class="contrato-acoes"><button class="btn" type="button" onclick="print()">Imprimir ou salvar em PDF</button><a class="btn linha" id="contrato-baixar" download="Contrato de assinatura MUSUBI.html">Baixar o contrato</a></div>
+  <script>document.getElementById('contrato-baixar').href=location.href;<\/script>`;
+  return s.replace(/(<main class="legal"><div class="caixa estreita">)/, `$1${barra}`);
+}
+export const abrirContrato = async () => {
+  const w = window.open('', '_blank'), base = new URL('inicio/', location.href).href;
+  try {
+    const [html, f] = await Promise.all([fetch(base + 'contrato.html').then(r => { if (!r.ok) throw new Error('contrato'); return r.text(); }),
+      conta.modo === 'nuvem' && conta.nuvem ? conta.nuvem.fornecedor().catch(() => null) : null]);
+    const url = URL.createObjectURL(new Blob([montarContrato(html, f, base)], { type:'text/html' }));
+    if (w) w.location.href = url; else location.href = url;
+  } catch (e) { if (w) w.location.href = base + 'contrato.html'; }
+}
+if (typeof document !== 'undefined') document.addEventListener('click', ev => {
+  const a = ev.target.closest?.('a[data-contrato]'); if (!a || ev.ctrlKey || ev.metaKey) return;
+  ev.preventDefault(); abrirContrato();
+});
 export const FALTA_ACEITE = 'Para continuar, marque que leu e concorda com o Contrato de assinatura.';
 const marcarAceite = () => `<label class="aceite-c"><input type="checkbox" name="aceite" data-ac="aceite" ${conta.aceite ? 'checked' : ''}><span>${TEXTO_ACEITE}</span></label>`;
 const escolherPeriodo = () => `<div class="acesso-opc acesso-periodo" role="radiogroup" aria-label="Período">${PERIODOS_PAG.map(([k, l]) => `<label class="${conta.periodo === k ? 'on' : ''}"><input type="radio" name="periodo" value="${k}" data-ac="periodo" ${conta.periodo === k ? 'checked' : ''}><span><b>${l} <span class="acesso-preco">${precoPeriodoTxt(planoDe(conta.plano), k)}</span></b>${k === 'anual' ? '<small>2 meses grátis</small>' : k === 'anual12' ? '<small>15% de desconto, 12 meses de compromisso, só no cartão</small>' : ''}</span></label>`).join('')}</div>`;

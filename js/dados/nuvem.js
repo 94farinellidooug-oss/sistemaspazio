@@ -122,6 +122,10 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     relacionamento:async () => { try { return (await rest('relacionamento_musubi?select=ref,notas,retornar_em,atualizado_em')) || []; }
       catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
     salvarRelacionamento:async (ref, { notas, retornar_em }) => rest('relacionamento_musubi?on_conflict=ref', { metodo:'POST', corpo:{ ref, notas, retornar_em:retornar_em || null, atualizado_em:new Date().toISOString(), atualizado_por:sessao.user.id }, cab:{ Prefer:'resolution=merge-duplicates,return=minimal' } }),
+    // Quem vende o MUSUBI, para o Contrato de assinatura (supabase/013_fornecedor.sql). {} se vazio; null quando ainda não há a tabela.
+    fornecedor:async () => { try { return (await rest('musubi_fornecedor?select=nome,documento,endereco&id=eq.1'))?.[0] || {}; }
+      catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    salvarFornecedor:async ({ nome, documento, endereco }) => rest('musubi_fornecedor?on_conflict=id', { metodo:'POST', corpo:{ id:1, nome:nome.trim(), documento:documento.trim(), endereco:endereco.trim(), atualizado_em:new Date().toISOString() }, cab:{ Prefer:'resolution=merge-duplicates,return=minimal' } }),
     estenderTeste:async (clinica, dias) => rest('rpc/estender_teste', { metodo:'POST', corpo:{ p_clinica:clinica, p_dias:dias } }),
     interessados:async () => (await rest('interessados?select=id,nome,whats,situacao,criado_em&order=criado_em.desc')) || [],
     mudarInteressado:async (id, situacao) => rest(`interessados?id=eq.${id}`, { metodo:'PATCH', corpo:{ situacao }, cab:{ Prefer:'return=minimal' } }),
