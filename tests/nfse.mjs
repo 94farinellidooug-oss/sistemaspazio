@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import forge from 'node-forge';
 import { SignedXml } from 'xml-crypto';
-import { assinarDps, cifrar, cnpjValido, cpfValido, criarNfse, dataHoraBrasilia, decifrar, gunzipB64, gzipB64, idDps, lerNfse, lerPfx, montarDps, inicioDoMes } from '../supabase/functions/nfse/index.ts';
+import { assinarCancelamento, montarCancelamento, assinarDps, cifrar, cnpjValido, cpfValido, criarNfse, dataHoraBrasilia, decifrar, gunzipB64, gzipB64, idDps, lerNfse, lerPfx, montarDps, inicioDoMes } from '../supabase/functions/nfse/index.ts';
 
 let falhas = 0;
 const ok = (c, m) => { console.log(`${c ? 'ok   ' : 'FALHA'} ${m}`); if (!c) falhas++; };
@@ -80,6 +80,16 @@ for (const [rot, mud, msg] of [
   let v = 'ok'; if (xsd !== 'sem xmllint') try { execFileSync('xmllint', ['--noout', '--nonet', '--schema', ESQUEMA, arq], { stdio:'pipe' }); } catch (e) { v = String(e.stderr).slice(0, 200); }
   ok(!d.erros && x.includes(msg) && v === 'ok' && (!('tomador' in mud) || !x.includes('<toma>')), `DPS ${rot} no esquema oficial` + (v === 'ok' ? '' : ': ' + v));
 }
+// Cancelamento: pedido de registro de evento 101101 assinado, no esquema oficial (pedRegEvento_v1.01.xsd)
+for (const x of ['pedRegEvento_v1.01.xsd', 'tiposEventos_v1.01.xsd']) copyFileSync(join('tests/nfse-xsd', x), join(pasta, x));
+const CHAVE = '4305108' + '2' + '2' + CNPJ + '0000000000001' + '2611' + '123456789' + '0';
+const canc = montarCancelamento({ ambiente:'homologacao', chave:CHAVE, doc:CNPJ, motivo:'1', descricao:'Valor do serviço digitado errado', dhEvento:hoje });
+const cancXml = assinarCancelamento(canc, C, forge), arqC = join(pasta, 'canc.xml'); writeFileSync(arqC, cancXml);
+let vC = 'ok'; if (xsd !== 'sem xmllint') try { execFileSync('xmllint', ['--noout', '--nonet', '--schema', join(pasta, 'pedRegEvento_v1.01.xsd'), arqC], { stdio:'pipe' }); } catch (e) { vC = String(e.stderr || e.message).slice(0, 300); }
+ok(!canc.erros && canc.id === `PRE${CHAVE}101101` && cancXml.includes(`<CNPJAutor>${CNPJ}</CNPJAutor><chNFSe>${CHAVE}</chNFSe><e101101><xDesc>Cancelamento de NFS-e</xDesc><cMotivo>1</cMotivo>`) && vC === 'ok', 'o pedido de cancelamento assinado passa no esquema oficial (pedRegEvento_v1.01.xsd)' + (vC === 'ok' ? '' : ': ' + vC));
+ok(confere(cancXml), 'a assinatura do cancelamento confere em outra biblioteca');
+const cancRuim = montarCancelamento({ ambiente:'homologacao', chave:'123', doc:CNPJ, motivo:'5', descricao:'curto', dhEvento:hoje });
+ok(cancRuim.erros?.length === 3 && cancRuim.erros.some(e => e.includes('15 a 255')), 'cancelamento sem chave, motivo ou explicação volta com o que corrigir');
 const ruins = montarDps({ ...NOTA, prestador:{ doc:'11222333000182', regime:'3' }, tributos:{}, tomador:{ doc:'123', nome:'X' }, dCompet:'2999-01-01', servico:{ cTribNac:'45', descricao:'' } });
 ok(ruins.erros?.length >= 5 && ruins.erros.some(e => e.includes('CNPJ')) && ruins.erros.some(e => e.includes('CPF do paciente')) && ruins.erros.some(e => e.includes('percentual')), 'dados errados voltam com o que corrigir, em português');
 
@@ -116,6 +126,11 @@ function cenario({ segredo = 'frase-longa-do-servidor-123456', resposta = 'ok' }
       if (u.pathname.endsWith('/convenio')) return { status:S.param.convenio.status, texto:JSON.stringify(S.param.convenio.j) };
       const c = decodeURIComponent(u.pathname.split('/')[3]), q = S.param.codigos[c];
       return q ? { status:200, texto:JSON.stringify({ aliquotas:{ [c]:[{ Incidencia:'SIM', Aliq:q, DtIni:'2023-01-01T00:00:00', DtFim:null }] }, mensagem:'ok' }) } : { status:404, texto:JSON.stringify({ aliquotas:null, mensagem:'Não encontrado' }) };
+    }
+    if (metodo === 'POST' && u.pathname.endsWith('/eventos')) {
+      const ped = await gunzipB64(JSON.parse(corpo).pedidoRegistroEventoXmlGZipB64); S.ultimoEvento = { url, ped };
+      if (S.resposta === 'prazo') return { status:400, texto:JSON.stringify({ erros:[{ Codigo:'E0840', Descricao:'Prazo para cancelamento excedido', Complemento:'' }] }) };
+      return { status:201, texto:JSON.stringify({ tipoAmbiente:2, eventoXmlGZipB64:await gzipB64('<evento xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01"><infEvento>' + ped.replace(/^<\?xml[^>]*>/, '') + '</infEvento></evento>') }) };
     }
     if (u.pathname.includes('/dps/')) return S.resposta === 'nao_recebeu' ? { status:404, texto:'' } : { status:200, texto:JSON.stringify({ chaveAcesso:chave }) };
     if (u.pathname.includes('/nfse/')) return { status:200, texto:JSON.stringify({ chaveAcesso:chave, nfseXmlGZipB64:await gzipB64(nfseXml(S.ultimoDps || '<DPS/>', chave)) }) };
@@ -185,6 +200,23 @@ ok(barrada.status === 403 && barrada.j.erro === 'limite_notas' && barrada.j.msg.
 ok((await pedir('tk-u1', { acao:'emitir', clinica:C1, ambiente:'homologacao', nota:notaPedido })).j.situacao === 'emitida', 'em homologação o limite não vale');
 S.assinaturas[0].plano = 'clinica';
 ok((await pedir('tk-u1', { acao:'emitir', clinica:C1, ambiente:'producao', nota:notaPedido })).j.situacao === 'emitida', 'com o pacote Clínica (300 por mês) volta a emitir');
+// Cancelar nota emitida pelo MUSUBI (só o administrador)
+{ const nota = S.notas.find(n => n.situacao === 'emitida' && n.ambiente === 'homologacao' && n.chave);
+  let r = await pedir('tk-u2', { acao:'cancelar', clinica:C1, id:nota.id, motivo:'1', descricao:'Valor do serviço digitado errado' });
+  ok(r.status === 403 && nota.situacao === 'emitida', 'só o administrador cancela a nota');
+  r = await pedir('tk-u1', { acao:'cancelar', clinica:C1, id:nota.id, motivo:'1', descricao:'curto' });
+  ok(r.status === 400 && r.j.msg.includes('15 a 255') && nota.situacao === 'emitida', 'sem explicar o motivo não cancela');
+  S.resposta = 'prazo';
+  r = await pedir('tk-u1', { acao:'cancelar', clinica:C1, id:nota.id, motivo:'2', descricao:'O paciente não compareceu à sessão' });
+  ok(r.status === 422 && r.j.msg.includes('E0840') && r.j.msg.includes('Emissor Nacional') && nota.situacao === 'emitida', 'a Receita recusa (prazo): explica e a nota continua emitida');
+  S.resposta = 'ok';
+  r = await pedir('tk-u1', { acao:'cancelar', clinica:C1, id:nota.id, motivo:'2', descricao:'O paciente não compareceu à sessão' });
+  ok(r.status === 200 && r.j.situacao === 'cancelada' && nota.situacao === 'cancelada' && nota.cancelada_em && nota.cancelamento.motivo === '2' && nota.cancelamento.por === 'u1' && nota.cancelamento.evento.includes('<infEvento>'), 'cancelada: a nota fica marcada com o motivo, quem e quando');
+  ok(S.ultimoEvento.url === `https://sefin.producaorestrita.nfse.gov.br/SefinNacional/nfse/${nota.chave}/eventos` && S.ultimoEvento.ped.includes(`Id="PRE${nota.chave}101101"`) && confere(S.ultimoEvento.ped), 'o pedido vai assinado para o endereço de eventos da nota');
+  ok((await pedir('tk-u1', { acao:'cancelar', clinica:C1, id:nota.id, motivo:'2', descricao:'O paciente não compareceu à sessão' })).j.situacao === 'cancelada', 'cancelar de novo não envia outra vez');
+  const rej = S.notas.find(n => n.situacao === 'rejeitada');
+  ok(!rej || (await pedir('tk-u1', { acao:'cancelar', clinica:C1, id:rej.id, motivo:'1', descricao:'Valor do serviço digitado errado' })).j.erro === 'situacao', 'nota que não saiu não tem o que cancelar');
+}
 const semSeg = cenario({ segredo:'' });
 ok((await semSeg.pedir('tk-u1', { acao:'situacao', clinica:C1 })).j.erro === 'sem_segredo', 'sem o segredo NFSE_SEGREDO no servidor, avisa que falta ligar');
 ok(lerNfse('<NFSe><infNFSe Id="NFS' + '1'.repeat(50) + '"><nNFSe>12</nNFSe></infNFSe></NFSe>').numero === '12', 'lê número e chave da nota devolvida');

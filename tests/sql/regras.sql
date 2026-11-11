@@ -325,4 +325,5 @@ reset role;
 select pg_temp.checar((select nome from musubi_fornecedor) = 'Fulano', 'quem não é dono não muda os dados do contrato');
 do $$ begin insert into musubi_fornecedor (id) values (2); raise exception 'FALHA: aceitou segunda linha';
 exception when check_violation then raise notice 'ok    só existe uma linha de dados do contrato'; end $$;
+select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'nfse_notas' and column_name in ('cancelada_em', 'cancelamento')) = 2, 'nota guarda quando e por que foi cancelada (011_nfse_cancelar.sql)');
 \echo 'Todas as regras do banco passaram.'
