@@ -20,6 +20,8 @@
 //   { acao:'emitir', clinica, ambiente:'homologacao'|'producao', nota:{...}, referencia }  qualquer pessoa ativa da
 //     equipe: monta a DPS, assina, envia e devolve { id, chave, numero, ndps, ambiente, emitidaEm, ... }.
 //   { acao:'conferir', clinica, id }  nota que ficou sem resposta: pergunta à Receita se a DPS virou nota.
+//   { acao:'cancelar', clinica, id, motivo:'1'|'2'|'9', descricao }  só o administrador: pede o cancelamento da nota
+//     à Receita (evento 101101) e marca como cancelada (supabase/011_nfse_cancelar.sql).
 // A Receita recusa com códigos (E0xxx); a mensagem volta para a tela como veio.
 // Escrito em JavaScript simples (sem tipos) para rodar igual no Supabase e nos testes (node). A leitura do .pfx e a
 // assinatura usam a biblioteca node-forge; a conexão com a Receita usa o certificado da clínica (mTLS).
@@ -140,13 +142,33 @@ export function montarDps(n){
 
 // ---------- Assinatura (XMLDSig envelopada no infDPS, RSA-SHA256, C14N) ----------
 const signedInfo = (id, digest, ns) => `<SignedInfo${ns ? ` xmlns="${DS}"` : ''}><CanonicalizationMethod Algorithm="${C14N}"></CanonicalizationMethod><SignatureMethod Algorithm="${RSA_SHA256}"></SignatureMethod><Reference URI="#${escAttr(id)}"><Transforms><Transform Algorithm="${ENVELOPED}"></Transform><Transform Algorithm="${C14N}"></Transform></Transforms><DigestMethod Algorithm="${SHA256}"></DigestMethod><DigestValue>${digest}</DigestValue></Reference></SignedInfo>`;
-export function assinarDps(dps, cert, forge){
+// d = { id, corpo, inf } (inf = o elemento assinado na forma canônica, com o namespace herdado).
+export function assinarXml(raiz, infNome, d, cert, forge){
   const sha = s => { const md = forge.md.sha256.create(); md.update(s, 'utf8'); return md; };
-  const digest = forge.util.encode64(sha(dps.inf).digest().bytes());
+  const digest = forge.util.encode64(sha(d.inf).digest().bytes());
   const chave = forge.pki.privateKeyFromPem(cert.chavePem);
-  const assinatura = forge.util.encode64(chave.sign(sha(signedInfo(dps.id, digest, true))));
-  const sig = `<Signature xmlns="${DS}">${signedInfo(dps.id, digest, false)}<SignatureValue>${assinatura}</SignatureValue><KeyInfo><X509Data><X509Certificate>${cert.certB64}</X509Certificate></X509Data></KeyInfo></Signature>`;
-  return `<?xml version="1.0" encoding="UTF-8"?><DPS xmlns="${NS}" versao="${VERSAO}"><infDPS Id="${escAttr(dps.id)}">${dps.corpo}</infDPS>${sig}</DPS>`;
+  const assinatura = forge.util.encode64(chave.sign(sha(signedInfo(d.id, digest, true))));
+  const sig = `<Signature xmlns="${DS}">${signedInfo(d.id, digest, false)}<SignatureValue>${assinatura}</SignatureValue><KeyInfo><X509Data><X509Certificate>${cert.certB64}</X509Certificate></X509Data></KeyInfo></Signature>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><${raiz} xmlns="${NS}" versao="${VERSAO}"><${infNome} Id="${escAttr(d.id)}">${d.corpo}</${infNome}>${sig}</${raiz}>`;
+}
+export const assinarDps = (dps, cert, forge) => assinarXml('DPS', 'infDPS', dps, cert, forge);
+export const assinarCancelamento = (c, cert, forge) => assinarXml('pedRegEvento', 'infPedReg', c, cert, forge);
+
+// ---------- Cancelamento (evento 101101 do pedido de registro de evento, pedRegEvento_v1.01.xsd) ----------
+// Id = "PRE" + chave de acesso (50 números) + tipo do evento (101101). O autor é o prestador (CNPJ ou CPF).
+export const MOTIVOS_CANC = { '1':'Erro na emissão', '2':'Serviço não prestado', '9':'Outros' };
+export function montarCancelamento({ ambiente, chave, doc, motivo, descricao, dhEvento }){
+  const E = [], d = soDigitos(doc), x = limpo(descricao);
+  if (!TP_AMB[ambiente]) E.push('Ambiente da nota inválido.');
+  if (!/^\d{50}$/.test(String(chave || ''))) E.push('Chave de acesso da nota inválida.');
+  if (!(d.length === 14 ? cnpjValido(d) : cpfValido(d))) E.push('Confira o CNPJ (ou CPF) da clínica em Configurações.');
+  if (!MOTIVOS_CANC[motivo]) E.push('Escolha o motivo do cancelamento.');
+  if (x.length < 15 || x.length > 255) E.push('Explique o motivo do cancelamento com 15 a 255 letras.');
+  if (E.length) return { erros:E };
+  const id = `PRE${chave}101101`;
+  const corpo = tx('tpAmb', TP_AMB[ambiente]) + tx('verAplic', VER_APLIC) + tx('dhEvento', dhEvento) + tx(d.length === 14 ? 'CNPJAutor' : 'CPFAutor', d) + tx('chNFSe', chave)
+    + el('e101101', tx('xDesc', 'Cancelamento de NFS-e') + tx('cMotivo', motivo) + tx('xMotivo', x));
+  return { id, corpo, inf:`<infPedReg xmlns="${NS}" Id="${id}">${corpo}</infPedReg>` };
 }
 
 // ---------- Certificado A1 (.pfx / .p12) ----------
@@ -370,6 +392,32 @@ export function criarNfse({ env, f = (...a) => fetch(...a), forge, mtls, agora =
         if (R[0].nao && R[0].status === 404) R = R.concat(await Promise.all(['001', '002', '003', '004', '005', '006', '007', '008', '009'].map(aliq)));
         const achados = R.filter(x => !x.nao).map(({ complemento, codigo, aliquota, incidencia }) => ({ complemento, codigo, aliquota, incidencia }));
         return resp(200, { ambiente, municipio:mun, competencia:comp, convenio, achados, mensagem:achados.length ? '' : String(R[0].mensagem || '') });
+      }
+
+      if (acao === 'cancelar') {
+        if (!adm) return erro(403, 'sem_acesso', 'Só o administrador da clínica cancela notas.');
+        if (!UUID.test(String(corpo.id || ''))) return erro(400, 'dados', 'Pedido inválido.');
+        const L = (await banco(`nfse_notas?select=id,ambiente,chave,numero,situacao&clinica_id=eq.${clinica}&id=eq.${corpo.id}`)) || [];
+        const linha = L[0]; if (!linha) return erro(404, 'nao_achei', 'Nota não encontrada.');
+        if (linha.situacao === 'cancelada') return resp(200, { id:linha.id, situacao:'cancelada' });
+        if (linha.situacao !== 'emitida' || !linha.chave) return erro(400, 'situacao', 'Só dá para cancelar uma nota já emitida.');
+        const cert = await certificadoDe(clinica); if (!cert) return erro(400, 'sem_certificado', 'Envie o certificado digital A1 da clínica em Configurações > Nota fiscal.');
+        if (new Date(cert.validade) <= agora()) return erro(400, 'vencido', 'O certificado digital da clínica venceu. Envie o novo em Configurações > Nota fiscal.');
+        const motivo = String(corpo.motivo || ''), descricao = limpo(corpo.descricao).slice(0, 255);
+        const c = montarCancelamento({ ambiente:linha.ambiente, chave:linha.chave, doc:cert.documento || corpo.doc, motivo, descricao, dhEvento:dataHoraBrasilia(new Date(agora().getTime() - 60000)) });
+        if (c.erros) return erro(400, 'dados', c.erros[0], { erros:c.erros });
+        let r;
+        try { r = await sefin(linha.ambiente, `/nfse/${linha.chave}/eventos`, cert, { pedidoRegistroEventoXmlGZipB64:await gzipB64(assinarCancelamento(c, cert, forge)) }, req); }
+        catch (e) { console.error(e); return erro(504, 'sem_resposta', 'A Receita não respondeu. Tente cancelar de novo em instantes.'); }
+        if (r.status >= 200 && r.status < 300) {
+          const ev = r.j?.eventoXmlGZipB64 || r.j?.EventoXmlGZipB64, quando = agora().toISOString();
+          await banco(`nfse_notas?id=eq.${linha.id}`, { metodo:'PATCH', corpo:{ situacao:'cancelada', cancelada_em:quando, cancelamento:{ motivo, descricao, por:u.id, evento:ev ? await gunzipB64(ev) : '' } }, cab:{ Prefer:'return=minimal' } });
+          return resp(200, { id:linha.id, situacao:'cancelada', canceladaEm:quando, numero:linha.numero });
+        }
+        const E = errosSefin(r.j);
+        if (E.length) return erro(422, 'recusado', `A Receita não cancelou: ${E[0].codigo} ${E[0].descricao}${E[0].complemento ? ' (' + E[0].complemento + ')' : ''}`.trim() + '. Se o prazo para cancelar já passou, o pedido precisa ser analisado pela prefeitura: faça pelo Emissor Nacional (nfse.gov.br).', { erros:E });
+        console.error('sefin cancelar', r.status, String(r.texto).slice(0, 300));
+        return erro(502, 'sem_resposta', 'A Receita respondeu com erro. Tente cancelar de novo em instantes.');
       }
 
       if (acao === 'conferir') {
