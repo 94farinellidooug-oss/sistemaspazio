@@ -246,3 +246,17 @@ p{margin:0}
 .plano .garantias{flex:1;margin:4px 0 8px}
 .plano-selo{position:absolute;top:-13px;left:24px;background:var(--ouro);color:#2a1f08;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px}
 @media (max-width:900px){ .planos{grid-template-columns:minmax(0,1fr);max-width:480px;margin-inline:auto} }
+
+/* Páginas legais (Política de privacidade e Termos de uso) */
+.legal{padding:48px 0 72px}
+.legal h1{font-size:clamp(1.8rem,3.4vw,2.4rem);font-weight:800;margin-bottom:8px}
+.legal .atual{color:var(--suave);font-size:.9rem;margin-bottom:32px}
+.legal h2{font-size:1.2rem;font-weight:700;margin:34px 0 10px}
+.legal p,.legal li{color:var(--tinta);line-height:1.7}
+.legal p+p{margin-top:12px}
+.legal ul{padding-left:22px;margin:10px 0}
+.legal li+li{margin-top:6px}
+.legal a{color:var(--sis)}
+.legal .resumo{background:var(--sup);border:1px solid var(--linha);border-radius:var(--raio);padding:18px 20px;margin-bottom:8px}
+.legal .resumo li{margin-top:4px}
+.consent{font-size:.82rem;color:var(--suave)} .consent a{color:inherit}

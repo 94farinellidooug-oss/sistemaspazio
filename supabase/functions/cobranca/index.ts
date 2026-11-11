@@ -159,7 +159,7 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
           const dia = new Date(A.cartao_proxima).toLocaleDateString('pt-BR', { timeZone:'America/Sao_Paulo' }), valor = ((A.cartao_valor || 0) / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
           const r = await f('https://api.resend.com/emails', { method:'POST', headers:{ Authorization:`Bearer ${CH}`, 'Content-Type':'application/json' }, body:JSON.stringify({
             from:DE, to:[A.cartao_email], subject:`MUSUBI: cobrança de ${valor} em ${dia}`,
-            text:`Olá!\n\nEste é um aviso de que a assinatura do MUSUBI (pacote ${NOMES[A.cartao_plano] || ''}, ${A.cartao_periodo === 'anual' ? 'anual' : 'mensal'}) será cobrada no seu cartão em ${dia}, no valor de ${valor}, pelo Mercado Pago.\n\nNão é preciso fazer nada. Para trocar de pacote ou cancelar, entre no MUSUBI em Configurações > Sua conta: ${SITE}/spazio.html\n\nEquipe MUSUBI`
+            text:`Olá!\n\nEste é um aviso de que a assinatura do MUSUBI (pacote ${NOMES[A.cartao_plano] || ''}, ${A.cartao_periodo === 'anual' ? 'anual' : 'mensal'}) será cobrada no seu cartão em ${dia}, no valor de ${valor}, pelo Mercado Pago.\n\nNão é preciso fazer nada. Para trocar de pacote ou cancelar, entre no MUSUBI em Configurações > Sua conta: ${SITE}/sistema\n\nEquipe MUSUBI`
           }) });
           if (r.ok) { enviados++; await mudarAssinatura(A.clinica_id, { cartao_aviso_para:A.cartao_proxima }); }
         }
@@ -182,7 +182,7 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
         const auto = { frequency:periodo === 'anual' ? 12 : 1, frequency_type:'months', transaction_amount:valor / 100, currency_id:'BRL' };
         if (inicio > Date.now() + 36e5) auto.start_date = new Date(inicio).toISOString();
         let p;
-        try { p = await mp('/preapproval', { metodo:'POST', corpo:{ reason:`MUSUBI ${NOMES[plano]} (${periodo})`, external_reference:clinica, payer_email:email, back_url:`${SITE}/spazio.html`, status:'pending', auto_recurring:auto } }); }
+        try { p = await mp('/preapproval', { metodo:'POST', corpo:{ reason:`MUSUBI ${NOMES[plano]} (${periodo})`, external_reference:clinica, payer_email:email, back_url:`${SITE}/sistema`, status:'pending', auto_recurring:auto } }); }
         catch (e) { console.error(e); return erro(502, 'mercadopago', `O Mercado Pago não criou a assinatura.${e.mp?.message ? ` (Motivo: ${String(e.mp.message).slice(0, 160)})` : ''}`); }
         if (!p?.init_point) return erro(502, 'mercadopago', 'O Mercado Pago não devolveu o endereço da assinatura. Tente de novo.');
         await mudarAssinatura(clinica, { cartao_id:String(p.id), cartao_situacao:'pendente', cartao_plano:plano, cartao_periodo:periodo, cartao_valor:valor, cartao_email:email, cartao_proxima:p.next_payment_date || auto.start_date || null, cartao_aviso_para:null });
@@ -236,7 +236,7 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
       const r = await f(`${INFINITEPAY}/links`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({
         handle:HANDLE, order_nsu,
         items:[{ description:semAcento(teste ? 'MUSUBI - teste de pagamento' : `MUSUBI ${NOMES[plano]} - ${periodo === 'anual' ? '12 meses' : '1 mes'}`), price:valor, quantity:1 }],
-        redirect_url:`${SITE}/spazio.html`, webhook_url:`${SB}/functions/v1/cobranca?aviso=1`,
+        redirect_url:`${SITE}/sistema`, webhook_url:`${SB}/functions/v1/cobranca?aviso=1`,
         customer:u.email ? { email:u.email } : undefined
       }) });
       const j = await r.json().catch(() => null);

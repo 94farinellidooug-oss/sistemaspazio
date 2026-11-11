@@ -54,7 +54,7 @@ ok(valorDe('profissional', 'anual') === 149000, 'anual = 10 meses (2 meses grát
   ok(S.pagamentos.length === 1 && S.pagamentos[0].valor === 14900 && S.pagamentos[0].order_nsu === 'MSBid1' && S.pagamentos[0].link === j.url, 'pedido guardado com o valor do servidor (não o do navegador) e o link');
   const L = S.links[0];
   ok(L.handle === 'spazio' && L.items[0].price === 14900 && L.items[0].description.includes('Profissional') && /^[\x20-\x7e]+$/.test(L.items[0].description) && L.order_nsu === 'MSBid1', 'link pedido à InfinitePay com a InfiniteTag, valor e número do pedido');
-  ok(L.redirect_url === 'https://sistemaspazio.vercel.app/spazio.html' && L.webhook_url === 'https://sb.test/functions/v1/cobranca?aviso=1' && L.customer.email === 'adm@x.com', 'volta para o sistema e avisa a função');
+  ok(L.redirect_url === 'https://sistemaspazio.vercel.app/sistema' && L.webhook_url === 'https://sb.test/functions/v1/cobranca?aviso=1' && L.customer.email === 'adm@x.com', 'volta para o sistema e avisa a função');
 
   // Aviso da InfinitePay
   r = await pedir({ order_nsu:'MSBid1', transaction_nsu:'tx1', invoice_slug:'abc', amount:14900, paid_amount:14900, receipt_url:'https://recibo/1' }, null, '?aviso=1');

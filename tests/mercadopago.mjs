@@ -59,7 +59,7 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
   r = await pedir({ acao:'assinar', clinica:C1, plano:'profissional', periodo:'mensal', email:'Maicon@MP.com ' }, 'tk-u1');
   const j = await r.json(), A = S.criadas[0];
   ok(r.status === 200 && j.url.includes('preapproval_id=pre1'), 'administrador recebe o endereço da assinatura no Mercado Pago');
-  ok(A.status === 'pending' && A.payer_email === 'maicon@mp.com' && A.external_reference === C1 && A.auto_recurring.transaction_amount === 149 && A.auto_recurring.frequency === 1 && A.auto_recurring.frequency_type === 'months' && A.auto_recurring.currency_id === 'BRL' && A.back_url === 'https://sistemaspazio.vercel.app/spazio.html', 'assinatura mensal de R$ 149 pedida com o e-mail, a clínica e a volta para o sistema');
+  ok(A.status === 'pending' && A.payer_email === 'maicon@mp.com' && A.external_reference === C1 && A.auto_recurring.transaction_amount === 149 && A.auto_recurring.frequency === 1 && A.auto_recurring.frequency_type === 'months' && A.auto_recurring.currency_id === 'BRL' && A.back_url === 'https://sistemaspazio.vercel.app/sistema', 'assinatura mensal de R$ 149 pedida com o e-mail, a clínica e a volta para o sistema');
   ok(!A.auto_recurring.start_date, 'teste já acabou: a primeira cobrança é na hora');
   ok(S.assin.cartao_id === 'pre1' && S.assin.cartao_situacao === 'pendente' && S.assin.cartao_valor === 14900 && S.assin.cartao_email === 'maicon@mp.com', 'assinatura guardada como pendente');
 
