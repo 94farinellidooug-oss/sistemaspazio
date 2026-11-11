@@ -261,3 +261,50 @@ p{margin:0}
 .legal .resumo{background:var(--sup);border:1px solid var(--linha);border-radius:var(--raio);padding:18px 20px;margin-bottom:8px}
 .legal .resumo li{margin-top:4px}
 .consent{font-size:.82rem;color:var(--suave)} .consent a{color:inherit}
+
+/* Entrada: logo centralizado por alguns segundos na primeira visita da sessão */
+.entrada{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:
+  radial-gradient(600px 360px at 50% 45%,color-mix(in srgb,var(--ouro) 16%,transparent),transparent 70%),var(--fundo)}
+.entrada.saindo{animation:entrada-sai .45s ease forwards}
+.sem-entrada .entrada{display:none}
+.entrada-c{display:grid;justify-items:center;gap:26px}
+.entrada-logo{width:min(260px,64vw);height:auto;animation:entrada-logo 1.1s cubic-bezier(.2,.8,.2,1) both}
+.entrada-barra{display:block;width:140px;height:3px;border-radius:3px;background:color-mix(in srgb,var(--ouro) 22%,transparent);overflow:hidden}
+.entrada-barra i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--ouro-claro),var(--ouro));transform-origin:left;animation:entrada-barra 1.7s .2s ease-in-out both}
+@keyframes entrada-logo{from{opacity:0;transform:scale(.86);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+@keyframes entrada-barra{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes entrada-sai{to{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion:reduce){ .entrada-logo,.entrada-barra i{animation-duration:.01s} }
+
+/* Página inicial: blocos aparecem ao rolar e cartões com mais vida */
+.js .revela{opacity:0;transform:translateY(22px);transition:opacity .6s ease var(--atraso,0ms),transform .6s cubic-bezier(.2,.8,.2,1) var(--atraso,0ms)}
+.js .revela.visto{opacity:1;transform:none}
+.hero h1 em{background:linear-gradient(100deg,var(--sis) 30%,var(--ouro-txt));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-txt>*{animation:sobe .8s cubic-bezier(.2,.8,.2,1) both}
+.hero-txt>:nth-child(2){animation-delay:.08s} .hero-txt>:nth-child(3){animation-delay:.16s} .hero-txt>:nth-child(4){animation-delay:.24s} .hero-txt>:nth-child(5){animation-delay:.32s}
+.hero-vis{animation:sobe 1s .2s cubic-bezier(.2,.8,.2,1) both}
+@keyframes sobe{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.mod{transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease}
+.mod:hover{transform:translateY(-4px)}
+.mod-ic{transition:background .25s ease,color .25s ease}
+.mod:hover .mod-ic{background:var(--ouro-fundo);color:var(--ouro-txt)}
+.spot .janela{transition:transform .4s ease}
+.spot:hover .janela{transform:translateY(-4px) scale(1.01)}
+.plano{transition:transform .25s ease,box-shadow .25s ease}
+.plano:hover{transform:translateY(-4px);box-shadow:var(--sombra)}
+@media (prefers-reduced-motion:reduce){ .hero-txt>*,.hero-vis{animation:none} .mod:hover,.plano:hover,.spot:hover .janela{transform:none} }
+
+/* Planos: Mensal / Anual */
+.periodo-sel{display:flex;width:max-content;max-width:100%;margin:0 auto 22px;padding:4px;border-radius:999px;background:var(--sup);border:1px solid var(--linha);gap:4px}
+.periodo-sel button{border:0;background:none;padding:10px 20px;border-radius:999px;font:600 .95rem Inter,sans-serif;color:var(--suave);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.periodo-sel button[aria-checked="true"]{background:var(--verde);color:#fff}
+:root[data-theme="dark"] .periodo-sel button[aria-checked="true"]{color:#121510}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .periodo-sel button[aria-checked="true"]{color:#121510} }
+.periodo-eco{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--ouro);color:#2a1f08}
+.anual-vant{max-width:760px;margin:0 auto 26px;padding:16px 20px;border-radius:var(--raio);background:var(--ouro-fundo);border:1px solid color-mix(in srgb,var(--ouro) 45%,transparent);text-align:center}
+.anual-vant b{display:block;margin-bottom:8px;color:var(--ouro-txt)}
+.anual-vant .garantias{justify-content:center;margin:0}
+.plano-preco{flex-wrap:wrap}
+.plano-de{color:var(--suave);font-size:.95rem;margin-left:6px}
+.plano-vista{margin:-6px 0 0;font-size:.86rem;color:var(--ouro-txt);font-weight:600}
+@media (max-width:620px){ .anual-vant{text-align:left} .anual-vant .garantias{flex-direction:column;justify-content:flex-start} }

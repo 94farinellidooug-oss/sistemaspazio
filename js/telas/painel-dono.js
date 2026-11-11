@@ -36,12 +36,8 @@ export function vPainelDono(){
   const cab = `<div class="head"><div><h1>Painel do MUSUBI</h1><p>Tarefas de venda, gestão, clínicas e relacionamento</p></div><button class="btn" data-pd="atualizar" ${pd.carregando ? 'disabled' : ''}>${ic('retorno')}${pd.carregando ? 'Atualizando…' : 'Atualizar'}</button></div>`;
   if (pd.erro) return cab + `<div class="notice">${ic('alerta')}<span>${esc(pd.erro)}</span></div>`;
   if (!pd.lista) return cab + `<p class="muted">${ic('carregando')} Carregando…</p>`;
-  return cab + `<div class="pd-n">
-      <div class="card"><small>Clínicas</small><b>${L.length}</b></div>
-      <div class="card"><small>Em teste</small><b>${n('teste')}</b></div>
-      <div class="card"><small>Grátis ou pagas</small><b>${n('gratis') + n('pago')}</b></div>
-      <div class="card"><small>Teste terminou</small><b>${n('vencido')}</b></div>
-      <div class="card"><small>Interessados novos</small><b>${novos}</b></div></div>
+  const it = (v, l, cls = '') => `<span class="${cls}"><b>${v}</b> ${l}</span>`;
+  return cab + `<div class="pd-resumo" aria-label="Resumo">${it(L.length, L.length === 1 ? 'clínica' : 'clínicas')}${it(n('teste'), 'em teste')}${it(n('gratis') + n('pago'), 'grátis ou pagas')}${it(n('vencido'), 'teste terminou', n('vencido') ? 'atencao' : '')}${it(novos, novos === 1 ? 'interessado novo' : 'interessados novos', novos ? 'atencao' : '')}</div>
     <div class="tabs pd-tabs" role="tablist">${[['hoje', `Hoje${T.length ? ` (${T.length})` : ''}`, 'check'], ['gestao', 'Gestão', 'relatorios'], ['clinicas', 'Clínicas', 'admin'], ['relacionamento', `Relacionamento${novos ? ` (${novos})` : ''}`, 'mensagem'], ['pagamentos', 'Pagamentos', 'dinheiro']].map(([k, l, i]) => `<button role="tab" data-pd="aba" data-k="${k}" class="${pd.aba === k ? 'on' : ''}" aria-selected="${pd.aba === k}">${ic(i)}${l}</button>`).join('')}</div>
     ${pd.aba === 'hoje' ? pdHoje(T) : pd.aba === 'gestao' ? pdGestao(L) : pd.aba === 'clinicas' ? pdClinicas(L) : pd.aba === 'relacionamento' ? pdRelacionamento(L, I) : pdPagamentos(L, pd.pags)}`;
 }
@@ -99,8 +95,8 @@ function pdHoje(T){
     <div class="list">${T.map(t => `<div class="row pd-t n${t.nivel}" data-ref="${esc(t.ref)}"><span class="tico sm ${t.nivel === 1 ? 'acc' : ''}">${ic(t.nivel === 1 ? 'sino' : 'relogio')}</span>
       <div class="grow"><b>${esc(t.titulo)}</b><small class="muted">${esc(t.detalhe)}</small></div>
       <div class="pd-ctl">${botoesContato(t)}<button class="btn sm ghost" data-pd="anotar" data-ref="${esc(t.ref)}" data-ir="1">${ic('editar')}Anotar</button></div></div>`).join('') || '<p class="muted sm">Nada pendente hoje. Bom momento para divulgar o MUSUBI.</p>'}</div></div>
-  <div class="card" id="pd-dicas"><div class="card-h"><h2>Dicas para vender melhor</h2></div>
-    <ul class="pd-dicas">${DICAS_VENDA.map(([t, d]) => `<li><b>${esc(t)}</b><span class="muted">${esc(d)}</span></li>`).join('')}</ul></div>`;
+  <details class="card pd-dicas-c" id="pd-dicas"><summary><b>Dicas para vender melhor</b> <small class="muted">${DICAS_VENDA.length} dicas</small></summary>
+    <ul class="pd-dicas">${DICAS_VENDA.map(([t, d]) => `<li><b>${esc(t)}</b><span class="muted">${esc(d)}</span></li>`).join('')}</ul></details>`;
 }
 const botoesContato = k => { const w = linkWhats(k.whats, mensagemVenda(k.msg, k.nome));
   return `${w ? `<a class="btn sm wa" href="${w}" target="_blank" rel="noopener">${ic('mensagem')}WhatsApp</a>` : ''}${k.email ? `<a class="btn sm ghost" href="mailto:${esc(k.email)}">${ic('mail')}E-mail</a>` : ''}`; };
@@ -109,16 +105,19 @@ const botoesContato = k => { const w = linkWhats(k.whats, mensagemVenda(k.msg, k
 function pdGestao(L){
   const N = numerosGestao({ clinicas:L, pagamentos:pd.pags, excluidas:pd.excl || [] }), ano = new Date().getFullYear();
   const nomeMes = m => new Date(m + '-15T12:00:00').toLocaleDateString('pt-BR', { month:'short', year:'numeric' });
-  const caixa = (t, v, d = '') => `<div class="card"><small>${t}</small><b>${v}</b>${d ? `<small>${d}</small>` : ''}</div>`;
+  const lin = (t, v, d = '') => `<div class="pd-kv"><span>${t}${d ? `<small>${d}</small>` : ''}</span><b>${v}</b></div>`;
+  const grupo = (t, linhas) => `<section class="pd-grupo"><h3>${t}</h3>${linhas}</section>`;
+  const barras = (L2, val, txt) => { const mx = Math.max(1, ...L2.map(val)); return L2.map(x => `<div class="pd-barra"><span>${x.rot}</span><i style="--p:${Math.round(val(x) / mx * 100)}%"></i><b>${txt(x)}</b></div>`).join(''); };
   return `<div class="card" id="pd-gest"><div class="card-h"><h2>Gestão do MUSUBI<small>números de hoje, sem dados de pacientes</small></h2></div>
-    <div class="pd-n pd-n4">
-      ${caixa('Receita por mês (estimada)', reaisPd(N.mrr), 'assinaturas em dia')}${caixa('Ticket médio', reaisPd(N.ticket), 'por clínica pagante')}
-      ${caixa('Recebido em 30 dias', reaisPd(N.recebido30))}${caixa(`Recebido em ${ano}`, reaisPd(N.recebidoAno))}
-      ${caixa('Clínicas pagantes', N.pagantes, `${N.cartao} no cartão`)}${caixa('Conversão do teste', N.conversao + '%', 'clínicas que já pagaram')}
-      ${caixa('Novas em 30 dias', N.novas30)}${caixa('Usaram em 7 dias', N.ativas7, `de ${L.length} clínicas`)}
-      ${caixa('Em teste', N.emTeste)}${caixa('Teste terminou', N.vencidas, 'sem pagamento em dia')}${caixa('Grátis', N.gratis)}${caixa('Desistências em 90 dias', N.desistencias90)}</div>
-    <div class="pd-g2"><div><h3>Recebido por mês</h3><div class="list">${N.porMes.map(m => `<div class="row"><span class="grow">${nomeMes(m.mes)}</span><b>${reaisPd(m.valor)}</b></div>`).join('')}</div></div>
-      <div><h3>Pagantes por pacote</h3><div class="list">${N.porPacote.map(p => `<div class="row"><span class="grow">${p.nome}</span><b>${p.n}</b></div>`).join('')}</div></div></div>
+    <div class="pd-grupos">
+      ${grupo('Receita', lin('Receita por mês (estimada)', reaisPd(N.mrr), 'assinaturas em dia') + lin('Ticket médio', reaisPd(N.ticket), 'por clínica pagante') + lin('Recebido em 30 dias', reaisPd(N.recebido30)) + lin(`Recebido em ${ano}`, reaisPd(N.recebidoAno)))}
+      ${grupo('Clientes', lin('Clínicas pagantes', N.pagantes, `${N.cartao} no cartão`) + lin('Em teste', N.emTeste) + lin('Teste terminou', N.vencidas, 'sem pagamento em dia') + lin('Grátis', N.gratis))}
+      ${grupo('Crescimento', lin('Conversão do teste', N.conversao + '%', 'clínicas que já pagaram') + lin('Novas em 30 dias', N.novas30) + lin('Usaram em 7 dias', N.ativas7, `de ${L.length} clínicas`) + lin('Desistências em 90 dias', N.desistencias90))}
+    </div>
+    <div class="pd-grupos pd-grupos2">
+      ${grupo('Recebido por mês', barras(N.porMes.map(m => ({ ...m, rot:nomeMes(m.mes) })), x => x.valor, x => reaisPd(x.valor)))}
+      ${grupo('Pagantes por pacote', barras(N.porPacote.map(p => ({ ...p, rot:p.nome })), x => x.n, x => x.n))}
+    </div>
     <p class="muted sm cf-obs">Receita por mês: cartão pelo valor da assinatura (anual dividido por 12) e Pix pelo preço mensal do pacote. Não conta testes, acesso grátis nem o pagamento de teste de R$ 1,00.</p></div>`;
 }
 
@@ -185,9 +184,7 @@ function pdPagamentos(L, G){
   const doMes = pagos.filter(g => String(g.pago_em || '').slice(0, 7) === mes), nomeC = id => L.find(c => c.id === id)?.nome || 'Clínica';
   return `<div class="card" id="pd-pag"><div class="card-h"><h2>Pagamentos<small>pela InfinitePay: Pix ou cartão, mensal ou anual (2 meses grátis)</small></h2><button class="btn sm" data-pd="teste" ${pd.testando ? 'disabled' : ''}>${ic('dinheiro')}${pd.testando ? 'Abrindo…' : 'Testar pagamento (R$ 1,00)'}</button></div>
     <p class="muted sm cf-obs" id="pd-teste-obs">O teste abre um pagamento real de R$ 1,00 para a sua própria clínica, que vai para a sua conta InfinitePay. Serve para conferir que o pagamento é confirmado e libera o acesso sozinho (soma 1 mês ao pacote da sua clínica).</p>
-    <div class="pd-n pd-n3"><div class="card"><small>Recebido este mês</small><b>${reaisPd(doMes.reduce((t, g) => t + (g.valor_pago || g.valor), 0))}</b></div>
-      <div class="card"><small>Pagamentos confirmados</small><b>${pagos.length}</b></div>
-      <div class="card"><small>Não concluídos</small><b>${G.length - pagos.length}</b></div></div>
+    <div class="pd-resumo"><span><b>${reaisPd(doMes.reduce((t, g) => t + (g.valor_pago || g.valor), 0))}</b> recebido este mês</span><span><b>${pagos.length}</b> confirmados</span><span><b>${G.length - pagos.length}</b> não concluídos</span></div>
     <div class="list">${G.map(g => `<div class="row pd-g-l"><span class="tico sm ${g.situacao === 'pago' ? 'acc' : ''}">${ic('dinheiro')}</span>
       <div class="grow"><b>${esc(nomeC(g.clinica_id))}</b><small class="muted">${g.valor === 100 ? 'Teste de pagamento' : `${esc(planoDe(g.plano).nome)} · ${g.periodo === 'anual' ? 'anual' : 'mensal'}`} · ${dataBR(g.pago_em || g.criado_em)}${g.forma ? ' · ' + (FORMA_PD[g.forma] || esc(g.forma)) : ''}</small></div>
       <b>${reaisPd(g.valor)}</b><span class="pill ${g.situacao === 'pago' ? 'ok' : ''}">${g.situacao === 'pago' ? 'Pago' : 'Não concluído'}</span>${g.recibo ? `<a class="btn sm ghost" href="${esc(g.recibo)}" target="_blank" rel="noopener">Recibo</a>` : ''}</div>`).join('') || '<p class="muted sm">Nenhum pagamento ainda.</p>'}</div>

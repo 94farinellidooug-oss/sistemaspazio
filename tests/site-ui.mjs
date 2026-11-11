@@ -38,6 +38,18 @@ ok(await carregou(p), 'logos e telas carregam');
 ok(await p.locator('#mods .mod').count() === 9 && await p.locator('#spots .spot').count() === 3 && await p.locator('#faq details').count() === 7, 'recursos, destaques e perguntas');
 ok(await p.locator('#quem .sobre', { hasText:'Por trás do MUSUBI' }).count() === 1 && await p.locator('#quem', { hasText:'idealizado pelo Biomédico e Acupunturista Maicon Farinelli' }).count() === 1, 'seção Por trás do MUSUBI com o texto do Maicon');
 ok(await p.locator('#planos-l .plano').count() === 3 && await p.locator('#planos-l', { hasText:'R$ 79' }).count() && await p.locator('#planos-l', { hasText:'R$ 149' }).count() && await p.locator('#planos-l', { hasText:'a partir de R$ 299' }).count(), 'três pacotes com os valores');
+// Entrada: logo no centro por alguns segundos, só na primeira visita da sessão
+ok(await p.locator('#entrada .entrada-logo').count() === 2, 'a entrada mostra o logo no centro');
+await p.waitForSelector('#entrada', { state:'detached', timeout:5000 });
+ok(true, 'depois de alguns segundos a entrada some e mostra a página');
+await p.reload(); await p.waitForSelector('#mods .mod');
+ok(!(await p.locator('#entrada').count()), 'na mesma sessão, a entrada não aparece de novo');
+// Planos: botão Mensal / Anual
+ok(await p.locator('#periodo-sel [data-k=mensal][aria-checked=true]').count() === 1 && await p.locator('#anual-vant').isHidden() && !(await p.locator('#planos-l', { hasText:'plano anual' }).count()), 'planos abrem no mensal, sem o anual embaixo');
+await p.click('#periodo-sel [data-k=anual]');
+ok(await p.locator('#anual-vant').isVisible() && await p.locator('#planos-l', { hasText:'R$ 67' }).count() && await p.locator('#planos-l', { hasText:'R$ 127' }).count() && await p.locator('#planos-l', { hasText:'R$ 1.490 à vista' }).count() && await p.locator('#planos-l', { hasText:'Economia de R$ 264 por ano' }).count(), 'no anual: preço com desconto, à vista e as vantagens');
+await p.click('#periodo-sel [data-k=mensal]');
+ok(await p.locator('#anual-vant').isHidden() && await p.locator('#planos-l', { hasText:'R$ 149' }).count(), 'de volta ao mensal');
 await p.click('[data-a="tema"]');
 ok((await logoVisivel(p)).join() === 'MUSUBI_logo_branco.svg' && await p.evaluate(() => localStorage.getItem('musubi-tema')) === 'dark', 'tema escuro escolhido: logo branco, salvo junto com o do sistema');
 await p.click('[data-a="tema"]');

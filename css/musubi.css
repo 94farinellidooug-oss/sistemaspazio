@@ -1429,3 +1429,23 @@ body.com-acesso{overflow:hidden}
 .pd-forn{margin:14px 0;border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px}
 .pd-forn summary{cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pd-forn .pd-g{margin:10px 0 0;width:100%}
+/* Painel do MUSUBI compacto: resumo em uma linha, gestão em listas com barras */
+.pd-resumo{display:flex;flex-wrap:wrap;gap:6px 0;margin:0 0 16px;padding:10px 4px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface,#fff)}
+.pd-resumo span{padding:0 14px;font-size:.88rem;color:var(--muted);border-right:1px solid var(--line)}
+.pd-resumo span:last-child{border-right:0}
+.pd-resumo b{color:var(--text,inherit);font-size:1rem}
+.pd-resumo .atencao b{color:var(--warn,#a15c00)}
+.pd-grupos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 28px}
+.pd-grupos2{grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-top:14px}
+.pd-grupo h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:6px 0 4px}
+.pd-kv{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.pd-kv small{display:block;color:var(--muted);font-size:.76rem}
+.pd-kv b{white-space:nowrap}
+.pd-barra{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:10px;align-items:center;padding:5px 0;font-size:.86rem}
+.pd-barra i{height:8px;border-radius:4px;background:var(--line);position:relative;overflow:hidden}
+.pd-barra i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--p);background:var(--accent);border-radius:4px}
+.pd-barra b{min-width:70px;text-align:right;white-space:nowrap}
+.pd-dicas-c summary{cursor:pointer;display:flex;gap:8px;align-items:baseline}
+.pd-dicas-c[open] summary{margin-bottom:10px}
+@media (max-width:900px){ .pd-grupos,.pd-grupos2{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:520px){ .pd-resumo span{padding:2px 10px} .pd-barra{grid-template-columns:76px minmax(0,1fr) auto} .pd-barra b{min-width:0} }
