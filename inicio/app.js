@@ -67,14 +67,42 @@ function montar(){
   $('#abas').innerHTML = TELAS.map(([k, t], n) => `<button role="tab" id="aba-${k}" aria-controls="tela" aria-selected="${!n}" tabindex="${n ? -1 : 0}" data-a="aba" data-k="${k}">${t}</button>`).join('');
   $('#spots').innerHTML = DESTAQUES.map(([im, s, t, d, L], n) => `<div class="spot ${n % 2 ? 'inv' : ''}"><div class="spot-txt"><span class="sobre">${s}</span><h2>${t}</h2><p>${d}</p><ul class="garantias col">${L.map(x => `<li>${ic('check')}${x}</li>`).join('')}</ul></div>
     <div class="janela"><div class="janela-b"><i></i><i></i><i></i></div><img src="${img(im)}" alt="Tela de ${s.toLowerCase()} do MUSUBI" width="1366" height="860"></div></div>`).join('');
-  $('#planos-l').innerHTML = PLANOS.map(p => `<article class="plano ${p.destaque ? 'dest' : ''}">${p.destaque ? '<span class="plano-selo">Recomendado</span>' : ''}<h3>${p.nome}</h3>
-    <p class="plano-preco"><b>${precoTxt(p).replace('/mês', '')}</b><small>/mês</small></p><p class="plano-anual">ou R$ ${precoFidelidade(p)}/mês no plano anual</p><p class="muted">${p.resumo}</p>
-    <ul class="garantias col">${p.itens.map(x => `<li>${ic('check')}${x}</li>`).join('')}</ul>
-    <button class="btn ${p.destaque ? 'ouro' : 'linha'} largo" data-a="plano" data-k="${p.k}">Experimentar ${DIAS_TESTE} dias grátis</button></article>`).join('');
+  desenharPlanos();
   $('#faq').innerHTML = PERGUNTAS.map(([q, r]) => `<details><summary>${q}${ic('baixo')}</summary><p>${r}</p></details>`).join('');
   mostrarTela('painel');
   pintarIcones();
 }
+// Planos: botão Mensal / Anual. No anual, o preço com 15% de desconto (12 meses no cartão) e o valor à vista (10 mensalidades).
+let periodo = 'mensal';
+const reaisSite = v => v.toLocaleString('pt-BR');
+function desenharPlanos(){
+  const anual = periodo === 'anual', ap = p => p.aPartir ? 'a partir de ' : '';
+  document.querySelectorAll('#periodo-sel [role=radio]').forEach(b => b.setAttribute('aria-checked', b.dataset.k === periodo));
+  $('#anual-vant').hidden = !anual;
+  $('#planos-l').innerHTML = PLANOS.map(p => `<article class="plano ${p.destaque ? 'dest' : ''}">${p.destaque ? '<span class="plano-selo">Recomendado</span>' : ''}<h3>${p.nome}</h3>
+    <p class="plano-preco">${p.aPartir ? '<small>a partir de</small> ' : ''}<b>R$ ${anual ? precoFidelidade(p) : p.preco}</b><small>/mês</small>${anual ? `<s class="plano-de">R$ ${p.preco}</s>` : ''}</p>
+    ${anual ? `<p class="plano-anual">No cartão, por 12 meses. Economia de R$ ${reaisSite((p.preco - precoFidelidade(p)) * 12)} por ano.</p><p class="plano-vista">ou ${ap(p)}R$ ${reaisSite(p.preco * 10)} à vista (2 meses grátis)</p>` : '<p class="plano-anual">Sem fidelidade. Cancele quando quiser.</p>'}
+    <p class="muted">${p.resumo}</p>
+    <ul class="garantias col">${p.itens.map(x => `<li>${ic('check')}${x}</li>`).join('')}</ul>
+    <button class="btn ${p.destaque ? 'ouro' : 'linha'} largo" data-a="plano" data-k="${p.k}">Experimentar ${DIAS_TESTE} dias grátis</button></article>`).join('');
+}
+
+// Entrada: o logo aparece por alguns segundos na primeira visita da sessão e depois abre a página.
+function entrada(){
+  const e = $('#entrada'); if (!e) return;
+  if (document.documentElement.classList.contains('sem-entrada')) { e.remove(); return; }
+  const tempo = matchMedia('(prefers-reduced-motion: reduce)').matches ? 600 : 2000;
+  setTimeout(() => { e.classList.add('saindo'); setTimeout(() => e.remove(), 450); }, tempo);
+}
+const revelarPlanos = () => document.querySelectorAll('#planos-l .plano').forEach(el => el.classList.add('visto'));
+// Os blocos aparecem suavemente ao rolar a página.
+function revelar(){
+  const A = document.querySelectorAll('.sec-h, .mod, .spot, .passos li, .cuidados > div, .plano, .quem-in, .faixa-v-in > div');
+  if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const io = new IntersectionObserver(L => L.forEach(x => { if (x.isIntersecting) { x.target.classList.add('visto'); io.unobserve(x.target); } }), { rootMargin:'0px 0px -8% 0px' });
+  A.forEach((el, i) => { el.classList.add('revela'); el.style.setProperty('--atraso', `${(i % 3) * 80}ms`); io.observe(el); });
+}
+
 function mostrarTela(k){
   const [, t, im, leg] = TELAS.find(x => x[0] === k);
   document.querySelectorAll('#abas [role=tab]').forEach(b => { const on = b.dataset.k === k; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; });
@@ -160,6 +188,7 @@ document.addEventListener('click', e => {
   else if (a === 'fechar') fecharEntrar();
   else if (a === 'tema') trocarTema();
   else if (a === 'aba') mostrarTela(t.dataset.k);
+  else if (a === 'periodo') { periodo = t.dataset.k; desenharPlanos(); revelarPlanos(); }
   else if (a === 'plano') { try { localStorage.setItem('musubi-plano-site', t.dataset.k); localStorage.setItem('musubi-modo', 'nuvem'); } catch (er) {} location.href = urlSistema() + '#criar'; }
   else if (a === 'esqueci') modoEsqueci();
   else if (a === 'voltar') { modo = 'entrar'; modoEntrar(); $('#f-entrar').email.focus(); }
@@ -183,5 +212,7 @@ $('#f-entrar').addEventListener('submit', enviarEntrar);
 $('#f-contato').addEventListener('submit', enviarContato);
 addEventListener('scroll', () => $('#topo').classList.toggle('rolou', scrollY > 8), { passive: true });
 
+entrada();
 montar();
+revelar();
 if (location.hash === '#entrar') abrirEntrar();

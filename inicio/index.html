@@ -20,8 +20,16 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="inicio.css">
 <script>try{const t=localStorage.getItem('musubi-tema');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<script>document.documentElement.classList.add('js');try{if(sessionStorage.getItem('musubi-entrada'))document.documentElement.classList.add('sem-entrada');sessionStorage.setItem('musubi-entrada','1');}catch(e){}</script>
 </head>
 <body>
+<div class="entrada" id="entrada" aria-hidden="true">
+  <div class="entrada-c">
+    <img class="entrada-logo logo-claro" src="marca/MUSUBI_logo_colorido.svg" alt="" width="260" height="72">
+    <img class="entrada-logo logo-escuro" src="marca/MUSUBI_logo_branco.svg" alt="" width="260" height="72">
+    <span class="entrada-barra"><i></i></span>
+  </div>
+</div>
 
 <header class="topo" id="topo">
   <div class="caixa topo-in">
@@ -133,7 +141,20 @@
 
   <section class="sec alt" id="planos">
     <div class="caixa">
-      <div class="sec-h"><span class="sobre">Planos</span><h2>Experimente gratuitamente por 7 dias</h2><p>Escolha o plano e utilize todos os seus recursos por 7 dias, sem cadastro de cartão. Ao final do período, a contratação é combinada diretamente com a nossa equipe.</p></div>
+      <div class="sec-h"><span class="sobre">Planos</span><h2>Experimente gratuitamente por 7 dias</h2><p>Escolha o plano e utilize todos os seus recursos por 7 dias, sem cadastro de cartão. Ao final do período, a assinatura é feita no próprio sistema, por Pix ou cartão.</p></div>
+      <div class="periodo-sel" role="radiogroup" aria-label="Forma de pagamento" id="periodo-sel">
+        <button type="button" role="radio" aria-checked="true" data-a="periodo" data-k="mensal">Mensal</button>
+        <button type="button" role="radio" aria-checked="false" data-a="periodo" data-k="anual">Anual <span class="periodo-eco">15% off</span></button>
+      </div>
+      <div class="anual-vant" id="anual-vant" hidden>
+        <b>Vantagens do plano anual</b>
+        <ul class="garantias">
+          <li><span data-i="check"></span>15% de desconto em todas as mensalidades</li>
+          <li><span data-i="check"></span>Preço garantido por 12 meses, sem reajuste</li>
+          <li><span data-i="check"></span>Ou pague à vista: 12 meses pelo preço de 10</li>
+          <li><span data-i="check"></span>Os mesmos recursos e os 7 dias grátis para começar</li>
+        </ul>
+      </div>
       <div class="planos" id="planos-l"></div>
     </div>
   </section>
