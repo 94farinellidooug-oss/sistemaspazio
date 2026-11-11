@@ -238,4 +238,26 @@ update assinaturas set cartao_situacao = 'ativa', cartao_id = 'falso', pago_ate 
 reset role;
 select pg_temp.checar((select cartao_situacao = '' and cartao_id = '' from assinaturas where clinica_id = :'c1'), 'a clínica não muda a assinatura no cartão nem o prazo pago por fora da função');
 select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'pagamentos' and column_name = 'meio') = 1, 'pagamentos guardam o meio (InfinitePay ou Mercado Pago)');
+-- Contrato (008_contrato.sql): só a função cobranca grava o aceite; o administrador lê; ninguém altera
+set role service_role;
+insert into aceites (clinica_id, user_id, email, versao, plano, periodo, meio) values (:'c1', '00000000-0000-0000-0000-00000000000a', 'maicon@x.com', '2026-11-11', 'profissional', 'anual12', 'mercadopago');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select pg_temp.checar((select count(*) from aceites where versao = '2026-11-11' and em > now() - interval '1 minute') = 1, 'o administrador vê o aceite do contrato, com a versão e a hora');
+update aceites set versao = 'mudado';
+delete from aceites;
+select pg_temp.checar((select count(*) from aceites where versao = '2026-11-11') = 1, 'ninguém altera nem apaga o aceite');
+do $$ begin insert into aceites (clinica_id, versao) values (current_setting('teste.c1')::uuid, 'falso'); raise exception 'FALHA: inseriu aceite';
+exception when insufficient_privilege then raise notice 'ok    a clínica não grava aceite por fora da função'; end $$;
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+set role authenticated;
+select pg_temp.checar((select count(*) from aceites) = 0, 'a recepção não vê os aceites');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select pg_temp.checar((select count(*) from aceites) = 0, 'outra clínica não vê os aceites');
+reset role;
+select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'assinaturas' and column_name in ('cartao_inicio', 'cartao_compromisso_ate', 'cartao_multa')) = 3, 'assinatura guarda o compromisso de 12 meses e a multa');
 \echo 'Todas as regras do banco passaram.'

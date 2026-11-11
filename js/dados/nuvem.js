@@ -4,6 +4,7 @@
 // Nesta primeira parte cada clínica guarda o documento inteiro do sistema, com versão (salvar_dados).
 
 import { eventosEntre } from './historico.js';
+import { CONTRATO_VERSAO } from './planos.js';
 
 export const NUVEM = { url:'https://lmucimqjrzjewfyhcfoh.supabase.co', chave:'sb_publishable_kRmZNwp0_Xq4jPPMgTzKKA_SyLsreZS' };
 export const KEY_SESSAO = 'musubi-sessao';
@@ -128,11 +129,11 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     // Histórico de alterações (só o administrador lê). F = { paciente, antes (iso), limite }.
     historico:async (clinica, F = {}) => rest(`historico?select=id,em,pessoa,email,tipo,acao,alvo,paciente_id,titulo,campos&clinica_id=eq.${clinica}${F.paciente ? `&paciente_id=eq.${encodeURIComponent(F.paciente)}` : ''}${F.antes ? `&em=lt.${encodeURIComponent(F.antes)}` : ''}&order=em.desc&limit=${F.limite || 100}`),
     // Pagamento do MUSUBI pela InfinitePay (função cobranca, supabase/functions/cobranca). Devolve { url } do link.
-    pagar:async (clinica, plano, periodo, teste = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo, ...(teste ? { teste:true } : {}) }, token:await token() }),
+    pagar:async (clinica, plano, periodo, teste = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo, ...(teste ? { teste:true } : { aceite:CONTRATO_VERSAO }) }, token:await token() }),
     // Assinatura no cartão pelo Mercado Pago (mesma função cobranca, supabase/007_mercadopago.sql).
-    assinarCartao:async (clinica, plano, periodo, email) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'assinar', clinica, plano, periodo, email }, token:await token() }),
+    assinarCartao:async (clinica, plano, periodo, email) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'assinar', clinica, plano, periodo, email, aceite:CONTRATO_VERSAO }, token:await token() }),
     cartao:async clinica => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cartao', clinica }, token:await token() }),
-    cancelarCartao:async clinica => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cancelar_cartao', clinica }, token:await token() }),
+    cancelarCartao:async (clinica, confirmarMulta = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cancelar_cartao', clinica, ...(confirmarMulta ? { confirmarMulta:true } : {}) }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
     // Nota fiscal (função nfse, supabase/functions/nfse): { acao, clinica, ... }.
     nfse:async corpo => chamar('/functions/v1/nfse', { metodo:'POST', corpo, token:await token() }),

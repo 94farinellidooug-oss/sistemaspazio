@@ -2,7 +2,7 @@
 // aviso do Mercado Pago com assinatura e e-mail 7 dias antes. Sem rede: banco, login, Mercado Pago e Resend simulados.
 // Uso: node tests/mercadopago.mjs
 import { createHmac } from 'node:crypto';
-import { criarCobranca, assinaturaMpOk } from '../supabase/functions/cobranca/index.ts';
+import { criarCobranca, assinaturaMpOk, cicloFidelidade } from '../supabase/functions/cobranca/index.ts';
 
 let falhas = 0;
 const ok = (c, m) => { console.log(`${c ? 'ok   ' : 'FALHA'} ${m}`); if (!c) falhas++; };
@@ -11,7 +11,7 @@ const C1 = '11111111-1111-1111-1111-111111111111', DIA = 864e5;
 function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = null } = {}){
   const S = { membros:[{ clinica_id:C1, user_id:'u1', perfil:'adm' }, { clinica_id:C1, user_id:'u2', perfil:'rec' }],
     assin:{ clinica_id:C1, plano:'profissional', teste_ate:new Date(Date.now() - DIA).toISOString(), gratis_ate:null, pago_ate:pagoAte, cartao_id:'', cartao_situacao:'', cartao_plano:'', cartao_periodo:'', cartao_valor:null, cartao_email:'', cartao_proxima:null, cartao_aviso_para:null },
-    pagamentos:[], registros:[], criadas:[], puts:[], mp:{}, cobrancas:[], emails:[] };
+    pagamentos:[], registros:[], criadas:[], puts:[], mp:{}, cobrancas:[], emails:[], aceites:[] };
   const json = (status, j) => new Response(j === undefined ? null : JSON.stringify(j), { status });
   const eq = (u, k) => (u.searchParams.get(k) || '').replace(/^eq\./, '');
   const f = async (url, op = {}) => {
@@ -26,6 +26,8 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
         const c = eq(u, 'clinica_id'), id = eq(u, 'cartao_id');
         return json(200, (c && S.assin.clinica_id === c) || (id && S.assin.cartao_id === id) ? [S.assin] : []);
       }
+      if (u.pathname === '/rest/v1/aceites' && op.method === 'POST') { S.aceites.push(corpo); return json(201); }
+      if (u.pathname === '/rest/v1/pagamentos' && u.searchParams.get('meio')) return json(200, S.pagamentos.filter(p => p.meio === eq(u, 'meio') && p.situacao === eq(u, 'situacao')));
       if (u.pathname === '/rest/v1/pagamentos' && op.method === 'POST') { S.pagamentos.push({ ...corpo, situacao:'aberto' }); return json(201); }
       if (u.pathname === '/rest/v1/pagamentos') return json(200, S.pagamentos.filter(p => p.order_nsu === eq(u, 'order_nsu')));
       if (u.pathname === '/rest/v1/rpc/registrar_pagamento') { const p = S.pagamentos.find(x => x.order_nsu === corpo.p_order_nsu); S.registros.push(corpo); if (p.situacao === 'pago') return json(200, false); p.situacao = 'pago'; return json(200, true); }
@@ -52,11 +54,11 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
 
 // Assinar
 { const { S, pedir } = cenario();
-  let r = await pedir({ acao:'assinar', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u2');
+  let r = await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u2');
   ok(r.status === 403 && !S.criadas.length, 'só o administrador assina no cartão');
-  r = await pedir({ acao:'assinar', clinica:C1, plano:'profissional', periodo:'mensal', email:'nao-e-email' }, 'tk-u1');
+  r = await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal', email:'nao-e-email' }, 'tk-u1');
   ok(r.status === 400 && (await r.json()).erro === 'email', 'e-mail do Mercado Pago inválido é recusado');
-  r = await pedir({ acao:'assinar', clinica:C1, plano:'profissional', periodo:'mensal', email:'Maicon@MP.com ' }, 'tk-u1');
+  r = await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal', email:'Maicon@MP.com ' }, 'tk-u1');
   const j = await r.json(), A = S.criadas[0];
   ok(r.status === 200 && j.url.includes('preapproval_id=pre1'), 'administrador recebe o endereço da assinatura no Mercado Pago');
   ok(A.status === 'pending' && A.payer_email === 'maicon@mp.com' && A.external_reference === C1 && A.auto_recurring.transaction_amount === 149 && A.auto_recurring.frequency === 1 && A.auto_recurring.frequency_type === 'months' && A.auto_recurring.currency_id === 'BRL' && A.back_url === 'https://sistemaspazio.vercel.app/sistema', 'assinatura mensal de R$ 149 pedida com o e-mail, a clínica e a volta para o sistema');
@@ -79,7 +81,7 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
   ok(r.status === 200 && S.pagamentos.length === 2 && S.pagamentos[1].order_nsu === 'MPA7003', 'aviso de cobrança do Mercado Pago registra o pagamento');
 
   // Trocar para o anual: a assinatura anterior para de cobrar.
-  r = await pedir({ acao:'assinar', clinica:C1, plano:'clinica', periodo:'anual' }, 'tk-u1');
+  r = await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'clinica', periodo:'anual' }, 'tk-u1');
   ok(r.status === 200 && S.puts.some(p => p.id === 'pre1' && p.status === 'cancelled') && S.criadas[1].auto_recurring.frequency === 12 && S.criadas[1].auto_recurring.transaction_amount === 2990 && S.criadas[1].payer_email === 'adm@x.com', 'trocar de pacote cancela a assinatura anterior; anual = a cada 12 meses, 10 mensalidades; e-mail padrão = o do login');
 
   // Cancelar
@@ -88,19 +90,54 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
   r = await pedir({ acao:'cancelar_cartao', clinica:C1 }, 'tk-u1');
   ok(r.status === 200 && (await r.json()).situacao === 'cancelada' && S.puts.at(-1).id === 'pre2' && S.puts.at(-1).status === 'cancelled' && S.assin.cartao_proxima === null, 'administrador cancela: o Mercado Pago para de cobrar');
 }
+// Contrato: aceite obrigatório e registrado
+{ const { S, pedir } = cenario();
+  let r = await pedir({ acao:'assinar', clinica:C1, plano:'profissional', periodo:'mensal', email:'a@b.com' }, 'tk-u1');
+  ok(r.status === 400 && (await r.json()).erro === 'aceite' && !S.criadas.length, 'sem aceitar o contrato não assina no cartão');
+  r = await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal', email:'a@b.com' }, 'tk-u1');
+  ok(r.status === 200 && S.aceites.length === 1 && S.aceites[0].meio === 'mercadopago' && S.aceites[0].versao === '2026-11-11' && S.aceites[0].plano === 'profissional', 'aceite registrado na assinatura no cartão');
+  ok(S.assin.cartao_compromisso_ate === null && S.assin.cartao_inicio, 'mensal não tem compromisso de 12 meses');
+}
+// Anual com pagamento mensal: 15% de desconto, 12 meses, multa justa ao cancelar antes
+{ const { S, pedir } = cenario();
+  let r = await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'anual12', email:'a@b.com' }, 'tk-u1');
+  const A = S.criadas[0], fim = new Date(S.assin.cartao_compromisso_ate).getTime();
+  ok(r.status === 200 && A.auto_recurring.frequency === 1 && A.auto_recurring.transaction_amount === 127 && S.assin.cartao_valor === 12700 && S.assin.cartao_periodo === 'anual12' && A.reason.includes('anual com pagamento mensal'), 'anual com pagamento mensal: cobra R$ 127 todo mês');
+  ok(Math.abs(fim - Date.now() - 365 * DIA) < 3 * DIA && S.aceites[0].periodo === 'anual12', 'compromisso de 12 meses guardado, com o aceite');
+  S.mp.pre1.status = 'authorized';
+  S.cobrancas.push({ id:8001, preapproval_id:'pre1', transaction_amount:127, status:'processed', payment:{ id:1, status:'approved' } }, { id:8002, preapproval_id:'pre1', transaction_amount:127, status:'processed', payment:{ id:2, status:'approved' } });
+  await pedir({ acao:'cartao', clinica:C1 }, 'tk-u1');
+  ok(S.pagamentos.length === 2 && S.pagamentos.every(p => p.periodo === 'mensal' && p.valor === 12700), 'cada mês pago vira um pagamento mensal de R$ 127');
+  r = await pedir({ acao:'cancelar_cartao', clinica:C1 }, 'tk-u1');
+  let j = await r.json();
+  ok(r.status === 200 && j.confirmar === true && j.multa === 4400 && j.meses === 2 && !S.puts.length && S.assin.cartao_situacao === 'ativa', 'cancelar antes dos 12 meses: mostra a multa (desconto de 2 meses = R$ 44) e não cancela sem confirmar');
+  r = await pedir({ acao:'cancelar_cartao', clinica:C1, confirmarMulta:true }, 'tk-u1');
+  j = await r.json();
+  ok(r.status === 200 && j.situacao === 'cancelada' && S.puts[0].status === 'cancelled' && S.assin.cartao_multa === 4400 && j.multa === 4400, 'confirmado: cancela e guarda a multa');
+}
+{ const { S, pedir } = cenario();
+  await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'essencial', periodo:'anual12', email:'a@b.com' }, 'tk-u1');
+  S.assin.cartao_situacao = 'ativa'; S.assin.cartao_compromisso_ate = new Date(Date.now() - DIA).toISOString();
+  const r = await pedir({ acao:'cancelar_cartao', clinica:C1 }, 'tk-u1'), j = await r.json();
+  ok(j.situacao === 'cancelada' && !j.confirmar && S.assin.cartao_multa === 0, 'logo depois de renovar os 12 meses, sem mês pago no novo ciclo, cancela sem multa');
+}
+{ const c = cicloFidelidade('2026-01-10T12:00:00.000Z', Date.parse('2027-03-01T00:00:00Z'));
+  ok(c.ini === '2027-01-10T12:00:00.000Z' && c.fim === '2028-01-10T12:00:00.000Z', 'passados os 12 meses, renova por mais 12 (novo ciclo de compromisso)');
+  ok(cicloFidelidade('2027-01-10T12:00:00.000Z', Date.parse('2026-06-01T00:00:00Z')).fim === '2027-01-10T12:00:00.000Z' && cicloFidelidade(null) === null, 'dentro dos 12 meses o ciclo é o primeiro');
+}
 // Ainda com período pago ou teste: a primeira cobrança fica para quando ele acabar.
 { const ate = new Date(Date.now() + 20 * DIA).toISOString(), { S, pedir } = cenario({ pagoAte:ate });
-  await pedir({ acao:'assinar', clinica:C1, plano:'essencial', periodo:'mensal' }, 'tk-u1');
+  await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'essencial', periodo:'mensal' }, 'tk-u1');
   ok(S.criadas[0].auto_recurring.start_date === ate && S.criadas[0].auto_recurring.transaction_amount === 79, 'com 20 dias pagos, a primeira cobrança é no fim do período pago');
 }
 // Sem o Access Token: avisa que não está ligado.
 { const { S, pedir } = cenario({ token:'' });
-  const r = await pedir({ acao:'assinar', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u1');
+  const r = await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u1');
   ok(r.status === 503 && (await r.json()).erro === 'sem_cartao' && !S.criadas.length, 'sem MERCADOPAGO_TOKEN: avisa que a assinatura no cartão não está ligada');
 }
 // Aviso do Mercado Pago com assinatura secreta
 { const segredo = 'segredo-mp', { S, pedir } = cenario({ segredo });
-  await pedir({ acao:'assinar', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u1');
+  await pedir({ acao:'assinar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u1');
   S.mp.pre1.status = 'authorized';
   const ts = '1704908010', xr = 'req-1', v1 = createHmac('sha256', segredo).update(`id:pre1;request-id:${xr};ts:${ts};`).digest('hex');
   ok(await assinaturaMpOk(segredo, `ts=${ts},v1=${v1}`, xr, 'pre1') && !(await assinaturaMpOk(segredo, `ts=${ts},v1=${v1}`, xr, 'pre2')), 'confere a assinatura do aviso (HMAC-SHA256)');

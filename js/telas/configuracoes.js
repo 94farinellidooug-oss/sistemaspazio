@@ -5,12 +5,13 @@
 import { ic } from '../componentes/icones.js';
 import { db } from '../dados/repositorio.js';
 import { DIAS_SEMANA, DURACOES, UFS, configDe, resumoHorario, salvarClinica, salvarHorario, salvarServicos } from '../dados/config.js';
-import { avisoCobranca, assinarCartaoConta, cancelarCartaoConta, cartaoConta, clinicaNoServidor, contaAtual, pagamentosConta, pagarConta, situacaoConta, mudarEmailConta, sairDosOutrosConta, salvarNomeConta, trocarSenhaConta } from './conta.js';
+import { FALTA_ACEITE, TEXTO_ACEITE, avisoCobranca, assinarCartaoConta, cancelarCartaoConta, cartaoConta, clinicaNoServidor, contaAtual, pagamentosConta, pagarConta, situacaoConta, mudarEmailConta, sairDosOutrosConta, salvarNomeConta, trocarSenhaConta } from './conta.js';
 import { esc } from '../util.js';
 import { cfNota } from './nfse.js';
 import { PERIODOS_PAG, PLANOS, planoDe, precoPeriodoTxt, precoTxt } from '../dados/planos.js';
 
-const cf = { aba:'clinica', senha:false, ocupado:false, plano:null, periodo:'mensal' };
+const cf = { aba:'clinica', senha:false, ocupado:false, plano:null, periodo:'mensal', aceite:false, multa:null };
+const NOME_PER = { mensal:'mensal', anual12:'anual com pagamento mensal', anual:'anual à vista' };
 let cfApp = { save:() => {}, render:() => {}, toast:() => {} };
 const ABAS_CF = [['clinica', 'Clínica', 'local'], ['servicos', 'Serviços e preços', 'dinheiro'], ['horario', 'Horário de atendimento', 'relogio'], ['nota', 'Nota fiscal', 'recibo'], ['conta', 'Sua conta e segurança', 'escudo']];
 const valorTxt = v => String(v).replace('.', ',');
@@ -96,8 +97,10 @@ function cfPacote(){
     <div class="cf-planos">${PLANOS.map(p => `<div class="cf-plano ${p.k === S.plano.k ? 'on' : ''}"><b>${p.nome}</b><small class="muted">${precoTxt(p)}</small><ul>${p.itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>
     ${adm ? `<div class="cf-pagar" id="cf-pagar"><h3>${S.tipo === 'pago' ? 'Renovar ou trocar de pacote' : 'Pagar o MUSUBI'}</h3>
       <div class="cf-pagar-l"><label class="field"><span class="lbl">Pacote</span><select data-cf="pag-plano">${PLANOS.map(p => `<option value="${p.k}" ${p.k === plano ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></label>
-        <label class="field"><span class="lbl">Período</span><select data-cf="pag-periodo">${PERIODOS_PAG.map(([k, l]) => `<option value="${k}" ${k === cf.periodo ? 'selected' : ''}>${l}: ${precoPeriodoTxt(P, k)}${k === 'anual' ? ' (2 meses grátis)' : ''}</option>`).join('')}</select></label>
-        <button class="btn" data-cf="pagar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Pagar uma vez (Pix ou cartão)'}</button></div>
+        <label class="field"><span class="lbl">Período</span><select data-cf="pag-periodo">${PERIODOS_PAG.map(([k, l]) => `<option value="${k}" ${k === cf.periodo ? 'selected' : ''}>${l}: ${precoPeriodoTxt(P, k)}${k === 'anual' ? ' (2 meses grátis)' : k === 'anual12' ? ' (15% de desconto, 12 meses)' : ''}</option>`).join('')}</select></label>
+        ${cf.periodo === 'anual12' ? '' : `<button class="btn" data-cf="pagar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Pagar uma vez (Pix ou cartão)'}</button>`}</div>
+      ${cf.periodo === 'anual12' ? '<p class="muted sm cf-obs">O anual com pagamento mensal é feito só pela assinatura no cartão, abaixo: 12 meses com 15% de desconto. Se cancelar antes, devolve apenas o desconto já recebido.</p>' : ''}
+      <label class="aceite-c"><input type="checkbox" data-cf="aceite" ${cf.aceite ? 'checked' : ''}><span>${TEXTO_ACEITE}</span></label>
       <p class="erro-a" id="cf-pag-erro" role="alert" hidden></p>
       ${cfCartao(plano, P)}
       <p class="muted sm cf-obs">Pagar uma vez: na InfinitePay, com Pix ou cartão de crédito em até 12x, renovando quando quiser. Quando o pagamento é confirmado, o acesso é liberado sozinho${S.tipo === 'pago' ? ' e o novo período começa depois do que já está pago' : ''}.</p>
@@ -111,12 +114,14 @@ function cfCartao(plano, P){
   const C = cartaoConta(), ativa = C && ['ativa', 'pausada'].includes(C.situacao), aviso = avisoCobranca(C);
   const dia = d => d ? new Date(d).toLocaleDateString('pt-BR') : '';
   if (ativa) return `<div class="cf-cartao on" id="cf-cartao"><div class="grow"><b>${ic('okc')}Assinatura no cartão ${C.situacao === 'pausada' ? 'pausada' : 'ativa'}</b>
-      <small class="muted">${esc(planoDe(C.plano).nome)} · ${C.periodo === 'anual' ? 'anual' : 'mensal'} · ${reais(C.valor || 0)}${C.proxima ? ` · próxima cobrança em ${dia(C.proxima)}` : ''} · Mercado Pago (${esc(C.email)})</small>
+      <small class="muted">${esc(planoDe(C.plano).nome)} · ${NOME_PER[C.periodo] || 'mensal'} · ${reais(C.valor || 0)}${C.proxima ? ` · próxima cobrança em ${dia(C.proxima)}` : ''} · Mercado Pago (${esc(C.email)})</small>
+      ${C.periodo === 'anual12' && C.compromisso ? `<small class="muted">Compromisso de 12 meses até ${dia(C.compromisso)}.</small>` : ''}
       ${aviso ? `<small class="cf-aviso">${esc(aviso)}</small>` : ''}</div>
-    ${cf.cancelarCartao ? `<span class="cf-conf"><small>Cancelar as próximas cobranças? O período pago continua.</small><button class="btn sm crit" data-cf="cartao-cancelar-sim" ${cf.ocupado ? 'disabled' : ''}>Cancelar assinatura</button><button class="btn sm ghost" data-cf="cartao-cancelar-nao">Voltar</button></span>`
+    ${cf.multa ? `<span class="cf-conf"><small>Você está no anual com pagamento mensal até ${dia(cf.multa.compromisso)}. Cancelar agora gera a multa de ${reais(cf.multa.multa)}, que é o desconto recebido em ${cf.multa.meses} ${cf.multa.meses === 1 ? 'mês' : 'meses'} (cláusula 5 do contrato). O período pago continua.</small><button class="btn sm crit" data-cf="cartao-cancelar-multa" ${cf.ocupado ? 'disabled' : ''}>Cancelar e aceitar a multa</button><button class="btn sm ghost" data-cf="cartao-cancelar-nao">Manter assinatura</button></span>`
+      : cf.cancelarCartao ? `<span class="cf-conf"><small>Cancelar as próximas cobranças? O período pago continua.</small><button class="btn sm crit" data-cf="cartao-cancelar-sim" ${cf.ocupado ? 'disabled' : ''}>Cancelar assinatura</button><button class="btn sm ghost" data-cf="cartao-cancelar-nao">Voltar</button></span>`
       : `<button class="btn sm ghost" data-cf="cartao-cancelar">Cancelar assinatura</button>`}</div>`;
   return `<div class="cf-cartao" id="cf-cartao"><div class="grow"><b>${ic('dinheiro')}Assinatura no cartão (cobrança automática)</b>
-      <small class="muted">Cadastre o cartão uma vez no Mercado Pago: ${precoPeriodoTxt(P, cf.periodo)}, cobrado sozinho${cf.periodo === 'anual' ? ' a cada ano' : ' todo mês'}, com aviso 7 dias antes. A primeira cobrança acontece quando terminar o período já pago ou o teste.</small>
+      <small class="muted">Cadastre o cartão uma vez no Mercado Pago: ${precoPeriodoTxt(P, cf.periodo)}, cobrado sozinho${cf.periodo === 'anual' ? ' a cada ano' : cf.periodo === 'anual12' ? ' todo mês durante 12 meses' : ' todo mês'}, com aviso 7 dias antes. A primeira cobrança acontece quando terminar o período já pago ou o teste.</small>
       ${C?.situacao === 'pendente' ? '<small class="cf-aviso">A assinatura anterior não foi concluída no Mercado Pago. Você pode começar de novo.</small>' : ''}
       <label class="field"><span class="lbl">E-mail da sua conta no Mercado Pago</span><input type="email" data-cf="cartao-email" value="${esc(cf.cartaoEmail ?? contaAtual().email)}" autocomplete="email"></label></div>
     <button class="btn pri" data-cf="cartao-assinar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Assinar no cartão'}</button></div>`;
@@ -181,10 +186,14 @@ export function ligarConfig(s, r, t){
     else if (a === 'senha') { cf.senha = true; b.hidden = true; const c = document.querySelector('#cf-conta .cf-senha'); if (c) { c.hidden = false; c.querySelector('input').focus(); } }
     else if (a === 'cartao-assinar') { const em = document.querySelector('[data-cf="cartao-email"]')?.value.trim() || ''; cf.cartaoEmail = em;
       if (!okEmailCf(em)) { erroCf('cf-pag-erro', 'Informe o e-mail da sua conta no Mercado Pago.'); return; }
+      if (!cf.aceite) { erroCf('cf-pag-erro', FALTA_ACEITE); return; }
       cf.ocupado = true; cfApp.render(true); const e = await assinarCartaoConta(cf.plano || situacaoConta()?.plano.k || 'profissional', cf.periodo, em); if (e) { cf.ocupado = false; cfApp.render(true); erroCf('cf-pag-erro', e); } }
     else if (a === 'cartao-cancelar') { cf.cancelarCartao = true; cfApp.render(true); }
-    else if (a === 'cartao-cancelar-nao') { cf.cancelarCartao = false; cfApp.render(true); }
-    else if (a === 'cartao-cancelar-sim') { cf.ocupado = true; cfApp.render(true); const e = await cancelarCartaoConta(); cf.ocupado = false; cf.cancelarCartao = false; cfApp.render(true); if (e) erroCf('cf-pag-erro', e); else cfApp.toast('Assinatura cancelada. O período pago continua até o fim.'); }
+    else if (a === 'cartao-cancelar-nao') { cf.cancelarCartao = false; cf.multa = null; cfApp.render(true); }
+    else if (a === 'cartao-cancelar-sim' || a === 'cartao-cancelar-multa') { cf.ocupado = true; cfApp.render(true); const e = await cancelarCartaoConta(a === 'cartao-cancelar-multa');
+      cf.ocupado = false; cf.cancelarCartao = false; cf.multa = e && typeof e === 'object' ? e : null; cfApp.render(true);
+      if (typeof e === 'string' && e) erroCf('cf-pag-erro', e); else if (!e) cfApp.toast('Assinatura cancelada. O período pago continua até o fim.'); }
+    else if (a === 'pagar' && !cf.aceite) erroCf('cf-pag-erro', FALTA_ACEITE);
     else if (a === 'pagar') { cf.ocupado = true; cfApp.render(true); const e = await pagarConta(cf.plano || situacaoConta()?.plano.k || 'profissional', cf.periodo); if (e) { cf.ocupado = false; cfApp.render(true); erroCf('cf-pag-erro', e); } }
     else if (a === 'sair-outros') { cf.ocupado = true; cfApp.render(true); const e = await sairDosOutrosConta(); cf.ocupado = false; cfApp.render(true); cfApp.toast(e || 'Os outros aparelhos vão pedir para entrar de novo', e ? 'info' : 'ok'); }
   });
@@ -192,6 +201,7 @@ export function ligarConfig(s, r, t){
     const t = ev.target; if (!t.dataset?.cf) return;
     if (t.dataset.cf === 'pag-plano') { cf.plano = t.value; cfApp.render(true); return; }
     if (t.dataset.cf === 'pag-periodo') { cf.periodo = t.value; cfApp.render(true); return; }
+    if (t.dataset.cf === 'aceite') { cf.aceite = t.checked; if (cf.aceite) { const e = document.getElementById('cf-pag-erro'); if (e?.textContent === FALTA_ACEITE) e.hidden = true; } return; }
     if (t.dataset.cf === 'serv') mudarServ(t); else if (['dia', 'hora', 'pausa', 'pausa-h'].includes(t.dataset.cf)) mudarHor(t);
   });
   document.addEventListener('submit', ev => {

@@ -1,14 +1,14 @@
 // Testa a função cobranca (supabase/functions/cobranca) sem rede: banco, login e InfinitePay simulados.
 // Uso: node tests/cobranca.mjs
-import { criarCobranca, PRECOS, valorDe, numeroPedido } from '../supabase/functions/cobranca/index.ts';
-import { PLANOS } from '../js/dados/planos.js';
+import { criarCobranca, PRECOS, valorDe, numeroPedido, multaFidelidade, CONTRATO_VERSAO } from '../supabase/functions/cobranca/index.ts';
+import { PLANOS, CONTRATO_VERSAO as VERSAO_TELA, valorPeriodo } from '../js/dados/planos.js';
 
 let falhas = 0;
 const ok = (c, m) => { console.log(`${c ? 'ok   ' : 'FALHA'} ${m}`); if (!c) falhas++; };
 const C1 = '11111111-1111-1111-1111-111111111111';
 
 function cenario({ handle = 'spazio', resposta = { url:'https://checkout.infinitepay.io/spazio/abc' }, check = { success:true, paid:true, amount:14900, paid_amount:14900, capture_method:'pix' } } = {}){
-  const S = { donos:[], pagamentos:[], chamadas:[], registros:[], membros:[{ clinica_id:C1, user_id:'u1', perfil:'adm' }, { clinica_id:C1, user_id:'u2', perfil:'rec' }], links:[], checks:[] };
+  const S = { donos:[], pagamentos:[], chamadas:[], registros:[], membros:[{ clinica_id:C1, user_id:'u1', perfil:'adm' }, { clinica_id:C1, user_id:'u2', perfil:'rec' }], links:[], checks:[], aceites:[] };
   const json = (status, j) => new Response(j === undefined ? null : JSON.stringify(j), { status });
   const f = async (url, op = {}) => {
     const u = new URL(url), corpo = op.body ? JSON.parse(op.body) : undefined; S.chamadas.push(u.pathname);
@@ -17,6 +17,7 @@ function cenario({ handle = 'spazio', resposta = { url:'https://checkout.infinit
       if (u.pathname === '/auth/v1/user') { const t = op.headers.Authorization.replace('Bearer ', ''); return t === 'tk-u1' ? json(200, { id:'u1', email:'adm@x.com' }) : t === 'tk-u2' ? json(200, { id:'u2', email:'rec@x.com' }) : json(401, {}); }
       if (u.pathname === '/rest/v1/donos') return json(200, S.donos.includes(u.searchParams.get('user_id').slice(3)) ? [{ user_id:u.searchParams.get('user_id').slice(3) }] : []);
       if (u.pathname === '/rest/v1/membros') { const c = u.searchParams.get('clinica_id').slice(3), us = u.searchParams.get('user_id').slice(3); return json(200, S.membros.filter(m => m.clinica_id === c && m.user_id === us)); }
+      if (u.pathname === '/rest/v1/aceites' && op.method === 'POST') { S.aceites.push(corpo); return json(201); }
       if (u.pathname === '/rest/v1/pagamentos' && op.method === 'POST') { S.pagamentos.push({ ...corpo, situacao:'aberto' }); return json(201); }
       if (u.pathname === '/rest/v1/pagamentos' && op.method === 'PATCH') { const p = S.pagamentos.find(x => x.order_nsu === u.searchParams.get('order_nsu').slice(3)); Object.assign(p, corpo); return json(204); }
       if (u.pathname === '/rest/v1/pagamentos') return json(200, S.pagamentos.filter(x => x.order_nsu === u.searchParams.get('order_nsu').slice(3)));
@@ -37,21 +38,33 @@ function cenario({ handle = 'spazio', resposta = { url:'https://checkout.infinit
 
 { const n = numeroPedido('3f2a9c1e-7b4d-4e8a-9f10-2c3d4e5f6a7b'); ok(/^[0-9A-Za-z]{1,25}$/.test(n) && n.startsWith('MSB'), 'número do pedido curto, só letras e números (aceito pelos bancos no Pix)'); }
 ok(PLANOS.every(p => PRECOS[p.k] === p.preco * 100), 'preços da função iguais aos da página e do sistema');
+ok(VERSAO_TELA === CONTRATO_VERSAO && PLANOS.every(p => ['mensal', 'anual12', 'anual'].every(per => valorDe(p.k, per) === valorPeriodo(p, per) * 100)), 'versão do contrato e valores dos três períodos iguais na função e no sistema');
 ok(valorDe('profissional', 'anual') === 149000, 'anual = 10 meses (2 meses grátis)');
 
+ok(valorDe('essencial', 'anual12') === 6700 && valorDe('profissional', 'anual12') === 12700 && valorDe('clinica', 'anual12') === 25400, 'anual com pagamento mensal = 15% de desconto (R$ 67, R$ 127, R$ 254)');
+ok(multaFidelidade('profissional', 3) === 6600 && multaFidelidade('profissional', 0) === 0, 'multa justa = só o desconto recebido nos meses pagos');
+{ const { S, pedir } = cenario();
+  let r = await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u1');
+  ok(r.status === 400 && (await r.json()).erro === 'aceite' && !S.pagamentos.length && !S.links.length, 'sem aceitar o contrato não cria cobrança');
+  r = await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal', aceite:'2020-01-01' }, 'tk-u1');
+  ok(r.status === 400 && (await r.json()).erro === 'aceite', 'aceite de versão antiga do contrato é recusado');
+  r = await pedir({ acao:'criar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'anual12' }, 'tk-u1');
+  ok(r.status === 400 && (await r.json()).erro === 'periodo' && !S.pagamentos.length, 'anual com pagamento mensal não é feito pelo Pix avulso');
+}
 { const { S, pedir, h } = cenario();
   const o = await h(new Request('https://sb.test/functions/v1/cobranca', { method:'OPTIONS' }));
   ok(o.status === 204 && o.headers.get('Access-Control-Allow-Origin') === '*', 'responde ao navegador (CORS)');
-  let r = await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal' });
+  let r = await pedir({ acao:'criar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal' });
   ok(r.status === 401, 'sem login não cria cobrança');
-  r = await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u2');
+  r = await pedir({ acao:'criar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u2');
   ok(r.status === 403 && !S.pagamentos.length, 'só o administrador da clínica cria cobrança');
-  r = await pedir({ acao:'criar', clinica:C1, plano:'ouro', periodo:'mensal' }, 'tk-u1');
+  r = await pedir({ acao:'criar', aceite:'2026-11-11', clinica:C1, plano:'ouro', periodo:'mensal' }, 'tk-u1');
   ok(r.status === 400, 'pacote inexistente é recusado');
-  r = await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal', valor:1 }, 'tk-u1');
+  r = await pedir({ acao:'criar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal', valor:1 }, 'tk-u1');
   const j = await r.json();
   ok(r.status === 200 && j.url === 'https://checkout.infinitepay.io/spazio/abc' && j.valor === 14900, 'administrador recebe o link de pagamento');
   ok(S.pagamentos.length === 1 && S.pagamentos[0].valor === 14900 && S.pagamentos[0].order_nsu === 'MSBid1' && S.pagamentos[0].link === j.url, 'pedido guardado com o valor do servidor (não o do navegador) e o link');
+  ok(S.aceites.length === 1 && S.aceites[0].versao === '2026-11-11' && S.aceites[0].user_id === 'u1' && S.aceites[0].email === 'adm@x.com' && S.aceites[0].meio === 'infinitepay' && S.aceites[0].periodo === 'mensal', 'aceite do contrato registrado com login, versão e período');
   const L = S.links[0];
   ok(L.handle === 'spazio' && L.items[0].price === 14900 && L.items[0].description.includes('Profissional') && /^[\x20-\x7e]+$/.test(L.items[0].description) && L.order_nsu === 'MSBid1', 'link pedido à InfinitePay com a InfiniteTag, valor e número do pedido');
   ok(L.redirect_url === 'https://sistemaspazio.vercel.app/sistema' && L.webhook_url === 'https://sb.test/functions/v1/cobranca?aviso=1' && L.customer.email === 'adm@x.com', 'volta para o sistema e avisa a função');
@@ -80,25 +93,25 @@ ok(valorDe('profissional', 'anual') === 149000, 'anual = 10 meses (2 meses grát
   ok(r.status === 403 && S.pagamentos.length === 1, 'quem não é dono do MUSUBI não faz pagamento de teste');
 }
 { const { S, pedir } = cenario({ check:{ success:true, paid:false, amount:14900 } });
-  await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u1');
+  await pedir({ acao:'criar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'mensal' }, 'tk-u1');
   const r = await pedir({ order_nsu:'MSBid1', transaction_nsu:'tx1', invoice_slug:'abc', paid_amount:14900 }, null, '?aviso=1');
   ok(r.status === 200 && !S.registros.length && S.pagamentos[0].situacao === 'aberto', 'aviso falso (InfinitePay diz não pago) não libera nada');
 }
 { const { S, pedir } = cenario({ check:{ success:true, paid:true, amount:100, paid_amount:100 } });
-  await pedir({ acao:'criar', clinica:C1, plano:'profissional', periodo:'anual' }, 'tk-u1');
+  await pedir({ acao:'criar', aceite:'2026-11-11', clinica:C1, plano:'profissional', periodo:'anual' }, 'tk-u1');
   await pedir({ order_nsu:'MSBid1', transaction_nsu:'tx1', invoice_slug:'abc' }, null, '?aviso=1');
   ok(!S.registros.length, 'pagamento de valor menor que o pedido não libera');
 }
 { const { S, pedir } = cenario({ handle:'' });
-  const r = await pedir({ acao:'criar', clinica:C1, plano:'essencial', periodo:'mensal' }, 'tk-u1');
+  const r = await pedir({ acao:'criar', aceite:'2026-11-11', clinica:C1, plano:'essencial', periodo:'mensal' }, 'tk-u1');
   ok(r.status === 503 && (await r.json()).erro === 'sem_cobranca' && !S.pagamentos.length, 'sem InfiniteTag configurada: avisa que o pagamento online não está ligado');
 }
 { const { pedir } = cenario({ resposta:null });
-  const r = await pedir({ acao:'criar', clinica:C1, plano:'essencial', periodo:'mensal' }, 'tk-u1');
+  const r = await pedir({ acao:'criar', aceite:'2026-11-11', clinica:C1, plano:'essencial', periodo:'mensal' }, 'tk-u1');
   ok(r.status === 502, 'InfinitePay fora do ar: avisa para tentar de novo');
 }
 { const { pedir } = cenario({ resposta:{ payment_url:'https://pay/x' } });
-  const r = await pedir({ acao:'criar', clinica:C1, plano:'essencial', periodo:'mensal' }, 'tk-u1');
+  const r = await pedir({ acao:'criar', aceite:'2026-11-11', clinica:C1, plano:'essencial', periodo:'mensal' }, 'tk-u1');
   ok((await r.json()).url === 'https://pay/x', 'aceita o link também como payment_url');
 }
 // Cobrar por link: na InfiniteTag da clínica, por qualquer pessoa da equipe, sem gravar pagamento do MUSUBI.

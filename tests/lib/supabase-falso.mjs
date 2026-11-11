@@ -84,6 +84,9 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
         if (!S.cobranca) return resp(503, { erro:'sem_cobranca', msg:'O pagamento online ainda não está ligado.' });
         if (!S.clinicas.find(x => x.id === corpo.clinica)?.membros.some(m => m.user === eu.id && m.perfil === 'adm')) return resp(403, { erro:'sem_acesso', msg:'Só o administrador da clínica faz o pagamento.' });
         if (corpo.teste && !dono()) return resp(403, { erro:'sem_acesso', msg:'Só o dono do MUSUBI faz o pagamento de teste.' });
+        if (!corpo.teste && corpo.aceite !== '2026-11-11') return resp(400, { erro:'aceite', msg:'Para pagar, leia e aceite o Contrato de assinatura.' });
+        if (corpo.periodo === 'anual12') return resp(400, { erro:'periodo', msg:'O anual com pagamento mensal é feito pela assinatura no cartão.' });
+        (S.aceites ||= []).push({ ...corpo, meio:'infinitepay' });
         const n = ++S.n, periodo = corpo.teste ? 'mensal' : corpo.periodo, valor = corpo.teste ? 100 : { essencial:7900, profissional:14900, clinica:29900 }[corpo.plano] * (periodo === 'anual' ? 10 : 1);
         S.pagamentos.unshift({ id:'g' + n, clinica_id:corpo.clinica, plano:corpo.plano, periodo, valor, order_nsu:'MSB' + n, situacao:'aberto', forma:'', recibo:'', criado_em:new Date().toISOString(), pago_em:null });
         return resp(200, { url:'https://checkout.infinitepay.io/teste/' + n, order_nsu:'MSB' + n, valor });
@@ -99,8 +102,11 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
         if (!S.mp) return resp(400, { erro:'acao', msg:'Pedido inválido.' });
         const m = S.clinicas.find(x => x.id === corpo.clinica)?.membros.find(x => x.user === eu.id); if (!m) return resp(403, { erro:'sem_acesso', msg:'Você não faz parte desta clínica.' });
         if (corpo.acao !== 'cartao' && m.perfil !== 'adm') return resp(403, { erro:'sem_acesso', msg:'Só o administrador da clínica faz a assinatura.' });
+        if (corpo.acao === 'assinar' && corpo.aceite !== '2026-11-11') return resp(400, { erro:'aceite', msg:'Para assinar, leia e aceite o Contrato de assinatura.' });
+        // S.mp.multa = { multa, meses, compromisso }: anual com pagamento mensal antes dos 12 meses pede confirmação.
+        if (corpo.acao === 'cancelar_cartao' && S.mp.multa && corpo.confirmarMulta !== true) return resp(200, { ...(S.mp.estado || {}), confirmar:true, ...S.mp.multa });
         if (corpo.acao === 'assinar') { (S.mp.assinados ||= []).push(corpo); S.mp.estado = { situacao:'pendente', plano:corpo.plano, periodo:corpo.periodo, valor:14900, email:corpo.email, proxima:null }; return resp(200, { url:'https://www.mercadopago.com.br/subscriptions/checkout?preapproval_id=pre' + S.mp.assinados.length }); }
-        if (corpo.acao === 'cancelar_cartao') S.mp.estado = { ...(S.mp.estado || {}), situacao:'cancelada', proxima:null };
+        if (corpo.acao === 'cancelar_cartao') S.mp.estado = { ...(S.mp.estado || {}), situacao:'cancelada', proxima:null, multa:S.mp.multa?.multa || 0 };
         return resp(200, { situacao:'', ...(S.mp.estado || {}), novos:0 });
       }
       if (corpo.acao === 'conferir') {

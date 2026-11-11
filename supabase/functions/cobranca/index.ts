@@ -7,7 +7,7 @@
 // (a chave inchk_... do Checkout Integrado). SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY o Supabase já fornece.
 //
 // Pedidos (POST, JSON):
-//   { acao:'criar', clinica, plano, periodo }  com o login do administrador da clínica: cria o pedido e devolve { url }
+//   { acao:'criar', clinica, plano, periodo, aceite }  com o login do administrador da clínica: cria o pedido e devolve { url }
 //   { acao:'criar', clinica, plano, teste:true }  só o dono do MUSUBI: pagamento de teste de R$ 1,00 (libera 1 mês)
 //   { acao:'conferir', order_nsu, transaction_nsu, slug }  com login: confere na InfinitePay e devolve { pago }
 //   { acao:'link', clinica, tag, valor, descricao }  com o login de alguém da equipe: link de pagamento de um
@@ -15,9 +15,11 @@
 //   aviso da InfinitePay (webhook, ?aviso=1): confere na InfinitePay e marca como pago
 // Assinatura no cartão pelo Mercado Pago (supabase/007_mercadopago.sql; segredo MERCADOPAGO_TOKEN = Access Token
 // de produção; opcional MERCADOPAGO_SEGREDO = assinatura secreta dos webhooks):
-//   { acao:'assinar', clinica, plano, periodo, email }  administrador: cria a assinatura e devolve { url } do Mercado Pago
+//   { acao:'assinar', clinica, plano, periodo, email, aceite }  administrador: cria a assinatura e devolve { url } do Mercado Pago
+//     (periodo: mensal, anual12 = anual com pagamento mensal, anual = à vista; aceite = versão do contrato aceita)
 //   { acao:'cartao', clinica }  alguém da equipe: confere no Mercado Pago, registra as cobranças aprovadas, devolve a situação
-//   { acao:'cancelar_cartao', clinica }  administrador: cancela as próximas cobranças (o período pago continua)
+//   { acao:'cancelar_cartao', clinica, confirmarMulta }  administrador: cancela as próximas cobranças (o período pago continua);
+//     no anual12 antes dos 12 meses devolve antes { confirmar, multa } para o administrador confirmar
 //   aviso do Mercado Pago (webhook, ?mp=1): confere no Mercado Pago e registra
 //   avisos de 7 dias antes da cobrança (?avisos=1 com o cabeçalho x-avisos = AVISOS_SEGREDO, uma vez por dia): manda
 //     o e-mail pelo Resend (RESEND_CHAVE e AVISO_REMETENTE, ex.: "MUSUBI <avisos@seudominio.com.br>")
@@ -43,7 +45,16 @@ export async function assinaturaMpOk(segredo, xSig, xReq, dataId){
 // Preços em centavos: os mesmos de js/dados/planos.js. Anual = 10 meses (2 meses grátis).
 export const PRECOS = { essencial:7900, profissional:14900, clinica:29900 };
 export const NOMES = { essencial:'Essencial', profissional:'Profissional', clinica:'Clínica' };
-export const valorDe = (plano, periodo) => PRECOS[plano] * (periodo === 'anual' ? 10 : 1);
+// Anual com pagamento mensal (anual12): 12 meses de compromisso com 15% de desconto, só no cartão (Mercado Pago).
+export const valorDe = (plano, periodo) => periodo === 'anual12' ? Math.round(PRECOS[plano] * 0.85 / 100) * 100 : PRECOS[plano] * (periodo === 'anual' ? 10 : 1);
+// Contrato de assinatura (inicio/contrato.html): o aceite desta versão é exigido e registrado em aceites.
+export const CONTRATO_VERSAO = '2026-11-11';
+// Multa justa do anual com pagamento mensal: devolve só o desconto recebido nos meses já pagos.
+// Ciclo de 12 meses em vigor no anual com pagamento mensal: ao fim de cada ciclo renova por mais 12 (cláusula 3 do contrato).
+export const cicloFidelidade = (compromissoAte, agora = Date.now()) => { if (!compromissoAte) return null;
+  const fim = new Date(compromissoAte); while (fim.getTime() <= agora) fim.setMonth(fim.getMonth() + 12);
+  const ini = new Date(fim); ini.setMonth(ini.getMonth() - 12); return { ini:ini.toISOString(), fim:fim.toISOString() }; };
+export const multaFidelidade = (plano, mesesPagos) => Math.max(0, (PRECOS[plano] - valorDe(plano, 'anual12')) * mesesPagos);
 export const VALOR_TESTE = 100; // R$ 1,00, o mínimo da InfinitePay
 // Número do pedido curto, só letras e números (até 25, como o identificador do Pix): alguns bancos recusam o Pix com hífen ou longo.
 export const numeroPedido = (id, prefixo = 'MSB') => (prefixo + String(id).replace(/[^0-9a-z]/gi, '')).slice(0, 25);
@@ -95,7 +106,7 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
     if (!r.ok) { const e = new Error(`mercadopago ${r.status}: ${t.slice(0, 300)}`); e.mp = j; e.status = r.status; throw e; }
     return j;
   };
-  const assinaturaDe = async clinica => ((await banco(`assinaturas?select=clinica_id,plano,teste_ate,gratis_ate,pago_ate,cartao_id,cartao_situacao,cartao_plano,cartao_periodo,cartao_valor,cartao_email,cartao_proxima&clinica_id=eq.${clinica}`)) || [])[0] || null;
+  const assinaturaDe = async clinica => ((await banco(`assinaturas?select=clinica_id,plano,teste_ate,gratis_ate,pago_ate,cartao_id,cartao_situacao,cartao_plano,cartao_periodo,cartao_valor,cartao_email,cartao_proxima,cartao_inicio,cartao_compromisso_ate,cartao_multa&clinica_id=eq.${clinica}`)) || [])[0] || null;
   const mudarAssinatura = (clinica, corpo) => banco(`assinaturas?clinica_id=eq.${clinica}`, { metodo:'PATCH', corpo, cab:{ Prefer:'return=minimal' } });
   // Uma cobrança aprovada vira pagamento (uma vez só) e estende a assinatura.
   const registrarCobrancaMp = async (A, ap) => {
@@ -118,7 +129,12 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
     await mudarAssinatura(A.clinica_id, mudou);
     return { ...A, ...mudou, novos };
   };
-  const situacaoCartao = A => ({ situacao:A?.cartao_situacao || '', plano:A?.cartao_plano || '', periodo:A?.cartao_periodo || '', valor:A?.cartao_valor || null, proxima:A?.cartao_proxima || null, email:A?.cartao_email || '', novos:A?.novos || 0 });
+  const NOME_PERIODO = { mensal:'mensal', anual12:'anual com pagamento mensal', anual:'anual à vista' };
+  // Aceite do contrato: quem, quando e qual versão (supabase/008_contrato.sql).
+  const registrarAceite = (clinica, u, plano, periodo, meio) => banco('aceites', { metodo:'POST', corpo:{ clinica_id:clinica, user_id:u.id, email:u.email || '', versao:CONTRATO_VERSAO, plano, periodo, meio }, cab:{ Prefer:'return=minimal' } });
+  // Meses já pagos no cartão desde o início da assinatura atual (para a multa justa do anual com pagamento mensal).
+  const mesesPagosCartao = async (A, desde) => ((await banco(`pagamentos?select=id&clinica_id=eq.${A.clinica_id}&meio=eq.mercadopago&situacao=eq.pago${desde ? `&pago_em=gte.${encodeURIComponent(desde)}` : ''}`)) || []).length;
+  const situacaoCartao = A => ({ situacao:A?.cartao_situacao || '', plano:A?.cartao_plano || '', periodo:A?.cartao_periodo || '', valor:A?.cartao_valor || null, proxima:A?.cartao_proxima || null, compromisso:A?.cartao_periodo === 'anual12' && A?.cartao_situacao !== 'cancelada' ? cicloFidelidade(A.cartao_compromisso_ate)?.fim || null : A?.cartao_compromisso_ate || null, multa:A?.cartao_multa || 0, email:A?.cartao_email || '', novos:A?.novos || 0 });
   const perfilDe = async (clinica, u) => ((await banco(`membros?select=perfil&clinica_id=eq.${clinica}&user_id=eq.${u.id}&ativo=is.true`)) || [])[0]?.perfil || '';
   const idOk = c => /^[0-9a-f-]{36}$/i.test(String(c || ''));
 
@@ -159,7 +175,7 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
           const dia = new Date(A.cartao_proxima).toLocaleDateString('pt-BR', { timeZone:'America/Sao_Paulo' }), valor = ((A.cartao_valor || 0) / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
           const r = await f('https://api.resend.com/emails', { method:'POST', headers:{ Authorization:`Bearer ${CH}`, 'Content-Type':'application/json' }, body:JSON.stringify({
             from:DE, to:[A.cartao_email], subject:`MUSUBI: cobrança de ${valor} em ${dia}`,
-            text:`Olá!\n\nEste é um aviso de que a assinatura do MUSUBI (pacote ${NOMES[A.cartao_plano] || ''}, ${A.cartao_periodo === 'anual' ? 'anual' : 'mensal'}) será cobrada no seu cartão em ${dia}, no valor de ${valor}, pelo Mercado Pago.\n\nNão é preciso fazer nada. Para trocar de pacote ou cancelar, entre no MUSUBI em Configurações > Sua conta: ${SITE}/sistema\n\nEquipe MUSUBI`
+            text:`Olá!\n\nEste é um aviso de que a assinatura do MUSUBI (pacote ${NOMES[A.cartao_plano] || ''}, ${NOME_PERIODO[A.cartao_periodo] || 'mensal'}) será cobrada no seu cartão em ${dia}, no valor de ${valor}, pelo Mercado Pago.\n\nNão é preciso fazer nada. Para trocar de pacote ou cancelar, entre no MUSUBI em Configurações > Sua conta: ${SITE}/sistema\n\nEquipe MUSUBI`
           }) });
           if (r.ok) { enviados++; await mudarAssinatura(A.clinica_id, { cartao_aviso_para:A.cartao_proxima }); }
         }
@@ -169,7 +185,8 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
       if (!u) return erro(401, 'sem_login', 'Entre de novo para continuar.');
       if (corpo.acao === 'assinar') {
         const { clinica, plano, periodo } = corpo, email = String(corpo.email || u.email || '').trim().toLowerCase();
-        if (!PRECOS[plano] || !['mensal', 'anual'].includes(periodo) || !idOk(clinica)) return erro(400, 'dados', 'Pacote ou período inválido.');
+        if (!PRECOS[plano] || !['mensal', 'anual12', 'anual'].includes(periodo) || !idOk(clinica)) return erro(400, 'dados', 'Pacote ou período inválido.');
+        if (corpo.aceite !== CONTRATO_VERSAO) return erro(400, 'aceite', 'Para assinar, leia e aceite o Contrato de assinatura (se a página estiver aberta há muito tempo, recarregue).');
         if (!EMAIL_OK.test(email)) return erro(400, 'email', 'Confira o e-mail da sua conta no Mercado Pago.');
         if (!MP_TOKEN) return erro(503, 'sem_cartao', 'A assinatura no cartão ainda não está ligada.');
         if (await perfilDe(clinica, u) !== 'adm') return erro(403, 'sem_acesso', 'Só o administrador da clínica faz a assinatura.');
@@ -182,10 +199,13 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
         const auto = { frequency:periodo === 'anual' ? 12 : 1, frequency_type:'months', transaction_amount:valor / 100, currency_id:'BRL' };
         if (inicio > Date.now() + 36e5) auto.start_date = new Date(inicio).toISOString();
         let p;
-        try { p = await mp('/preapproval', { metodo:'POST', corpo:{ reason:`MUSUBI ${NOMES[plano]} (${periodo})`, external_reference:clinica, payer_email:email, back_url:`${SITE}/sistema`, status:'pending', auto_recurring:auto } }); }
+        try { p = await mp('/preapproval', { metodo:'POST', corpo:{ reason:`MUSUBI ${NOMES[plano]} (${NOME_PERIODO[periodo]})`, external_reference:clinica, payer_email:email, back_url:`${SITE}/sistema`, status:'pending', auto_recurring:auto } }); }
         catch (e) { console.error(e); return erro(502, 'mercadopago', `O Mercado Pago não criou a assinatura.${e.mp?.message ? ` (Motivo: ${String(e.mp.message).slice(0, 160)})` : ''}`); }
         if (!p?.init_point) return erro(502, 'mercadopago', 'O Mercado Pago não devolveu o endereço da assinatura. Tente de novo.');
-        await mudarAssinatura(clinica, { cartao_id:String(p.id), cartao_situacao:'pendente', cartao_plano:plano, cartao_periodo:periodo, cartao_valor:valor, cartao_email:email, cartao_proxima:p.next_payment_date || auto.start_date || null, cartao_aviso_para:null });
+        const comeca = auto.start_date || new Date().toISOString(), fim = new Date(comeca); fim.setMonth(fim.getMonth() + 12);
+        await mudarAssinatura(clinica, { cartao_id:String(p.id), cartao_situacao:'pendente', cartao_plano:plano, cartao_periodo:periodo, cartao_valor:valor, cartao_email:email, cartao_proxima:p.next_payment_date || auto.start_date || null, cartao_aviso_para:null,
+          cartao_inicio:comeca, cartao_compromisso_ate:periodo === 'anual12' ? fim.toISOString() : null, cartao_multa:0 });
+        await registrarAceite(clinica, u, plano, periodo, 'mercadopago');
         return resp(200, { url:p.init_point, valor });
       }
       if (corpo.acao === 'cartao' || corpo.acao === 'cancelar_cartao') {
@@ -196,9 +216,16 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
         if (corpo.acao === 'cancelar_cartao') {
           if (perfil !== 'adm') return erro(403, 'sem_acesso', 'Só o administrador da clínica cancela a assinatura.');
           if (!A?.cartao_id) return resp(200, situacaoCartao(A));
+          // Anual com pagamento mensal antes dos 12 meses: mostra a multa justa (o desconto já recebido) e pede confirmação.
+          let multa = 0;
+          const ciclo = A.cartao_periodo === 'anual12' && ['ativa', 'pausada'].includes(A.cartao_situacao) ? cicloFidelidade(A.cartao_compromisso_ate) : null;
+          if (ciclo) {
+            const meses = await mesesPagosCartao(A, ciclo.ini); multa = multaFidelidade(A.cartao_plano, meses);
+            if (multa && corpo.confirmarMulta !== true) return resp(200, { ...situacaoCartao(A), confirmar:true, multa, meses, compromisso:ciclo.fim });
+          }
           try { await mp(`/preapproval/${encodeURIComponent(A.cartao_id)}`, { metodo:'PUT', corpo:{ status:'cancelled' } }); }
           catch (e) { console.error(e); return erro(502, 'mercadopago', 'O Mercado Pago não respondeu. Tente de novo em instantes.'); }
-          await mudarAssinatura(clinica, { cartao_situacao:'cancelada', cartao_proxima:null }); A = { ...A, cartao_situacao:'cancelada', cartao_proxima:null };
+          await mudarAssinatura(clinica, { cartao_situacao:'cancelada', cartao_proxima:null, cartao_multa:multa }); A = { ...A, cartao_situacao:'cancelada', cartao_proxima:null, cartao_multa:multa };
           return resp(200, situacaoCartao(A));
         }
         try { A = await sincronizarMp(A); } catch (e) { console.error(e); }
@@ -226,13 +253,16 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
       }
       if (corpo.acao !== 'criar') return erro(400, 'acao', 'Pedido inválido.');
       const teste = corpo.teste === true, { clinica, plano } = corpo, periodo = teste ? 'mensal' : corpo.periodo;
+      if (periodo === 'anual12') return erro(400, 'periodo', 'O anual com pagamento mensal é feito pela assinatura no cartão.');
       if (!PRECOS[plano] || !['mensal', 'anual'].includes(periodo) || !/^[0-9a-f-]{36}$/i.test(String(clinica || ''))) return erro(400, 'dados', 'Pacote ou período inválido.');
+      if (!teste && corpo.aceite !== CONTRATO_VERSAO) return erro(400, 'aceite', 'Para pagar, leia e aceite o Contrato de assinatura (se a página estiver aberta há muito tempo, recarregue).');
       if (!HANDLE) return erro(503, 'sem_cobranca', 'O pagamento online ainda não está ligado.');
       const M = (await banco(`membros?select=perfil&clinica_id=eq.${clinica}&user_id=eq.${u.id}&ativo=is.true`)) || [];
       if (M[0]?.perfil !== 'adm') return erro(403, 'sem_acesso', 'Só o administrador da clínica faz o pagamento.');
       if (teste && !((await banco(`donos?select=user_id&user_id=eq.${u.id}`)) || []).length) return erro(403, 'sem_acesso', 'Só o dono do MUSUBI faz o pagamento de teste.');
       const valor = teste ? VALOR_TESTE : valorDe(plano, periodo), order_nsu = numeroPedido(novoId());
       await banco('pagamentos', { metodo:'POST', corpo:{ clinica_id:clinica, plano, periodo, valor, order_nsu, pedido_por:u.id }, cab:{ Prefer:'return=minimal' } });
+      if (!teste) await registrarAceite(clinica, u, plano, periodo, 'infinitepay');
       const r = await f(`${INFINITEPAY}/links`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({
         handle:HANDLE, order_nsu,
         items:[{ description:semAcento(teste ? 'MUSUBI - teste de pagamento' : `MUSUBI ${NOMES[plano]} - ${periodo === 'anual' ? '12 meses' : '1 mes'}`), price:valor, quantity:1 }],

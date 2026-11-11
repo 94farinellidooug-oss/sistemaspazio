@@ -1453,6 +1453,8 @@ body.com-acesso{overflow:hidden}
 .acesso-opc{display:grid;gap:8px}
 .acesso-opc p{margin:0;font-size:.88rem}
 .acesso-opc label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line-2);border-radius:var(--r-sm);cursor:pointer}
+.aceite-c{display:flex;gap:10px;align-items:flex-start;font-size:.86rem;line-height:1.4;margin:10px 0;cursor:pointer}
+.aceite-c input{margin-top:2px;width:18px;height:18px;flex:none;accent-color:var(--accent)}
 .acesso-opc label.on{border-color:var(--accent);background:var(--accent-soft)}
 .acesso-opc input{margin-top:3px;accent-color:var(--accent)}
 .acesso-opc small{display:block;color:var(--muted);font-size:.82rem;margin-top:2px}
@@ -2832,6 +2834,64 @@ const CAMPO_H = { name:'nome', birth:'nascimento', phone:'telefone', anam:'anamn
   'cadastro.cpf':'CPF', 'cadastro.email':'e-mail', 'cadastro.endereco':'endereço', 'cadastro.cidade':'cidade', 'cadastro.hemisferio':'hemisfério', 'cadastro.contatoEmergencia':'contato de emergência',
   data:'data', date:'data', time:'horário', status:'situação', done:'atendido', valor:'valor', forma:'forma de pagamento', texto:'texto', assinado:'assinatura', edicoes:'correções', ativo:'ativo' };
 const campoTxt = c => CAMPO_H[c] || String(c).replace(/^cadastro\./, '').replace(/([A-Z])/g, ' $1').toLowerCase();
+// em 05/11, para ajustar depois). Toda clínica nova tem 7 dias grátis com as funções do pacote escolhido;
+// o dono do MUSUBI pode dar acesso grátis (com prazo ou sem prazo) pelo Painel do MUSUBI.
+const PLANOS = [
+  { k:'essencial', nome:'Essencial', preco:79, resumo:'Para começar a organizar a clínica.',
+    itens:['Agenda', 'Pacientes e prontuário', 'Documentos editáveis', 'WhatsApp com mensagem pronta', 'Financeiro básico', 'Nota fiscal (até 30 por mês)'] },
+  { k:'profissional', nome:'Profissional', preco:149, resumo:'O MUSUBI completo para quem atende com MTC.', destaque:true,
+    itens:['Tudo do Essencial', 'Avaliação MTC e pentagrama', 'Mapa corporal e pontos indicados', 'Dicas de vasos e estações', 'Evolução comparada', 'Relatórios', 'Nota fiscal (até 100 por mês)'] },
+  { k:'clinica', nome:'Clínica', preco:299, aPartir:true, resumo:'Para equipes com mais de um profissional.',
+    itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até 300 por mês)'] }
+];
+// O que cada pacote libera (etapa 10). O Essencial fica sem a parte de MTC (avaliação energética, pentagrama,
+// síntese, mapa corporal, Biblioteca clínica e dicas de vasos e estações) e sem os relatórios. Nada é apagado:
+// ao trocar para um pacote com o recurso, tudo o que já foi registrado volta a aparecer.
+const RECURSOS = {
+  mtc:{ nome:'Avaliação MTC, pentagrama e mapa corporal', texto:'Avaliação energética, pentagrama, síntese clínica, mapa corporal com os pontos indicados, Biblioteca clínica e dicas de vasos e estações.', planos:['profissional', 'clinica'] },
+  relatorios:{ nome:'Relatórios', texto:'Atendimentos e receita por período, por mês, por serviço e por forma de pagamento, evolução das queixas e dicas de gestão.', planos:['profissional', 'clinica'] }
+};
+const RECURSO_ROTA = { avaliacao:'mtc', pentagrama:'mtc', pontos:'mtc', biblioteca:'mtc', relatorios:'relatorios' };
+const temRecurso = (k, r) => !RECURSOS[r] || RECURSOS[r].planos.includes(k);
+const pacoteDoRecurso = r => PLANOS.find(p => temRecurso(p.k, r)) || PLANOS[1];
+const planoDe = k => PLANOS.find(p => p.k === k) || PLANOS[1];
+const precoTxt = p => `${p.aPartir ? 'a partir de ' : ''}R$ ${p.preco}/mês`;
+const DIAS_TESTE = 7;
+// Notas fiscais por mês em produção (decisão do Maicon em 08/11/2026). As de homologação (teste) não contam.
+// A função nfse do servidor tem a mesma tabela e é ela que barra.
+const LIMITE_NOTAS = { essencial:30, profissional:100, clinica:300 };
+// Pagamento pela InfinitePay (Pix ou cartão): mensal, ou anual com 2 meses grátis (paga 10 meses).
+// Três formas (decisão do Maicon em 11/11/2026): mensal sem fidelidade; anual com pagamento mensal (12 meses de
+// compromisso, 15% de desconto, só no cartão pelo Mercado Pago; quem cancela antes devolve o desconto recebido);
+// anual à vista (10 mensalidades).
+const PERIODOS_PAG = [['mensal', 'Mensal'], ['anual12', 'Anual com pagamento mensal'], ['anual', 'Anual à vista']];
+const DESCONTO_FIDELIDADE = 0.15;
+const precoFidelidade = p => Math.round(p.preco * (1 - DESCONTO_FIDELIDADE));
+const valorPeriodo = (p, periodo) => periodo === 'anual12' ? precoFidelidade(p) : p.preco * (periodo === 'anual' ? 10 : 1);
+const precoPeriodoTxt = (p, periodo) => `R$ ${valorPeriodo(p, periodo).toLocaleString('pt-BR')}${periodo === 'anual' ? '/ano' : periodo === 'anual12' ? '/mês por 12 meses' : '/mês'}`;
+// Contrato de assinatura (inicio/contrato.html): a versão aceita fica registrada no servidor.
+const CONTRATO_VERSAO = '2026-11-11';
+
+const DIA = 86400000;
+// Situação da assinatura: {tipo:'gratis'|'pago'|'teste'|'vencido', dias (que faltam), ate (iso), sempre}.
+// Sem assinatura (servidor antigo, ou sem conta) conta como liberado.
+function situacaoAssinatura(a, agora = Date.now()){
+  if (!a) return { tipo:'gratis', sempre:true, dias:null, ate:null };
+  const t = d => d ? new Date(d).getTime() : 0, dias = d => Math.max(0, Math.ceil((t(d) - agora) / DIA));
+  if (a.gratis_sempre) return { tipo:'gratis', sempre:true, dias:null, ate:null, motivo:a.gratis_motivo || '' };
+  if (t(a.gratis_ate) > agora) return { tipo:'gratis', sempre:false, dias:dias(a.gratis_ate), ate:a.gratis_ate, motivo:a.gratis_motivo || '' };
+  if (t(a.pago_ate) > agora) return { tipo:'pago', dias:dias(a.pago_ate), ate:a.pago_ate };
+  if (t(a.teste_ate) > agora) return { tipo:'teste', dias:dias(a.teste_ate), ate:a.teste_ate };
+  return { tipo:'vencido', dias:0, ate:a.teste_ate };
+}
+// Texto curto da situação (painel do dono e topo do sistema).
+function rotuloSituacao(s){
+  const d = n => `${n} dia${n === 1 ? '' : 's'}`, data = iso => new Date(iso).toLocaleDateString('pt-BR');
+  return s.tipo === 'gratis' ? (s.sempre ? 'Grátis sem prazo' : `Grátis até ${data(s.ate)}`)
+    : s.tipo === 'pago' ? `Pago até ${data(s.ate)}`
+    : s.tipo === 'teste' ? `Teste: falta${s.dias === 1 ? '' : 'm'} ${d(s.dias)}`
+    : 'Teste terminou';
+}
 // dados pela API REST, com as regras de acesso do banco (supabase/001_inicio.sql) decidindo o que cada
 // conta enxerga. A chave abaixo é a pública (publishable): pode ficar no código do site.
 // Nesta primeira parte cada clínica guarda o documento inteiro do sistema, com versão (salvar_dados).
@@ -2960,11 +3020,11 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     // Histórico de alterações (só o administrador lê). F = { paciente, antes (iso), limite }.
     historico:async (clinica, F = {}) => rest(`historico?select=id,em,pessoa,email,tipo,acao,alvo,paciente_id,titulo,campos&clinica_id=eq.${clinica}${F.paciente ? `&paciente_id=eq.${encodeURIComponent(F.paciente)}` : ''}${F.antes ? `&em=lt.${encodeURIComponent(F.antes)}` : ''}&order=em.desc&limit=${F.limite || 100}`),
     // Pagamento do MUSUBI pela InfinitePay (função cobranca, supabase/functions/cobranca). Devolve { url } do link.
-    pagar:async (clinica, plano, periodo, teste = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo, ...(teste ? { teste:true } : {}) }, token:await token() }),
+    pagar:async (clinica, plano, periodo, teste = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo, ...(teste ? { teste:true } : { aceite:CONTRATO_VERSAO }) }, token:await token() }),
     // Assinatura no cartão pelo Mercado Pago (mesma função cobranca, supabase/007_mercadopago.sql).
-    assinarCartao:async (clinica, plano, periodo, email) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'assinar', clinica, plano, periodo, email }, token:await token() }),
+    assinarCartao:async (clinica, plano, periodo, email) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'assinar', clinica, plano, periodo, email, aceite:CONTRATO_VERSAO }, token:await token() }),
     cartao:async clinica => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cartao', clinica }, token:await token() }),
-    cancelarCartao:async clinica => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cancelar_cartao', clinica }, token:await token() }),
+    cancelarCartao:async (clinica, confirmarMulta = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cancelar_cartao', clinica, ...(confirmarMulta ? { confirmarMulta:true } : {}) }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
     // Nota fiscal (função nfse, supabase/functions/nfse): { acao, clinica, ... }.
     nfse:async corpo => chamar('/functions/v1/nfse', { metodo:'POST', corpo, token:await token() }),
@@ -3054,57 +3114,6 @@ function criarSincronia({ nuvem, clinica, obter, aplicar, aoMudar = () => {}, me
     tentarDeNovo:() => { if (pendente) marcar(); }
   };
 }
-// em 05/11, para ajustar depois). Toda clínica nova tem 7 dias grátis com as funções do pacote escolhido;
-// o dono do MUSUBI pode dar acesso grátis (com prazo ou sem prazo) pelo Painel do MUSUBI.
-const PLANOS = [
-  { k:'essencial', nome:'Essencial', preco:79, resumo:'Para começar a organizar a clínica.',
-    itens:['Agenda', 'Pacientes e prontuário', 'Documentos editáveis', 'WhatsApp com mensagem pronta', 'Financeiro básico', 'Nota fiscal (até 30 por mês)'] },
-  { k:'profissional', nome:'Profissional', preco:149, resumo:'O MUSUBI completo para quem atende com MTC.', destaque:true,
-    itens:['Tudo do Essencial', 'Avaliação MTC e pentagrama', 'Mapa corporal e pontos indicados', 'Dicas de vasos e estações', 'Evolução comparada', 'Relatórios', 'Nota fiscal (até 100 por mês)'] },
-  { k:'clinica', nome:'Clínica', preco:299, aPartir:true, resumo:'Para equipes com mais de um profissional.',
-    itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até 300 por mês)'] }
-];
-// O que cada pacote libera (etapa 10). O Essencial fica sem a parte de MTC (avaliação energética, pentagrama,
-// síntese, mapa corporal, Biblioteca clínica e dicas de vasos e estações) e sem os relatórios. Nada é apagado:
-// ao trocar para um pacote com o recurso, tudo o que já foi registrado volta a aparecer.
-const RECURSOS = {
-  mtc:{ nome:'Avaliação MTC, pentagrama e mapa corporal', texto:'Avaliação energética, pentagrama, síntese clínica, mapa corporal com os pontos indicados, Biblioteca clínica e dicas de vasos e estações.', planos:['profissional', 'clinica'] },
-  relatorios:{ nome:'Relatórios', texto:'Atendimentos e receita por período, por mês, por serviço e por forma de pagamento, evolução das queixas e dicas de gestão.', planos:['profissional', 'clinica'] }
-};
-const RECURSO_ROTA = { avaliacao:'mtc', pentagrama:'mtc', pontos:'mtc', biblioteca:'mtc', relatorios:'relatorios' };
-const temRecurso = (k, r) => !RECURSOS[r] || RECURSOS[r].planos.includes(k);
-const pacoteDoRecurso = r => PLANOS.find(p => temRecurso(p.k, r)) || PLANOS[1];
-const planoDe = k => PLANOS.find(p => p.k === k) || PLANOS[1];
-const precoTxt = p => `${p.aPartir ? 'a partir de ' : ''}R$ ${p.preco}/mês`;
-const DIAS_TESTE = 7;
-// Notas fiscais por mês em produção (decisão do Maicon em 08/11/2026). As de homologação (teste) não contam.
-// A função nfse do servidor tem a mesma tabela e é ela que barra.
-const LIMITE_NOTAS = { essencial:30, profissional:100, clinica:300 };
-// Pagamento pela InfinitePay (Pix ou cartão): mensal, ou anual com 2 meses grátis (paga 10 meses).
-const PERIODOS_PAG = [['mensal', 'Mensal'], ['anual', 'Anual']];
-const valorPeriodo = (p, periodo) => p.preco * (periodo === 'anual' ? 10 : 1);
-const precoPeriodoTxt = (p, periodo) => `R$ ${valorPeriodo(p, periodo).toLocaleString('pt-BR')}${periodo === 'anual' ? '/ano' : '/mês'}`;
-
-const DIA = 86400000;
-// Situação da assinatura: {tipo:'gratis'|'pago'|'teste'|'vencido', dias (que faltam), ate (iso), sempre}.
-// Sem assinatura (servidor antigo, ou sem conta) conta como liberado.
-function situacaoAssinatura(a, agora = Date.now()){
-  if (!a) return { tipo:'gratis', sempre:true, dias:null, ate:null };
-  const t = d => d ? new Date(d).getTime() : 0, dias = d => Math.max(0, Math.ceil((t(d) - agora) / DIA));
-  if (a.gratis_sempre) return { tipo:'gratis', sempre:true, dias:null, ate:null, motivo:a.gratis_motivo || '' };
-  if (t(a.gratis_ate) > agora) return { tipo:'gratis', sempre:false, dias:dias(a.gratis_ate), ate:a.gratis_ate, motivo:a.gratis_motivo || '' };
-  if (t(a.pago_ate) > agora) return { tipo:'pago', dias:dias(a.pago_ate), ate:a.pago_ate };
-  if (t(a.teste_ate) > agora) return { tipo:'teste', dias:dias(a.teste_ate), ate:a.teste_ate };
-  return { tipo:'vencido', dias:0, ate:a.teste_ate };
-}
-// Texto curto da situação (painel do dono e topo do sistema).
-function rotuloSituacao(s){
-  const d = n => `${n} dia${n === 1 ? '' : 's'}`, data = iso => new Date(iso).toLocaleDateString('pt-BR');
-  return s.tipo === 'gratis' ? (s.sempre ? 'Grátis sem prazo' : `Grátis até ${data(s.ate)}`)
-    : s.tipo === 'pago' ? `Pago até ${data(s.ate)}`
-    : s.tipo === 'teste' ? `Teste: falta${s.dias === 1 ? '' : 'm'} ${d(s.dias)}`
-    : 'Teste terminou';
-}
 // o que Profissional e Recepção abrem nesta clínica (fica em clinicas.permissoes no servidor). O administrador
 // sempre abre tudo, para a clínica nunca ficar sem quem cuide da equipe.
 const PERFIS = [['adm', 'Administrador', 'Tudo, inclusive equipe, configurações e o financeiro completo.'],
@@ -3145,7 +3154,7 @@ const gravarC = (k, v) => { try { v == null ? localStorage.removeItem(k) : local
 const voltarAoSite = () => location.origin + location.pathname;
 
 // Estado da conta: modo 'local' (sem conta) ou 'nuvem'; tela de acesso aberta (ou null); clínica atual.
-const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false, plano:'profissional', periodo:'mensal', assin:null, sit:null, retorno:null, pagamentos:null };
+const conta = { modo:'local', tela:null, msg:'', erro:'', ocupado:false, nuvem:null, clinica:null, clinicas:[], sinc:null, estado:'', levar:true, dono:false, plano:'profissional', periodo:'mensal', aceite:false, assin:null, sit:null, retorno:null, pagamentos:null };
 const PERFIL_NOME = { adm:'Administrador', prof:'Profissional', rec:'Recepção' };
 let aoMudarConta = () => {};
 
@@ -3272,7 +3281,10 @@ const avisoCobranca = c => { if (c?.situacao !== 'ativa' || !c.proxima) return '
 const cartaoConta = () => conta.modo === 'nuvem' ? conta.cartao : null;
 const assinarCartaoConta = async (plano, periodo, email) => { try { const r = await conta.nuvem.assinarCartao(conta.clinica.id, plano, periodo, email); location.href = r.url; return ''; }
   catch (e) { return e.codigo === 'acao' || (e.status === 404 && !e.corpo) ? 'A assinatura no cartão ainda não foi ligada no servidor (falta atualizar a função cobranca).' : e.message || 'Não foi possível agora. Tente de novo.'; } };
-const cancelarCartaoConta = () => tentarC(async () => { conta.cartao = await conta.nuvem.cancelarCartao(conta.clinica.id); aoMudarConta(true); });
+// Cancelar: no anual com pagamento mensal antes dos 12 meses, o servidor devolve a multa para confirmar ({ multa, meses, compromisso }).
+const cancelarCartaoConta = async (confirmarMulta = false) => { try { const r = await conta.nuvem.cancelarCartao(conta.clinica.id, confirmarMulta);
+  if (r?.confirmar) return { multa:r.multa, meses:r.meses, compromisso:r.compromisso }; conta.cartao = r; aoMudarConta(true); return ''; }
+  catch (e) { return e.message || 'Não foi possível agora. Tente de novo.'; } };
 // Pagamentos da clínica (null enquanto carrega; recarrega a tela quando chegam).
 // Cobrar por link (Financeiro): só com a conta no servidor. Devolve { url } ou { erro }.
 const cobrancaLigada = () => conta.modo === 'nuvem' && !!conta.clinica?.id && !!conta.nuvem;
@@ -3318,7 +3330,11 @@ const clinicaNoServidor = D => conta.modo === 'nuvem' && conta.clinica?.id ? ten
 
 /* ---------- Tela de acesso ---------- */
 const escolherPlano = rot => `<div class="acesso-opc acesso-plano" role="radiogroup" aria-label="Pacote"><p><b>${rot}</b></p>${PLANOS.map(p => `<label class="${conta.plano === p.k ? 'on' : ''}"><input type="radio" name="plano" value="${p.k}" data-ac="plano" ${conta.plano === p.k ? 'checked' : ''}><span><b>${p.nome} <span class="acesso-preco">${precoTxt(p)}</span></b><small>${p.resumo}</small></span></label>`).join('')}</div>`;
-const escolherPeriodo = () => `<div class="acesso-opc acesso-periodo" role="radiogroup" aria-label="Período">${PERIODOS_PAG.map(([k, l]) => `<label class="${conta.periodo === k ? 'on' : ''}"><input type="radio" name="periodo" value="${k}" data-ac="periodo" ${conta.periodo === k ? 'checked' : ''}><span><b>${l} <span class="acesso-preco">${precoPeriodoTxt(planoDe(conta.plano), k)}</span></b>${k === 'anual' ? '<small>2 meses grátis</small>' : ''}</span></label>`).join('')}</div>`;
+// Aceite do Contrato de assinatura (obrigatório para pagar ou assinar; o servidor registra quem, quando e a versão).
+const TEXTO_ACEITE = 'Li e concordo com o <a class="lnk" href="inicio/contrato.html" target="_blank" rel="noopener">Contrato de assinatura</a> e os <a class="lnk" href="inicio/termos.html" target="_blank" rel="noopener">Termos de uso</a>.';
+const FALTA_ACEITE = 'Para continuar, marque que leu e concorda com o Contrato de assinatura.';
+const marcarAceite = () => `<label class="aceite-c"><input type="checkbox" name="aceite" data-ac="aceite" ${conta.aceite ? 'checked' : ''}><span>${TEXTO_ACEITE}</span></label>`;
+const escolherPeriodo = () => `<div class="acesso-opc acesso-periodo" role="radiogroup" aria-label="Período">${PERIODOS_PAG.map(([k, l]) => `<label class="${conta.periodo === k ? 'on' : ''}"><input type="radio" name="periodo" value="${k}" data-ac="periodo" ${conta.periodo === k ? 'checked' : ''}><span><b>${l} <span class="acesso-preco">${precoPeriodoTxt(planoDe(conta.plano), k)}</span></b>${k === 'anual' ? '<small>2 meses grátis</small>' : k === 'anual12' ? '<small>15% de desconto, 12 meses de compromisso, só no cartão</small>' : ''}</span></label>`).join('')}</div>`;
 const campoA = (nome, rot, tipo = 'text', extra = '') => `<label class="field"><span class="lbl">${rot}</span><input name="${nome}" type="${tipo}" ${extra} required></label>`;
 function htmlAcesso(){
   const t = conta.tela, carregando = conta.ocupado && !conta.erro;
@@ -3340,13 +3356,13 @@ function htmlAcesso(){
           <label class="${conta.levar ? 'on' : ''}"><input type="radio" name="levar" value="1" data-ac="levar" ${conta.levar ? 'checked' : ''}><span><b>Levar para a minha conta</b><small>Tudo passa a ficar no servidor e aparece em qualquer aparelho. Recomendado.</small></span></label>
           <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa com pacientes de exemplo (WhatsApp e CPF 0000…) para conhecer o sistema. Dá para excluir depois.</small></span></label></div>` : ''}
         ${escolherPlano('Escolha o pacote: 7 dias grátis com tudo o que ele tem')}`
-    : t === 'vencido' ? `${escolherPlano('Pacote')}${escolherPeriodo()}`
+    : t === 'vencido' ? `${escolherPlano('Pacote')}${escolherPeriodo()}${marcarAceite()}`
     : t === 'contato' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
   const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Pagar com Pix ou cartão', contato:'Enviar' }[t];
   const termos = t === 'criar' ? `<p class="muted sm">Ao criar a conta, você concorda com os <a class="lnk" href="inicio/termos.html" target="_blank" rel="noopener">Termos de uso</a> e a <a class="lnk" href="inicio/privacidade.html" target="_blank" rel="noopener">Política de privacidade</a>.</p>` : '';
   const rodape = termos + (t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p><p class="muted sm"><a class="lnk suave" href="inicio/index.html">Conhecer o MUSUBI</a></p>`
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
-    : t === 'vencido' ? `<button type="button" class="btn largo" data-ac="assinar-cartao" ${conta.ocupado ? 'disabled' : ''}>${ic('dinheiro')}Assinar no cartão (cobrança automática)</button><p class="muted sm">No cartão, a cobrança é feita sozinha pelo Mercado Pago, com aviso 7 dias antes.</p><p class="muted sm"><button type="button" class="lnk" data-ac="contato">Prefiro que a equipe entre em contato</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
+    : t === 'vencido' ? `<button type="button" class="btn ${conta.periodo === 'anual12' ? 'pri ' : ''}largo" data-ac="assinar-cartao" ${conta.ocupado ? 'disabled' : ''}>${ic('dinheiro')}Assinar no cartão (cobrança automática)</button><p class="muted sm">No cartão, a cobrança é feita sozinha pelo Mercado Pago, com aviso 7 dias antes.</p><p class="muted sm"><button type="button" class="lnk" data-ac="contato">Prefiro que a equipe entre em contato</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
     : t === 'contato' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="vencido">Voltar para o pagamento</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
     : ['clinica', 'aguardando'].includes(t) ? `${t === 'clinica' && lerC(KEY_CONVITE) ? `<p class="notice sm acesso-conv">${ic('info')}<span>Recebeu um convite de uma clínica? Ele vale para o e-mail convidado. Confirme o e-mail pelo link que mandamos e <button type="button" class="lnk" data-ac="de-novo">entre de novo</button>.</span></p>` : ''}<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '');
   return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>
@@ -3355,7 +3371,7 @@ function htmlAcesso(){
     <p class="muted">${esc(conta.msg || TIT[1])}</p>
     ${corpo}
     <p class="erro-a" role="alert" ${conta.erro ? '' : 'hidden'}>${esc(conta.erro)}</p>
-    ${carregando || ['confirmar', 'enviado', 'aguardando'].includes(t) ? '' : `<button class="btn pri largo" type="submit" ${conta.ocupado ? 'disabled' : ''}>${conta.ocupado ? 'Aguarde…' : botao}</button>`}
+    ${carregando || ['confirmar', 'enviado', 'aguardando'].includes(t) || (t === 'vencido' && conta.periodo === 'anual12') ? '' : `<button class="btn pri largo" type="submit" ${conta.ocupado ? 'disabled' : ''}>${conta.ocupado ? 'Aguarde…' : botao}</button>`}
     ${['confirmar', 'enviado'].includes(t) ? `<button class="btn largo" type="button" data-ac="entrar">Voltar para entrar</button>` : rodape}
   </form></div>`;
 }
@@ -3379,7 +3395,8 @@ async function enviarAcesso(f){
     : t === 'esqueci' ? (!okEmail(v('email')) ? 'Confira o e-mail.' : '')
     : t === 'nova-senha' ? (v('senha').length < 8 ? 'A senha precisa de pelo menos 8 caracteres.' : '')
     : t === 'clinica' ? (!v('clinica').trim() ? 'Escreva o nome da clínica.' : !v('cidade').trim() ? 'Escreva a cidade.' : '')
-    : t === 'contato' ? (String(v('whats')).replace(/\D/g, '').length < 10 ? 'Confira o WhatsApp, com o DDD.' : '') : '';
+    : t === 'contato' ? (String(v('whats')).replace(/\D/g, '').length < 10 ? 'Confira o WhatsApp, com o DDD.' : '')
+    : t === 'vencido' ? (!conta.aceite ? FALTA_ACEITE : '') : '';
   if (falta) { conta.erro = falta; desenharAcesso(); return; }
   conta.erro = ''; conta.ocupado = true; desenharAcesso();
   try {
@@ -3416,6 +3433,7 @@ function ligarAcesso(){
     if (a === 'ver') { const s = el.querySelector('[name=senha]'), mostrar = s.type === 'password'; s.type = mostrar ? 'text' : 'password'; b.textContent = mostrar ? 'Ocultar' : 'Mostrar'; }
     else if (['entrar', 'criar', 'esqueci', 'contato', 'vencido'].includes(a)) abrirAcesso(a);
     else if (a === 'local') { gravarC(KEY_MODO, 'local'); conta.modo = 'local'; fecharAcesso(); aoMudarConta(); }
+    else if (a === 'assinar-cartao' && !conta.ocupado && !conta.aceite) { conta.erro = FALTA_ACEITE; desenharAcesso(); }
     else if (a === 'assinar-cartao' && !conta.ocupado) { conta.erro = ''; conta.ocupado = true; desenharAcesso();
       assinarCartaoConta(conta.plano, conta.periodo, conta.nuvem.sessao()?.user.email || '').then(e => { if (e) { conta.erro = /falta atualizar|não está ligada/.test(e) ? 'A assinatura no cartão ainda não está disponível. Use Pix ou cartão acima.' : e; conta.ocupado = false; desenharAcesso(); } }); }
     else if (a === 'sair') sairDaConta();
@@ -3425,6 +3443,7 @@ function ligarAcesso(){
     if (ev.target.dataset.ac === 'levar') { conta.levar = ev.target.value === '1'; desenharAcesso(); }
     if (ev.target.dataset.ac === 'plano') { conta.plano = ev.target.value; desenharAcesso(); }
     if (ev.target.dataset.ac === 'periodo') { conta.periodo = ev.target.value; desenharAcesso(); }
+    if (ev.target.dataset.ac === 'aceite') { conta.aceite = ev.target.checked; if (conta.aceite && conta.erro === FALTA_ACEITE) conta.erro = ''; desenharAcesso(); }
   });
 }
 // e as camadas que abrem por cima da tela (busca e atalhos de teclado).
@@ -5853,7 +5872,8 @@ function vAdministracao(){
 // segurança. Só o administrador vê as quatro primeiras; os outros perfis veem só a própria conta.
 // Serviços e horário salvam a cada mudança; dados da clínica e da conta, no botão Salvar.
 
-const cf = { aba:'clinica', senha:false, ocupado:false, plano:null, periodo:'mensal' };
+const cf = { aba:'clinica', senha:false, ocupado:false, plano:null, periodo:'mensal', aceite:false, multa:null };
+const NOME_PER = { mensal:'mensal', anual12:'anual com pagamento mensal', anual:'anual à vista' };
 let cfApp = { save:() => {}, render:() => {}, toast:() => {} };
 const ABAS_CF = [['clinica', 'Clínica', 'local'], ['servicos', 'Serviços e preços', 'dinheiro'], ['horario', 'Horário de atendimento', 'relogio'], ['nota', 'Nota fiscal', 'recibo'], ['conta', 'Sua conta e segurança', 'escudo']];
 const valorTxt = v => String(v).replace('.', ',');
@@ -5939,8 +5959,10 @@ function cfPacote(){
     <div class="cf-planos">${PLANOS.map(p => `<div class="cf-plano ${p.k === S.plano.k ? 'on' : ''}"><b>${p.nome}</b><small class="muted">${precoTxt(p)}</small><ul>${p.itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>
     ${adm ? `<div class="cf-pagar" id="cf-pagar"><h3>${S.tipo === 'pago' ? 'Renovar ou trocar de pacote' : 'Pagar o MUSUBI'}</h3>
       <div class="cf-pagar-l"><label class="field"><span class="lbl">Pacote</span><select data-cf="pag-plano">${PLANOS.map(p => `<option value="${p.k}" ${p.k === plano ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></label>
-        <label class="field"><span class="lbl">Período</span><select data-cf="pag-periodo">${PERIODOS_PAG.map(([k, l]) => `<option value="${k}" ${k === cf.periodo ? 'selected' : ''}>${l}: ${precoPeriodoTxt(P, k)}${k === 'anual' ? ' (2 meses grátis)' : ''}</option>`).join('')}</select></label>
-        <button class="btn" data-cf="pagar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Pagar uma vez (Pix ou cartão)'}</button></div>
+        <label class="field"><span class="lbl">Período</span><select data-cf="pag-periodo">${PERIODOS_PAG.map(([k, l]) => `<option value="${k}" ${k === cf.periodo ? 'selected' : ''}>${l}: ${precoPeriodoTxt(P, k)}${k === 'anual' ? ' (2 meses grátis)' : k === 'anual12' ? ' (15% de desconto, 12 meses)' : ''}</option>`).join('')}</select></label>
+        ${cf.periodo === 'anual12' ? '' : `<button class="btn" data-cf="pagar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Pagar uma vez (Pix ou cartão)'}</button>`}</div>
+      ${cf.periodo === 'anual12' ? '<p class="muted sm cf-obs">O anual com pagamento mensal é feito só pela assinatura no cartão, abaixo: 12 meses com 15% de desconto. Se cancelar antes, devolve apenas o desconto já recebido.</p>' : ''}
+      <label class="aceite-c"><input type="checkbox" data-cf="aceite" ${cf.aceite ? 'checked' : ''}><span>${TEXTO_ACEITE}</span></label>
       <p class="erro-a" id="cf-pag-erro" role="alert" hidden></p>
       ${cfCartao(plano, P)}
       <p class="muted sm cf-obs">Pagar uma vez: na InfinitePay, com Pix ou cartão de crédito em até 12x, renovando quando quiser. Quando o pagamento é confirmado, o acesso é liberado sozinho${S.tipo === 'pago' ? ' e o novo período começa depois do que já está pago' : ''}.</p>
@@ -5954,12 +5976,14 @@ function cfCartao(plano, P){
   const C = cartaoConta(), ativa = C && ['ativa', 'pausada'].includes(C.situacao), aviso = avisoCobranca(C);
   const dia = d => d ? new Date(d).toLocaleDateString('pt-BR') : '';
   if (ativa) return `<div class="cf-cartao on" id="cf-cartao"><div class="grow"><b>${ic('okc')}Assinatura no cartão ${C.situacao === 'pausada' ? 'pausada' : 'ativa'}</b>
-      <small class="muted">${esc(planoDe(C.plano).nome)} · ${C.periodo === 'anual' ? 'anual' : 'mensal'} · ${reais(C.valor || 0)}${C.proxima ? ` · próxima cobrança em ${dia(C.proxima)}` : ''} · Mercado Pago (${esc(C.email)})</small>
+      <small class="muted">${esc(planoDe(C.plano).nome)} · ${NOME_PER[C.periodo] || 'mensal'} · ${reais(C.valor || 0)}${C.proxima ? ` · próxima cobrança em ${dia(C.proxima)}` : ''} · Mercado Pago (${esc(C.email)})</small>
+      ${C.periodo === 'anual12' && C.compromisso ? `<small class="muted">Compromisso de 12 meses até ${dia(C.compromisso)}.</small>` : ''}
       ${aviso ? `<small class="cf-aviso">${esc(aviso)}</small>` : ''}</div>
-    ${cf.cancelarCartao ? `<span class="cf-conf"><small>Cancelar as próximas cobranças? O período pago continua.</small><button class="btn sm crit" data-cf="cartao-cancelar-sim" ${cf.ocupado ? 'disabled' : ''}>Cancelar assinatura</button><button class="btn sm ghost" data-cf="cartao-cancelar-nao">Voltar</button></span>`
+    ${cf.multa ? `<span class="cf-conf"><small>Você está no anual com pagamento mensal até ${dia(cf.multa.compromisso)}. Cancelar agora gera a multa de ${reais(cf.multa.multa)}, que é o desconto recebido em ${cf.multa.meses} ${cf.multa.meses === 1 ? 'mês' : 'meses'} (cláusula 5 do contrato). O período pago continua.</small><button class="btn sm crit" data-cf="cartao-cancelar-multa" ${cf.ocupado ? 'disabled' : ''}>Cancelar e aceitar a multa</button><button class="btn sm ghost" data-cf="cartao-cancelar-nao">Manter assinatura</button></span>`
+      : cf.cancelarCartao ? `<span class="cf-conf"><small>Cancelar as próximas cobranças? O período pago continua.</small><button class="btn sm crit" data-cf="cartao-cancelar-sim" ${cf.ocupado ? 'disabled' : ''}>Cancelar assinatura</button><button class="btn sm ghost" data-cf="cartao-cancelar-nao">Voltar</button></span>`
       : `<button class="btn sm ghost" data-cf="cartao-cancelar">Cancelar assinatura</button>`}</div>`;
   return `<div class="cf-cartao" id="cf-cartao"><div class="grow"><b>${ic('dinheiro')}Assinatura no cartão (cobrança automática)</b>
-      <small class="muted">Cadastre o cartão uma vez no Mercado Pago: ${precoPeriodoTxt(P, cf.periodo)}, cobrado sozinho${cf.periodo === 'anual' ? ' a cada ano' : ' todo mês'}, com aviso 7 dias antes. A primeira cobrança acontece quando terminar o período já pago ou o teste.</small>
+      <small class="muted">Cadastre o cartão uma vez no Mercado Pago: ${precoPeriodoTxt(P, cf.periodo)}, cobrado sozinho${cf.periodo === 'anual' ? ' a cada ano' : cf.periodo === 'anual12' ? ' todo mês durante 12 meses' : ' todo mês'}, com aviso 7 dias antes. A primeira cobrança acontece quando terminar o período já pago ou o teste.</small>
       ${C?.situacao === 'pendente' ? '<small class="cf-aviso">A assinatura anterior não foi concluída no Mercado Pago. Você pode começar de novo.</small>' : ''}
       <label class="field"><span class="lbl">E-mail da sua conta no Mercado Pago</span><input type="email" data-cf="cartao-email" value="${esc(cf.cartaoEmail ?? contaAtual().email)}" autocomplete="email"></label></div>
     <button class="btn pri" data-cf="cartao-assinar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Assinar no cartão'}</button></div>`;
@@ -6024,10 +6048,14 @@ function ligarConfig(s, r, t){
     else if (a === 'senha') { cf.senha = true; b.hidden = true; const c = document.querySelector('#cf-conta .cf-senha'); if (c) { c.hidden = false; c.querySelector('input').focus(); } }
     else if (a === 'cartao-assinar') { const em = document.querySelector('[data-cf="cartao-email"]')?.value.trim() || ''; cf.cartaoEmail = em;
       if (!okEmailCf(em)) { erroCf('cf-pag-erro', 'Informe o e-mail da sua conta no Mercado Pago.'); return; }
+      if (!cf.aceite) { erroCf('cf-pag-erro', FALTA_ACEITE); return; }
       cf.ocupado = true; cfApp.render(true); const e = await assinarCartaoConta(cf.plano || situacaoConta()?.plano.k || 'profissional', cf.periodo, em); if (e) { cf.ocupado = false; cfApp.render(true); erroCf('cf-pag-erro', e); } }
     else if (a === 'cartao-cancelar') { cf.cancelarCartao = true; cfApp.render(true); }
-    else if (a === 'cartao-cancelar-nao') { cf.cancelarCartao = false; cfApp.render(true); }
-    else if (a === 'cartao-cancelar-sim') { cf.ocupado = true; cfApp.render(true); const e = await cancelarCartaoConta(); cf.ocupado = false; cf.cancelarCartao = false; cfApp.render(true); if (e) erroCf('cf-pag-erro', e); else cfApp.toast('Assinatura cancelada. O período pago continua até o fim.'); }
+    else if (a === 'cartao-cancelar-nao') { cf.cancelarCartao = false; cf.multa = null; cfApp.render(true); }
+    else if (a === 'cartao-cancelar-sim' || a === 'cartao-cancelar-multa') { cf.ocupado = true; cfApp.render(true); const e = await cancelarCartaoConta(a === 'cartao-cancelar-multa');
+      cf.ocupado = false; cf.cancelarCartao = false; cf.multa = e && typeof e === 'object' ? e : null; cfApp.render(true);
+      if (typeof e === 'string' && e) erroCf('cf-pag-erro', e); else if (!e) cfApp.toast('Assinatura cancelada. O período pago continua até o fim.'); }
+    else if (a === 'pagar' && !cf.aceite) erroCf('cf-pag-erro', FALTA_ACEITE);
     else if (a === 'pagar') { cf.ocupado = true; cfApp.render(true); const e = await pagarConta(cf.plano || situacaoConta()?.plano.k || 'profissional', cf.periodo); if (e) { cf.ocupado = false; cfApp.render(true); erroCf('cf-pag-erro', e); } }
     else if (a === 'sair-outros') { cf.ocupado = true; cfApp.render(true); const e = await sairDosOutrosConta(); cf.ocupado = false; cfApp.render(true); cfApp.toast(e || 'Os outros aparelhos vão pedir para entrar de novo', e ? 'info' : 'ok'); }
   });
@@ -6035,6 +6063,7 @@ function ligarConfig(s, r, t){
     const t = ev.target; if (!t.dataset?.cf) return;
     if (t.dataset.cf === 'pag-plano') { cf.plano = t.value; cfApp.render(true); return; }
     if (t.dataset.cf === 'pag-periodo') { cf.periodo = t.value; cfApp.render(true); return; }
+    if (t.dataset.cf === 'aceite') { cf.aceite = t.checked; if (cf.aceite) { const e = document.getElementById('cf-pag-erro'); if (e?.textContent === FALTA_ACEITE) e.hidden = true; } return; }
     if (t.dataset.cf === 'serv') mudarServ(t); else if (['dia', 'hora', 'pausa', 'pausa-h'].includes(t.dataset.cf)) mudarHor(t);
   });
   document.addEventListener('submit', ev => {
