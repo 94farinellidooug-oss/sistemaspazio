@@ -118,6 +118,10 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     excluirClinica:async (clinica, nome, motivo = '') => rest('rpc/excluir_clinica', { metodo:'POST', corpo:{ p_clinica:clinica, p_nome:nome, p_motivo:motivo } }),
     clinicasExcluidas:async () => { try { return (await rest('clinicas_excluidas?select=id,clinica_id,nome,cidade,uf,whats,email_dono,plano,criada_em,pacientes,pago_total,motivo,excluida_em&order=excluida_em.desc')) || []; }
       catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    // Relacionamento do Painel do MUSUBI (supabase/010_relacionamento.sql). null quando o servidor ainda não tem a tabela.
+    relacionamento:async () => { try { return (await rest('relacionamento_musubi?select=ref,notas,retornar_em,atualizado_em')) || []; }
+      catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    salvarRelacionamento:async (ref, { notas, retornar_em }) => rest('relacionamento_musubi?on_conflict=ref', { metodo:'POST', corpo:{ ref, notas, retornar_em:retornar_em || null, atualizado_em:new Date().toISOString(), atualizado_por:sessao.user.id }, cab:{ Prefer:'resolution=merge-duplicates,return=minimal' } }),
     estenderTeste:async (clinica, dias) => rest('rpc/estender_teste', { metodo:'POST', corpo:{ p_clinica:clinica, p_dias:dias } }),
     interessados:async () => (await rest('interessados?select=id,nome,whats,situacao,criado_em&order=criado_em.desc')) || [],
     mudarInteressado:async (id, situacao) => rest(`interessados?id=eq.${id}`, { metodo:'PATCH', corpo:{ situacao }, cab:{ Prefer:'return=minimal' } }),

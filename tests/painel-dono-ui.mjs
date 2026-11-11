@@ -35,7 +35,7 @@ const ir = async (p, h) => { await p.evaluate(x => { location.hash = x; }, h); a
 
 for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/spazio.html']]) {
   S.usuarios = { 'maicon@x.com':{ id:'u1', senha:'segredo123', nome:'Maicon' }, 'ana@y.com':{ id:'u2', senha:'outrasenha', nome:'Ana' } };
-  S.clinicas.length = 0; S.dados = {}; S.interessados.length = 0; S.donos = ['u1']; S.pagamentos = []; S.cobranca = false; S.mp = null; S.excluidas = []; S.encerrados = [];
+  S.clinicas.length = 0; S.dados = {}; S.interessados.length = 0; S.donos = ['u1']; S.pagamentos = []; S.cobranca = false; S.mp = null; S.excluidas = []; S.encerrados = []; S.rel = {};
   // Ana cria a clínica escolhendo o Essencial
   const A = await aparelho('A', url);
   await entrar(A, 'ana@y.com', 'outrasenha');
@@ -108,6 +108,8 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await clicar(M, '[data-act=perfil]');
   ok(await tem(M, '.pf-i', 'Painel do MUSUBI'), `${rot}: o dono vê o Painel do MUSUBI no menu`);
   await clicar(M, '.pf-i >> text=Painel do MUSUBI'); await M.waitForTimeout(300);
+  ok(await tem(M, '#pd-hoje'), `${rot}: o painel abre em Hoje`);
+  await clicar(M, '[data-pd=aba][data-k=clinicas]');
   ok(await M.locator('#pd-cl .pd-c').count() === 2 && await tem(M, '#pd-cl .pd-c', 'Clínica Sol') && await tem(M, '#pd-cl .pd-c', 'Teste terminou') && await tem(M, '#pd-cl', 'ana@y.com'), `${rot}: painel lista as clínicas com a situação e o e-mail`);
   const linha = `#pd-cl .pd-c[data-c="${cA.id}"]`;
   await clicar(M, `${linha} [data-pd=gratis]`);
@@ -119,10 +121,25 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(await tem(M, linha, 'Teste: faltam 7 dias'), `${rot}: mais 7 dias de teste`);
   await M.selectOption(`${linha} [data-pd=plano]`, 'clinica'); await M.waitForTimeout(300);
   ok(cA.assin.plano === 'clinica', `${rot}: trocar o pacote`);
-  await clicar(M, '[data-pd=aba][data-k=interessados]');
-  ok(await tem(M, '#pd-int', '(53) 99876-5432') && await tem(M, '#pd-int a.wa'), `${rot}: interessados com o WhatsApp`);
-  await M.selectOption('#pd-int [data-pd=situ]', 'chamei'); await M.waitForTimeout(300);
+  // Hoje: tarefas e dicas
+  await clicar(M, '[data-pd=aba][data-k=hoje]');
+  const tarefa = `#pd-hoje .pd-t[data-ref^="i:"]`;
+  ok(await tem(M, tarefa, 'Chamar') && (await M.getAttribute(`${tarefa} a.wa`, 'href')).startsWith('https://wa.me/5553998765432?text=') && await M.locator('#pd-dicas li').count() >= 5, `${rot}: Hoje mostra a tarefa de chamar o interessado (WhatsApp com mensagem pronta) e as dicas`);
+  // Gestão
+  await clicar(M, '[data-pd=aba][data-k=gestao]');
+  ok(await tem(M, '#pd-gest', 'Receita por mês') && await tem(M, '#pd-gest', 'Conversão do teste') && await tem(M, '#pd-gest', 'Recebido por mês') && await tem(M, '#pd-gest', 'Pagantes por pacote'), `${rot}: Gestão mostra receita, conversão e recebido por mês`);
+  // Relacionamento: interessados, clínicas e anotações
+  await clicar(M, '[data-pd=aba][data-k=relacionamento]');
+  ok(await tem(M, '#pd-rel', '(53) 99876-5432') && await tem(M, '#pd-rel a.wa') && await tem(M, '#pd-rel .pd-r', 'Clínica Sol'), `${rot}: relacionamento junta interessados e clínicas, com o WhatsApp`);
+  await M.selectOption('#pd-rel [data-pd=situ]', 'chamei'); await M.waitForTimeout(300);
   ok(S.interessados[0].situacao === 'chamei', `${rot}: muda a situação do interessado`);
+  await clicar(M, '[data-pd=filtro][data-k=interessado]');
+  ok(await M.locator('#pd-rel .pd-r').count() === 1, `${rot}: filtro mostra só os interessados`);
+  await clicar(M, '#pd-rel [data-pd=anotar]');
+  await M.fill('#pd-anot [name=texto]', 'Pediu para ligar sexta'); await M.fill('#pd-anot [name=retornar]', '2026-11-13'); await clicar(M, '#pd-anot [type=submit]'); await M.waitForTimeout(300);
+  const r1 = Object.values(S.rel)[0];
+  ok(r1?.ref.startsWith('i:') && r1.notas[0].texto === 'Pediu para ligar sexta' && r1.retornar_em === '2026-11-13' && await tem(M, '#pd-rel .pd-r', 'Pediu para ligar sexta') && await tem(M, '#pd-rel .pd-r', 'Retornar 13/11/2026'), `${rot}: anotar guarda a conversa e o dia de retornar`);
+  await clicar(M, '[data-pd=filtro][data-k=todos]');
   await clicar(M, '[data-pd=aba][data-k=pagamentos]');
   ok(await M.locator('#pd-pag .pd-g-l').count() === 2 && await tem(M, '#pd-pag .pd-g-l', 'Clínica Sol') && await tem(M, '#pd-pag', 'R$ 790,00') && await tem(M, '#pd-pag .pd-g-l', 'Não concluído'), `${rot}: painel lista os pagamentos de todas as clínicas`);
   ok(await tem(M, '#pd-pag [data-pd=teste]', 'Testar pagamento (R$ 1,00)'), `${rot}: dono vê o botão de pagamento de teste`);
@@ -130,7 +147,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await Promise.all([M.waitForURL(/checkout\.infinitepay\.io/, { timeout:5000 }).catch(() => {}), clicar(M, '#pd-pag [data-pd=teste]')]);
   ok(S.pagamentos.length === antes + 1 && S.pagamentos[0].valor === 100 && S.pagamentos[0].periodo === 'mensal' && /checkout\.infinitepay\.io/.test(M.url()), `${rot}: teste abre o pagamento de R$ 1,00 na InfinitePay`);
   // Excluir clínica que desistiu: cancela o cartão antes, pede o nome, fica só o resumo
-  await M.goto(BASE + url); await M.waitForTimeout(500); await ir(M, 'musubi'); await M.waitForTimeout(300);
+  await M.goto(BASE + url); await M.waitForTimeout(500); await ir(M, 'musubi'); await M.waitForTimeout(300); await clicar(M, '[data-pd=aba][data-k=clinicas]');
   const propria = S.clinicas.find(c => c.nome === 'Spazio Stabilità');
   ok(await tem(M, `${linha} [data-pd=excluir]`) && !(await tem(M, `#pd-cl .pd-c[data-c="${propria.id}"] [data-pd=excluir]`)), `${rot}: cada clínica tem Excluir, menos a própria`);
   cA.assin.cartao_situacao = 'ativa'; S.mp = null; await clicar(M, '[data-pd=atualizar]'); await M.waitForTimeout(300);
@@ -151,7 +168,7 @@ S.usuarios = { 'maicon@x.com':{ id:'u1', senha:'segredo123', nome:'Maicon' } }; 
 const C = await aparelho('C', 'index.html', { width:360, height:740 });
 await entrar(C, 'maicon@x.com', 'segredo123'); await C.waitForTimeout(200);
 let larga = [];
-for (const a of ['clinicas', 'interessados', 'pagamentos']) { await ir(C, 'musubi'); await C.waitForTimeout(200); await clicar(C, `[data-pd=aba][data-k=${a}]`); if (await C.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) larga.push(a); }
+for (const a of ['hoje', 'gestao', 'clinicas', 'relacionamento', 'pagamentos']) { await ir(C, 'musubi'); await C.waitForTimeout(200); await clicar(C, `[data-pd=aba][data-k=${a}]`); if (await C.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) larga.push(a); }
 ok(!larga.length, 'celular: painel sem rolagem lateral' + (larga.length ? ': ' + larga.join(', ') : ''));
 ok(!erros.length, 'sem erros no console' + (erros.length ? ': ' + erros.join(' | ') : ''));
 await browser.close(); srv.close();
