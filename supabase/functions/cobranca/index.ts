@@ -17,6 +17,7 @@
 // de produção; opcional MERCADOPAGO_SEGREDO = assinatura secreta dos webhooks):
 //   { acao:'assinar', clinica, plano, periodo, email, aceite }  administrador: cria a assinatura e devolve { url } do Mercado Pago
 //     (periodo: mensal, anual12 = anual com pagamento mensal, anual = à vista; aceite = versão do contrato aceita)
+//   { acao:'encerrar_cartao', clinica }  só o dono do MUSUBI: cancela o cartão de uma clínica antes de excluí-la
 //   { acao:'cartao', clinica }  alguém da equipe: confere no Mercado Pago, registra as cobranças aprovadas, devolve a situação
 //   { acao:'cancelar_cartao', clinica, confirmarMulta }  administrador: cancela as próximas cobranças (o período pago continua);
 //     no anual12 antes dos 12 meses devolve antes { confirmar, multa } para o administrador confirmar
@@ -207,6 +208,19 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
           cartao_inicio:comeca, cartao_compromisso_ate:periodo === 'anual12' ? fim.toISOString() : null, cartao_multa:0 });
         await registrarAceite(clinica, u, plano, periodo, 'mercadopago');
         return resp(200, { url:p.init_point, valor });
+      }
+      // Dono do MUSUBI, antes de excluir uma clínica que desistiu: cancela a assinatura no cartão dela (sem multa).
+      if (corpo.acao === 'encerrar_cartao') {
+        const { clinica } = corpo; if (!idOk(clinica)) return erro(400, 'dados', 'Pedido inválido.');
+        if (!((await banco(`donos?select=user_id&user_id=eq.${u.id}`)) || []).length) return erro(403, 'sem_acesso', 'Só o dono do MUSUBI encerra a assinatura de outra clínica.');
+        const A = await assinaturaDe(clinica);
+        if (A?.cartao_id && ['ativa', 'pausada', 'pendente'].includes(A.cartao_situacao)) {
+          if (!MP_TOKEN) return erro(503, 'sem_cartao', 'A assinatura no cartão não está ligada no servidor (falta o MERCADOPAGO_TOKEN).');
+          try { await mp(`/preapproval/${encodeURIComponent(A.cartao_id)}`, { metodo:'PUT', corpo:{ status:'cancelled' } }); }
+          catch (e) { if (e.status !== 404) { console.error(e); return erro(502, 'mercadopago', 'O Mercado Pago não respondeu. Tente de novo em instantes.'); } }
+          await mudarAssinatura(clinica, { cartao_situacao:'cancelada', cartao_proxima:null });
+        }
+        return resp(200, { encerrado:true });
       }
       if (corpo.acao === 'cartao' || corpo.acao === 'cancelar_cartao') {
         const { clinica } = corpo; if (!idOk(clinica)) return erro(400, 'dados', 'Pedido inválido.');

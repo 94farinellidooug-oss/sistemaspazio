@@ -39,6 +39,18 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       if (f === 'estender_teste') c.assin.teste_ate = new Date(Math.max(Date.now(), new Date(c.assin.teste_ate).getTime()) + corpo.p_dias * 864e5).toISOString();
       return resp(204);
     }
+    // Excluir clínica (009_excluir_clinica.sql): S.semExcluir = servidor sem o 009.
+    if (u.pathname === '/rest/v1/rpc/excluir_clinica') {
+      if (S.semExcluir) return resp(404, { code:'PGRST202', message:'Could not find the function' });
+      if (!dono()) return resp(400, { code:'P0001', message:'sem_acesso' });
+      const c = S.clinicas.find(x => x.id === corpo.p_clinica); if (!c) return resp(400, { code:'P0001', message:'nao_encontrada' });
+      if (String(corpo.p_nome).trim().toLowerCase() !== c.nome.trim().toLowerCase()) return resp(400, { code:'P0001', message:'nome_diferente' });
+      if (c.membros.some(m => m.user === eu.id)) return resp(400, { code:'P0001', message:'propria_clinica' });
+      if (['ativa', 'pausada', 'pendente'].includes(c.assin?.cartao_situacao)) return resp(400, { code:'P0001', message:'cartao_ativo' });
+      (S.excluidas ||= []).unshift({ id:S.excluidas.length + 1, clinica_id:c.id, nome:c.nome, cidade:c.cidade, uf:c.uf, email_dono:c.criado_por || '', plano:c.assin?.plano || '', pago_total:(S.pagamentos || []).filter(g => g.clinica_id === c.id && g.situacao === 'pago').reduce((t, g) => t + g.valor, 0), motivo:corpo.p_motivo || '', excluida_em:new Date().toISOString() });
+      S.clinicas.splice(S.clinicas.indexOf(c), 1); delete S.dados[c.id]; return resp(204);
+    }
+    if (u.pathname === '/rest/v1/clinicas_excluidas') return S.semExcluir ? resp(404, { code:'PGRST205', message:'Could not find the table' }) : resp(200, dono() ? S.excluidas || [] : []);
     if (u.pathname === '/rest/v1/interessados' && op.method === 'GET') return resp(200, dono() ? S.interessados.map((x, i) => ({ id:x.id || 'i' + i, situacao:'novo', criado_em:'2026-11-06T12:00:00Z', ...x })) : []);
     if (u.pathname === '/rest/v1/interessados' && op.method === 'PATCH') { const id = u.searchParams.get('id').replace('eq.', ''); S.interessados.forEach((x, i) => { if ((x.id || 'i' + i) === id && dono()) x.situacao = corpo.situacao; }); return resp(204); }
     const eu_m = c => S.clinicas.find(x => x.id === c)?.membros.find(m => m.user === eu.id && m.ativo !== false);
@@ -98,6 +110,11 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
         (S.links ||= []).push(corpo); return resp(200, { url:`https://checkout.infinitepay.io/${corpo.tag}/l${S.links.length}`, valor:corpo.valor });
       }
       // Assinatura no cartão (Mercado Pago): S.mp = { estado:{situacao,...}, assinados:[] } liga; sem ela, responde como a função antiga.
+      if (corpo.acao === 'encerrar_cartao') {
+        if (!S.mp) return resp(400, { erro:'acao', msg:'Pedido inválido.' });
+        if (!dono()) return resp(403, { erro:'sem_acesso', msg:'Só o dono do MUSUBI encerra a assinatura de outra clínica.' });
+        const c = S.clinicas.find(x => x.id === corpo.clinica); if (c?.assin) c.assin.cartao_situacao = 'cancelada'; (S.encerrados ||= []).push(corpo.clinica); return resp(200, { encerrado:true });
+      }
       if (['assinar', 'cartao', 'cancelar_cartao'].includes(corpo.acao)) {
         if (!S.mp) return resp(400, { erro:'acao', msg:'Pedido inválido.' });
         const m = S.clinicas.find(x => x.id === corpo.clinica)?.membros.find(x => x.user === eu.id); if (!m) return resp(403, { erro:'sem_acesso', msg:'Você não faz parte desta clínica.' });
