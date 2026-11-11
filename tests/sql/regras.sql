@@ -231,4 +231,11 @@ select pg_temp.como('00000000-0000-0000-0000-00000000000b');
 set role authenticated;
 select pg_temp.checar((select count(*) from historico) = 0, 'outra clínica não vê o histórico');
 reset role;
+-- Assinatura no cartão (007_mercadopago.sql): só a função cobranca grava; a clínica só lê
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+update assinaturas set cartao_situacao = 'ativa', cartao_id = 'falso', pago_ate = now() + interval '10 years' where clinica_id = :'c1';
+reset role;
+select pg_temp.checar((select cartao_situacao = '' and cartao_id = '' from assinaturas where clinica_id = :'c1'), 'a clínica não muda a assinatura no cartão nem o prazo pago por fora da função');
+select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'pagamentos' and column_name = 'meio') = 1, 'pagamentos guardam o meio (InfinitePay ou Mercado Pago)');
 \echo 'Todas as regras do banco passaram.'

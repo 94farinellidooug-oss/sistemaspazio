@@ -1391,3 +1391,11 @@ body.com-acesso{overflow:hidden}
 #imp .nf-teste{border:2px solid #000;padding:4px 8px;display:inline-block;margin:6px 0}
 #imp .nf-cons{margin-top:10px;font-size:10pt}
 .nf-amb .chip:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+/* Assinatura no cartão (Mercado Pago) em Configurações > Sua conta */
+.cf-cartao{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:12px}
+.cf-cartao.on{align-items:center;background:var(--accent-soft)}
+.cf-cartao .grow{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.cf-cartao b{display:flex;align-items:center;gap:6px}
+.cf-cartao .field{margin-top:6px;max-width:360px}
+.cf-aviso{color:var(--warn);font-weight:500}
+.cf-cartao .cf-conf{display:flex;flex-wrap:wrap;gap:8px;align-items:center}

@@ -94,6 +94,15 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
         if (!/^[a-z0-9][a-z0-9_.-]{1,39}$/.test(corpo.tag || '')) return resp(400, { erro:'tag', msg:'Confira a InfiniteTag da clínica.' });
         (S.links ||= []).push(corpo); return resp(200, { url:`https://checkout.infinitepay.io/${corpo.tag}/l${S.links.length}`, valor:corpo.valor });
       }
+      // Assinatura no cartão (Mercado Pago): S.mp = { estado:{situacao,...}, assinados:[] } liga; sem ela, responde como a função antiga.
+      if (['assinar', 'cartao', 'cancelar_cartao'].includes(corpo.acao)) {
+        if (!S.mp) return resp(400, { erro:'acao', msg:'Pedido inválido.' });
+        const m = S.clinicas.find(x => x.id === corpo.clinica)?.membros.find(x => x.user === eu.id); if (!m) return resp(403, { erro:'sem_acesso', msg:'Você não faz parte desta clínica.' });
+        if (corpo.acao !== 'cartao' && m.perfil !== 'adm') return resp(403, { erro:'sem_acesso', msg:'Só o administrador da clínica faz a assinatura.' });
+        if (corpo.acao === 'assinar') { (S.mp.assinados ||= []).push(corpo); S.mp.estado = { situacao:'pendente', plano:corpo.plano, periodo:corpo.periodo, valor:14900, email:corpo.email, proxima:null }; return resp(200, { url:'https://www.mercadopago.com.br/subscriptions/checkout?preapproval_id=pre' + S.mp.assinados.length }); }
+        if (corpo.acao === 'cancelar_cartao') S.mp.estado = { ...(S.mp.estado || {}), situacao:'cancelada', proxima:null };
+        return resp(200, { situacao:'', ...(S.mp.estado || {}), novos:0 });
+      }
       if (corpo.acao === 'conferir') {
         const g = S.pagamentos.find(x => x.order_nsu === corpo.order_nsu); if (!g || corpo.transaction_nsu === 'falhou') return resp(200, { pago:false });
         if (g.situacao !== 'pago') { const c = S.clinicas.find(x => x.id === g.clinica_id); Object.assign(g, { situacao:'pago', forma:'pix', pago_em:new Date().toISOString(), recibo:corpo.receipt_url || '' });

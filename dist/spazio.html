@@ -1640,6 +1640,14 @@ body.com-acesso{overflow:hidden}
 #imp .nf-teste{border:2px solid #000;padding:4px 8px;display:inline-block;margin:6px 0}
 #imp .nf-cons{margin-top:10px;font-size:10pt}
 .nf-amb .chip:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+/* Assinatura no cartão (Mercado Pago) em Configurações > Sua conta */
+.cf-cartao{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:12px}
+.cf-cartao.on{align-items:center;background:var(--accent-soft)}
+.cf-cartao .grow{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.cf-cartao b{display:flex;align-items:center;gap:6px}
+.cf-cartao .field{margin-top:6px;max-width:360px}
+.cf-aviso{color:var(--warn);font-weight:500}
+.cf-cartao .cf-conf{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 </style>
 
 
@@ -2953,6 +2961,10 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     historico:async (clinica, F = {}) => rest(`historico?select=id,em,pessoa,email,tipo,acao,alvo,paciente_id,titulo,campos&clinica_id=eq.${clinica}${F.paciente ? `&paciente_id=eq.${encodeURIComponent(F.paciente)}` : ''}${F.antes ? `&em=lt.${encodeURIComponent(F.antes)}` : ''}&order=em.desc&limit=${F.limite || 100}`),
     // Pagamento do MUSUBI pela InfinitePay (função cobranca, supabase/functions/cobranca). Devolve { url } do link.
     pagar:async (clinica, plano, periodo, teste = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'criar', clinica, plano, periodo, ...(teste ? { teste:true } : {}) }, token:await token() }),
+    // Assinatura no cartão pelo Mercado Pago (mesma função cobranca, supabase/007_mercadopago.sql).
+    assinarCartao:async (clinica, plano, periodo, email) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'assinar', clinica, plano, periodo, email }, token:await token() }),
+    cartao:async clinica => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cartao', clinica }, token:await token() }),
+    cancelarCartao:async clinica => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cancelar_cartao', clinica }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
     // Nota fiscal (função nfse, supabase/functions/nfse): { acao, clinica, ... }.
     nfse:async corpo => chamar('/functions/v1/nfse', { metodo:'POST', corpo, token:await token() }),
@@ -3153,6 +3165,8 @@ function iniciarConta(render, nuvem){
     conta.retorno = { order_nsu:q.get('order_nsu'), transaction_nsu:q.get('transaction_nsu'), slug:q.get('slug') || '', receipt_url:q.get('receipt_url') || '' };
     history.replaceState(null, '', location.pathname + location.hash);
   }
+  // Volta da assinatura no Mercado Pago: confere depois de abrir a clínica.
+  if (q.get('preapproval_id')) { conta.voltouCartao = true; history.replaceState(null, '', location.pathname + location.hash); }
   // Convite da equipe: o link traz o e-mail convidado (para já vir preenchido) e abre "Criar sua conta".
   if (q.get('convite')) { gravarC(KEY_CONVITE, q.get('convite')); history.replaceState(null, '', location.pathname + location.hash); }
   const lk = conta.nuvem.sessaoDoLink(location.hash);
@@ -3208,6 +3222,10 @@ async function abrirClinica(c){
     try { avisoPago = (await conta.nuvem.conferirPagamento(R))?.pago ? 'Pagamento confirmado. Obrigado!' : ''; } catch (e) {}
     avisoPago ||= 'Recebemos o seu pagamento. O acesso é liberado assim que a InfinitePay confirmar (no Pix, em instantes).';
   }
+  // Assinatura no cartão: confere no Mercado Pago antes (uma cobrança aprovada já estende o acesso).
+  try { conta.cartao = await conta.nuvem.cartao(c.id); } catch (e) { conta.cartao = null; }
+  if (conta.voltouCartao) { conta.voltouCartao = false; avisoPago ||= conta.cartao?.situacao === 'ativa' ? 'Assinatura no cartão ativada. Obrigado!' : 'Recebemos a sua assinatura. Ela fica ativa assim que o Mercado Pago confirmar.'; }
+  else if (avisoCobranca(conta.cartao)) avisoPago ||= avisoCobranca(conta.cartao);
   try { conta.assin = await conta.nuvem.assinatura(c.id); } catch (e) { conta.assin = null; }
   conta.sit = situacaoAssinatura(conta.assin); conta.pagamentos = null;
   // Teste terminado sem acesso grátis nem pagamento: os dados ficam guardados, o sistema pede para continuar.
@@ -3245,6 +3263,16 @@ const sairDaConta = async () => {
 /* ---------- Usado em Configurações (Sua conta e dados da clínica) ---------- */
 // Pagamento pela InfinitePay a partir de Minha conta: abre o link (devolve '' ou a mensagem de erro).
 const pagarConta = (plano, periodo, teste = false) => tentarC(async () => { const r = await conta.nuvem.pagar(conta.clinica.id, plano, periodo, teste); location.href = r.url; });
+// Assinatura no cartão (Mercado Pago). Devolve '' ou a mensagem de erro.
+const reaisC = c => ((c || 0) / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+const diaC = d => new Date(d).toLocaleDateString('pt-BR');
+// Aviso 7 dias antes de cada cobrança no cartão.
+const avisoCobranca = c => { if (c?.situacao !== 'ativa' || !c.proxima) return ''; const falta = new Date(c.proxima).getTime() - Date.now();
+  return falta > 0 && falta <= 7 * 864e5 ? `Aviso: a assinatura do MUSUBI será cobrada no cartão em ${diaC(c.proxima)}, no valor de ${reaisC(c.valor)}.` : ''; };
+const cartaoConta = () => conta.modo === 'nuvem' ? conta.cartao : null;
+const assinarCartaoConta = async (plano, periodo, email) => { try { const r = await conta.nuvem.assinarCartao(conta.clinica.id, plano, periodo, email); location.href = r.url; return ''; }
+  catch (e) { return e.codigo === 'acao' || (e.status === 404 && !e.corpo) ? 'A assinatura no cartão ainda não foi ligada no servidor (falta atualizar a função cobranca).' : e.message || 'Não foi possível agora. Tente de novo.'; } };
+const cancelarCartaoConta = () => tentarC(async () => { conta.cartao = await conta.nuvem.cancelarCartao(conta.clinica.id); aoMudarConta(true); });
 // Pagamentos da clínica (null enquanto carrega; recarrega a tela quando chegam).
 // Cobrar por link (Financeiro): só com a conta no servidor. Devolve { url } ou { erro }.
 const cobrancaLigada = () => conta.modo === 'nuvem' && !!conta.clinica?.id && !!conta.nuvem;
@@ -3315,11 +3343,11 @@ function htmlAcesso(){
     : t === 'vencido' ? `${escolherPlano('Pacote')}${escolherPeriodo()}`
     : t === 'contato' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
   const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Pagar com Pix ou cartão', contato:'Enviar' }[t];
-  const rodape = t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p><p class="muted sm"><a class="lnk suave" href="inicio/index.html">Conhecer o MUSUBI</a></p>`
+    const rodape = (t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p><p class="muted sm"><a class="lnk suave" href="inicio/index.html">Conhecer o MUSUBI</a></p>`
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
-    : t === 'vencido' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="contato">Prefiro que a equipe entre em contato</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
+    : t === 'vencido' ? `<button type="button" class="btn largo" data-ac="assinar-cartao" ${conta.ocupado ? 'disabled' : ''}>${ic('dinheiro')}Assinar no cartão (cobrança automática)</button><p class="muted sm">No cartão, a cobrança é feita sozinha pelo Mercado Pago, com aviso 7 dias antes.</p><p class="muted sm"><button type="button" class="lnk" data-ac="contato">Prefiro que a equipe entre em contato</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
     : t === 'contato' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="vencido">Voltar para o pagamento</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
-    : ['clinica', 'aguardando'].includes(t) ? `${t === 'clinica' && lerC(KEY_CONVITE) ? `<p class="notice sm acesso-conv">${ic('info')}<span>Recebeu um convite de uma clínica? Ele vale para o e-mail convidado. Confirme o e-mail pelo link que mandamos e <button type="button" class="lnk" data-ac="de-novo">entre de novo</button>.</span></p>` : ''}<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
+    : ['clinica', 'aguardando'].includes(t) ? `${t === 'clinica' && lerC(KEY_CONVITE) ? `<p class="notice sm acesso-conv">${ic('info')}<span>Recebeu um convite de uma clínica? Ele vale para o e-mail convidado. Confirme o e-mail pelo link que mandamos e <button type="button" class="lnk" data-ac="de-novo">entre de novo</button>.</span></p>` : ''}<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '');
   return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>
     <div class="acesso-h">${LOGO}<b>Musubi</b></div>
     <h1>${conta.tela === 'confirmar' ? 'Confira o seu e-mail' : conta.tela === 'enviado' ? 'Link enviado' : TIT[0]}</h1>
@@ -3387,6 +3415,8 @@ function ligarAcesso(){
     if (a === 'ver') { const s = el.querySelector('[name=senha]'), mostrar = s.type === 'password'; s.type = mostrar ? 'text' : 'password'; b.textContent = mostrar ? 'Ocultar' : 'Mostrar'; }
     else if (['entrar', 'criar', 'esqueci', 'contato', 'vencido'].includes(a)) abrirAcesso(a);
     else if (a === 'local') { gravarC(KEY_MODO, 'local'); conta.modo = 'local'; fecharAcesso(); aoMudarConta(); }
+    else if (a === 'assinar-cartao' && !conta.ocupado) { conta.erro = ''; conta.ocupado = true; desenharAcesso();
+      assinarCartaoConta(conta.plano, conta.periodo, conta.nuvem.sessao()?.user.email || '').then(e => { if (e) { conta.erro = /falta atualizar|não está ligada/.test(e) ? 'A assinatura no cartão ainda não está disponível. Use Pix ou cartão acima.' : e; conta.ocupado = false; desenharAcesso(); } }); }
     else if (a === 'sair') sairDaConta();
     else if (a === 'de-novo') conectar(true);
   });
@@ -5909,12 +5939,29 @@ function cfPacote(){
     ${adm ? `<div class="cf-pagar" id="cf-pagar"><h3>${S.tipo === 'pago' ? 'Renovar ou trocar de pacote' : 'Pagar o MUSUBI'}</h3>
       <div class="cf-pagar-l"><label class="field"><span class="lbl">Pacote</span><select data-cf="pag-plano">${PLANOS.map(p => `<option value="${p.k}" ${p.k === plano ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></label>
         <label class="field"><span class="lbl">Período</span><select data-cf="pag-periodo">${PERIODOS_PAG.map(([k, l]) => `<option value="${k}" ${k === cf.periodo ? 'selected' : ''}>${l}: ${precoPeriodoTxt(P, k)}${k === 'anual' ? ' (2 meses grátis)' : ''}</option>`).join('')}</select></label>
-        <button class="btn pri" data-cf="pagar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Pagar com Pix ou cartão'}</button></div>
+        <button class="btn" data-cf="pagar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Pagar uma vez (Pix ou cartão)'}</button></div>
       <p class="erro-a" id="cf-pag-erro" role="alert" hidden></p>
-      <p class="muted sm cf-obs">O pagamento é feito na InfinitePay, com Pix ou cartão de crédito em até 12x. Quando ele é confirmado, o acesso é liberado sozinho${S.tipo === 'pago' ? ' e o novo período começa depois do que já está pago' : ''}.</p>
+      ${cfCartao(plano, P)}
+      <p class="muted sm cf-obs">Pagar uma vez: na InfinitePay, com Pix ou cartão de crédito em até 12x, renovando quando quiser. Quando o pagamento é confirmado, o acesso é liberado sozinho${S.tipo === 'pago' ? ' e o novo período começa depois do que já está pago' : ''}.</p>
       ${pags.length ? `<div class="list cf-pags">${pags.map(g => `<div class="row"><div class="grow"><b>${planoDe(g.plano).nome} · ${g.periodo === 'anual' ? 'anual' : 'mensal'}</b><small class="muted">${new Date(g.pago_em || g.criado_em).toLocaleDateString('pt-BR')}${g.forma ? ' · ' + (FORMA_PAG[g.forma] || esc(g.forma)) : ''}</small></div>
         <b>${reais(g.valor)}</b><span class="pill ${g.situacao === 'pago' ? 'ok' : ''}">${g.situacao === 'pago' ? 'Pago' : 'Não concluído'}</span>${g.recibo ? `<a class="btn sm ghost" href="${esc(g.recibo)}" target="_blank" rel="noopener">Recibo</a>` : ''}</div>`).join('')}</div>` : ''}</div>`
     : `<p class="muted sm cf-obs">O pagamento é feito pelo administrador da clínica, em Minha conta.</p>`}</div>`;
+}
+
+// Assinatura no cartão (Mercado Pago): o cartão é cadastrado uma vez e cobrado sozinho, com aviso 7 dias antes.
+function cfCartao(plano, P){
+  const C = cartaoConta(), ativa = C && ['ativa', 'pausada'].includes(C.situacao), aviso = avisoCobranca(C);
+  const dia = d => d ? new Date(d).toLocaleDateString('pt-BR') : '';
+  if (ativa) return `<div class="cf-cartao on" id="cf-cartao"><div class="grow"><b>${ic('okc')}Assinatura no cartão ${C.situacao === 'pausada' ? 'pausada' : 'ativa'}</b>
+      <small class="muted">${esc(planoDe(C.plano).nome)} · ${C.periodo === 'anual' ? 'anual' : 'mensal'} · ${reais(C.valor || 0)}${C.proxima ? ` · próxima cobrança em ${dia(C.proxima)}` : ''} · Mercado Pago (${esc(C.email)})</small>
+      ${aviso ? `<small class="cf-aviso">${esc(aviso)}</small>` : ''}</div>
+    ${cf.cancelarCartao ? `<span class="cf-conf"><small>Cancelar as próximas cobranças? O período pago continua.</small><button class="btn sm crit" data-cf="cartao-cancelar-sim" ${cf.ocupado ? 'disabled' : ''}>Cancelar assinatura</button><button class="btn sm ghost" data-cf="cartao-cancelar-nao">Voltar</button></span>`
+      : `<button class="btn sm ghost" data-cf="cartao-cancelar">Cancelar assinatura</button>`}</div>`;
+  return `<div class="cf-cartao" id="cf-cartao"><div class="grow"><b>${ic('dinheiro')}Assinatura no cartão (cobrança automática)</b>
+      <small class="muted">Cadastre o cartão uma vez no Mercado Pago: ${precoPeriodoTxt(P, cf.periodo)}, cobrado sozinho${cf.periodo === 'anual' ? ' a cada ano' : ' todo mês'}, com aviso 7 dias antes. A primeira cobrança acontece quando terminar o período já pago ou o teste.</small>
+      ${C?.situacao === 'pendente' ? '<small class="cf-aviso">A assinatura anterior não foi concluída no Mercado Pago. Você pode começar de novo.</small>' : ''}
+      <label class="field"><span class="lbl">E-mail da sua conta no Mercado Pago</span><input type="email" data-cf="cartao-email" value="${esc(cf.cartaoEmail ?? contaAtual().email)}" autocomplete="email"></label></div>
+    <button class="btn pri" data-cf="cartao-assinar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Assinar no cartão'}</button></div>`;
 }
 
 /* ---------- Eventos ---------- */
@@ -5974,6 +6021,12 @@ function ligarConfig(s, r, t){
       L.push({ nome:n, dur:60, valor:0, ativo:true }); salvarServicos(db, L); cfApp.save(); cfApp.render(true);
       const i = document.querySelector(`#cf-serv [data-k="nome"][data-i="${L.length - 1}"]`); if (i) { i.focus(); i.select(); } }
     else if (a === 'senha') { cf.senha = true; b.hidden = true; const c = document.querySelector('#cf-conta .cf-senha'); if (c) { c.hidden = false; c.querySelector('input').focus(); } }
+    else if (a === 'cartao-assinar') { const em = document.querySelector('[data-cf="cartao-email"]')?.value.trim() || ''; cf.cartaoEmail = em;
+      if (!okEmailCf(em)) { erroCf('cf-pag-erro', 'Informe o e-mail da sua conta no Mercado Pago.'); return; }
+      cf.ocupado = true; cfApp.render(true); const e = await assinarCartaoConta(cf.plano || situacaoConta()?.plano.k || 'profissional', cf.periodo, em); if (e) { cf.ocupado = false; cfApp.render(true); erroCf('cf-pag-erro', e); } }
+    else if (a === 'cartao-cancelar') { cf.cancelarCartao = true; cfApp.render(true); }
+    else if (a === 'cartao-cancelar-nao') { cf.cancelarCartao = false; cfApp.render(true); }
+    else if (a === 'cartao-cancelar-sim') { cf.ocupado = true; cfApp.render(true); const e = await cancelarCartaoConta(); cf.ocupado = false; cf.cancelarCartao = false; cfApp.render(true); if (e) erroCf('cf-pag-erro', e); else cfApp.toast('Assinatura cancelada. O período pago continua até o fim.'); }
     else if (a === 'pagar') { cf.ocupado = true; cfApp.render(true); const e = await pagarConta(cf.plano || situacaoConta()?.plano.k || 'profissional', cf.periodo); if (e) { cf.ocupado = false; cfApp.render(true); erroCf('cf-pag-erro', e); } }
     else if (a === 'sair-outros') { cf.ocupado = true; cfApp.render(true); const e = await sairDosOutrosConta(); cf.ocupado = false; cfApp.render(true); cfApp.toast(e || 'Os outros aparelhos vão pedir para entrar de novo', e ? 'info' : 'ok'); }
   });

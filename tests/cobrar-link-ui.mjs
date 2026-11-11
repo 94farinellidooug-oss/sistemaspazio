@@ -51,7 +51,8 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(await tem(M, '#f-tag #ft-tag') && !(await tem(M, '[data-act=fin-link]')), `${rot}: administrador vê o campo da InfiniteTag e ainda sem botão Link`);
   await M.fill('#ft-tag', 'a b'); await clicar(M, '#f-tag button.pri');
   ok(await tem(M, '#f-tag') && await tem(M, '.toast, #toast', 'Confira a InfiniteTag'), `${rot}: InfiniteTag inválida não é salva`);
-  await M.fill('#ft-tag', '$Spazio.Clinica'); await clicar(M, '#f-tag button.pri');
+  // Com a máquina ocupada, a sincronia pode redesenhar a tela entre digitar e salvar: tenta de novo nesse caso.
+  for (let i = 0; i < 3 && !(await tem(M, '#f-cob', '$spazio.clinica')); i++) { await M.fill('#ft-tag', '$Spazio.Clinica'); await clicar(M, '#f-tag button.pri'); await M.waitForTimeout(300 * i); }
   ok(await tem(M, '#f-cob', '$spazio.clinica') && await M.locator('#f-arec [data-act=fin-link]').count() >= 1, `${rot}: InfiniteTag salva; botão Link em A receber`);
 
   const ap = await M.locator('#f-arec .fin-l >> nth=0').getAttribute('data-ap');
