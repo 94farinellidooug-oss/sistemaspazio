@@ -5,7 +5,7 @@
 import { ic } from '../componentes/icones.js';
 import { db } from '../dados/repositorio.js';
 import { DIAS_SEMANA, DURACOES, UFS, configDe, resumoHorario, salvarClinica, salvarHorario, salvarServicos } from '../dados/config.js';
-import { clinicaNoServidor, contaAtual, pagamentosConta, pagarConta, situacaoConta, mudarEmailConta, sairDosOutrosConta, salvarNomeConta, trocarSenhaConta } from './conta.js';
+import { avisoCobranca, assinarCartaoConta, cancelarCartaoConta, cartaoConta, clinicaNoServidor, contaAtual, pagamentosConta, pagarConta, situacaoConta, mudarEmailConta, sairDosOutrosConta, salvarNomeConta, trocarSenhaConta } from './conta.js';
 import { esc } from '../util.js';
 import { cfNota } from './nfse.js';
 import { PERIODOS_PAG, PLANOS, planoDe, precoPeriodoTxt, precoTxt } from '../dados/planos.js';
@@ -97,12 +97,29 @@ function cfPacote(){
     ${adm ? `<div class="cf-pagar" id="cf-pagar"><h3>${S.tipo === 'pago' ? 'Renovar ou trocar de pacote' : 'Pagar o MUSUBI'}</h3>
       <div class="cf-pagar-l"><label class="field"><span class="lbl">Pacote</span><select data-cf="pag-plano">${PLANOS.map(p => `<option value="${p.k}" ${p.k === plano ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></label>
         <label class="field"><span class="lbl">Período</span><select data-cf="pag-periodo">${PERIODOS_PAG.map(([k, l]) => `<option value="${k}" ${k === cf.periodo ? 'selected' : ''}>${l}: ${precoPeriodoTxt(P, k)}${k === 'anual' ? ' (2 meses grátis)' : ''}</option>`).join('')}</select></label>
-        <button class="btn pri" data-cf="pagar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Pagar com Pix ou cartão'}</button></div>
+        <button class="btn" data-cf="pagar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Pagar uma vez (Pix ou cartão)'}</button></div>
       <p class="erro-a" id="cf-pag-erro" role="alert" hidden></p>
-      <p class="muted sm cf-obs">O pagamento é feito na InfinitePay, com Pix ou cartão de crédito em até 12x. Quando ele é confirmado, o acesso é liberado sozinho${S.tipo === 'pago' ? ' e o novo período começa depois do que já está pago' : ''}.</p>
+      ${cfCartao(plano, P)}
+      <p class="muted sm cf-obs">Pagar uma vez: na InfinitePay, com Pix ou cartão de crédito em até 12x, renovando quando quiser. Quando o pagamento é confirmado, o acesso é liberado sozinho${S.tipo === 'pago' ? ' e o novo período começa depois do que já está pago' : ''}.</p>
       ${pags.length ? `<div class="list cf-pags">${pags.map(g => `<div class="row"><div class="grow"><b>${planoDe(g.plano).nome} · ${g.periodo === 'anual' ? 'anual' : 'mensal'}</b><small class="muted">${new Date(g.pago_em || g.criado_em).toLocaleDateString('pt-BR')}${g.forma ? ' · ' + (FORMA_PAG[g.forma] || esc(g.forma)) : ''}</small></div>
         <b>${reais(g.valor)}</b><span class="pill ${g.situacao === 'pago' ? 'ok' : ''}">${g.situacao === 'pago' ? 'Pago' : 'Não concluído'}</span>${g.recibo ? `<a class="btn sm ghost" href="${esc(g.recibo)}" target="_blank" rel="noopener">Recibo</a>` : ''}</div>`).join('')}</div>` : ''}</div>`
     : `<p class="muted sm cf-obs">O pagamento é feito pelo administrador da clínica, em Minha conta.</p>`}</div>`;
+}
+
+// Assinatura no cartão (Mercado Pago): o cartão é cadastrado uma vez e cobrado sozinho, com aviso 7 dias antes.
+function cfCartao(plano, P){
+  const C = cartaoConta(), ativa = C && ['ativa', 'pausada'].includes(C.situacao), aviso = avisoCobranca(C);
+  const dia = d => d ? new Date(d).toLocaleDateString('pt-BR') : '';
+  if (ativa) return `<div class="cf-cartao on" id="cf-cartao"><div class="grow"><b>${ic('okc')}Assinatura no cartão ${C.situacao === 'pausada' ? 'pausada' : 'ativa'}</b>
+      <small class="muted">${esc(planoDe(C.plano).nome)} · ${C.periodo === 'anual' ? 'anual' : 'mensal'} · ${reais(C.valor || 0)}${C.proxima ? ` · próxima cobrança em ${dia(C.proxima)}` : ''} · Mercado Pago (${esc(C.email)})</small>
+      ${aviso ? `<small class="cf-aviso">${esc(aviso)}</small>` : ''}</div>
+    ${cf.cancelarCartao ? `<span class="cf-conf"><small>Cancelar as próximas cobranças? O período pago continua.</small><button class="btn sm crit" data-cf="cartao-cancelar-sim" ${cf.ocupado ? 'disabled' : ''}>Cancelar assinatura</button><button class="btn sm ghost" data-cf="cartao-cancelar-nao">Voltar</button></span>`
+      : `<button class="btn sm ghost" data-cf="cartao-cancelar">Cancelar assinatura</button>`}</div>`;
+  return `<div class="cf-cartao" id="cf-cartao"><div class="grow"><b>${ic('dinheiro')}Assinatura no cartão (cobrança automática)</b>
+      <small class="muted">Cadastre o cartão uma vez no Mercado Pago: ${precoPeriodoTxt(P, cf.periodo)}, cobrado sozinho${cf.periodo === 'anual' ? ' a cada ano' : ' todo mês'}, com aviso 7 dias antes. A primeira cobrança acontece quando terminar o período já pago ou o teste.</small>
+      ${C?.situacao === 'pendente' ? '<small class="cf-aviso">A assinatura anterior não foi concluída no Mercado Pago. Você pode começar de novo.</small>' : ''}
+      <label class="field"><span class="lbl">E-mail da sua conta no Mercado Pago</span><input type="email" data-cf="cartao-email" value="${esc(cf.cartaoEmail ?? contaAtual().email)}" autocomplete="email"></label></div>
+    <button class="btn pri" data-cf="cartao-assinar" ${cf.ocupado ? 'disabled' : ''}>${ic('dinheiro')}${cf.ocupado ? 'Abrindo…' : 'Assinar no cartão'}</button></div>`;
 }
 
 /* ---------- Eventos ---------- */
@@ -162,6 +179,12 @@ export function ligarConfig(s, r, t){
       L.push({ nome:n, dur:60, valor:0, ativo:true }); salvarServicos(db, L); cfApp.save(); cfApp.render(true);
       const i = document.querySelector(`#cf-serv [data-k="nome"][data-i="${L.length - 1}"]`); if (i) { i.focus(); i.select(); } }
     else if (a === 'senha') { cf.senha = true; b.hidden = true; const c = document.querySelector('#cf-conta .cf-senha'); if (c) { c.hidden = false; c.querySelector('input').focus(); } }
+    else if (a === 'cartao-assinar') { const em = document.querySelector('[data-cf="cartao-email"]')?.value.trim() || ''; cf.cartaoEmail = em;
+      if (!okEmailCf(em)) { erroCf('cf-pag-erro', 'Informe o e-mail da sua conta no Mercado Pago.'); return; }
+      cf.ocupado = true; cfApp.render(true); const e = await assinarCartaoConta(cf.plano || situacaoConta()?.plano.k || 'profissional', cf.periodo, em); if (e) { cf.ocupado = false; cfApp.render(true); erroCf('cf-pag-erro', e); } }
+    else if (a === 'cartao-cancelar') { cf.cancelarCartao = true; cfApp.render(true); }
+    else if (a === 'cartao-cancelar-nao') { cf.cancelarCartao = false; cfApp.render(true); }
+    else if (a === 'cartao-cancelar-sim') { cf.ocupado = true; cfApp.render(true); const e = await cancelarCartaoConta(); cf.ocupado = false; cf.cancelarCartao = false; cfApp.render(true); if (e) erroCf('cf-pag-erro', e); else cfApp.toast('Assinatura cancelada. O período pago continua até o fim.'); }
     else if (a === 'pagar') { cf.ocupado = true; cfApp.render(true); const e = await pagarConta(cf.plano || situacaoConta()?.plano.k || 'profissional', cf.periodo); if (e) { cf.ocupado = false; cfApp.render(true); erroCf('cf-pag-erro', e); } }
     else if (a === 'sair-outros') { cf.ocupado = true; cfApp.render(true); const e = await sairDosOutrosConta(); cf.ocupado = false; cfApp.render(true); cfApp.toast(e || 'Os outros aparelhos vão pedir para entrar de novo', e ? 'info' : 'ok'); }
   });

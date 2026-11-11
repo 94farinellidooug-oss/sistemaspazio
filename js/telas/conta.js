@@ -39,6 +39,8 @@ export function iniciarConta(render, nuvem){
     conta.retorno = { order_nsu:q.get('order_nsu'), transaction_nsu:q.get('transaction_nsu'), slug:q.get('slug') || '', receipt_url:q.get('receipt_url') || '' };
     history.replaceState(null, '', location.pathname + location.hash);
   }
+  // Volta da assinatura no Mercado Pago: confere depois de abrir a clínica.
+  if (q.get('preapproval_id')) { conta.voltouCartao = true; history.replaceState(null, '', location.pathname + location.hash); }
   // Convite da equipe: o link traz o e-mail convidado (para já vir preenchido) e abre "Criar sua conta".
   if (q.get('convite')) { gravarC(KEY_CONVITE, q.get('convite')); history.replaceState(null, '', location.pathname + location.hash); }
   const lk = conta.nuvem.sessaoDoLink(location.hash);
@@ -94,6 +96,10 @@ async function abrirClinica(c){
     try { avisoPago = (await conta.nuvem.conferirPagamento(R))?.pago ? 'Pagamento confirmado. Obrigado!' : ''; } catch (e) {}
     avisoPago ||= 'Recebemos o seu pagamento. O acesso é liberado assim que a InfinitePay confirmar (no Pix, em instantes).';
   }
+  // Assinatura no cartão: confere no Mercado Pago antes (uma cobrança aprovada já estende o acesso).
+  try { conta.cartao = await conta.nuvem.cartao(c.id); } catch (e) { conta.cartao = null; }
+  if (conta.voltouCartao) { conta.voltouCartao = false; avisoPago ||= conta.cartao?.situacao === 'ativa' ? 'Assinatura no cartão ativada. Obrigado!' : 'Recebemos a sua assinatura. Ela fica ativa assim que o Mercado Pago confirmar.'; }
+  else if (avisoCobranca(conta.cartao)) avisoPago ||= avisoCobranca(conta.cartao);
   try { conta.assin = await conta.nuvem.assinatura(c.id); } catch (e) { conta.assin = null; }
   conta.sit = situacaoAssinatura(conta.assin); conta.pagamentos = null;
   // Teste terminado sem acesso grátis nem pagamento: os dados ficam guardados, o sistema pede para continuar.
@@ -131,6 +137,16 @@ export const sairDaConta = async () => {
 /* ---------- Usado em Configurações (Sua conta e dados da clínica) ---------- */
 // Pagamento pela InfinitePay a partir de Minha conta: abre o link (devolve '' ou a mensagem de erro).
 export const pagarConta = (plano, periodo, teste = false) => tentarC(async () => { const r = await conta.nuvem.pagar(conta.clinica.id, plano, periodo, teste); location.href = r.url; });
+// Assinatura no cartão (Mercado Pago). Devolve '' ou a mensagem de erro.
+const reaisC = c => ((c || 0) / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+const diaC = d => new Date(d).toLocaleDateString('pt-BR');
+// Aviso 7 dias antes de cada cobrança no cartão.
+export const avisoCobranca = c => { if (c?.situacao !== 'ativa' || !c.proxima) return ''; const falta = new Date(c.proxima).getTime() - Date.now();
+  return falta > 0 && falta <= 7 * 864e5 ? `Aviso: a assinatura do MUSUBI será cobrada no cartão em ${diaC(c.proxima)}, no valor de ${reaisC(c.valor)}.` : ''; };
+export const cartaoConta = () => conta.modo === 'nuvem' ? conta.cartao : null;
+export const assinarCartaoConta = async (plano, periodo, email) => { try { const r = await conta.nuvem.assinarCartao(conta.clinica.id, plano, periodo, email); location.href = r.url; return ''; }
+  catch (e) { return e.codigo === 'acao' || (e.status === 404 && !e.corpo) ? 'A assinatura no cartão ainda não foi ligada no servidor (falta atualizar a função cobranca).' : e.message || 'Não foi possível agora. Tente de novo.'; } };
+export const cancelarCartaoConta = () => tentarC(async () => { conta.cartao = await conta.nuvem.cancelarCartao(conta.clinica.id); aoMudarConta(true); });
 // Pagamentos da clínica (null enquanto carrega; recarrega a tela quando chegam).
 // Cobrar por link (Financeiro): só com a conta no servidor. Devolve { url } ou { erro }.
 export const cobrancaLigada = () => conta.modo === 'nuvem' && !!conta.clinica?.id && !!conta.nuvem;
@@ -201,11 +217,11 @@ function htmlAcesso(){
     : t === 'vencido' ? `${escolherPlano('Pacote')}${escolherPeriodo()}`
     : t === 'contato' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
   const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Pagar com Pix ou cartão', contato:'Enviar' }[t];
-  const rodape = t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p><p class="muted sm"><a class="lnk suave" href="inicio/index.html">Conhecer o MUSUBI</a></p>`
+    const rodape = (t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p><p class="muted sm"><a class="lnk suave" href="inicio/index.html">Conhecer o MUSUBI</a></p>`
     : ['criar', 'esqueci'].includes(t) ? `<p class="muted sm"><button type="button" class="lnk" data-ac="entrar">Voltar para entrar</button></p>`
-    : t === 'vencido' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="contato">Prefiro que a equipe entre em contato</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
+    : t === 'vencido' ? `<button type="button" class="btn largo" data-ac="assinar-cartao" ${conta.ocupado ? 'disabled' : ''}>${ic('dinheiro')}Assinar no cartão (cobrança automática)</button><p class="muted sm">No cartão, a cobrança é feita sozinha pelo Mercado Pago, com aviso 7 dias antes.</p><p class="muted sm"><button type="button" class="lnk" data-ac="contato">Prefiro que a equipe entre em contato</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
     : t === 'contato' ? `<p class="muted sm"><button type="button" class="lnk" data-ac="vencido">Voltar para o pagamento</button></p><p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>`
-    : ['clinica', 'aguardando'].includes(t) ? `${t === 'clinica' && lerC(KEY_CONVITE) ? `<p class="notice sm acesso-conv">${ic('info')}<span>Recebeu um convite de uma clínica? Ele vale para o e-mail convidado. Confirme o e-mail pelo link que mandamos e <button type="button" class="lnk" data-ac="de-novo">entre de novo</button>.</span></p>` : ''}<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '';
+    : ['clinica', 'aguardando'].includes(t) ? `${t === 'clinica' && lerC(KEY_CONVITE) ? `<p class="notice sm acesso-conv">${ic('info')}<span>Recebeu um convite de uma clínica? Ele vale para o e-mail convidado. Confirme o e-mail pelo link que mandamos e <button type="button" class="lnk" data-ac="de-novo">entre de novo</button>.</span></p>` : ''}<p class="muted sm"><button type="button" class="lnk" data-ac="sair">Sair</button></p>` : '');
   return `<div class="acesso-f"><form class="acesso-card card" id="f-acesso" novalidate>
     <div class="acesso-h">${LOGO}<b>Musubi</b></div>
     <h1>${conta.tela === 'confirmar' ? 'Confira o seu e-mail' : conta.tela === 'enviado' ? 'Link enviado' : TIT[0]}</h1>
@@ -273,6 +289,8 @@ export function ligarAcesso(){
     if (a === 'ver') { const s = el.querySelector('[name=senha]'), mostrar = s.type === 'password'; s.type = mostrar ? 'text' : 'password'; b.textContent = mostrar ? 'Ocultar' : 'Mostrar'; }
     else if (['entrar', 'criar', 'esqueci', 'contato', 'vencido'].includes(a)) abrirAcesso(a);
     else if (a === 'local') { gravarC(KEY_MODO, 'local'); conta.modo = 'local'; fecharAcesso(); aoMudarConta(); }
+    else if (a === 'assinar-cartao' && !conta.ocupado) { conta.erro = ''; conta.ocupado = true; desenharAcesso();
+      assinarCartaoConta(conta.plano, conta.periodo, conta.nuvem.sessao()?.user.email || '').then(e => { if (e) { conta.erro = /falta atualizar|não está ligada/.test(e) ? 'A assinatura no cartão ainda não está disponível. Use Pix ou cartão acima.' : e; conta.ocupado = false; desenharAcesso(); } }); }
     else if (a === 'sair') sairDaConta();
     else if (a === 'de-novo') conectar(true);
   });
