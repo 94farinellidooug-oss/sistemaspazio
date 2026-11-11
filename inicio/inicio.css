@@ -262,19 +262,24 @@ p{margin:0}
 .legal .resumo li{margin-top:4px}
 .consent{font-size:.82rem;color:var(--suave)} .consent a{color:inherit}
 
-/* Entrada: logo centralizado por alguns segundos na primeira visita da sessão */
-.entrada{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:
-  radial-gradient(600px 360px at 50% 45%,color-mix(in srgb,var(--ouro) 16%,transparent),transparent 70%),var(--fundo)}
-.entrada.saindo{animation:entrada-sai .45s ease forwards}
+/* Entrada: cortina com o logo grande que sobe e revela a página (primeira visita da sessão; toque pula) */
+.entrada{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:var(--fundo);cursor:pointer;transition:transform .9s cubic-bezier(.76,0,.24,1)}
+.entrada.saindo{transform:translateY(-100%)}
 .sem-entrada .entrada{display:none}
-.entrada-c{display:grid;justify-items:center;gap:26px}
-.entrada-logo{width:min(260px,64vw);height:auto;animation:entrada-logo 1.1s cubic-bezier(.2,.8,.2,1) both}
-.entrada-barra{display:block;width:140px;height:3px;border-radius:3px;background:color-mix(in srgb,var(--ouro) 22%,transparent);overflow:hidden}
-.entrada-barra i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--ouro-claro),var(--ouro));transform-origin:left;animation:entrada-barra 1.7s .2s ease-in-out both}
-@keyframes entrada-logo{from{opacity:0;transform:scale(.86);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
-@keyframes entrada-barra{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-@keyframes entrada-sai{to{opacity:0;visibility:hidden}}
-@media (prefers-reduced-motion:reduce){ .entrada-logo,.entrada-barra i{animation-duration:.01s} }
+.com-entrada body{overflow:hidden}
+.entrada-saiu body{overflow:auto}
+.entrada-c{display:grid;justify-items:center}
+.entrada-logo{width:min(70vw,420px);height:auto;animation:entrada-logo .9s cubic-bezier(.22,.8,.2,1) both}
+.entrada-linha{display:block;margin-top:32px;width:160px;height:1px;background:var(--ouro);transform-origin:left;animation:entrada-linha 1s .4s cubic-bezier(.22,.8,.2,1) both}
+@keyframes entrada-logo{from{opacity:0;transform:translateY(12px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+@keyframes entrada-linha{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+/* Com a entrada, o início da página só se anima depois que a cortina sobe */
+.com-entrada .hero-txt>*,.com-entrada .hero-vis{animation-play-state:paused}
+.entrada-saiu .hero-txt>*,.entrada-saiu .hero-vis{animation-play-state:running}
+.com-entrada .hero h1{clip-path:inset(0 0 100% 0)}
+.entrada-saiu .hero h1,.hero h1{transition:clip-path 1.2s cubic-bezier(.22,.8,.2,1) .15s}
+.entrada-saiu .hero h1{clip-path:inset(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){ .entrada{transition-duration:.01s} .entrada-logo,.entrada-linha{animation-duration:.01s} }
 
 /* Página inicial: blocos aparecem ao rolar e cartões com mais vida */
 .js .revela{opacity:0;transform:translateY(22px);transition:opacity .6s ease var(--atraso,0ms),transform .6s cubic-bezier(.2,.8,.2,1) var(--atraso,0ms)}

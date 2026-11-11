@@ -44,6 +44,9 @@ await p.waitForSelector('#entrada', { state:'detached', timeout:5000 });
 ok(true, 'depois de alguns segundos a entrada some e mostra a página');
 await p.reload(); await p.waitForSelector('#mods .mod');
 ok(!(await p.locator('#entrada').count()), 'na mesma sessão, a entrada não aparece de novo');
+{ const q = vigiar(await (await contexto({ viewport:{ width:390, height:800 } })).newPage()); await q.goto(SITE); await q.waitForSelector('#entrada');
+  await q.click('#entrada'); await q.waitForSelector('#entrada', { state:'detached', timeout:2000 });
+  ok(await q.evaluate(() => getComputedStyle(document.querySelector('.hero h1')).clipPath === 'none' || !document.documentElement.classList.contains('com-entrada')), 'tocar na entrada pula e a página aparece'); await q.context().close(); }
 // Planos: botão Mensal / Anual
 ok(await p.locator('#periodo-sel [data-k=mensal][aria-checked=true]').count() === 1 && await p.locator('#anual-vant').isHidden() && !(await p.locator('#planos-l', { hasText:'plano anual' }).count()), 'planos abrem no mensal, sem o anual embaixo');
 await p.click('#periodo-sel [data-k=anual]');

@@ -89,10 +89,13 @@ function desenharPlanos(){
 
 // Entrada: o logo aparece por alguns segundos na primeira visita da sessão e depois abre a página.
 function entrada(){
-  const e = $('#entrada'); if (!e) return;
-  if (document.documentElement.classList.contains('sem-entrada')) { e.remove(); return; }
-  const tempo = matchMedia('(prefers-reduced-motion: reduce)').matches ? 600 : 2000;
-  setTimeout(() => { e.classList.add('saindo'); setTimeout(() => e.remove(), 450); }, tempo);
+  const e = $('#entrada'), raiz = document.documentElement; if (!e) return;
+  if (raiz.classList.contains('sem-entrada')) { e.remove(); return; }
+  const rapido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let foi = false;
+  const subir = () => { if (foi) return; foi = true; e.classList.add('saindo'); raiz.classList.add('entrada-saiu'); setTimeout(() => { e.remove(); raiz.classList.remove('com-entrada'); }, rapido ? 50 : 950); };
+  e.addEventListener('click', subir);
+  setTimeout(subir, rapido ? 500 : 1700);
 }
 const revelarPlanos = () => document.querySelectorAll('#planos-l .plano').forEach(el => el.classList.add('visto'));
 // Os blocos aparecem suavemente ao rolar a página.

@@ -20,14 +20,14 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="inicio.css">
 <script>try{const t=localStorage.getItem('musubi-tema');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
-<script>document.documentElement.classList.add('js');try{if(sessionStorage.getItem('musubi-entrada'))document.documentElement.classList.add('sem-entrada');sessionStorage.setItem('musubi-entrada','1');}catch(e){}</script>
+<script>document.documentElement.classList.add('js');try{if(sessionStorage.getItem('musubi-entrada'))document.documentElement.classList.add('sem-entrada');else document.documentElement.classList.add('com-entrada');sessionStorage.setItem('musubi-entrada','1');}catch(e){}</script>
 </head>
 <body>
 <div class="entrada" id="entrada" aria-hidden="true">
   <div class="entrada-c">
-    <img class="entrada-logo logo-claro" src="marca/MUSUBI_logo_colorido.svg" alt="" width="260" height="72">
-    <img class="entrada-logo logo-escuro" src="marca/MUSUBI_logo_branco.svg" alt="" width="260" height="72">
-    <span class="entrada-barra"><i></i></span>
+    <img class="entrada-logo logo-claro" src="marca/MUSUBI_logo_colorido.svg" alt="" width="420" height="116">
+    <img class="entrada-logo logo-escuro" src="marca/MUSUBI_logo_branco.svg" alt="" width="420" height="116">
+    <span class="entrada-linha"></span>
   </div>
 </div>
 
