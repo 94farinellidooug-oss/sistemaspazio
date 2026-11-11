@@ -294,4 +294,5 @@ select pg_temp.como('00000000-0000-0000-0000-00000000000d');
 set role authenticated;
 select pg_temp.checar((select count(*) from clinicas_excluidas) = 0, 'quem não é dono não vê as clínicas excluídas');
 reset role;
+select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'aceites' and column_name in ('ip', 'agente')) = 2, 'o aceite guarda o endereço de internet e o navegador (012_aceite_registro.sql)');
 \echo 'Todas as regras do banco passaram.'
