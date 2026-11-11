@@ -3,3 +3,5 @@ Allow: /inicio/
 Disallow: /spazio.html
 Disallow: /proposta/
 Disallow: /api/
+
+Sitemap: https://musubisistema.com.br/sitemap.xml
