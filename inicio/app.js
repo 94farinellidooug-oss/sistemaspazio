@@ -51,8 +51,8 @@ const PERGUNTAS = [
   ['Como agendar uma demonstração?', 'Preencha o formulário acima com seu nome e WhatsApp. Nossa equipe entrará em contato para apresentar o sistema.']
 ];
 
-// No site o sistema é o spazio.html; no computador (testes), o index.html.
-const SISTEMA = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname) ? '../index.html' : '../spazio.html';
+// No site o sistema fica em /sistema (o arquivo spazio.html); no computador (testes), o index.html.
+const SISTEMA = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname) ? '../index.html' : '../sistema';
 const urlSistema = () => new URL(SISTEMA, location.href).href;
 // Quem já entrou neste aparelho vai direto para o sistema (?ver mostra a página mesmo assim).
 const temSessao = () => { try { return !!JSON.parse(localStorage.getItem(KEY_SESSAO))?.access_token; } catch (e) { return false; } };

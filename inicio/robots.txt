@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /inicio/
 Disallow: /spazio.html
+Disallow: /sistema
 Disallow: /proposta/
 Disallow: /api/
 

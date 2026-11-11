@@ -22,7 +22,7 @@
       ]
     },
     {
-      "source": "/spazio.html",
+      "source": "/(sistema|spazio.html)",
       "headers": [
         {
           "key": "X-Robots-Tag",
@@ -65,5 +65,11 @@
     "api/nfse-ponte.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/sistema",
+      "destination": "/spazio.html"
+    }
+  ]
 }
