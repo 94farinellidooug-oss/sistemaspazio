@@ -1655,6 +1655,26 @@ body.com-acesso{overflow:hidden}
 .cf-cartao .field{margin-top:6px;max-width:360px}
 .cf-aviso{color:var(--warn);font-weight:500}
 .cf-cartao .cf-conf{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* Painel do MUSUBI: hoje, gestão e relacionamento */
+.pd-tabs{flex-wrap:wrap;row-gap:2px}
+.pd-n.pd-n4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pd-n.pd-n4 small + b + small{margin-top:2px}
+@media (max-width:900px){ .pd-n.pd-n4{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.pd-g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:6px}
+.pd-g2 h3{font-size:.92rem;margin:0 0 6px}
+@media (max-width:700px){ .pd-g2{grid-template-columns:minmax(0,1fr)} }
+.pd-t,.pd-r{flex-wrap:wrap}
+.pd-t .grow,.pd-r .grow{flex-basis:calc(100% - 50px);min-width:0}
+.pd-t .grow > b,.pd-t .grow > small,.pd-r .grow > small{display:block}
+.pd-t.n1{background:var(--accent-soft);border-radius:var(--r-sm)}
+#pd-dicas{margin-top:16px}
+.pd-dicas{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+.pd-dicas li{display:grid;gap:2px;font-size:.88rem}
+.pd-chips{margin:0 0 12px}
+.pd-r .pill{font-size:.7rem;vertical-align:middle}
+.pd-nota{display:flex;gap:6px;align-items:flex-start;font-size:.82rem;margin-top:2px;overflow-wrap:anywhere}
+.pd-notas{margin:4px 0 10px;padding-left:18px;font-size:.84rem;display:grid;gap:4px;overflow-wrap:anywhere}
+.pd-anot textarea{width:100%}
 </style>
 
 
@@ -3014,6 +3034,10 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     excluirClinica:async (clinica, nome, motivo = '') => rest('rpc/excluir_clinica', { metodo:'POST', corpo:{ p_clinica:clinica, p_nome:nome, p_motivo:motivo } }),
     clinicasExcluidas:async () => { try { return (await rest('clinicas_excluidas?select=id,clinica_id,nome,cidade,uf,whats,email_dono,plano,criada_em,pacientes,pago_total,motivo,excluida_em&order=excluida_em.desc')) || []; }
       catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    // Relacionamento do Painel do MUSUBI (supabase/010_relacionamento.sql). null quando o servidor ainda não tem a tabela.
+    relacionamento:async () => { try { return (await rest('relacionamento_musubi?select=ref,notas,retornar_em,atualizado_em')) || []; }
+      catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    salvarRelacionamento:async (ref, { notas, retornar_em }) => rest('relacionamento_musubi?on_conflict=ref', { metodo:'POST', corpo:{ ref, notas, retornar_em:retornar_em || null, atualizado_em:new Date().toISOString(), atualizado_por:sessao.user.id }, cab:{ Prefer:'resolution=merge-duplicates,return=minimal' } }),
     estenderTeste:async (clinica, dias) => rest('rpc/estender_teste', { metodo:'POST', corpo:{ p_clinica:clinica, p_dias:dias } }),
     interessados:async () => (await rest('interessados?select=id,nome,whats,situacao,criado_em&order=criado_em.desc')) || [],
     mudarInteressado:async (id, situacao) => rest(`interessados?id=eq.${id}`, { metodo:'PATCH', corpo:{ situacao }, cab:{ Prefer:'return=minimal' } }),
@@ -6086,25 +6110,127 @@ function ligarConfig(s, r, t){
     if (f.id === 'cf-clinica') enviarClinica(f); else enviarConta(f);
   });
 }
+// de contato. Só cálculos (sem tela), a partir do que o painel já carrega: clínicas (painel_dono), pagamentos,
+// interessados, clínicas excluídas e o acompanhamento de cada contato (relacionamento_musubi).
+
+const DIA_VD = 864e5;
+const tempoV = d => d ? new Date(d).getTime() : 0;
+const diasDesdeV = (d, agora) => Math.floor((agora - tempoV(d)) / DIA_VD);
+const mesDeV = d => String(d || '').slice(0, 7);
+const precoMesV = plano => (PLANOS.find(p => p.k === plano) || PLANOS[1]).preco * 100;
+const pagoDeV = g => g.valor_pago || g.valor || 0;
+const ehTesteV = g => g.valor === 100;   // pagamento de teste do dono (R$ 1,00)
+
+// Valor por mês que a clínica paga hoje (centavos), ou 0. Cartão ativo: o valor do cartão (anual à vista dividido
+// por 12). Pago pela InfinitePay e ainda dentro do prazo: o preço mensal do pacote.
+function valorMensalClinica(c, agora = Date.now()){
+  if (['ativa', 'pausada'].includes(c.cartao_situacao) && c.cartao_valor) return c.cartao_periodo === 'anual' ? Math.round(c.cartao_valor / 12) : c.cartao_valor;
+  return situacaoAssinatura(c, agora).tipo === 'pago' ? precoMesV(c.plano) : 0;
+}
+
+function numerosGestao({ clinicas = [], pagamentos = [], excluidas = [], agora = Date.now() } = {}){
+  const S = clinicas.map(c => ({ c, s:situacaoAssinatura(c, agora) }));
+  const pagos = pagamentos.filter(g => g.situacao === 'pago' && !ehTesteV(g));
+  const pagantes = S.filter(x => x.s.tipo === 'pago' || ['ativa', 'pausada'].includes(x.c.cartao_situacao));
+  const mrr = clinicas.reduce((t, c) => t + valorMensalClinica(c, agora), 0);
+  const ano = new Date(agora).getFullYear();
+  const meses = [];
+  for (let i = 5; i >= 0; i--) { const d = new Date(agora); d.setDate(1); d.setMonth(d.getMonth() - i); meses.push(d.toISOString().slice(0, 7)); }
+  const jaPagaram = new Set(pagos.map(g => g.clinica_id));
+  const totalHistorico = clinicas.length + excluidas.length;
+  const convertidas = clinicas.filter(c => jaPagaram.has(c.id)).length + excluidas.filter(x => (x.pago_total || 0) > 0).length;
+  return {
+    mrr,
+    ticket:pagantes.length ? Math.round(mrr / pagantes.length) : 0,
+    recebido30:pagos.filter(g => tempoV(g.pago_em) > agora - 30 * DIA_VD).reduce((t, g) => t + pagoDeV(g), 0),
+    recebidoAno:pagos.filter(g => new Date(tempoV(g.pago_em)).getFullYear() === ano).reduce((t, g) => t + pagoDeV(g), 0),
+    porMes:meses.map(m => ({ mes:m, valor:pagos.filter(g => mesDeV(g.pago_em) === m).reduce((t, g) => t + pagoDeV(g), 0) })),
+    pagantes:pagantes.length,
+    emTeste:S.filter(x => x.s.tipo === 'teste').length,
+    gratis:S.filter(x => x.s.tipo === 'gratis').length,
+    vencidas:S.filter(x => x.s.tipo === 'vencido').length,
+    novas30:clinicas.filter(c => tempoV(c.criado_em) > agora - 30 * DIA_VD).length,
+    ativas7:clinicas.filter(c => tempoV(c.ultimo_uso) > agora - 7 * DIA_VD).length,
+    conversao:totalHistorico ? Math.round(100 * convertidas / totalHistorico) : 0,
+    desistencias90:excluidas.filter(x => tempoV(x.excluida_em) > agora - 90 * DIA_VD).length,
+    porPacote:PLANOS.map(p => ({ k:p.k, nome:p.nome, n:pagantes.filter(x => (x.c.plano || 'profissional') === p.k).length })),
+    cartao:clinicas.filter(c => ['ativa', 'pausada'].includes(c.cartao_situacao)).length
+  };
+}
+
+// Mensagens prontas para o WhatsApp, em tom profissional. {nome} = nome da pessoa ou da clínica.
+const MENSAGENS_VENDA = {
+  interessado:'Olá, {nome}! Aqui é o Maicon, do MUSUBI. Vi que você pediu para conhecer o sistema. Posso te mostrar em uma chamada rápida de 15 minutos como ficam a agenda, o prontuário e os documentos? Qual o melhor horário para você?',
+  teste:'Olá! Aqui é o Maicon, do MUSUBI. O teste grátis da {nome} termina em breve. Está tudo certo com o sistema? Se quiser, te ajudo a configurar o que faltar e a escolher o melhor pacote.',
+  vencido:'Olá! Aqui é o Maicon, do MUSUBI. O teste da {nome} terminou, mas os dados continuam guardados. Posso te ajudar a continuar? Se precisar de mais alguns dias para conhecer, é só me dizer.',
+  parado:'Olá! Aqui é o Maicon, do MUSUBI. Notei que a {nome} não usa o sistema há alguns dias. Ficou alguma dúvida ou algo que eu possa ajudar a configurar?',
+  cartao:'Olá! Aqui é o Maicon, do MUSUBI. A última cobrança da assinatura da {nome} no cartão não foi aprovada. Pode conferir o cartão no Mercado Pago? Se preferir, também dá para pagar com Pix pelo sistema, em Configurações > Sua conta.',
+  ex:'Olá! Aqui é o Maicon, do MUSUBI. Faz um tempoV que a {nome} deixou de usar o sistema e queria saber como estão as coisas. Fizemos várias melhorias e, se quiser voltar, posso preparar uma condição especial.',
+  cliente:'Olá! Aqui é o Maicon, do MUSUBI. Tudo certo com o sistema na {nome}? Se você conhece outro profissional que possa gostar do MUSUBI, ficarei muito grato pela indicação.'
+};
+const mensagemVenda = (tipo, nome) => (MENSAGENS_VENDA[tipo] || MENSAGENS_VENDA.cliente).replace('{nome}', String(nome || '').trim() || 'sua clínica');
+const linkWhats = (whats, texto = '') => { const d = String(whats || '').replace(/\D/g, ''); if (d.length < 10) return ''; return `https://wa.me/${d.length <= 11 ? '55' + d : d}${texto ? '?text=' + encodeURIComponent(texto) : ''}`; };
+
+// Contatos para o relacionamento: interessados, clínicas e ex-clientes, com o tipo de mensagem de cada um.
+function contatosVenda({ clinicas = [], interessados = [], excluidas = [], acompanhamento = {}, agora = Date.now() } = {}){
+  const R = ref => acompanhamento[ref] || {};
+  const L = [];
+  for (const i of interessados) L.push({ ref:'i:' + i.id, grupo:'interessado', nome:i.nome, whats:i.whats, email:'', desde:i.criado_em, situacao:i.situacao, msg:'interessado', id:i.id, ...R('i:' + i.id) });
+  for (const c of clinicas) {
+    const s = situacaoAssinatura(c, agora), parado = tempoV(c.ultimo_uso) && diasDesdeV(c.ultimo_uso, agora) >= 14;
+    const grupo = s.tipo === 'teste' ? 'teste' : s.tipo === 'vencido' ? 'vencido' : 'cliente';
+    const msg = c.cartao_situacao === 'pausada' ? 'cartao' : grupo === 'cliente' && parado ? 'parado' : grupo;
+    L.push({ ref:'c:' + c.id, grupo, nome:c.nome, whats:c.whats || '', email:c.email_dono || '', desde:c.criado_em, cidade:[c.cidade, c.uf].filter(Boolean).join(' - '), msg, id:c.id, s, ...R('c:' + c.id) });
+  }
+  for (const x of excluidas) L.push({ ref:'x:' + x.id, grupo:'ex', nome:x.nome, whats:x.whats || '', email:x.email_dono || '', desde:x.excluida_em, cidade:[x.cidade, x.uf].filter(Boolean).join(' - '), motivo:x.motivo || '', msg:'ex', id:x.id, ...R('x:' + x.id) });
+  return L;
+}
+
+// Tarefas do dia, da mais urgente para a menos. Cada uma: { ref, nivel (1 = hoje), titulo, detalhe, msg, whats, email }.
+function tarefasDoDia({ clinicas = [], interessados = [], excluidas = [], acompanhamento = {}, agora = Date.now() } = {}){
+  const hoje = new Date(agora - 3 * 36e5).toISOString().slice(0, 10);   // dia em Brasília
+  const C = contatosVenda({ clinicas, interessados, excluidas, acompanhamento, agora });
+  const T = [], ja = new Set();
+  const add = (k, t) => { if (ja.has(k.ref)) return; ja.add(k.ref); T.push({ ref:k.ref, nome:k.nome, whats:k.whats, email:k.email, msg:k.msg, ...t }); };
+  for (const k of C) if (k.retornar_em && k.retornar_em <= hoje) add(k, { nivel:1, titulo:`Retornar o contato com ${k.nome}`, detalhe:k.retornar_em < hoje ? `Marcado para ${new Date(k.retornar_em + 'T12:00:00').toLocaleDateString('pt-BR')}, está atrasado.` : 'Marcado para hoje.' });
+  for (const k of C) if (k.grupo === 'interessado' && k.situacao === 'novo') add(k, { nivel:1, titulo:`Chamar ${k.nome} no WhatsApp`, detalhe:`Pediu para conhecer ${diasDesdeV(k.desde, agora) <= 0 ? 'hoje' : `há ${diasDesdeV(k.desde, agora)} dia${diasDesdeV(k.desde, agora) === 1 ? '' : 's'}`}. Responder rápido aumenta a chance de fechar.` });
+  for (const k of C) if (k.msg === 'cartao') add(k, { nivel:1, titulo:`${k.nome}: cobrança no cartão recusada`, detalhe:'A assinatura no Mercado Pago está pausada. Peça para conferir o cartão.' });
+  for (const k of C) if (k.grupo === 'teste' && k.s.dias <= 2) add(k, { nivel:2, titulo:`${k.nome}: teste termina em ${k.s.dias} dia${k.s.dias === 1 ? '' : 's'}`, detalhe:'Ofereça ajuda para configurar e para escolher o pacote.' });
+  for (const k of C) if (k.grupo === 'vencido' && !k.retornar_em) add(k, { nivel:2, titulo:`${k.nome}: teste terminou sem assinatura`, detalhe:'Pergunte o que faltou. Se fizer sentido, dê mais 7 dias de teste.' });
+  for (const k of C) if (k.msg === 'parado') add(k, { nivel:3, titulo:`${k.nome} não usa o sistema há ${diasDesdeV(clinicas.find(c => c.id === k.id)?.ultimo_uso, agora)} dias`, detalhe:'Quem para de usar costuma desistir. Pergunte se precisa de ajuda.' });
+  for (const k of C) if (k.grupo === 'ex' && !k.retornar_em && diasDesdeV(k.desde, agora) >= 30) add(k, { nivel:3, titulo:`Convidar ${k.nome} a voltar`, detalhe:`Saiu há ${diasDesdeV(k.desde, agora)} dias${k.motivo ? ` (motivo: ${k.motivo})` : ''}.` });
+  return T.sort((a, b) => a.nivel - b.nivel);
+}
+
+// Dicas para vender melhor (fixas, mostradas no painel).
+const DICAS_VENDA = [
+  ['Demonstração curta', 'Mostre o sistema em 15 minutos com um paciente de exemplo: agenda, atendimento, documentos e financeiro. Uma tela vale mais que a explicação.'],
+  ['Responda no mesmo dia', 'Quem pediu para conhecer está procurando uma solução agora. Quanto mais cedo o primeiro contato, maior a chance de fechar.'],
+  ['Acompanhe o teste', 'Dois ou três dias depois do cadastro, pergunte se a pessoa conseguiu montar a agenda e o primeiro atendimento. Quem usa no teste assina.'],
+  ['Ofereça o anual com pagamento mensal', 'Para quem já usa todo dia: 15% mais barato para o cliente e 12 meses de assinatura para o MUSUBI.'],
+  ['Peça indicação', 'Cada cliente satisfeito conhece outros profissionais. Peça a indicação logo depois de resolver uma dúvida ou de um elogio.'],
+  ['Mostre nas redes', 'Poste uma tela do sistema por semana (há imagens prontas na página de apresentação), sempre com a chamada para os 7 dias grátis.'],
+  ['Aprenda com quem saiu', 'Ao excluir uma clínica, anote o motivo. Os motivos que se repetem mostram o que melhorar no sistema ou na oferta.']
+];
 // Mostra todas as clínicas com o pacote, a situação (teste, grátis, pago, vencido), quem usa e números gerais
 // (nunca os dados dos pacientes), permite dar ou tirar acesso grátis, trocar o pacote e dar mais dias de teste,
 // lista os interessados da página de apresentação e os pagamentos feitos pela InfinitePay.
 // Excluir clínica (009_excluir_clinica.sql): para quem desistiu; cancela o cartão antes e guarda só o resumo comercial.
 
-const pd = { aba:'clinicas', lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'', excluir:null, excl:null, excluindo:false };
+const pd = { aba:'hoje', rel:null, filtro:'todos', buscaR:'', anotar:null, salvando:false, lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'', excluir:null, excl:null, excluindo:false };
 const CARTAO_VIVO = ['ativa', 'pausada', 'pendente'];
 let pdApp = { render:() => {}, toast:() => {} };
 const SITU_INT = [['novo', 'Novo'], ['chamei', 'Já chamei'], ['cliente', 'Virou cliente'], ['nao', 'Não quis']];
 const PRAZOS = [['30', '30 dias'], ['90', '90 dias'], ['365', '1 ano'], ['sempre', 'Sem prazo']];
 const dataBR = iso => iso ? new Date(iso).toLocaleDateString('pt-BR') : '';
 const quando = iso => { if (!iso) return 'nunca'; const d = Math.floor((Date.now() - new Date(iso)) / 864e5); return d <= 0 ? 'hoje' : d === 1 ? 'ontem' : `há ${d} dias`; };
-const zap = w => { const d = String(w).replace(/\D/g, ''); return d ? 'https://wa.me/' + (d.length <= 11 ? '55' + d : d) : ''; };
 
 const ehDono = () => conta.modo === 'nuvem' && conta.dono;
 
 async function carregarPd(){
   if (pd.carregando) return; pd.carregando = true; pd.erro = ''; pdApp.render(true);
-  try { const [L, I, G, X] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => []), conta.nuvem.clinicasExcluidas().catch(() => null)]); pd.lista = L; pd.inter = I; pd.pags = G; pd.excl = X; }
+  try { const [L, I, G, X, R] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => []), conta.nuvem.clinicasExcluidas().catch(() => null), conta.nuvem.relacionamento().catch(() => null)]);
+    pd.lista = L; pd.inter = I; pd.pags = G; pd.excl = X; pd.rel = R ? Object.fromEntries(R.map(r => [r.ref, r])) : null; }
   catch (e) { pd.erro = e.message; }
   pd.carregando = false; pdApp.render(true);
 }
@@ -6114,7 +6240,8 @@ function vPainelDono(){
   if (!pd.lista && !pd.carregando && !pd.erro) setTimeout(carregarPd);
   const L = pd.lista || [], I = pd.inter || [], S = L.map(c => situacaoAssinatura(c));
   const n = t => S.filter(s => s.tipo === t).length, novos = I.filter(i => i.situacao === 'novo').length;
-  const cab = `<div class="head"><div><h1>Painel do MUSUBI</h1><p>Clínicas que usam o sistema, pacotes e interessados</p></div><button class="btn" data-pd="atualizar" ${pd.carregando ? 'disabled' : ''}>${ic('retorno')}${pd.carregando ? 'Atualizando…' : 'Atualizar'}</button></div>`;
+  const T = tarefasDoDia({ clinicas:L, interessados:I, excluidas:pd.excl || [], acompanhamento:pd.rel || {} });
+  const cab = `<div class="head"><div><h1>Painel do MUSUBI</h1><p>Tarefas de venda, gestão, clínicas e relacionamento</p></div><button class="btn" data-pd="atualizar" ${pd.carregando ? 'disabled' : ''}>${ic('retorno')}${pd.carregando ? 'Atualizando…' : 'Atualizar'}</button></div>`;
   if (pd.erro) return cab + `<div class="notice">${ic('alerta')}<span>${esc(pd.erro)}</span></div>`;
   if (!pd.lista) return cab + `<p class="muted">${ic('carregando')} Carregando…</p>`;
   return cab + `<div class="pd-n">
@@ -6123,8 +6250,8 @@ function vPainelDono(){
       <div class="card"><small>Grátis ou pagas</small><b>${n('gratis') + n('pago')}</b></div>
       <div class="card"><small>Teste terminou</small><b>${n('vencido')}</b></div>
       <div class="card"><small>Interessados novos</small><b>${novos}</b></div></div>
-    <div class="tabs" role="tablist">${[['clinicas', 'Clínicas', 'admin'], ['interessados', `Interessados${novos ? ` (${novos})` : ''}`, 'sino'], ['pagamentos', 'Pagamentos', 'dinheiro']].map(([k, l, i]) => `<button role="tab" data-pd="aba" data-k="${k}" class="${pd.aba === k ? 'on' : ''}" aria-selected="${pd.aba === k}">${ic(i)}${l}</button>`).join('')}</div>
-    ${pd.aba === 'clinicas' ? pdClinicas(L) : pd.aba === 'interessados' ? pdInteressados(I) : pdPagamentos(L, pd.pags)}`;
+    <div class="tabs pd-tabs" role="tablist">${[['hoje', `Hoje${T.length ? ` (${T.length})` : ''}`, 'check'], ['gestao', 'Gestão', 'relatorios'], ['clinicas', 'Clínicas', 'admin'], ['relacionamento', `Relacionamento${novos ? ` (${novos})` : ''}`, 'mensagem'], ['pagamentos', 'Pagamentos', 'dinheiro']].map(([k, l, i]) => `<button role="tab" data-pd="aba" data-k="${k}" class="${pd.aba === k ? 'on' : ''}" aria-selected="${pd.aba === k}">${ic(i)}${l}</button>`).join('')}</div>
+    ${pd.aba === 'hoje' ? pdHoje(T) : pd.aba === 'gestao' ? pdGestao(L) : pd.aba === 'clinicas' ? pdClinicas(L) : pd.aba === 'relacionamento' ? pdRelacionamento(L, I) : pdPagamentos(L, pd.pags)}`;
 }
 
 function pdClinicas(L){
@@ -6173,12 +6300,70 @@ async function excluirPd(f){
   pd.excluindo = false; pd.excluir = null; pdApp.toast(`${c.nome} foi excluída. As cobranças pararam.`); await carregarPd();
 }
 
-function pdInteressados(I){
-  return `<div class="card" id="pd-int"><div class="card-h"><h2>Interessados<small>quem pediu para conhecer ou para continuar depois do teste</small></h2></div>
-    <div class="list">${I.map(i => `<div class="row pd-i st-${i.situacao}"><span class="avatar">${esc(String(i.nome).trim()[0] || '?').toUpperCase()}</span>
-      <div class="grow"><b>${esc(i.nome)}</b><small class="muted">${esc(i.whats)} · ${dataBR(i.criado_em)}</small></div>
-      <div class="pd-ctl">${zap(i.whats) ? `<a class="btn sm wa" href="${zap(i.whats)}" target="_blank" rel="noopener">${ic('mensagem')}WhatsApp</a>` : ''}
-        <label><span class="so-leitor">Situação de ${esc(i.nome)}</span><select data-pd="situ" data-i="${i.id}">${SITU_INT.map(([k, l]) => `<option value="${k}" ${i.situacao === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div></div>`).join('') || '<p class="muted sm">Ninguém pediu contato ainda.</p>'}</div></div>`;
+// Hoje: tarefas tiradas dos dados (retornos marcados, interessados novos, testes acabando, clientes parados,
+// ex-clientes) e dicas fixas de venda.
+function pdHoje(T){
+  return `<div class="card" id="pd-hoje"><div class="card-h"><h2>Tarefas de hoje<small>da mais urgente para a menos</small></h2></div>
+    <div class="list">${T.map(t => `<div class="row pd-t n${t.nivel}" data-ref="${esc(t.ref)}"><span class="tico sm ${t.nivel === 1 ? 'acc' : ''}">${ic(t.nivel === 1 ? 'sino' : 'relogio')}</span>
+      <div class="grow"><b>${esc(t.titulo)}</b><small class="muted">${esc(t.detalhe)}</small></div>
+      <div class="pd-ctl">${botoesContato(t)}<button class="btn sm ghost" data-pd="anotar" data-ref="${esc(t.ref)}" data-ir="1">${ic('editar')}Anotar</button></div></div>`).join('') || '<p class="muted sm">Nada pendente hoje. Bom momento para divulgar o MUSUBI.</p>'}</div></div>
+  <div class="card" id="pd-dicas"><div class="card-h"><h2>Dicas para vender melhor</h2></div>
+    <ul class="pd-dicas">${DICAS_VENDA.map(([t, d]) => `<li><b>${esc(t)}</b><span class="muted">${esc(d)}</span></li>`).join('')}</ul></div>`;
+}
+const botoesContato = k => { const w = linkWhats(k.whats, mensagemVenda(k.msg, k.nome));
+  return `${w ? `<a class="btn sm wa" href="${w}" target="_blank" rel="noopener">${ic('mensagem')}WhatsApp</a>` : ''}${k.email ? `<a class="btn sm ghost" href="mailto:${esc(k.email)}">${ic('mail')}E-mail</a>` : ''}`; };
+
+// Gestão: receita, conversão, desistências, uso.
+function pdGestao(L){
+  const N = numerosGestao({ clinicas:L, pagamentos:pd.pags, excluidas:pd.excl || [] }), ano = new Date().getFullYear();
+  const nomeMes = m => new Date(m + '-15T12:00:00').toLocaleDateString('pt-BR', { month:'short', year:'numeric' });
+  const caixa = (t, v, d = '') => `<div class="card"><small>${t}</small><b>${v}</b>${d ? `<small>${d}</small>` : ''}</div>`;
+  return `<div class="card" id="pd-gest"><div class="card-h"><h2>Gestão do MUSUBI<small>números de hoje, sem dados de pacientes</small></h2></div>
+    <div class="pd-n pd-n4">
+      ${caixa('Receita por mês (estimada)', reaisPd(N.mrr), 'assinaturas em dia')}${caixa('Ticket médio', reaisPd(N.ticket), 'por clínica pagante')}
+      ${caixa('Recebido em 30 dias', reaisPd(N.recebido30))}${caixa(`Recebido em ${ano}`, reaisPd(N.recebidoAno))}
+      ${caixa('Clínicas pagantes', N.pagantes, `${N.cartao} no cartão`)}${caixa('Conversão do teste', N.conversao + '%', 'clínicas que já pagaram')}
+      ${caixa('Novas em 30 dias', N.novas30)}${caixa('Usaram em 7 dias', N.ativas7, `de ${L.length} clínicas`)}
+      ${caixa('Em teste', N.emTeste)}${caixa('Teste terminou', N.vencidas, 'sem pagamento em dia')}${caixa('Grátis', N.gratis)}${caixa('Desistências em 90 dias', N.desistencias90)}</div>
+    <div class="pd-g2"><div><h3>Recebido por mês</h3><div class="list">${N.porMes.map(m => `<div class="row"><span class="grow">${nomeMes(m.mes)}</span><b>${reaisPd(m.valor)}</b></div>`).join('')}</div></div>
+      <div><h3>Pagantes por pacote</h3><div class="list">${N.porPacote.map(p => `<div class="row"><span class="grow">${p.nome}</span><b>${p.n}</b></div>`).join('')}</div></div></div>
+    <p class="muted sm cf-obs">Receita por mês: cartão pelo valor da assinatura (anual dividido por 12) e Pix pelo preço mensal do pacote. Não conta testes, acesso grátis nem o pagamento de teste de R$ 1,00.</p></div>`;
+}
+
+// Relacionamento: todos os contatos (interessados, clínicas, ex-clientes) com WhatsApp, anotações e retorno.
+const GRUPOS_V = [['todos', 'Todos'], ['interessado', 'Interessados'], ['teste', 'Em teste'], ['vencido', 'Teste terminou'], ['cliente', 'Clientes'], ['ex', 'Ex-clientes']];
+const NOME_GRUPO = { interessado:'Interessado', teste:'Em teste', vencido:'Teste terminou', cliente:'Cliente', ex:'Ex-cliente' };
+function pdRelacionamento(L, I){
+  const C = contatosVenda({ clinicas:L, interessados:I, excluidas:pd.excl || [], acompanhamento:pd.rel || {} });
+  const q = pd.buscaR.trim().toLowerCase(), hoje = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10);
+  const F = C.filter(k => (pd.filtro === 'todos' || k.grupo === pd.filtro) && (!q || [k.nome, k.cidade, k.email, k.whats].join(' ').toLowerCase().includes(q)));
+  return `<div class="card" id="pd-rel"><div class="card-h"><h2>Relacionamento<small>interessados, clínicas e ex-clientes</small></h2><input class="pd-busca" data-pd="busca-r" type="search" placeholder="Buscar contato" value="${esc(pd.buscaR)}" aria-label="Buscar contato"></div>
+    <div class="chips pd-chips">${GRUPOS_V.map(([k, l]) => `<button class="chip ${pd.filtro === k ? 'on' : ''}" data-pd="filtro" data-k="${k}">${l} <small>${k === 'todos' ? C.length : C.filter(x => x.grupo === k).length}</small></button>`).join('')}</div>
+    ${pd.rel === null ? `<p class="notice sm">${ic('info')}<span>Para anotar conversas e marcar retornos, falta rodar o <b>010_relacionamento.sql</b> no Supabase.</span></p>` : ''}
+    <div class="list">${F.map(k => { const ult = (k.notas || [])[0], atras = k.retornar_em && k.retornar_em <= hoje;
+      return `<div class="row pd-r" data-ref="${esc(k.ref)}"><span class="avatar">${esc(String(k.nome).trim()[0] || '?').toUpperCase()}</span>
+        <div class="grow"><b>${esc(k.nome)} <span class="pill">${NOME_GRUPO[k.grupo]}</span>${k.retornar_em ? ` <span class="pill ${atras ? 'warn' : ''}">Retornar ${new Date(k.retornar_em + 'T12:00:00').toLocaleDateString('pt-BR')}</span>` : ''}</b>
+          <small class="muted">${esc([k.cidade, k.whats, k.email].filter(Boolean).join(' · '))}${k.desde ? ` · ${k.grupo === 'ex' ? 'saiu' : 'desde'} ${dataBR(k.desde)}` : ''}</small>
+          ${ult ? `<small class="pd-nota">${ic('editar')}${esc(ult.texto)} <span class="muted">(${dataBR(ult.em)})</span></small>` : ''}${k.motivo ? `<small class="muted">Motivo da saída: ${esc(k.motivo)}</small>` : ''}</div>
+        <div class="pd-ctl">${botoesContato(k)}${k.grupo === 'interessado' ? `<label><span class="so-leitor">Situação de ${esc(k.nome)}</span><select data-pd="situ" data-i="${k.id}">${SITU_INT.map(([s, l]) => `<option value="${s}" ${k.situacao === s ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
+          ${pd.rel !== null ? `<button class="btn sm ghost" data-pd="anotar" data-ref="${esc(k.ref)}">${ic('editar')}Anotar</button>` : ''}</div>
+        ${pd.anotar === k.ref ? pdAnotar(k) : ''}</div>`; }).join('') || '<p class="muted sm">Nenhum contato aqui.</p>'}</div></div>`;
+}
+function pdAnotar(k){
+  return `<form class="pd-g pd-anot" id="pd-anot" novalidate><div class="form">
+      <label class="field"><span class="lbl">O que conversaram</span><textarea name="texto" rows="2" placeholder="Ex.: pediu para retornar depois do feriado"></textarea></label>
+      <label class="field"><span class="lbl">Retornar o contato em</span><input type="date" name="retornar" value="${esc(k.retornar_em || '')}"></label></div>
+    ${(k.notas || []).length ? `<ul class="pd-notas">${k.notas.slice(0, 5).map(n => `<li><small class="muted">${dataBR(n.em)}</small> ${esc(n.texto)}</li>`).join('')}</ul>` : ''}
+    <div class="cf-acoes"><button class="btn pri" type="submit" ${pd.salvando ? 'disabled' : ''}>${ic('check')}${pd.salvando ? 'Salvando…' : 'Salvar'}</button><button class="btn ghost" type="button" data-pd="anotar-fechar">Cancelar</button></div></form>`;
+}
+async function salvarAnotacao(f){
+  const ref = pd.anotar, atual = pd.rel?.[ref] || {}, texto = f.elements.texto.value.trim(), retornar = f.elements.retornar.value;
+  if (!texto && retornar === (atual.retornar_em || '')) { pd.anotar = null; pdApp.render(true); return; }
+  const notas = texto ? [{ em:new Date().toISOString(), texto:texto.slice(0, 500) }, ...(atual.notas || [])].slice(0, 200) : (atual.notas || []);
+  pd.salvando = true; pdApp.render(true);
+  try { await conta.nuvem.salvarRelacionamento(ref, { notas, retornar_em:retornar || null }); pd.rel = { ...(pd.rel || {}), [ref]:{ ref, notas, retornar_em:retornar || null } }; pd.anotar = null; pdApp.toast(retornar ? `Anotado. Retorno em ${new Date(retornar + 'T12:00:00').toLocaleDateString('pt-BR')}` : 'Anotado'); }
+  catch (e) { pdApp.toast(e.message, 'info'); }
+  pd.salvando = false; pdApp.render(true);
 }
 
 const FORMA_PD = { pix:'Pix', credit_card:'Cartão' };
@@ -6210,6 +6395,10 @@ function ligarPainelDono(r, t){
     else if (a === 'gratis-fechar') { pd.gratis = null; pdApp.render(true); }
     else if (a === 'excluir') { pd.excluir = c; pd.gratis = null; pdApp.render(true); document.querySelector('#pd-x [name=motivo]')?.focus(); }
     else if (a === 'excluir-fechar') { pd.excluir = null; pdApp.render(true); }
+    else if (a === 'filtro') { pd.filtro = b.dataset.k; pdApp.render(true); }
+    else if (a === 'anotar') { pd.anotar = b.dataset.ref; if (b.dataset.ir) { pd.aba = 'relacionamento'; pd.filtro = 'todos'; pd.buscaR = ''; } pdApp.render(true);
+      const f = document.getElementById('pd-anot'); f?.scrollIntoView({ block:'center' }); f?.elements.texto.focus(); }
+    else if (a === 'anotar-fechar') { pd.anotar = null; pdApp.render(true); }
     else if (a === 'tirar') pdFaz(() => conta.nuvem.darGratis(c, null, '', true), `Acesso grátis de ${nome()} retirado`);
     else if (a === 'teste') { pd.testando = true; pdApp.render(true); pagarConta(situacaoConta()?.plano.k || 'profissional', 'mensal', true).then(e => { if (e) { pd.testando = false; pdApp.render(true); pdApp.toast(e, 'info'); } }); }
     else if (a === 'mais7') pdFaz(() => conta.nuvem.estenderTeste(c, 7), `${nome()} ganhou mais 7 dias de teste`);
@@ -6219,9 +6408,12 @@ function ligarPainelDono(r, t){
     if (t.dataset.pd === 'plano') pdFaz(() => conta.nuvem.mudarPlano(t.dataset.c, t.value), `Pacote trocado para ${planoDe(t.value).nome}`);
     if (t.dataset.pd === 'situ') pdFaz(() => conta.nuvem.mudarInteressado(t.dataset.i, t.value), 'Situação salva');
   });
-  document.addEventListener('input', ev => { if (ev.target.dataset?.pd === 'busca') { pd.busca = ev.target.value; pdApp.render(true); const i = document.querySelector('.pd-busca'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } });
+  document.addEventListener('input', ev => { const k = ev.target.dataset?.pd; if (k !== 'busca' && k !== 'busca-r') return;
+    if (k === 'busca') pd.busca = ev.target.value; else pd.buscaR = ev.target.value;
+    pdApp.render(true); const i = document.querySelector(`[data-pd="${k}"]`); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } });
   document.addEventListener('submit', ev => {
     if (ev.target.id === 'pd-x') { ev.preventDefault(); excluirPd(ev.target); return; }
+    if (ev.target.id === 'pd-anot') { ev.preventDefault(); if (!pd.salvando) salvarAnotacao(ev.target); return; }
     if (ev.target.id !== 'pd-g') return; ev.preventDefault();
     const f = ev.target, prazo = f.elements.prazo.value, c = pd.gratis, nome = pd.lista?.find(x => x.id === c)?.nome || '';
     const ate = prazo === 'sempre' ? null : new Date(Date.now() + Number(prazo) * 864e5).toISOString();

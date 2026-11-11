@@ -33,7 +33,7 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
     if (u.pathname.startsWith('/rest/v1/rpc/') && ['painel_dono', 'dar_gratis', 'mudar_plano', 'estender_teste'].includes(u.pathname.slice(13))) {
       if (!dono()) return resp(400, { code:'P0001', message:'sem_acesso' });
       const f = u.pathname.slice(13), c = S.clinicas.find(x => x.id === corpo.p_clinica);
-      if (f === 'painel_dono') return resp(200, S.clinicas.map(c => ({ id:c.id, nome:c.nome, cidade:c.cidade, uf:c.uf, criado_em:'2026-11-06T12:00:00Z', email_dono:c.criado_por || '', ...c.assin, pessoas:c.membros.length, pessoas_ativas:c.membros.length, pacientes:(S.dados[c.id]?.doc.patients || []).length, ultimo_uso:'2026-11-06T12:00:00Z' })));
+      if (f === 'painel_dono') return resp(200, S.clinicas.map(c => ({ id:c.id, nome:c.nome, cidade:c.cidade, uf:c.uf, criado_em:'2026-11-06T12:00:00Z', email_dono:c.criado_por || '', ...c.assin, pessoas:c.membros.length, pessoas_ativas:c.membros.length, pacientes:(S.dados[c.id]?.doc.patients || []).length, ultimo_uso:c.ultimo_uso || new Date().toISOString(), whats:c.whats || '' })));
       if (f === 'dar_gratis') Object.assign(c.assin, { gratis_sempre:!corpo.p_tirar && !corpo.p_ate, gratis_ate:corpo.p_tirar ? null : corpo.p_ate, gratis_motivo:corpo.p_tirar ? '' : corpo.p_motivo });
       if (f === 'mudar_plano') c.assin.plano = corpo.p_plano;
       if (f === 'estender_teste') c.assin.teste_ate = new Date(Math.max(Date.now(), new Date(c.assin.teste_ate).getTime()) + corpo.p_dias * 864e5).toISOString();
@@ -49,6 +49,13 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       if (['ativa', 'pausada', 'pendente'].includes(c.assin?.cartao_situacao)) return resp(400, { code:'P0001', message:'cartao_ativo' });
       (S.excluidas ||= []).unshift({ id:S.excluidas.length + 1, clinica_id:c.id, nome:c.nome, cidade:c.cidade, uf:c.uf, email_dono:c.criado_por || '', plano:c.assin?.plano || '', pago_total:(S.pagamentos || []).filter(g => g.clinica_id === c.id && g.situacao === 'pago').reduce((t, g) => t + g.valor, 0), motivo:corpo.p_motivo || '', excluida_em:new Date().toISOString() });
       S.clinicas.splice(S.clinicas.indexOf(c), 1); delete S.dados[c.id]; return resp(204);
+    }
+    // Relacionamento do Painel do MUSUBI (010): S.semRel = servidor sem o 010.
+    if (u.pathname === '/rest/v1/relacionamento_musubi') {
+      if (S.semRel) return resp(404, { code:'PGRST205', message:'Could not find the table' });
+      S.rel ||= {}; if (!dono()) return op.method === 'GET' ? resp(200, []) : resp(403, { code:'42501', message:'permission denied' });
+      if (op.method === 'POST') { S.rel[corpo.ref] = { ...corpo }; return resp(201); }
+      return resp(200, Object.values(S.rel));
     }
     if (u.pathname === '/rest/v1/clinicas_excluidas') return S.semExcluir ? resp(404, { code:'PGRST205', message:'Could not find the table' }) : resp(200, dono() ? S.excluidas || [] : []);
     if (u.pathname === '/rest/v1/interessados' && op.method === 'GET') return resp(200, dono() ? S.interessados.map((x, i) => ({ id:x.id || 'i' + i, situacao:'novo', criado_em:'2026-11-06T12:00:00Z', ...x })) : []);

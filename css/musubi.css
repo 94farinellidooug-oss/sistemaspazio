@@ -1406,3 +1406,23 @@ body.com-acesso{overflow:hidden}
 .cf-cartao .field{margin-top:6px;max-width:360px}
 .cf-aviso{color:var(--warn);font-weight:500}
 .cf-cartao .cf-conf{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* Painel do MUSUBI: hoje, gestão e relacionamento */
+.pd-tabs{flex-wrap:wrap;row-gap:2px}
+.pd-n.pd-n4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pd-n.pd-n4 small + b + small{margin-top:2px}
+@media (max-width:900px){ .pd-n.pd-n4{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.pd-g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:6px}
+.pd-g2 h3{font-size:.92rem;margin:0 0 6px}
+@media (max-width:700px){ .pd-g2{grid-template-columns:minmax(0,1fr)} }
+.pd-t,.pd-r{flex-wrap:wrap}
+.pd-t .grow,.pd-r .grow{flex-basis:calc(100% - 50px);min-width:0}
+.pd-t .grow > b,.pd-t .grow > small,.pd-r .grow > small{display:block}
+.pd-t.n1{background:var(--accent-soft);border-radius:var(--r-sm)}
+#pd-dicas{margin-top:16px}
+.pd-dicas{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+.pd-dicas li{display:grid;gap:2px;font-size:.88rem}
+.pd-chips{margin:0 0 12px}
+.pd-r .pill{font-size:.7rem;vertical-align:middle}
+.pd-nota{display:flex;gap:6px;align-items:flex-start;font-size:.82rem;margin-top:2px;overflow-wrap:anywhere}
+.pd-notas{margin:4px 0 10px;padding-left:18px;font-size:.84rem;display:grid;gap:4px;overflow-wrap:anywhere}
+.pd-anot textarea{width:100%}

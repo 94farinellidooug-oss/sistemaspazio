@@ -294,4 +294,20 @@ select pg_temp.como('00000000-0000-0000-0000-00000000000d');
 set role authenticated;
 select pg_temp.checar((select count(*) from clinicas_excluidas) = 0, 'quem não é dono não vê as clínicas excluídas');
 reset role;
+-- Relacionamento do Painel do MUSUBI (010_relacionamento.sql): só o dono lê e grava
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+insert into relacionamento_musubi (ref, notas, retornar_em) values ('i:abc', '[{"texto":"Ligar sexta"}]', current_date + 3);
+update relacionamento_musubi set retornar_em = current_date + 3 where ref = 'i:abc';
+select pg_temp.checar((select jsonb_array_length(notas) = 1 and retornar_em = current_date + 3 from relacionamento_musubi where ref = 'i:abc'), 'o dono anota o contato e quando retornar');
+select pg_temp.checar((select whats from public.painel_dono() where id = :'c1') is not null, 'painel traz o WhatsApp da clínica');
+do $$ begin insert into relacionamento_musubi (ref) values ('z:1'); raise exception 'FALHA: aceitou ref inválida';
+exception when check_violation then raise notice 'ok    referência de contato inválida é recusada'; end $$;
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+set role authenticated;
+select pg_temp.checar((select count(*) from relacionamento_musubi) = 0, 'quem não é dono não vê o relacionamento');
+do $$ begin insert into relacionamento_musubi (ref) values ('i:x'); raise exception 'FALHA: não dono gravou';
+exception when insufficient_privilege then raise notice 'ok    quem não é dono não grava no relacionamento'; end $$;
+reset role;
 \echo 'Todas as regras do banco passaram.'
