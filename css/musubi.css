@@ -1204,6 +1204,8 @@ body.com-acesso{overflow:hidden}
 .acesso-opc{display:grid;gap:8px}
 .acesso-opc p{margin:0;font-size:.88rem}
 .acesso-opc label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line-2);border-radius:var(--r-sm);cursor:pointer}
+.aceite-c{display:flex;gap:10px;align-items:flex-start;font-size:.86rem;line-height:1.4;margin:10px 0;cursor:pointer}
+.aceite-c input{margin-top:2px;width:18px;height:18px;flex:none;accent-color:var(--accent)}
 .acesso-opc label.on{border-color:var(--accent);background:var(--accent-soft)}
 .acesso-opc input{margin-top:3px;accent-color:var(--accent)}
 .acesso-opc small{display:block;color:var(--muted);font-size:.82rem;margin-top:2px}

@@ -26,9 +26,16 @@ export const DIAS_TESTE = 7;
 // A função nfse do servidor tem a mesma tabela e é ela que barra.
 export const LIMITE_NOTAS = { essencial:30, profissional:100, clinica:300 };
 // Pagamento pela InfinitePay (Pix ou cartão): mensal, ou anual com 2 meses grátis (paga 10 meses).
-export const PERIODOS_PAG = [['mensal', 'Mensal'], ['anual', 'Anual']];
-export const valorPeriodo = (p, periodo) => p.preco * (periodo === 'anual' ? 10 : 1);
-export const precoPeriodoTxt = (p, periodo) => `R$ ${valorPeriodo(p, periodo).toLocaleString('pt-BR')}${periodo === 'anual' ? '/ano' : '/mês'}`;
+// Três formas (decisão do Maicon em 11/11/2026): mensal sem fidelidade; anual com pagamento mensal (12 meses de
+// compromisso, 15% de desconto, só no cartão pelo Mercado Pago; quem cancela antes devolve o desconto recebido);
+// anual à vista (10 mensalidades).
+export const PERIODOS_PAG = [['mensal', 'Mensal'], ['anual12', 'Anual com pagamento mensal'], ['anual', 'Anual à vista']];
+export const DESCONTO_FIDELIDADE = 0.15;
+export const precoFidelidade = p => Math.round(p.preco * (1 - DESCONTO_FIDELIDADE));
+export const valorPeriodo = (p, periodo) => periodo === 'anual12' ? precoFidelidade(p) : p.preco * (periodo === 'anual' ? 10 : 1);
+export const precoPeriodoTxt = (p, periodo) => `R$ ${valorPeriodo(p, periodo).toLocaleString('pt-BR')}${periodo === 'anual' ? '/ano' : periodo === 'anual12' ? '/mês por 12 meses' : '/mês'}`;
+// Contrato de assinatura (inicio/contrato.html): a versão aceita fica registrada no servidor.
+export const CONTRATO_VERSAO = '2026-11-11';
 
 const DIA = 86400000;
 // Situação da assinatura: {tipo:'gratis'|'pago'|'teste'|'vencido', dias (que faltam), ate (iso), sempre}.

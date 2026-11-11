@@ -35,7 +35,7 @@ let p = await abrir({ viewport:{ width:1366, height:900 }, colorScheme:'light' }
 ok(!(await p.locator('.faixa').count()), 'sem a faixa de prévia');
 ok((await logoVisivel(p)).join() === 'MUSUBI_logo_colorido.svg', 'tema claro: logo colorido');
 ok(await carregou(p), 'logos e telas carregam');
-ok(await p.locator('#mods .mod').count() === 9 && await p.locator('#spots .spot').count() === 3 && await p.locator('#faq details').count() === 6, 'recursos, destaques e perguntas');
+ok(await p.locator('#mods .mod').count() === 9 && await p.locator('#spots .spot').count() === 3 && await p.locator('#faq details').count() === 7, 'recursos, destaques e perguntas');
 ok(await p.locator('#quem .sobre', { hasText:'Por trás do MUSUBI' }).count() === 1 && await p.locator('#quem', { hasText:'idealizado pelo Biomédico e Acupunturista Maicon Farinelli' }).count() === 1, 'seção Por trás do MUSUBI com o texto do Maicon');
 ok(await p.locator('#planos-l .plano').count() === 3 && await p.locator('#planos-l', { hasText:'R$ 79' }).count() && await p.locator('#planos-l', { hasText:'R$ 149' }).count() && await p.locator('#planos-l', { hasText:'a partir de R$ 299' }).count(), 'três pacotes com os valores');
 await p.click('[data-a="tema"]');

@@ -71,15 +71,20 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(await tem(A, '#acesso h1', 'O teste grátis terminou') && await A.isChecked('#acesso [name=plano][value=essencial]') && await A.isChecked('#acesso [name=periodo][value=mensal]') && await tem(A, '#acesso [name=periodo][value=anual] ~ span', 'R$ 790/ano'), `${rot}: teste terminado pede para pagar, com o pacote escolhido, mensal ou anual`);
   // Pagamento online ainda não ligado: cai no contato pelo WhatsApp
   await clicar(A, '#acesso [type=submit]'); await A.waitForTimeout(200);
+  ok(await tem(A, '#acesso .erro-a', 'Contrato de assinatura') && await tem(A, '#acesso .aceite-c a[href="inicio/contrato.html"]') && await tem(A, '#acesso h1', 'O teste grátis terminou'), `${rot}: sem marcar o aceite do contrato não segue (com o link do contrato)`);
+  await A.check('#acesso [name=aceite]'); await A.waitForTimeout(100);
+  await clicar(A, '#acesso [type=submit]'); await A.waitForTimeout(200);
   ok(await tem(A, '#acesso h1', 'Falar com a equipe') && await tem(A, '#acesso', 'ainda não está disponível'), `${rot}: sem pagamento online, oferece o contato da equipe`);
   await A.fill('#acesso [name=whats]', '(53) 99876-5432'); await clicar(A, '#acesso [type=submit]'); await A.waitForTimeout(150);
   ok(S.interessados.some(i => i.whats === '(53) 99876-5432' && i.nome.includes('Clínica Sol') && i.nome.includes('Essencial')) && await tem(A, '#acesso h1', 'Pedido enviado') && S.dados[cA.id], `${rot}: pedido de continuar vai para os interessados; dados guardados`);
   // Pagamento ligado: anual pelo link da InfinitePay
   S.cobranca = true; await A.reload(); await A.waitForTimeout(300);
-  await A.check('#acesso [name=periodo][value=anual]'); await A.waitForTimeout(100);
+  await A.check('#acesso [name=periodo][value=anual12]'); await A.waitForTimeout(100);
+  ok(await tem(A, '#acesso [name=periodo][value=anual12] ~ span', 'R$ 67/mês por 12 meses') && !(await tem(A, '#acesso [type=submit]')) && await tem(A, '#acesso [data-ac=assinar-cartao].pri'), `${rot}: anual com pagamento mensal (R$ 67) só no cartão: o Pix some`);
+  await A.check('#acesso [name=periodo][value=anual]'); await A.check('#acesso [name=aceite]'); await A.waitForTimeout(100);
   await Promise.all([A.waitForURL(/checkout\.infinitepay\.io/), clicar(A, '#acesso [type=submit]')]);
   const g = S.pagamentos[0];
-  ok(g?.plano === 'essencial' && g.periodo === 'anual' && g.valor === 79000 && g.clinica_id === cA.id, `${rot}: abre o link da InfinitePay com o pacote e o período`);
+  ok(g?.plano === 'essencial' && g.periodo === 'anual' && g.valor === 79000 && g.clinica_id === cA.id && S.aceites.at(-1).aceite === '2026-11-11', `${rot}: abre o link da InfinitePay com o pacote e o período`);
   await A.goto(BASE + url + `?receipt_url=https%3A%2F%2Frecibo%2F1&order_nsu=${g.order_nsu}&slug=abc&capture_method=pix&transaction_nsu=tx1`); await A.waitForTimeout(500);
   ok(await A.locator('#acesso').isHidden() && await tem(A, '#toast', 'Pagamento confirmado') && !A.url().includes('order_nsu'), `${rot}: na volta, o pagamento é conferido e o sistema abre`);
   ok(cA.assin.pago_ate && new Date(cA.assin.pago_ate) > Date.now() + 360 * 864e5 && !(await tem(A, '.selo-teste')), `${rot}: anual libera o acesso por 1 ano`);
@@ -87,6 +92,9 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(await tem(A, '#cf-pagar h3', 'Renovar') && await tem(A, '#cf-pagar .cf-pags', 'Pago') && await tem(A, '#cf-pagar .cf-pags a', 'Recibo'), `${rot}: Minha conta mostra o pagamento, o recibo e a opção de renovar`);
   await A.selectOption('#cf-pagar [data-cf=pag-plano]', 'profissional'); await A.waitForTimeout(100);
   ok(await tem(A, '#cf-pagar [data-cf=pag-periodo] option', 'R$ 149/mês'), `${rot}: trocar o pacote mostra o preço dele`);
+  await clicar(A, '[data-cf=pagar]');
+  ok(await tem(A, '#cf-pag-erro:not([hidden])', 'Contrato de assinatura') && !A.url().includes('infinitepay'), `${rot}: renovar sem marcar o aceite não segue`);
+  await A.check('#cf-pagar [data-cf=aceite]');
   await Promise.all([A.waitForURL(/checkout\.infinitepay\.io/), clicar(A, '[data-cf=pagar]')]);
   ok(S.pagamentos[0].plano === 'profissional' && S.pagamentos[0].periodo === 'mensal', `${rot}: renovar pela Minha conta abre o link`);
   cA.assin.pago_ate = null;

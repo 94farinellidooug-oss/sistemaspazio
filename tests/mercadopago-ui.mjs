@@ -43,11 +43,16 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(await tem(M, '#cf-pagar [data-cf=pagar]', 'Pagar uma vez') && await tem(M, '#cf-cartao [data-cf=cartao-assinar]', 'Assinar no cartão') && await M.inputValue('#cf-cartao [data-cf=cartao-email]') === 'maicon@x.com', `${rot}: Sua conta oferece pagar uma vez (InfinitePay) e assinar no cartão (Mercado Pago), com o e-mail do login`);
   // Servidor ainda com a função antiga
   await clicar(M, '[data-cf=cartao-assinar]');
+  ok(await tem(M, '#cf-pag-erro:not([hidden])', 'Contrato de assinatura') && await tem(M, '#cf-pagar .aceite-c a[href="inicio/contrato.html"]'), `${rot}: sem marcar o aceite do contrato não assina`);
+  await M.check('#cf-pagar [data-cf=aceite]');
+  await clicar(M, '[data-cf=cartao-assinar]');
   ok(await tem(M, '#cf-pag-erro:not([hidden])', 'falta atualizar a função cobranca'), `${rot}: função antiga no servidor: explica o que falta`);
   // Assinar
   S.mp = {};
   await M.fill('#cf-cartao [data-cf=cartao-email]', 'x'); await clicar(M, '[data-cf=cartao-assinar]');
   ok(await tem(M, '#cf-pag-erro:not([hidden])', 'e-mail da sua conta no Mercado Pago') && !S.mp.assinados, `${rot}: e-mail inválido não segue`);
+  await M.selectOption('[data-cf=pag-periodo]', 'anual12'); await M.waitForTimeout(150);
+  ok(!(await tem(M, '#cf-pagar [data-cf=pagar]')) && await tem(M, '#cf-cartao', 'R$ 127/mês por 12 meses') && await M.isChecked('#cf-pagar [data-cf=aceite]'), `${rot}: anual com pagamento mensal: R$ 127 só no cartão, sem o Pagar uma vez`);
   await M.selectOption('[data-cf=pag-periodo]', 'anual'); await M.waitForTimeout(150);
   await M.fill('#cf-cartao [data-cf=cartao-email]', 'maicon@mp.com'); await clicar(M, '[data-cf=cartao-assinar]'); await M.waitForTimeout(500);
   ok(M.url().startsWith('https://www.mercadopago.com.br/subscriptions/checkout') && S.mp.assinados[0].email === 'maicon@mp.com' && S.mp.assinados[0].periodo === 'anual' && S.mp.assinados[0].plano === 'profissional', `${rot}: assinar abre o Mercado Pago com o pacote, o período e o e-mail`);
@@ -62,6 +67,17 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(await tem(M, '#cf-cartao', 'O período pago continua'), `${rot}: cancelar pede confirmação`);
   await clicar(M, '[data-cf=cartao-cancelar-sim]'); await M.waitForTimeout(300);
   ok(S.mp.estado.situacao === 'cancelada' && await tem(M, '#cf-cartao [data-cf=cartao-assinar]'), `${rot}: cancelada, volta a oferecer assinar`);
+  // Anual com pagamento mensal antes dos 12 meses: cancelar mostra a multa justa e só cancela confirmando.
+  const ate = new Date(Date.now() + 300 * 864e5).toISOString();
+  S.mp.estado = { situacao:'ativa', plano:'profissional', periodo:'anual12', valor:12700, email:'maicon@mp.com', proxima:new Date(Date.now() + 20 * 864e5).toISOString(), compromisso:ate };
+  S.mp.multa = { multa:4400, meses:2, compromisso:ate };
+  await M.goto(BASE + url); await M.waitForTimeout(900); await abrirConta(M);
+  ok(await tem(M, '#cf-cartao.on', 'anual com pagamento mensal') && await tem(M, '#cf-cartao', `Compromisso de 12 meses até ${new Date(ate).toLocaleDateString('pt-BR')}`), `${rot}: ativa no anual mostra o compromisso de 12 meses`);
+  await clicar(M, '[data-cf=cartao-cancelar]'); await clicar(M, '[data-cf=cartao-cancelar-sim]'); await M.waitForTimeout(300);
+  ok(S.mp.estado.situacao === 'ativa' && await tem(M, '#cf-cartao', 'multa de R$') && await tem(M, '#cf-cartao', '44,00') && await tem(M, '#cf-cartao', '2 meses'), `${rot}: cancelar antes dos 12 meses mostra a multa (desconto de 2 meses) e não cancela ainda`);
+  await clicar(M, '[data-cf=cartao-cancelar-multa]'); await M.waitForTimeout(300);
+  ok(S.mp.estado.situacao === 'cancelada' && await tem(M, '#cf-cartao [data-cf=cartao-assinar]'), `${rot}: confirmando a multa, cancela`);
+  S.mp.multa = null;
   // Ao entrar com a cobrança perto, o aviso aparece
   S.mp.estado = { ...S.mp.estado, situacao:'ativa', proxima:new Date(Date.now() + 6 * 864e5).toISOString() };
   await M.goto(BASE + url); await M.waitForTimeout(900);
@@ -71,6 +87,9 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   S.mp.estado = { situacao:'' }; const antes = S.mp.assinados.length;
   await M.goto(BASE + url); await M.waitForTimeout(900);
   ok(await tem(M, '#acesso [data-ac=assinar-cartao]', 'Assinar no cartão'), `${rot}: teste terminado: a tela de pagamento oferece a assinatura no cartão`);
+  await clicar(M, '#acesso [data-ac=assinar-cartao]'); await M.waitForTimeout(200);
+  ok(await tem(M, '#acesso .erro-a', 'Contrato de assinatura') && S.mp.assinados.length === antes, `${rot}: tela de pagamento: sem o aceite não assina`);
+  await M.check('#acesso [name=aceite]'); await M.waitForTimeout(100);
   await clicar(M, '#acesso [data-ac=assinar-cartao]'); await M.waitForTimeout(500);
   ok(M.url().startsWith('https://www.mercadopago.com.br/') && S.mp.assinados.length === antes + 1 && S.mp.assinados.at(-1).email === 'maicon@x.com', `${rot}: assinar na tela de pagamento abre o Mercado Pago com o e-mail do login`);
   Object.assign(S.clinicas[0].assin, { pago_ate:new Date(Date.now() + 30 * 864e5).toISOString() });

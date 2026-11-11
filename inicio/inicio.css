@@ -243,6 +243,7 @@ p{margin:0}
 .plano-preco{display:flex;align-items:baseline;gap:4px}
 .plano-preco b{font-size:1.9rem;letter-spacing:-.02em}
 .plano-preco small{color:var(--suave)}
+.plano-anual{margin:-4px 0 0;font-size:.86rem;font-weight:600;color:var(--suave)}
 .plano .garantias{flex:1;margin:4px 0 8px}
 .plano-selo{position:absolute;top:-13px;left:24px;background:var(--ouro);color:#2a1f08;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px}
 @media (max-width:900px){ .planos{grid-template-columns:minmax(0,1fr);max-width:480px;margin-inline:auto} }

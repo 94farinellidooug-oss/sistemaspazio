@@ -2,7 +2,7 @@
 // "Entrar" usa a conta do servidor e abre o sistema; "Solicitar demonstração" vai para os Interessados do Painel do MUSUBI;
 // "Começar 7 dias grátis" abre a criação de conta já com o pacote escolhido.
 import { ICONES } from '../js/componentes/icones.js';
-import { PLANOS, precoTxt, DIAS_TESTE } from '../js/dados/planos.js';
+import { PLANOS, precoTxt, precoFidelidade, DIAS_TESTE } from '../js/dados/planos.js';
 import { criarNuvem, KEY_SESSAO } from '../js/dados/nuvem.js';
 
 const ic = n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[n] || ''}</svg>`;
@@ -48,6 +48,7 @@ const PERGUNTAS = [
   ['É possível usar com uma equipe?', 'Sim. Cada profissional tem o seu próprio acesso, e todos os registros identificam o autor, a data e a hora.'],
   ['O sistema faz diagnóstico?', 'Não. As hipóteses e sugestões apoiam o raciocínio clínico; a decisão é sempre do profissional.'],
   ['O sistema emite nota fiscal?', 'Sim. A nota fiscal de serviço (NFS-e) sai direto do financeiro, pelo padrão nacional da Receita, com o certificado digital da própria clínica e sem intermediário. Cada pacote tem um limite de notas por mês.'],
+  ['Quais são as formas de assinatura?', 'Mensal, sem fidelidade; anual com pagamento mensal no cartão, com 15% de desconto e compromisso de 12 meses; ou anual à vista, que equivale a 10 mensalidades. As regras estão no <a href="contrato.html">Contrato de assinatura</a>.'],
   ['Como agendar uma demonstração?', 'Preencha o formulário acima com seu nome e WhatsApp. Nossa equipe entrará em contato para apresentar o sistema.']
 ];
 
@@ -67,7 +68,7 @@ function montar(){
   $('#spots').innerHTML = DESTAQUES.map(([im, s, t, d, L], n) => `<div class="spot ${n % 2 ? 'inv' : ''}"><div class="spot-txt"><span class="sobre">${s}</span><h2>${t}</h2><p>${d}</p><ul class="garantias col">${L.map(x => `<li>${ic('check')}${x}</li>`).join('')}</ul></div>
     <div class="janela"><div class="janela-b"><i></i><i></i><i></i></div><img src="${img(im)}" alt="Tela de ${s.toLowerCase()} do MUSUBI" width="1366" height="860"></div></div>`).join('');
   $('#planos-l').innerHTML = PLANOS.map(p => `<article class="plano ${p.destaque ? 'dest' : ''}">${p.destaque ? '<span class="plano-selo">Recomendado</span>' : ''}<h3>${p.nome}</h3>
-    <p class="plano-preco"><b>${precoTxt(p).replace('/mês', '')}</b><small>/mês</small></p><p class="muted">${p.resumo}</p>
+    <p class="plano-preco"><b>${precoTxt(p).replace('/mês', '')}</b><small>/mês</small></p><p class="plano-anual">ou R$ ${precoFidelidade(p)}/mês no plano anual</p><p class="muted">${p.resumo}</p>
     <ul class="garantias col">${p.itens.map(x => `<li>${ic('check')}${x}</li>`).join('')}</ul>
     <button class="btn ${p.destaque ? 'ouro' : 'linha'} largo" data-a="plano" data-k="${p.k}">Experimentar ${DIAS_TESTE} dias grátis</button></article>`).join('');
   $('#faq').innerHTML = PERGUNTAS.map(([q, r]) => `<details><summary>${q}${ic('baixo')}</summary><p>${r}</p></details>`).join('');
