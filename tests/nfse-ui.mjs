@@ -109,6 +109,17 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await clicar(M, '#f-recs [data-nf=imprimir] >> nth=0');
   ok(await M.evaluate(() => window.__imprimiu) === 1 && await tem(M, '#imp', 'SEM VALOR FISCAL') && await tem(M, '#imp', S.nfse.notas[0].chave) && await tem(M, '#imp', 'Sessão de acupuntura'), `${rot}: imprimir a nota traz chave, descrição e o aviso de teste`);
 
+  // Cancelar a nota (administrador): motivo, explicação, recusa por prazo e cancelada
+  await clicar(M, '#f-recs [data-nf=cancelar] >> nth=0');
+  ok(await tem(M, '#f-nf-canc', 'Cancelar a nota 1') && await tem(M, '#f-nf-canc', 'não pode ser desfeito'), `${rot}: cancelar abre a janela com o aviso`);
+  await M.fill('#nf-canc-desc', 'errado'); await clicar(M, '#f-nf-canc button.crit');
+  ok(await tem(M, '#nf-canc-erro:not([hidden])', '15 letras') && S.nfse.notas[0].situacao === 'emitida', `${rot}: sem explicar o motivo não cancela`);
+  S.nfse.modo = 'prazo'; await M.selectOption('#f-nf-canc [name=motivo]', '2'); await M.fill('#nf-canc-desc', 'Paciente não compareceu à sessão'); await clicar(M, '#f-nf-canc button.crit'); await M.waitForTimeout(250);
+  ok(await tem(M, '#nf-canc-erro:not([hidden])', 'E0840') && await M.inputValue('#nf-canc-desc') === 'Paciente não compareceu à sessão' && S.nfse.notas[0].situacao === 'emitida', `${rot}: a Receita recusa: explica e mantém o que foi escrito`);
+  S.nfse.modo = 'ok'; await clicar(M, '#f-nf-canc button.crit'); await M.waitForTimeout(250);
+  const pc = S.nfse.pedidos.at(-1);
+  ok(!(await tem(M, '#f-nf-canc')) && S.nfse.notas[0].situacao === 'cancelada' && pc.acao === 'cancelar' && pc.motivo === '2' && await tem(M, '#f-recs .nf-canc', 'NFS-e 1 cancelada') && await tem(M, '.toast, #toast', 'Nota 1 cancelada'), `${rot}: cancelada: o recebimento mostra a nota cancelada e permite emitir outra`);
+
   // Recusa e sem resposta
   await atender(M); await ir(M, 'financeiro'); await receber(M);
   S.nfse.modo = 'recusa';
@@ -117,9 +128,9 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   S.nfse.modo = 'cair'; await clicar(M, '#f-nfse button.pri'); await M.waitForTimeout(250);
   ok(!(await tem(M, '#f-nfse')) && await tem(M, '#f-recs [data-nf=conferir]', 'Conferir nota'), `${rot}: sem resposta da Receita, o recebimento mostra "Conferir nota"`);
   S.nfse.modo = 'ok'; await clicar(M, '#f-recs [data-nf=conferir]'); await M.waitForTimeout(250);
-  ok(!(await tem(M, '#f-recs [data-nf=conferir]')) && await M.locator('#f-recs .nf-n').count() === 2, `${rot}: "Conferir" acha a nota e mostra o número`);
+  ok(!(await tem(M, '#f-recs [data-nf=conferir]')) && await M.locator('#f-recs .nf-n').count() === 1, `${rot}: "Conferir" acha a nota e mostra o número`);
   await M.waitForTimeout(2500); await M.reload(); await M.waitForTimeout(600); await ir(M, 'financeiro');
-  ok(await M.locator('#f-recs .nf-n').count() === 2 && await tem(M, '#f-nota', 'emitidas neste mês'), `${rot}: as notas ficam guardadas ao recarregar`);
+  ok(await M.locator('#f-recs .nf-n').count() === 1 && await tem(M, '#f-recs .nf-canc', 'NFS-e 1 cancelada') && await tem(M, '#f-nota', 'emitida neste mês'), `${rot}: as notas (e a cancelada) ficam guardadas ao recarregar`);
 
   // Celular
   await M.setViewportSize({ width:390, height:844 }); await M.waitForTimeout(150);
@@ -137,6 +148,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await entrar(R, 'rec@x.com', 'segredo123'); await R.waitForTimeout(300);
   await ir(R, 'financeiro'); await R.waitForTimeout(300);
   ok(await R.locator('#f-recs [data-nf=abrir]').count() >= 1 && !(await tem(R, '#f-nota [data-k=nota]')), `${rot}: a recepção emite a nota mas não abre a configuração`);
+  ok(await R.locator('#f-recs .nf-n').count() >= 1 && !(await tem(R, '#f-recs [data-nf=cancelar]')), `${rot}: a recepção não cancela nota`);
   await ir(R, 'configuracoes');
   ok(!(await tem(R, '[data-cf=aba][data-k=nota]')), `${rot}: Configurações da recepção não tem a aba Nota fiscal`);
   await M.context().close(); await R.context().close();

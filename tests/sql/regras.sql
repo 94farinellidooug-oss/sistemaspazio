@@ -310,4 +310,5 @@ select pg_temp.checar((select count(*) from relacionamento_musubi) = 0, 'quem n�
 do $$ begin insert into relacionamento_musubi (ref) values ('i:x'); raise exception 'FALHA: não dono gravou';
 exception when insufficient_privilege then raise notice 'ok    quem não é dono não grava no relacionamento'; end $$;
 reset role;
+select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'nfse_notas' and column_name in ('cancelada_em', 'cancelamento')) = 2, 'nota guarda quando e por que foi cancelada (011_nfse_cancelar.sql)');
 \echo 'Todas as regras do banco passaram.'

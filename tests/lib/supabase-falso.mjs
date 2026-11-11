@@ -162,6 +162,12 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
         return resp(200, nota);
       }
       if (corpo.acao === 'conferir_codigo') return resp(200, { ambiente:corpo.ambiente, municipio:corpo.municipio, convenio:{ ativo:true, mensagem:'' }, achados:N.complemento ? [{ complemento:N.complemento, codigo:corpo.codigo.replace(/^(\d{2})(\d{2})(\d{2})$/, '$1.$2.$3') + '.' + N.complemento, aliquota:2, incidencia:'SIM' }] : [], mensagem:'' });
+      if (corpo.acao === 'cancelar') { const n = N.notas.find(x => x.id === corpo.id);
+        if (m.perfil !== 'adm') return resp(403, { erro:'sem_acesso', msg:'Só o administrador da clínica cancela notas.' });
+        if (!n || n.situacao !== 'emitida') return resp(400, { erro:'situacao', msg:'Só dá para cancelar uma nota já emitida.' });
+        if (String(corpo.descricao || '').length < 15) return resp(400, { erro:'dados', msg:'Explique o motivo do cancelamento com 15 a 255 letras.' });
+        if (N.modo === 'prazo') return resp(422, { erro:'recusado', msg:'A Receita não cancelou: E0840 Prazo para cancelamento excedido. Se o prazo para cancelar já passou, o pedido precisa ser analisado pela prefeitura: faça pelo Emissor Nacional (nfse.gov.br).' });
+        Object.assign(n, { situacao:'cancelada', cancelamento:{ motivo:corpo.motivo, descricao:corpo.descricao } }); return resp(200, { id:n.id, situacao:'cancelada', canceladaEm:new Date().toISOString(), numero:n.numero }); }
       if (corpo.acao === 'conferir') { const n = N.notas.find(x => x.id === corpo.id); if (!n) return resp(404, { erro:'nao_achei', msg:'Nota não encontrada.' }); n.situacao = 'emitida'; return resp(200, n); }
       return resp(400, { erro:'acao', msg:'Pedido inválido.' });
     }
