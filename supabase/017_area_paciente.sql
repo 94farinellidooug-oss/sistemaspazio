@@ -4,7 +4,7 @@
 -- documentos escolhidos, evolução da dor e o resumo da avaliação. A avaliação completa, o pentagrama e as
 -- anotações clínicas nunca vão para cá.
 -- O sistema da clínica publica o conteúdo já pronto (publicar_area_paciente); o paciente só lê (ver_area_paciente).
--- Desligar o link apaga o conteúdo publicado. Cada abertura fica registrada (quando, IP e navegador) por 6 meses.
+-- Desligar o link apaga o conteúdo publicado; ligar de novo gera um link novo (o antigo não volta a abrir). Cada abertura fica registrada (quando, IP e navegador) por 6 meses.
 -- Rode no SQL Editor do Supabase depois do 016_teleconsulta.sql. Pode rodar de novo sem problema.
 
 create table if not exists public.areas_paciente (
@@ -28,7 +28,7 @@ revoke insert, update, delete, truncate on public.areas_paciente from anon, auth
 
 create table if not exists public.areas_paciente_acessos (
   id bigint generated always as identity primary key,
-  area_id uuid not null references public.areas_paciente(id) on delete cascade,
+  area_id uuid not null references public.areas_paciente(id) on delete cascade on update cascade,
   clinica_id uuid not null references public.clinicas(id) on delete cascade,
   em timestamptz not null default now(),
   ip text not null default '',
@@ -51,7 +51,8 @@ begin
   insert into areas_paciente as a (clinica_id, paciente_id, nascimento, conteudo, ativo, atualizado_por)
   values (p_clinica, p_paciente, p_nascimento, case when p_ativo then coalesce(p_conteudo, '{}'::jsonb) else '{}'::jsonb end, p_ativo, auth.uid())
   on conflict (clinica_id, paciente_id) do update
-    set nascimento = excluded.nascimento, conteudo = excluded.conteudo, ativo = excluded.ativo,
+    set id = case when excluded.ativo and not a.ativo then gen_random_uuid() else a.id end,   -- religar = link novo
+        nascimento = excluded.nascimento, conteudo = excluded.conteudo, ativo = excluded.ativo,
         atualizado_em = now(), atualizado_por = auth.uid(), tentativas = case when excluded.ativo then a.tentativas else 0 end
   returning a.id into v_id;
   return v_id;

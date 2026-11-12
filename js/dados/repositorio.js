@@ -25,7 +25,10 @@ aplicarConfig(db);
 // Depois de gravar no aparelho, avisa quem estiver ouvindo (a sincronia com o servidor, etapa 10).
 let ouvinteSalvar = null;
 export const ouvirSalvar = fn => { ouvinteSalvar = fn; };
-export const save = () => { gravar(KEY, JSON.stringify(db)); if(ouvinteSalvar) ouvinteSalvar(); };
+const tambemSalvar = new Set();
+// Outros interessados em cada salvamento (ex.: a área do paciente publica de novo o que mudou).
+export const tambemAoSalvar = fn => { tambemSalvar.add(fn); };
+export const save = () => { gravar(KEY, JSON.stringify(db)); if(ouvinteSalvar) ouvinteSalvar(); tambemSalvar.forEach(fn => { try { fn(); } catch (e) {} }); };
 // Troca todos os dados pelos que vieram do servidor (ou por uma clínica vazia), sem avisar a sincronia.
 export function trocarDados(doc){ db = hidratar(JSON.parse(JSON.stringify(doc))); aplicarConfig(db); gravar(KEY, JSON.stringify(db)); }
 export const dadosVazios = () => hidratar(migrarV1({ patients:[], appts:[] }, new Date().toISOString(), 'nova-clinica'));

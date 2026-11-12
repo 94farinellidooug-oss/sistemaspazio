@@ -24,7 +24,7 @@ ok(salvarMensagemWa(db, 'lembrete', 'Oi, {primeiro}! Até {quando} às {hora}.',
 ok(preencherWa(mensagemWa('lembrete', db.mensagensWa)[2], v) === `Oi, ${P.name.split(' ')[0]}! Até amanhã às 08:00.`, 'usa a mensagem salva');
 ok(salvarMensagemWa(db, 'xx', 'a', 'e', 'p') === null, 'mensagem desconhecida não salva');
 salvarMensagemWa(db, 'retomar', MENSAGENS_WA[1][2], 'e', 'p');
-ok(!db.mensagensWa.retomar && mensagensWa(db.mensagensWa).length === 5, 'salvar igual ao original não vira versão própria');
+ok(!db.mensagensWa.retomar && mensagensWa(db.mensagensWa).length === 6, 'salvar igual ao original não vira versão própria');
 ok(voltarMensagemWa(db, 'lembrete') && mensagemWa('lembrete', db.mensagensWa)[3] === 'original' && !voltarMensagemWa(db, 'lembrete'), 'voltar ao texto original');
 
 ok(registrarMensagem(P, { tipo:'xx', em:'e', por:'p' }) === null && !P.relacionamento, 'tipo desconhecido não registra e nada é criado');

@@ -1478,3 +1478,13 @@ body.com-acesso{overflow:hidden}
 @media (max-width:640px){ .vjan,.vjan.grande{left:8px;right:8px;bottom:8px;width:auto;height:min(70vh,520px)} .vjan-t small{display:none} }
 @media print{ .vjan{display:none} }
 .cep-s{display:flex;align-items:flex-end;padding-bottom:10px;min-width:0}
+
+/* Área do paciente (janela no prontuário) */
+.ar-aviso{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--warn,#b98a2e) 12%,transparent);margin:0 0 12px}
+.ar-aviso .ic{flex:none;margin-top:2px}.ar-aviso .btn{margin-top:6px}
+.ar-link{display:grid;gap:6px;margin-bottom:14px;padding:12px;border:1px solid var(--line);border-radius:12px}
+.ar-l{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ar-l input{flex:1 1 220px;min-width:0;font-size:.85rem}
+.ar-docs{display:flex;flex-wrap:wrap;gap:6px}
+.modal-p .grow{flex:1}
+@media (max-width:560px){.modal-p{flex-wrap:wrap}.modal-p .grow{display:none}}

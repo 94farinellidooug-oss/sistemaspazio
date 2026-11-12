@@ -13,11 +13,12 @@ export const MENSAGENS_WA = [
   ['lembrete', 'Lembrete de horário', 'Olá, {primeiro}! Passando para lembrar do seu horário de {servico} {quando}, às {hora}, na {clinica}. Pode confirmar por aqui?'],
   ['retomar', 'Retomar contato', 'Olá, {primeiro}! Tudo bem? Faz um tempinho desde o seu último atendimento. Quer agendar um horário para continuarmos o tratamento?'],
   ['teleconsulta', 'Consulta online', 'Olá, {primeiro}! Sua consulta online de {servico} é {quando}, às {hora}. No horário, entre por este link, pelo celular ou computador (não precisa instalar nada):\n\n{link}\n\nEscolha um lugar reservado e, se puder, use fones de ouvido.'],
+  ['area', 'Área do paciente', 'Olá, {primeiro}! Este é o seu acesso à Área do paciente da {clinica}, com as suas próximas consultas, orientações e documentos:\n\n{link}\n\nPara abrir, confirme a sua data de nascimento. O link é pessoal: não compartilhe.'],
   ['orientacoes', 'Orientações para casa', 'Olá, {primeiro}! Seguem as orientações do atendimento:\n\n{orientacoes}'],
   ['livre', 'Mensagem livre', 'Olá, {primeiro}! ']
 ];
 // Dados que o sistema preenche: [campo, rótulo do botão]
-export const CAMPOS_WA = [['primeiro','Primeiro nome'], ['servico','Serviço'], ['quando','Dia'], ['hora','Hora'], ['clinica','Clínica'], ['profissional','Profissional'], ['orientacoes','Orientações'], ['link','Link da consulta online']];
+export const CAMPOS_WA = [['primeiro','Primeiro nome'], ['servico','Serviço'], ['quando','Dia'], ['hora','Hora'], ['clinica','Clínica'], ['profissional','Profissional'], ['orientacoes','Orientações'], ['link','Link (consulta online ou área do paciente)']];
 
 // [chave, nome, texto, 'original' | 'editada']
 export const mensagensWa = (M = {}) => MENSAGENS_WA.map(([k, n, t]) => M[k] ? [k, n, M[k].texto, 'editada'] : [k, n, t, 'original']);

@@ -54,6 +54,17 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       }
       if (corpo.acao === 'entrar') { const t = S.teles.find(x => x.id === corpo.id); if (!t) return resp(404, { erro:'nao_encontrada', msg:'Consulta online não encontrada.' }); t.entradas = (t.entradas || 0) + 1; return resp(200, { url:'about:blank#sala-' + t.id }); }
     }
+    // Área do paciente (017_area_paciente.sql): o paciente lê sem login, com a data de nascimento.
+    S.areas ||= [];
+    if (u.pathname === '/rest/v1/rpc/ver_area_paciente') {
+      const a = S.areas.find(x => x.id === corpo.p_id);
+      if (!a || !a.ativo) return resp(200, { erro:'nao_encontrada' });
+      if (a.tentativas >= 5) return resp(200, { erro:'bloqueado' });
+      if (!corpo.p_nascimento) return resp(200, { ok:true, pedir:'nascimento' });
+      if (a.nascimento !== corpo.p_nascimento) { a.tentativas++; return resp(200, { erro:a.tentativas >= 5 ? 'bloqueado' : 'data', restam:Math.max(0, 5 - a.tentativas) }); }
+      a.tentativas = 0; (a.acessos ||= []).unshift({ em:new Date().toISOString() });
+      return resp(200, { ok:true, conteudo:a.conteudo, atualizado_em:a.atualizado_em });
+    }
     if (!eu) return resp(401, { code:'PGRST301', message:'JWT expired' });
     if (u.pathname === '/rest/v1/rpc/criar_clinica') { const id = 'c' + (++S.n); S.clinicas.push({ id, nome:corpo.p_nome, cidade:corpo.p_cidade, uf:corpo.p_uf, criado_por:eu.email, membros:[{ user:eu.id, perfil:'adm', ativo:true, email:eu.email, nome:eu.nome || '' }], assin:{ plano:corpo.p_plano || 'profissional', teste_ate:new Date(Date.now() + 7 * 864e5).toISOString(), gratis_ate:null, gratis_sempre:false, gratis_motivo:'', pago_ate:null } }); S.dados[id] = { doc:corpo.p_doc, versao:1 }; return resp(200, id); }
     const dono = () => (S.donos || []).includes(eu.id);
@@ -96,6 +107,15 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
     if (u.pathname === '/rest/v1/interessados' && op.method === 'PATCH') { const id = u.searchParams.get('id').replace('eq.', ''); S.interessados.forEach((x, i) => { if ((x.id || 'i' + i) === id && dono()) x.situacao = corpo.situacao; }); return resp(204); }
     const eu_m = c => S.clinicas.find(x => x.id === c)?.membros.find(m => m.user === eu.id && m.ativo !== false);
     const membro = c => !!eu_m(c), adm = c => eu_m(c)?.perfil === 'adm';
+    if (u.pathname === '/rest/v1/rpc/publicar_area_paciente') {
+      if (!membro(corpo.p_clinica)) return resp(400, { code:'P0001', message:'sem_acesso' });
+      let a = S.areas.find(x => x.clinica_id === corpo.p_clinica && x.paciente_id === corpo.p_paciente);
+      if (!a) { a = { id:`bbbbbbbb-0000-4000-8000-${String(S.areas.length + 1).padStart(12, '0')}`, clinica_id:corpo.p_clinica, paciente_id:corpo.p_paciente, tentativas:0, publicacoes:0, ativo:false }; S.areas.push(a); }
+      else if (corpo.p_ativo && !a.ativo) a.id = `bbbbbbbb-0000-4000-9000-${String(++S.n).padStart(12, '0')}`;
+      Object.assign(a, { nascimento:corpo.p_nascimento, conteudo:corpo.p_ativo ? corpo.p_conteudo : {}, ativo:corpo.p_ativo, atualizado_em:new Date().toISOString() });
+      a.publicacoes++; return resp(200, a.id);
+    }
+    if (u.pathname === '/rest/v1/areas_paciente_acessos') { const id = u.searchParams.get('area_id').replace('eq.', ''), a = S.areas.find(x => x.id === id); return resp(200, a && membro(a.clinica_id) ? (a.acessos || []).slice(0, 5) : []); }
     const tabRev = { '/rest/v1/revendedores':'revendedores', '/rest/v1/revenda_visitas':'visitas', '/rest/v1/revenda_clinicas':'clinicasRev', '/rest/v1/revenda_comissoes':'comissoes', '/rest/v1/revenda_regras':'regras' }[u.pathname];
     if (tabRev || u.pathname === '/rest/v1/rpc/marcar_revendedor') {
       if (S.semRev) return resp(404, { code:tabRev ? 'PGRST205' : 'PGRST202', message:'Could not find' });

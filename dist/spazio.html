@@ -1727,6 +1727,16 @@ body.com-acesso{overflow:hidden}
 @media (max-width:640px){ .vjan,.vjan.grande{left:8px;right:8px;bottom:8px;width:auto;height:min(70vh,520px)} .vjan-t small{display:none} }
 @media print{ .vjan{display:none} }
 .cep-s{display:flex;align-items:flex-end;padding-bottom:10px;min-width:0}
+
+/* Área do paciente (janela no prontuário) */
+.ar-aviso{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--warn,#b98a2e) 12%,transparent);margin:0 0 12px}
+.ar-aviso .ic{flex:none;margin-top:2px}.ar-aviso .btn{margin-top:6px}
+.ar-link{display:grid;gap:6px;margin-bottom:14px;padding:12px;border:1px solid var(--line);border-radius:12px}
+.ar-l{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ar-l input{flex:1 1 220px;min-width:0;font-size:.85rem}
+.ar-docs{display:flex;flex-wrap:wrap;gap:6px}
+.modal-p .grow{flex:1}
+@media (max-width:560px){.modal-p{flex-wrap:wrap}.modal-p .grow{display:none}}
 </style>
 
 
@@ -2598,7 +2608,10 @@ aplicarConfig(db);
 // Depois de gravar no aparelho, avisa quem estiver ouvindo (a sincronia com o servidor, etapa 10).
 let ouvinteSalvar = null;
 const ouvirSalvar = fn => { ouvinteSalvar = fn; };
-const save = () => { gravar(KEY, JSON.stringify(db)); if(ouvinteSalvar) ouvinteSalvar(); };
+const tambemSalvar = new Set();
+// Outros interessados em cada salvamento (ex.: a área do paciente publica de novo o que mudou).
+const tambemAoSalvar = fn => { tambemSalvar.add(fn); };
+const save = () => { gravar(KEY, JSON.stringify(db)); if(ouvinteSalvar) ouvinteSalvar(); tambemSalvar.forEach(fn => { try { fn(); } catch (e) {} }); };
 // Troca todos os dados pelos que vieram do servidor (ou por uma clínica vazia), sem avisar a sincronia.
 function trocarDados(doc){ db = hidratar(JSON.parse(JSON.stringify(doc))); aplicarConfig(db); gravar(KEY, JSON.stringify(db)); }
 const dadosVazios = () => hidratar(migrarV1({ patients:[], appts:[] }, new Date().toISOString(), 'nova-clinica'));
@@ -2689,6 +2702,7 @@ function pointWarnings(codes, p, tec){
 // Ícones Lucide (lucide-static 0.469.0, licença ISC: https://lucide.dev/license).
 // Gerado a partir dos SVGs oficiais; só o conteúdo interno de cada ícone, traço 24px.
 const ICONES = {
+  "area":"<circle cx=\"12\" cy=\"8\" r=\"5\" /><path d=\"M20 21a8 8 0 0 0-16 0\" />", // user-round
   "video":"<path d=\"m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5\" /><rect x=\"2\" y=\"6\" width=\"14\" height=\"12\" rx=\"2\" />", // video
   "copiar":"<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />", // copy
   "expandir":"<polyline points=\"15 3 21 3 21 9\" /><polyline points=\"9 21 3 21 3 15\" /><line x1=\"21\" x2=\"14\" y1=\"3\" y2=\"10\" /><line x1=\"3\" x2=\"10\" y1=\"21\" y2=\"14\" />", // maximize-2
@@ -2783,11 +2797,12 @@ const MENSAGENS_WA = [
   ['lembrete', 'Lembrete de horário', 'Olá, {primeiro}! Passando para lembrar do seu horário de {servico} {quando}, às {hora}, na {clinica}. Pode confirmar por aqui?'],
   ['retomar', 'Retomar contato', 'Olá, {primeiro}! Tudo bem? Faz um tempinho desde o seu último atendimento. Quer agendar um horário para continuarmos o tratamento?'],
   ['teleconsulta', 'Consulta online', 'Olá, {primeiro}! Sua consulta online de {servico} é {quando}, às {hora}. No horário, entre por este link, pelo celular ou computador (não precisa instalar nada):\n\n{link}\n\nEscolha um lugar reservado e, se puder, use fones de ouvido.'],
+  ['area', 'Área do paciente', 'Olá, {primeiro}! Este é o seu acesso à Área do paciente da {clinica}, com as suas próximas consultas, orientações e documentos:\n\n{link}\n\nPara abrir, confirme a sua data de nascimento. O link é pessoal: não compartilhe.'],
   ['orientacoes', 'Orientações para casa', 'Olá, {primeiro}! Seguem as orientações do atendimento:\n\n{orientacoes}'],
   ['livre', 'Mensagem livre', 'Olá, {primeiro}! ']
 ];
 // Dados que o sistema preenche: [campo, rótulo do botão]
-const CAMPOS_WA = [['primeiro','Primeiro nome'], ['servico','Serviço'], ['quando','Dia'], ['hora','Hora'], ['clinica','Clínica'], ['profissional','Profissional'], ['orientacoes','Orientações'], ['link','Link da consulta online']];
+const CAMPOS_WA = [['primeiro','Primeiro nome'], ['servico','Serviço'], ['quando','Dia'], ['hora','Hora'], ['clinica','Clínica'], ['profissional','Profissional'], ['orientacoes','Orientações'], ['link','Link (consulta online ou área do paciente)']];
 
 // [chave, nome, texto, 'original' | 'editada']
 const mensagensWa = (M = {}) => MENSAGENS_WA.map(([k, n, t]) => M[k] ? [k, n, M[k].texto, 'editada'] : [k, n, t, 'original']);
@@ -2826,6 +2841,48 @@ function registrarMensagem(p, { tipo, em, por, ap }){
 }
 // Último lembrete aberto para um horário da agenda.
 const lembreteDe = (p, apId) => p?.relacionamento?.mensagens?.find(m => (m.tipo === 'lembrete' || m.tipo === 'teleconsulta') && m.ap === apId) || null;
+// com o que a clínica liberou. Aqui fica o conteúdo publicado, montado a partir do prontuário. Funções puras.
+// p.areaPaciente = { id (código do link, vem do servidor), ativo, mostrar:{consultas, orientacoes, documentos,
+//   dor, resumo}, docs:[ids dos documentos liberados], resumo (texto para o paciente), resumoEm, criadoEm, criadoPor }
+// A avaliação completa, o pentagrama e as anotações clínicas nunca entram aqui (decisão do Maicon).
+
+const SECOES_AREA = [['consultas', 'Próximas consultas'], ['orientacoes', 'Orientações para casa'], ['documentos', 'Documentos'], ['dor', 'Evolução das queixas'], ['resumo', 'Resumo da avaliação']];
+const linkArea = (id, base) => id ? `${String(base || '').replace(/\/$/, '')}/paciente/?c=${id}` : '';
+
+// Configuração com os padrões: tudo ligado; nenhum documento liberado até o profissional escolher.
+const configArea = p => {
+  const a = p?.areaPaciente || {};
+  return { ...a, mostrar:{ consultas:true, orientacoes:true, documentos:true, dor:true, resumo:true, ...(a.mostrar || {}) }, docs:a.docs || [], resumo:a.resumo ?? '' };
+};
+
+// Texto sugerido para o resumo: a síntese clínica do último atendimento finalizado que tem síntese.
+const resumoSugerido = p => [...(p?.atendimentos || [])].reverse().find(a => a.status === 'finalizado' && String(a.sintese || '').trim())?.sintese.trim() || '';
+
+// Profissional que atendeu: quem registrou a última avaliação; sem isso, quem está publicando.
+const profissionalArea = (p, prof) => [...(p?.avaliacoes || [])].reverse().find(v => v.prof)?.prof || prof || '';
+
+function conteudoArea(p, { appts = [], hoje, clinica = '', prof = '', base = '' }){
+  const c = configArea(p), M = c.mostrar, out = { v:1, paciente:p.name || '', clinica, profissional:profissionalArea(p, prof) };
+  if (M.consultas) out.consultas = appts.filter(a => a.pid === p.id && ativo(a) && !a.done && a.date >= hoje)
+    .sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time)).slice(0, 6)
+    .map(a => ({ data:a.date, hora:a.time, tipo:a.tipo || '', ...(a.online ? { online:true, link:a.video ? `${String(base).replace(/\/$/, '')}/consulta/?c=${a.video}` : '' } : {}) }));
+  if (M.orientacoes) out.orientacoes = [...p.atendimentos].reverse().filter(a => a.status === 'finalizado' && String(a.plano?.orient || '').trim()).slice(0, 3)
+    .map(a => ({ data:a.data, texto:a.plano.orient.trim() }));
+  if (M.documentos) out.documentos = (p.documentos || []).filter(d => c.docs.includes(d.id))
+    .map(d => ({ nome:d.nome || 'Documento', data:String(d.em || '').slice(0, 10), texto:d.texto || '', ...(d.assinado ? { assinado:true } : {}) }));
+  if (M.dor) out.dor = (p.queixas || []).map(q => ({ nome:q.descricao, ativa:q.ativa !== false,
+    pontos:p.atendimentos.filter(a => a.status === 'finalizado' && a.evolucao?.intensidades?.[q.id] != null).map(a => ({ data:a.data, valor:a.evolucao.intensidades[q.id] })).slice(-12) }))
+    .filter(q => q.pontos.length);
+  if (M.resumo && String(c.resumo).trim()) out.resumo = { texto:String(c.resumo).trim(), data:c.resumoEm || '' };
+  return out;
+}
+
+// Impressão digital do conteúdo, para só publicar de novo quando algo mudou.
+const marcaConteudo = (conteudo, nascimento) => {
+  const s = JSON.stringify([conteudo, nascimento || '']); let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) >>> 0;
+  return `${s.length}.${h.toString(36)}`;
+};
 // Não cria números: se um dado não existe, o indicador não aparece.
 
 const ALERTA_NOME = {gestante:'Gestante',anticoagulante:'Anticoagulante',marcapasso:'Marcapasso'};
@@ -2918,7 +2975,7 @@ const TIPO_HIST = { paciente:'Cadastro', atendimento:'Atendimento', avaliacao:'A
   recebimento:'Recebimento', pacote:'Pacote', despesa:'Despesa', nota:'Nota fiscal', configuracao:'Configurações', modelo:'Modelo de documento', mensagens:'Mensagens', dados:'Dados' };
 const ACAO_HIST = { criou:'criou', alterou:'alterou', apagou:'apagou', desativou:'desativou', reativou:'reativou' };
 const CAMPO_H = { name:'nome', birth:'nascimento', phone:'telefone', anam:'anamnese', alerts:'alertas', queixas:'queixas', relacionamento:'relacionamento', marcas:'marcações do mapa',
-  'cadastro.cpf':'CPF', 'cadastro.email':'e-mail', 'cadastro.endereco':'endereço', 'cadastro.numero':'número do endereço', 'cadastro.complemento':'complemento', 'cadastro.bairro':'bairro', 'cadastro.cep':'CEP', 'cadastro.uf':'estado', 'cadastro.cidade':'cidade', 'cadastro.hemisferio':'hemisfério', 'cadastro.contatoEmergencia':'contato de emergência',
+  areaPaciente:'área do paciente', 'cadastro.cpf':'CPF', 'cadastro.email':'e-mail', 'cadastro.endereco':'endereço', 'cadastro.numero':'número do endereço', 'cadastro.complemento':'complemento', 'cadastro.bairro':'bairro', 'cadastro.cep':'CEP', 'cadastro.uf':'estado', 'cadastro.cidade':'cidade', 'cadastro.hemisferio':'hemisfério', 'cadastro.contatoEmergencia':'contato de emergência',
   data:'data', date:'data', time:'horário', status:'situação', done:'atendido', valor:'valor', forma:'forma de pagamento', texto:'texto', assinado:'assinatura', edicoes:'correções', ativo:'ativo' };
 const campoTxt = c => CAMPO_H[c] || String(c).replace(/^cadastro\./, '').replace(/([A-Z])/g, ' $1').toLowerCase();
 // em 05/11, para ajustar depois). Toda clínica nova tem 7 dias grátis com as funções do pacote escolhido;
@@ -3135,6 +3192,9 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     cancelarCartao:async (clinica, confirmarMulta = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cancelar_cartao', clinica, ...(confirmarMulta ? { confirmarMulta:true } : {}) }, token:await token() }),
     // Consulta online por vídeo (função teleconsulta, supabase/016_teleconsulta.sql): salvar o horário online e entrar na sala.
     salvarTeleconsulta:async (clinica, d) => chamar('/functions/v1/teleconsulta', { metodo:'POST', corpo:{ acao:'salvar', clinica, ...d }, token:await token() }),
+    // Área do paciente (supabase/017_area_paciente.sql): publica o conteúdo (ou desliga) e devolve o código do link.
+    publicarArea:async (clinica, paciente, nascimento, conteudo, ativo = true) => rest('rpc/publicar_area_paciente', { metodo:'POST', corpo:{ p_clinica:clinica, p_paciente:String(paciente), p_nascimento:nascimento || null, p_conteudo:conteudo, p_ativo:ativo } }),
+    acessosArea:async id => (await rest(`areas_paciente_acessos?select=em&area_id=eq.${id}&order=em.desc&limit=5`)) || [],
     entrarTeleconsulta:async (clinica, id) => chamar('/functions/v1/teleconsulta', { metodo:'POST', corpo:{ acao:'entrar', clinica, id }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
     // Nota fiscal (função nfse, supabase/functions/nfse): { acao, clinica, ... }.
@@ -3742,7 +3802,7 @@ function textoWa(tipo, pid, ap){
   const p = patient(pid), a = ap ? db.appts.find(x => x.id === ap) : null, m = mensagemWa(tipo, db.mensagensWa);
   if (!p || !m) return '';
   const orientacoes = tipo === 'orientacoes' ? valoresDoc(p, { appts:db.appts, hoje:TODAY, prof:PROF.nome }).orientacoes : '';
-  return preencherWa(m[2], valoresWa(p, a, { hoje:TODAY, amanha:addDays(1, TODAY), clinica:CLINICA, prof:PROF.nome, orientacoes, link:linkConsulta(a?.video, location.origin) }));
+  return preencherWa(m[2], valoresWa(p, a, { hoje:TODAY, amanha:addDays(1, TODAY), clinica:CLINICA, prof:PROF.nome, orientacoes, link:tipo === 'area' ? linkArea(p.areaPaciente?.ativo && p.areaPaciente.id, location.origin) : linkConsulta(a?.video, location.origin) }));
 }
 function abrirPainelWa(tipo, pid, ap){ ui.wa = { tipo, pid, ap: ap || '', texto: textoWa(tipo, pid, ap) }; ui.ov = 'wa'; }
 
@@ -5366,6 +5426,113 @@ function retirarDiagnostico(p, id, por, em){
   Object.assign(d, { ativo: false, retiradoEm: em, retiradoPor: por || '' });
   return d;
 }
+// para criar o link, escolher o que o paciente vê, escrever o resumo da avaliação em palavras simples, mandar
+// pelo WhatsApp e desligar. O conteúdo vai pronto para o servidor (supabase/017_area_paciente.sql) e é publicado
+// de novo sozinho quando algo dele muda (nova consulta, orientações, documento liberado...).
+
+let AR = { salvar:() => {}, toast:() => {}, render:() => {} };
+const ligarArea = o => { AR = { ...AR, ...o }; };
+const naNuvemArea = () => conta.modo === 'nuvem' && conta.nuvem && conta.clinica?.id;
+const KEY_MARCAS_AREA = 'musubi-area-marcas';
+const lerMarcasArea = () => { try { return JSON.parse(localStorage.getItem(KEY_MARCAS_AREA)) || {}; } catch (e) { return {}; } };
+const gravarMarcaArea = (k, v) => { try { const M = lerMarcasArea(); if (v) M[k] = v; else delete M[k]; localStorage.setItem(KEY_MARCAS_AREA, JSON.stringify(M)); } catch (e) {} };
+
+const montarArea = p => conteudoArea(p, { appts:db.appts, hoje:TODAY, clinica:CLINICA, prof:PROF.nome, base:location.origin });
+
+// Envia para o servidor. Devolve o código do link (ou lança o erro).
+async function publicarArea(p, ativo = true){
+  const c = montarArea(p), chave = `${conta.clinica.id}:${p.id}`;
+  const id = await conta.nuvem.publicarArea(conta.clinica.id, p.id, p.birth || null, ativo ? c : {}, ativo);
+  gravarMarcaArea(chave, ativo ? marcaConteudo(c, p.birth) : '');
+  return id;
+}
+
+// Depois de cada salvamento: publica de novo, em silêncio, as áreas cujo conteúdo mudou; desliga as de quem saiu.
+let esperaArea = null, rodandoArea = false;
+const sincronizarAreas = async () => {
+  if (!naNuvemArea() || rodandoArea) return; rodandoArea = true;
+  try {
+    const cl = conta.clinica.id, M = lerMarcasArea();
+    for (const p of db.patients) {
+      const A = p.areaPaciente; if (!A?.ativo || !A.id) continue;
+      if (M[`${cl}:${p.id}`] !== marcaConteudo(montarArea(p), p.birth)) { try { await publicarArea(p); } catch (e) { /* tenta no próximo salvamento */ } }
+    }
+    for (const k of Object.keys(M)) {
+      const [c, pid] = k.split(':'); if (c !== cl) continue;
+      const p = patient(pid);
+      if (!p || !p.areaPaciente?.ativo) { try { await conta.nuvem.publicarArea(cl, pid, null, {}, false); gravarMarcaArea(k, ''); } catch (e) {} }
+    }
+  } finally { rodandoArea = false; }
+};
+tambemAoSalvar(() => { clearTimeout(esperaArea); esperaArea = setTimeout(sincronizarAreas, 2500); });
+
+// ---- Janela no prontuário ----
+function janelaArea(p){
+  const c = configArea(p), A = p.areaPaciente, ligado = !!(A?.ativo && A.id), link = ligado ? linkArea(A.id, location.origin) : '';
+  const docs = p.documentos || [], resumo = A?.resumo ?? resumoSugerido(p);
+  const fechar = `<button type="button" class="btn ghost sm" data-act="area-x" aria-label="Fechar">${ic('x')}</button>`;
+  const cab = `<div class="modal-h"><div class="grow"><h2 id="ar-t">Área do paciente</h2><small class="muted">${esc(p.name)} · uma página com o que você liberar, aberta pelo link e pela data de nascimento</small></div>${fechar}</div>`;
+  if (!naNuvemArea()) return `<div class="modal-fundo" id="ar-fundo" data-act="area-x"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="ar-t">${cab}
+    <div class="modal-c"><p>A área do paciente precisa da conta no servidor (entre na sua conta do MUSUBI).</p></div><div class="modal-p"><button type="button" class="btn" data-act="area-x">Fechar</button></div></div></div>`;
+  return `<div class="modal-fundo" id="ar-fundo" data-act="area-x"><form class="modal" id="f-area" role="dialog" aria-modal="true" aria-labelledby="ar-t" data-pid="${p.id}">${cab}
+    <div class="modal-c">
+      ${!p.birth ? `<p class="ar-aviso">${ic('escudo')}<span>Falta a data de nascimento no cadastro: é com ela que o paciente abre a página. <button type="button" class="btn sm" data-act="editar-paciente" data-pid="${p.id}">Abrir o cadastro</button></span></p>` : ''}
+      ${ligado ? `<div class="ar-link"><span class="lbl">Link do paciente</span><div class="ar-l"><input id="area-link" readonly value="${esc(link)}" aria-label="Link do paciente">
+        <button type="button" class="btn sm" data-act="area-copiar">${ic('copiar')}Copiar</button>
+        <button type="button" class="btn sm wa" data-act="wa" data-t="area" data-pid="${p.id}">${ic('mensagem')}WhatsApp</button>
+        <a class="btn sm ghost" href="${esc(link)}" target="_blank" rel="noopener">${ic('dir')}Ver como o paciente</a></div>
+        <small class="muted" id="area-ac">Atualiza sozinho quando algo muda no prontuário.</small></div>` : ''}
+      <div class="lbl" style="margin-top:4px">O que o paciente vê</div>
+      <div class="chips">${SECOES_AREA.map(([k, n]) => `<label class="chip"><input type="checkbox" name="area-sec" value="${k}" ${c.mostrar[k] ? 'checked' : ''}> ${n}</label>`).join('')}</div>
+      <p class="muted sm">A avaliação completa, o pentagrama e as anotações clínicas não aparecem para o paciente.</p>
+      <div class="lbl" style="margin-top:12px">Documentos liberados</div>
+      ${docs.length ? `<div class="ar-docs">${docs.map(d => `<label class="chip"><input type="checkbox" name="area-doc" value="${esc(d.id)}" ${c.docs.includes(d.id) ? 'checked' : ''}> ${esc(d.nome || 'Documento')} · ${fmt(String(d.em || '').slice(0, 10))}</label>`).join('')}</div>`
+        : '<p class="muted sm">Nenhum documento guardado ainda. Os documentos guardados aparecem aqui para você liberar.</p>'}
+      <label class="rx-f full" style="margin-top:12px"><span class="lbl">Resumo da avaliação para o paciente</span>
+        <textarea id="area-resumo" rows="4" maxlength="3000" placeholder="Em palavras simples: o que foi visto e o objetivo do tratamento.">${esc(resumo)}</textarea>
+        <small class="muted">${A?.resumo == null && resumo ? 'Veio da síntese clínica do último atendimento. Ajuste o texto antes de liberar.' : 'É exatamente este texto que o paciente lê.'}</small></label>
+    </div>
+    <div class="modal-p">${ligado ? `<button type="button" class="btn ghost" data-act="area-desligar">${ic('x')}Desligar o link</button>` : ''}<span class="grow"></span>
+      <button type="button" class="btn ghost" data-act="area-x">Cancelar</button><button class="btn pri" ${p.birth ? '' : 'disabled'}>${ic('check')}${ligado ? 'Salvar e atualizar' : 'Criar o link'}</button></div>
+  </form></div>`;
+}
+
+// Últimas aberturas, depois que a janela aparece.
+const mostrarAcessosArea = async () => {
+  const el = document.getElementById('area-ac'), p = patient(ui.areaP), id = p?.areaPaciente?.id;
+  if (!el || !id || !naNuvemArea()) return;
+  try {
+    const L = await conta.nuvem.acessosArea(id);
+    el.textContent = L.length ? `Aberta ${L.length === 5 ? '5 ou mais vezes' : L.length === 1 ? '1 vez' : L.length + ' vezes'} · última em ${new Date(L[0].em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}. Atualiza sozinha quando algo muda.` : 'O paciente ainda não abriu. Atualiza sozinha quando algo muda no prontuário.';
+  } catch (e) {}
+};
+
+const salvarArea = async f => {
+  const p = patient(f.dataset.pid); if (!p || !naNuvemArea()) return;
+  if (!p.birth) { AR.toast('Cadastre a data de nascimento do paciente antes', 'info'); return; }
+  const marcados = new Set([...f.querySelectorAll('[name=area-sec]:checked')].map(i => i.value));
+  const resumo = document.getElementById('area-resumo').value.trim(), A = p.areaPaciente || {}, em = new Date().toISOString();
+  const novo = { ...A, ativo:true, mostrar:Object.fromEntries(SECOES_AREA.map(([k]) => [k, marcados.has(k)])),
+    docs:[...f.querySelectorAll('[name=area-doc]:checked')].map(i => i.value), resumo,
+    resumoEm:resumo !== (A.resumo ?? '') ? TODAY : A.resumoEm || (resumo ? TODAY : ''), criadoEm:A.criadoEm || em, criadoPor:A.criadoPor || PROF.nome };
+  const b = f.querySelector('button.pri'); if (b) { b.disabled = true; b.textContent = 'Publicando…'; }
+  const antes = p.areaPaciente; p.areaPaciente = novo;
+  try { const id = await publicarArea(p); p.areaPaciente.id = id; }
+  catch (e) { p.areaPaciente = antes; AR.toast(`Não deu para publicar: ${e.message}`, 'info'); AR.render(true); return; }
+  AR.salvar(); AR.toast(A.id && A.ativo ? 'Área do paciente atualizada' : 'Link criado: envie pelo WhatsApp'); AR.render(true); mostrarAcessosArea();
+};
+
+const desligarArea = async pid => {
+  const p = patient(pid); if (!p?.areaPaciente?.id || !naNuvemArea()) return;
+  if (!confirm('Desligar o link? O paciente não consegue mais abrir a página e o conteúdo publicado é apagado do servidor. Dá para criar um novo depois.')) return;
+  try { await publicarArea(p, false); } catch (e) { AR.toast(`Não deu para desligar: ${e.message}`, 'info'); return; }
+  p.areaPaciente = { ...p.areaPaciente, ativo:false }; AR.salvar(); AR.toast('Link desligado'); AR.render(true);
+};
+
+const copiarLinkArea = () => {
+  const l = document.getElementById('area-link')?.value; if (!l) return;
+  navigator.clipboard?.writeText(l).then(() => AR.toast('Link copiado'), () => AR.toast(l, 'info'));
+};
 // Atendimentos, Anamnese e alertas, Avaliação energética, Pentagrama, Versões da avaliação, CID e Registro
 // rápido. As antigas telas #avaliacao e #pentagrama abrem aqui, na aba correspondente.
 // Detalhe das abas:
@@ -5607,8 +5774,8 @@ function vProntuario(){
   return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
     ${alerts.length||cids.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}${cids.map(d=>`<button class="pill cid-pill" data-act="tab" data-t="cid" data-tip="${esc(d.descricao)}">CID ${esc(d.codigo)}</button>`).join('')}</div>`:''}</div>
-    <div class="perfil-a">${botaoHistorico(p.id)}<button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
-    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic((k==='avaliacao'||k==='pentagrama')&&!pode('mtc')?'cadeado':i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}`;
+    <div class="perfil-a">${botaoHistorico(p.id)}<button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn" data-act="area-abrir" data-pid="${p.id}">${ic('area')}Área do paciente${p.areaPaciente?.ativo?' <span class="pill ok sm">ligada</span>':''}</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
+    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic((k==='avaliacao'||k==='pentagrama')&&!pode('mtc')?'cadeado':i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}${ui.areaP===p.id?janelaArea(p):''}`;
 }
 // alertas, preenchimento por etapa e salvamento automático. Usa, sem alterar, o raciocínio clínico
 // (evaluate, bagang, elemState), o pentagrama e a verificação de segurança dos pontos.
@@ -7342,12 +7509,16 @@ document.addEventListener('click',ev=>{
     if(typeof r==='string'){ toast(r,'info'); return; } ui.cid={}; save(); render(true); toast(`CID ${r.codigo} incluído no prontuário`); document.getElementById('cid-q')?.focus(); }
   else if(a==='cid-tirar'){ const d=retirarDiagnostico(patient(ui.pid),t.dataset.d,PROF.nome,new Date().toISOString()); if(d){ save(); render(true); toast(`CID ${d.codigo} retirado; fica na lista de retirados`,'info'); } }
   else if(a==='pr-editar'){ ui.edReg=t.dataset.id; render(true); setTimeout(()=>document.querySelector('#f-edreg input, #f-edreg textarea')?.focus(),0); }
+  else if(a==='area-abrir'){ ui.areaP=t.dataset.pid; render(true); mostrarAcessosArea(); setTimeout(()=>document.querySelector('#f-area input:not([readonly]), #ar-fundo .btn')?.focus(),0); }
+  else if(a==='area-x'){ if(t.id==='ar-fundo'&&ev.target!==t) return; ui.areaP=null; render(true); }
+  else if(a==='area-desligar'){ desligarArea(ui.areaP); }
+  else if(a==='area-copiar'){ copiarLinkArea(); }
   else if(a==='pr-editar-x'){ if(t.id==='ed-fundo'&&ev.target!==t) return; ui.edReg=null; render(true); }
   else if(a==='abrir-atendimento'){ ui.pid=t.dataset.pid; ui.atId=t.dataset.id; fotografarAvaliacao(); ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; limparMapa(); irPara('atendimento'); scrollTo(0,0); }
   else if(a==='etapa'){ ev.preventDefault(); irEtapa(Number(t.dataset.i)); }
   else if(a.startsWith('at-')){ acaoAtendimento(a,t); }
   else if(a==='novo-paciente'){ ui.editPid=null; ui.cadPrevio=null; irPara('cadastro'); }
-  else if(a==='editar-paciente'){ ui.editPid=t.dataset.pid; irPara('cadastro'); }
+  else if(a==='editar-paciente'){ ui.areaP=null; ui.editPid=t.dataset.pid; irPara('cadastro'); }
   else if(a==='pac-excluir'){ ui.excluir={pid:t.dataset.pid,motivo:'',outro:''}; render(true); document.getElementById('cad-exc')?.scrollIntoView({block:'center'}); }
   else if(a==='pac-excluir-nao'){ ui.excluir=null; render(true); }
   else if(a==='pac-excluir-sim'){ const E=ui.excluir; if(!E) return; const motivo=E.motivo==='Outro motivo'?E.outro.trim():E.motivo;
@@ -7366,7 +7537,7 @@ document.addEventListener('click',ev=>{
   else if(a==='fechar-ir'){ ui.ov=null; ui.wa=null; }
   else if(a==='video'){ abrirVideo(t.dataset.id); }
   else if(a==='wa-online'){ prepararWaOnline(t.dataset.ap).then(x=>{ if(!x) return; abrirPainelWa('teleconsulta',x.pid,x.id); render(true); document.getElementById('wa-t')?.focus(); }); }
-  else if(a==='wa'){ abrirPainelWa(t.dataset.t,t.dataset.pid,t.dataset.ap); render(true); document.getElementById('wa-t')?.focus(); }
+  else if(a==='wa'){ if(t.dataset.t==='area') ui.areaP=null; abrirPainelWa(t.dataset.t,t.dataset.pid,t.dataset.ap); render(true); document.getElementById('wa-t')?.focus(); }
   else if(a==='wa-tipo'){ abrirPainelWa(t.dataset.k,ui.wa.pid,ui.wa.ap); render(true); }
   else if(a==='wa-abrir'){ const W=ui.wa, p=patient(W?.pid), url=p&&linkWa(p.phone,document.getElementById('wa-t').value); if(!url) return;
     window.open(url,'_blank','noopener'); const em=new Date().toISOString(); registrarMensagem(p,{tipo:W.tipo,em,por:PROF.nome,ap:W.ap});
@@ -7623,6 +7794,7 @@ document.addEventListener('change',ev=>{
 });
 document.addEventListener('submit',ev=>{
   ev.preventDefault(); const f=ev.target, v=id=>document.getElementById(id).value;
+  if(f.id==='f-area'){ salvarArea(f); return; }
   if(f.id==='f-rx-corr'){ const x=atendimentoAberto(), C=ui.rxCorr; if(!x||!C) return; if(!C.motivo.trim()){ toast('Escreva o motivo da correção','info'); return; }
     const em=new Date().toISOString(), mud=corrigirPonto(x.a,C.c,C,C.motivo,PROF.nome,em); if(!mud){ toast('Nada mudou neste ponto','info'); return; }
     ui.rxCorr=null; mudou(`plano terapêutico: correção de ${C.c} (${mud.map(([k,a,b])=>`${k.toLowerCase()}: ${a} → ${b}`).join('; ')}). Motivo: ${C.motivo.trim()}`); toast('Correção registrada'); return; }
@@ -7698,6 +7870,7 @@ try{ if(localStorage.getItem('musubi-tema')==='dark') document.documentElement.d
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
 ligarVideo({ salvar:save, toast });
+ligarArea({ salvar:save, toast, render });
 ligarNfse(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
 ligarEquipe(manter => { if(route()==='equipe') render(manter); }, toast);

@@ -461,5 +461,10 @@ select pg_temp.como(null);
 set role anon;
 select pg_temp.checar(public.ver_area_paciente(:'ap', '1988-04-12') ->> 'erro' = 'nao_encontrada', 'link desligado não abre mais');
 reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select public.publicar_area_paciente(:'c1', 'p77', '1988-04-12', '{"paciente":"Joana"}'::jsonb, true) as ap2 \gset
+reset role;
+select pg_temp.checar(:'ap2' <> :'ap' and (select count(*) from areas_paciente_acessos where area_id = :'ap2') = 2, 'ligar de novo gera um link novo; os acessos antigos continuam guardados');
 do $$ begin perform set_config('request.headers', '', false); end $$;
 \echo 'Todas as regras do banco passaram.'

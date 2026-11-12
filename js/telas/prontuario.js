@@ -28,6 +28,7 @@ import { LADOS_MARCA, TIPOS_MARCA, basalDe, marcaComIntensidade, marcasDe, rascu
 import { TECNICAS } from './atendimento.js';
 import { iconeMarca, vistaNome } from '../componentes/corpo.js';
 import { ui } from '../estado.js';
+import { janelaArea } from './area-paciente.js';
 import { elemState, evaluate } from '../raciocinio/avaliacao.js';
 import { TODAY, age, esc, fmt, initials } from '../util.js';
 
@@ -262,6 +263,6 @@ export function vProntuario(){
   return `<div class="perfil-h"><span class="avatar xl">${initials(p.name)}</span><div class="grow"><h1>${esc(p.name)}</h1>
     <div class="meta"><span>${p.birth?age(p.birth)+' anos':'idade não informada'}</span>${p.phone?`<span>${ic('tel')}${esc(p.phone)}</span>`:''}${p.cadastro?.cidade?`<span>${ic('local')}${esc(p.cadastro.cidade)}</span>`:''}${p.exemplo?'<span class="pill ex">exemplo</span>':''}</div>
     ${alerts.length||cids.length?`<div class="chips" style="margin-top:8px">${alerts.map(x=>`<span class="pill crit">${ic('escudo')}${x}</span>`).join('')}${cids.map(d=>`<button class="pill cid-pill" data-act="tab" data-t="cid" data-tip="${esc(d.descricao)}">CID ${esc(d.codigo)}</button>`).join('')}</div>`:''}</div>
-    <div class="perfil-a">${botaoHistorico(p.id)}<button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
-    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic((k==='avaliacao'||k==='pentagrama')&&!pode('mtc')?'cadeado':i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}`;
+    <div class="perfil-a">${botaoHistorico(p.id)}<button class="btn" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Cadastro</button><button class="btn" data-act="doc-abrir" data-pid="${p.id}">${ic('doc')}Documentos</button><button class="btn" data-act="area-abrir" data-pid="${p.id}">${ic('area')}Área do paciente${p.areaPaciente?.ativo?' <span class="pill ok sm">ligada</span>':''}</button><button class="btn pri" data-act="novo-atendimento" data-pid="${p.id}">${ic('play')}${rascunhoDe(p)?'Continuar atendimento':'Novo atendimento'}</button></div></div>
+    <div class="tabs" role="tablist">${tabs.map(([k,l,i])=>`<button role="tab" data-act="tab" data-t="${k}" class="${ui.tab===k?'on':''}" aria-selected="${ui.tab===k}">${ic((k==='avaliacao'||k==='pentagrama')&&!pode('mtc')?'cadeado':i)}${l}</button>`).join('')}</div>${ABAS[ui.tab](p)}${ui.edReg?janelaEdicao(p):''}${ui.areaP===p.id?janelaArea(p):''}`;
 }
