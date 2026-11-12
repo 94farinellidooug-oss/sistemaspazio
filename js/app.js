@@ -18,7 +18,8 @@ import { concluirHorario, conflito, desmarcar, marcarHorario, novoHorario, remar
 import { vAvaliacao } from './telas/avaliacao.js';
 import { atendimentoAberto, indicadosMarca, textoSalvo, vAtendimento } from './telas/atendimento.js';
 import { editarRegistro, TIPOS_MARCA, LADOS_MARCA, adicionarMarca, editarMarca, marcasDe, removerMarca, CATEGORIAS, PARES_VASOS, adicionarAchadoLivre, definirVaso, ehBasal, fotoVersao, registrarCorrecao, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirAchadoLivre, definirPulso, notaCategoria, removerAchadoLivre, descartarRascunho, finalizarAtendimento, iniciarAtendimento, rascunhoDe, registrarAlteracao } from './dados/atendimento.js';
-import { cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
+import { aoDigitarCep, cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
+import { soDigitosCep } from './dados/endereco.js';
 import { abrirVideo, ligarVideo, prepararWaOnline, sincronizarOnline } from './telas/video.js';
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { LABEL, PROF, listaBusca, renderNav } from './telas/menu.js';
@@ -264,6 +265,7 @@ document.addEventListener('input',ev=>{
   else if(t.id==='ns-eva'){ document.getElementById('ns-eva-v').textContent=t.value; }
   else if(t.dataset.q&&t.type==='range'){ document.getElementById(t.id+'-v').textContent=t.value; }
   else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
+  else if(t.id==='np-cep'){ aoDigitarCep(t); }
   else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
   if(t.dataset.rxmot||t.dataset.atorient){ const x=atendimentoAberto(); if(!x) return;
@@ -460,7 +462,7 @@ document.addEventListener('submit',ev=>{
     const cpf=document.getElementById('np-cpf');
     if(!cpfValido(cpf.value)){ cpf.setCustomValidity('CPF inválido: confira os 11 números.'); cpf.reportValidity(); return; }
     const em=new Date().toISOString(), lgpd=document.getElementById('np-lgpd');
-    const cadastro={cpf:cpf.value.trim()?cpfFormatado(cpf.value.trim()):'',email:v('np-email').trim(),endereco:v('np-end').trim(),cidade:v('np-cid').trim(),hemisferio:v('np-hem'),contatoEmergencia:v('np-emerg').trim()};
+    const cadastro={cpf:cpf.value.trim()?cpfFormatado(cpf.value.trim()):'',email:v('np-email').trim(),endereco:v('np-end').trim(),numero:v('np-num').trim(),complemento:v('np-comp').trim(),bairro:v('np-bai').trim(),cep:soDigitosCep(v('np-cep')),uf:v('np-uf'),cidade:v('np-cid').trim(),hemisferio:v('np-hem'),contatoEmergencia:v('np-emerg').trim()};
     const alerts=Object.fromEntries(['gestante','anticoagulante','marcapasso'].map(k=>[k,document.getElementById('np-al-'+k).checked]));
     if(ui.editPid){ const p=patient(ui.editPid);
       p.name=v('np-name').trim(); p.birth=v('np-birth'); p.phone=v('np-phone'); p.queixas.find(q=>q.id==='q1').descricao=v('np-q').trim();

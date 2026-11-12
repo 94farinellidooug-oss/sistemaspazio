@@ -1477,3 +1477,4 @@ body.com-acesso{overflow:hidden}
 .vjan iframe{flex:1;width:100%;border:0;background:#111}
 @media (max-width:640px){ .vjan,.vjan.grande{left:8px;right:8px;bottom:8px;width:auto;height:min(70vh,520px)} .vjan-t small{display:none} }
 @media print{ .vjan{display:none} }
+.cep-s{display:flex;align-items:flex-end;padding-bottom:10px;min-width:0}

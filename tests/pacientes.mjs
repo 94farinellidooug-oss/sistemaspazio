@@ -64,6 +64,20 @@ async function verificar(browser, url, nome) {
   j = await paciente();
   ok(j.cadastro.cidade === 'Porto Alegre' && j.cadastro.atualizadoEm && await tem('.corr-g', 'Porto Alegre'), `${nome}: edição salva e volta ao perfil`);
 
+  // CEP: busca no ViaCEP (simulado) e preenche rua, bairro, cidade e estado
+  await p.route('https://viacep.com.br/**', r => r.fulfill({ headers:{ 'Access-Control-Allow-Origin':'*' }, contentType:'application/json',
+    body:JSON.stringify(r.request().url().includes('99999999') ? { erro:'true' } : { logradouro:'Rua Sinimbu', bairro:'Centro', localidade:'Caxias do Sul', uf:'RS' }) }));
+  await p.click('.perfil-a [data-act="editar-paciente"]'); await espera();
+  await p.fill('#np-cep', '99999999'); await p.waitForTimeout(250);
+  ok(await tem('#np-cep-s', 'CEP não encontrado') && await p.inputValue('#np-cid') === 'Porto Alegre', `${nome}: CEP inexistente avisa e não apaga o endereço`);
+  await p.fill('#np-cep', '95020002'); await p.waitForTimeout(250);
+  ok(await p.inputValue('#np-cep') === '95020-002' && await p.inputValue('#np-end') === 'Rua Sinimbu' && await p.inputValue('#np-bai') === 'Centro' && await p.inputValue('#np-cid') === 'Caxias do Sul' && await p.inputValue('#np-uf') === 'RS', `${nome}: CEP preenche rua, bairro, cidade e estado`);
+  ok(await p.evaluate(() => document.activeElement?.id) === 'np-num' && await tem('#np-cep-s', 'Falta o número'), `${nome}: depois do CEP o cursor vai para o número`);
+  await p.fill('#np-num', '1500'); await p.fill('#np-comp', 'sala 2'); await p.click('#f-patient button.pri'); await espera();
+  j = await paciente();
+  ok(j.cadastro.cep === '95020002' && j.cadastro.numero === '1500' && j.cadastro.complemento === 'sala 2' && j.cadastro.uf === 'RS' && j.cadastro.endereco === 'Rua Sinimbu', `${nome}: CEP, número, complemento e estado gravados`);
+  ok(await tem('.corr-g', 'Rua Sinimbu, 1500, sala 2 · Centro · CEP 95020-002') && await tem('.corr-g', 'Caxias do Sul - RS'), `${nome}: perfil mostra o endereço completo`);
+
   // Várias queixas
   await p.fill('#nq-desc', 'Insônia'); await p.click('#f-queixa button'); await espera();
   j = await paciente();
