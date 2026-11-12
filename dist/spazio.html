@@ -3032,6 +3032,8 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     minhasClinicas:async () => (await rest(`membros?select=perfil,nome,clinicas(id,nome,cidade,uf,permissoes)&user_id=eq.${sessao.user.id}&ativo=is.true`) || [])
       .filter(m => m.clinicas).map(m => ({ id:m.clinicas.id, nome:m.clinicas.nome, cidade:m.clinicas.cidade, uf:m.clinicas.uf, perfil:m.perfil, permissoes:m.clinicas.permissoes || {} })),
     // Equipe (supabase/004_equipe.sql). aceitarConvites: ao entrar, entra nas clínicas que convidaram este e-mail.
+    // Registro de acesso (Marco Civil, art. 15): o servidor guarda login, IP e hora; se falhar, a entrada segue normal.
+    registrarAcesso:async (evento = 'entrou') => { try { return await rest('rpc/registrar_acesso', { metodo:'POST', corpo:{ p_evento:evento } }); } catch (e) { return false; } },
     aceitarConvites:async () => { try { return await rest('rpc/aceitar_convites', { metodo:'POST', corpo:{} }); } catch (e) { if (e.status === 404 || e.codigo === 'PGRST202') return 0; throw e; } },
     equipe:async clinica => (await rest(`membros?select=user_id,nome,email,perfil,ativo,criado_em&clinica_id=eq.${clinica}&order=criado_em.asc`)) || [],
     convites:async clinica => { try { return (await rest(`convites?select=id,nome,email,perfil,criado_em&clinica_id=eq.${clinica}&aceito_em=is.null&order=criado_em.asc`)) || []; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
@@ -3247,16 +3249,17 @@ function iniciarConta(render, nuvem){
   if (lk) { history.replaceState(null, '', location.pathname); if (lk.tipo === 'recovery') { abrirAcesso('nova-senha'); return; } }
   const pe = lerC(KEY_PLANO_SITE); if (PLANOS.some(p => p.k === pe)) conta.plano = pe;
   if (!conta.nuvem.sessao()) { const criar = location.hash === '#criar' || !!lerC(KEY_CONVITE); if (criar) history.replaceState(null, '', location.pathname); abrirAcesso(criar ? 'criar' : 'entrar'); return; }
-  conectar(!!lk);
+  conectar(!!lk, 'voltou');
 }
 function abrirAcesso(tela, msg = ''){ conta.tela = tela; conta.msg = msg; conta.erro = ''; conta.ocupado = false; desenharAcesso(); }
 function fecharAcesso(){ conta.tela = null; desenharAcesso(); }
 
 // Depois de entrar: descobre as clínicas da pessoa e abre a última usada (ou o primeiro acesso).
-async function conectar(completar){
+async function conectar(completar, evento = 'entrou'){
   conta.ocupado = true; desenharAcesso();
   try {
     if (completar || !conta.nuvem.sessao().user.email) await conta.nuvem.completarUsuario();
+    conta.nuvem.registrarAcesso(evento); // Marco Civil, art. 15 (supabase/014_acessos.sql); não atrasa a entrada
     try { if (await conta.nuvem.aceitarConvites()) gravarC(KEY_CONVITE, null); } catch (e) {}
     conta.clinicas = await conta.nuvem.minhasClinicas();
     if (!conta.clinicas.length) { abrirAcesso('clinica'); return; }

@@ -326,4 +326,26 @@ select pg_temp.checar((select nome from musubi_fornecedor) = 'Fulano', 'quem nã
 do $$ begin insert into musubi_fornecedor (id) values (2); raise exception 'FALHA: aceitou segunda linha';
 exception when check_violation then raise notice 'ok    só existe uma linha de dados do contrato'; end $$;
 select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'nfse_notas' and column_name in ('cancelada_em', 'cancelamento')) = 2, 'nota guarda quando e por que foi cancelada (011_nfse_cancelar.sql)');
+-- Registro de acesso (014_acessos.sql): IP do cabeçalho, sem duplicar em 30 min, só o dono lê, ninguém apaga
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+do $$ begin perform set_config('request.headers', '{"x-forwarded-for":"200.1.2.3, 10.0.0.1","user-agent":"Teste/1.0"}', false); end $$;
+set role authenticated;
+select pg_temp.checar(public.registrar_acesso('entrou'), 'a entrada no sistema é registrada');
+select pg_temp.checar(not public.registrar_acesso('voltou'), 'o mesmo aparelho em 30 minutos não duplica o registro');
+select pg_temp.checar((select count(*) from acessos) = 0, 'quem não é dono não lê os registros de acesso');
+delete from acessos;
+update acessos set ip = 'x';
+do $$ begin insert into acessos (ip) values ('1.1.1.1'); raise exception 'FALHA: gravou acesso direto';
+exception when insufficient_privilege then raise notice 'ok    ninguém grava registro de acesso direto na tabela'; end $$;
+reset role;
+select pg_temp.checar((select ip = '200.1.2.3' and agente = 'Teste/1.0' and user_id = '00000000-0000-0000-0000-00000000000d' and evento = 'entrou' from acessos), 'guarda o login, o IP de origem (não o do proxy), o navegador e a hora');
+insert into acessos (em, ip) values (now() - interval '7 months', '9.9.9.9');
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select pg_temp.checar(public.registrar_acesso('entrou'), 'outro login também é registrado');
+select pg_temp.checar((select count(*) from acessos) = 2 and not exists (select 1 from acessos where ip = '9.9.9.9'), 'o dono lê os registros; os de mais de 6 meses são apagados sozinhos');
+reset role;
+select pg_temp.como(null);
+do $$ begin perform set_config('request.headers', '', false); end $$;
+select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'assinaturas' and column_name = 'cartao_renov_aviso_para') = 1, 'assinatura guarda o aviso de renovação do anual já mandado');
 \echo 'Todas as regras do banco passaram.'

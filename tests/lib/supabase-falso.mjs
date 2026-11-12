@@ -74,6 +74,7 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       return resp(200, c && membro(c.id) ? c.membros.map(m => ({ user_id:m.user, nome:m.nome || '', email:m.email || '', perfil:m.perfil, ativo:m.ativo !== false, criado_em:'2026-11-06T12:00:00Z' })) : []); }
     if (u.pathname === '/rest/v1/membros') return resp(200, S.clinicas.filter(c => membro(c.id)).map(c => ({ perfil:eu_m(c.id).perfil, nome:'', clinicas:{ id:c.id, nome:c.nome, cidade:c.cidade, uf:c.uf, permissoes:c.permissoes || {} } })));
     if (u.pathname === '/rest/v1/convites') { if (S.semEquipe) return resp(404, { code:'PGRST205', message:'Could not find the table' }); const c = u.searchParams.get('clinica_id').replace('eq.', ''); return resp(200, adm(c) ? S.convites.filter(x => x.clinica_id === c && !x.aceito) : []); }
+    if (u.pathname === '/rest/v1/rpc/registrar_acesso') { (S.acessos ||= []).push({ user:eu.id, evento:corpo.p_evento }); return resp(200, true); }
     if (u.pathname === '/rest/v1/rpc/aceitar_convites') { if (S.semEquipe) return resp(404, { code:'PGRST202', message:'Could not find the function' }); let n = 0;
       S.convites.filter(x => !x.aceito && x.email === eu.email.toLowerCase()).forEach(x => { const c = S.clinicas.find(k => k.id === x.clinica_id), m = c.membros.find(k => k.user === eu.id);
         if (m) Object.assign(m, { perfil:x.perfil, ativo:true }); else c.membros.push({ user:eu.id, perfil:x.perfil, ativo:true, email:eu.email, nome:eu.nome || x.nome }); x.aceito = true; n++; });

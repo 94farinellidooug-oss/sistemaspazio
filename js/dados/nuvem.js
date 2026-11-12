@@ -93,6 +93,8 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     minhasClinicas:async () => (await rest(`membros?select=perfil,nome,clinicas(id,nome,cidade,uf,permissoes)&user_id=eq.${sessao.user.id}&ativo=is.true`) || [])
       .filter(m => m.clinicas).map(m => ({ id:m.clinicas.id, nome:m.clinicas.nome, cidade:m.clinicas.cidade, uf:m.clinicas.uf, perfil:m.perfil, permissoes:m.clinicas.permissoes || {} })),
     // Equipe (supabase/004_equipe.sql). aceitarConvites: ao entrar, entra nas clínicas que convidaram este e-mail.
+    // Registro de acesso (Marco Civil, art. 15): o servidor guarda login, IP e hora; se falhar, a entrada segue normal.
+    registrarAcesso:async (evento = 'entrou') => { try { return await rest('rpc/registrar_acesso', { metodo:'POST', corpo:{ p_evento:evento } }); } catch (e) { return false; } },
     aceitarConvites:async () => { try { return await rest('rpc/aceitar_convites', { metodo:'POST', corpo:{} }); } catch (e) { if (e.status === 404 || e.codigo === 'PGRST202') return 0; throw e; } },
     equipe:async clinica => (await rest(`membros?select=user_id,nome,email,perfil,ativo,criado_em&clinica_id=eq.${clinica}&order=criado_em.asc`)) || [],
     convites:async clinica => { try { return (await rest(`convites?select=id,nome,email,perfil,criado_em&clinica_id=eq.${clinica}&aceito_em=is.null&order=criado_em.asc`)) || []; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
