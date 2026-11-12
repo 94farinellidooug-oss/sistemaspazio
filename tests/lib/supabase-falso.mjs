@@ -34,6 +34,26 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
       if (R.revendedores.some(r => r.codigo === k && r.ativo)) { const v = R.visitas.find(x => x.codigo === k && x.dia === dia); if (v) v.visitas++; else R.visitas.push({ codigo:k, dia, visitas:1 }); }
       return resp(204);
     }
+    // Função teleconsulta (consulta online): salvar e entrar com login; paciente sem login. S.teleSit muda a situação.
+    if (u.pathname === '/functions/v1/teleconsulta') {
+      S.teles ||= [];
+      if (corpo.acao === 'paciente') {
+        const t = S.teles.find(x => x.id === corpo.id);
+        if (!t) return resp(404, { erro:'nao_encontrada', msg:'Consulta não encontrada. Confira o link que você recebeu.' });
+        const base = { situacao:t.cancelada ? 'cancelada' : S.teleSit || 'aberta', clinica:t.clinica_nome, primeiro:t.primeiro, inicio:t.inicio };
+        if (base.situacao !== 'aberta' || corpo.aceito !== true) return resp(200, base);
+        t.aceite = (t.aceite || 0) + 1; return resp(200, { ...base, url:'about:blank#paciente-' + t.id });
+      }
+      if (!eu) return resp(401, { erro:'sem_login', msg:'Entre de novo para continuar.' });
+      if (!S.clinicas.find(x => x.id === corpo.clinica)?.membros.some(m => m.user === eu.id && m.ativo !== false)) return resp(403, { erro:'sem_acesso', msg:'Sua conta não tem acesso a esta clínica.' });
+      if (corpo.acao === 'salvar') {
+        let t = S.teles.find(x => x.clinica_id === corpo.clinica && x.consulta_id === corpo.consulta);
+        if (!t) { t = { id:`aaaaaaaa-0000-4000-8000-${String(S.teles.length + 1).padStart(12, '0')}`, clinica_id:corpo.clinica, consulta_id:corpo.consulta }; S.teles.push(t); }
+        Object.assign(t, { inicio:corpo.inicio, duracao:corpo.duracao, primeiro:corpo.primeiro, clinica_nome:corpo.clinica_nome, cancelada:corpo.cancelada === true });
+        return resp(200, { id:t.id });
+      }
+      if (corpo.acao === 'entrar') { const t = S.teles.find(x => x.id === corpo.id); if (!t) return resp(404, { erro:'nao_encontrada', msg:'Consulta online não encontrada.' }); t.entradas = (t.entradas || 0) + 1; return resp(200, { url:'about:blank#sala-' + t.id }); }
+    }
     if (!eu) return resp(401, { code:'PGRST301', message:'JWT expired' });
     if (u.pathname === '/rest/v1/rpc/criar_clinica') { const id = 'c' + (++S.n); S.clinicas.push({ id, nome:corpo.p_nome, cidade:corpo.p_cidade, uf:corpo.p_uf, criado_por:eu.email, membros:[{ user:eu.id, perfil:'adm', ativo:true, email:eu.email, nome:eu.nome || '' }], assin:{ plano:corpo.p_plano || 'profissional', teste_ate:new Date(Date.now() + 7 * 864e5).toISOString(), gratis_ate:null, gratis_sempre:false, gratis_motivo:'', pago_ate:null } }); S.dados[id] = { doc:corpo.p_doc, versao:1 }; return resp(200, id); }
     const dono = () => (S.donos || []).includes(eu.id);

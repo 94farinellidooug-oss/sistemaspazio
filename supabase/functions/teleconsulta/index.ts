@@ -11,10 +11,16 @@
 //   { acao:'entrar', clinica, id }  alguém da equipe: abre a sala (cria na primeira vez) e devolve { url } como dono da sala
 //   { acao:'paciente', id, aceito }  o paciente, sem login: sem aceito devolve a situação (cedo, aberta, encerrada,
 //     cancelada) para mostrar o termo; com aceito:true registra o aceite (hora, IP, navegador) e devolve { url }
+// Cada pacote tem um limite de consultas online por mês (LIMITE_ONLINE); entrar de novo na mesma sala não conta.
 // A sala só abre de 30 minutos antes até 1 hora depois do fim do horário (o profissional pode entrar 1 hora antes).
 // A chamada não é gravada. Escrito em JavaScript simples (sem tipos) para rodar igual no Supabase e nos testes (node).
 
 const DAILY = 'https://api.daily.co/v1';
+// Consultas online por mês em cada pacote (decisão do Maicon em 12/11/2026). Conta cada sala aberta no mês
+// (a primeira entrada de cada horário). js/dados/planos.js tem a mesma tabela para mostrar no sistema e no site.
+export const LIMITE_ONLINE = { essencial:10, profissional:40, clinica:100 };
+// Início do mês no horário de Brasília (UTC-3), em ISO.
+export const inicioDoMes = ms => { const d = new Date(ms - 3 * 36e5); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 3)).toISOString(); };
 const MIN = 6e4;
 export const JANELA = { paciente:30 * MIN, profissional:60 * MIN, depois:60 * MIN };
 const ID_OK = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -56,10 +62,18 @@ export function criarTeleconsulta({ env, f = (...a) => fetch(...a), agora = () =
   const consultaPorId = async id => ((await banco(`teleconsultas?select=*&id=eq.${id}`)) || [])[0] || null;
   const segundos = ms => Math.floor(ms / 1000);
   // A sala do Daily é privada (só entra com o passe que a função dá) e fecha sozinha 2 horas depois do fim.
+  const uso = async clinica => {
+    const A = (await banco(`assinaturas?select=plano&clinica_id=eq.${clinica}`)) || [];
+    const plano = LIMITE_ONLINE[A[0]?.plano] ? A[0].plano : 'profissional';
+    const L = (await banco(`teleconsultas?select=id&clinica_id=eq.${clinica}&sala_em=gte.${encodeURIComponent(inicioDoMes(agora()))}`)) || [];
+    return { plano, limite:LIMITE_ONLINE[plano], usadas:L.length };
+  };
   const garantirSala = async t => {
     if (t.sala && t.sala_url) return t;
+    const U = await uso(t.clinica_id);
+    if (U.usadas >= U.limite) throw Object.assign(new Error('limite'), { limite:U });
     const s = await daily('/rooms', { name:`musubi-${sorteio()}`, privacy:'private', properties:{ exp:segundos(new Date(t.fim).getTime() + 2 * 60 * MIN), eject_at_room_exp:true, enable_prejoin_ui:true, enable_chat:true, lang:'user' } });
-    await banco(`teleconsultas?id=eq.${t.id}`, { metodo:'PATCH', corpo:{ sala:s.name, sala_url:s.url }, cab:{ Prefer:'return=minimal' } });
+    await banco(`teleconsultas?id=eq.${t.id}`, { metodo:'PATCH', corpo:{ sala:s.name, sala_url:s.url, sala_em:new Date(agora()).toISOString() }, cab:{ Prefer:'return=minimal' } });
     return { ...t, sala:s.name, sala_url:s.url };
   };
   const passe = async (t, dono, nome) => (await daily('/meeting-tokens', { properties:{ room_name:t.sala, is_owner:dono, user_name:nome || (dono ? 'Profissional' : 'Paciente'), exp:segundos(new Date(t.fim).getTime() + 2 * 60 * MIN) } })).token;
@@ -113,6 +127,8 @@ export function criarTeleconsulta({ env, f = (...a) => fetch(...a), agora = () =
       }
       return erro(400, 'acao', 'Pedido inválido.');
     } catch (e) {
+      if (e.limite) return erro(403, 'limite_online', corpo.acao === 'paciente' ? 'A clínica atingiu o limite de consultas online deste mês. Avise a clínica.'
+        : `O pacote da clínica inclui até ${e.limite.limite} consultas online por mês, e esse limite já foi usado neste mês. Para fazer mais, troque de pacote em Configurações > Sua conta.`);
       console.error(e, e.daily || '');
       return erro(e.daily ? 502 : 500, e.daily ? 'daily' : 'erro', e.daily ? `O serviço de vídeo não respondeu.${e.daily?.info ? ` (Motivo: ${String(e.daily.info).slice(0, 160)})` : ''}` : 'Não deu certo agora. Tente de novo em instantes.');
     }

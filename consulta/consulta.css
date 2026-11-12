@@ -1,0 +1,24 @@
+:root{--fundo:#f7f5ef;--cartao:#fff;--tinta:#22261d;--suave:#5f6657;--linha:#e2ded2;--verde:#4f6b3a;--verde-t:#fff;--ouro:#b98a2e;--erro:#a8402f}
+@media (prefers-color-scheme:dark){:root{--fundo:#121510;--cartao:#1b2018;--tinta:#eef0ea;--suave:#a9b1a0;--linha:#2f372a;--verde:#a6c48b;--verde-t:#121510;--ouro:#d8b06a;--erro:#ef8f7d}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--fundo);color:var(--tinta);font:16px/1.55 Inter,system-ui,sans-serif}
+.topo{display:flex;justify-content:center;padding:22px 16px 6px}
+.logo{height:40px;width:auto}.logo-escuro{display:none}
+@media (prefers-color-scheme:dark){.logo-claro{display:none}.logo-escuro{display:block}}
+main{padding:16px;display:flex;justify-content:center}
+.cartao{width:100%;max-width:560px;background:var(--cartao);border:1px solid var(--linha);border-radius:16px;padding:24px;box-shadow:0 8px 30px rgba(0,0,0,.06)}
+h1{font-size:1.35rem;line-height:1.3;margin:0 0 6px}
+.suave{color:var(--suave);margin:0}
+.quando{display:inline-block;margin:14px 0 4px;padding:6px 12px;border-radius:999px;background:color-mix(in srgb,var(--ouro) 16%,transparent);color:var(--tinta);font-weight:600}
+.termo{margin:18px 0;padding:16px 18px;border:1px solid var(--linha);border-radius:12px;font-size:.92rem}
+.termo h2{font-size:1rem;margin:0 0 8px}
+.termo ul{margin:0;padding-left:18px}.termo li+li{margin-top:6px}
+.aceite{display:flex;gap:10px;align-items:flex-start;font-weight:500;cursor:pointer}
+.aceite input{width:20px;height:20px;margin-top:2px;accent-color:var(--verde);flex:none}
+.btn{display:flex;width:100%;justify-content:center;align-items:center;gap:8px;margin-top:16px;padding:14px 18px;border:0;border-radius:12px;background:var(--verde);color:var(--verde-t);font:600 1rem Inter,sans-serif;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sec{background:transparent;color:var(--verde);border:1px solid var(--linha)}
+.erro{color:var(--erro);margin:12px 0 0;font-weight:500}
+.dica{font-size:.85rem;color:var(--suave);margin-top:14px}
+#video{position:fixed;inset:0;background:#111;z-index:10}
+#video iframe{width:100%;height:100%;border:0}

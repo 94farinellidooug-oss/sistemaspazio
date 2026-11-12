@@ -17,16 +17,18 @@ export function formAgenda(){
   F.pid ||= ui.bookPid || ui.pid; F.date ||= ui.agDia || TODAY;
   return F;
 }
+// WhatsApp de um horário online: a mensagem leva o link da consulta.
+const btnWaOnline = (ap, so = true) => `<button class="btn sm wa" data-act="wa-online" data-ap="${ap}"${so ? ' aria-label="WhatsApp com o link da consulta" data-tip="WhatsApp com o link da consulta"' : ''}>${ic('mensagem')}${so ? '' : 'WhatsApp'}</button>`;
 const proximoDe = pid => db.appts.filter(a=>a.pid===pid && a.date>=TODAY && !a.done && a.st!=='desmarcado' && a.st!=='faltou').sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
 
 function linhaHorario(a){
   const p = patient(a.pid), st = situacaoHorario(a), fora = a.st === 'desmarcado', [, dur] = servicoDe(a.tipo);
   return `<div class="hor ${fora ? 'desmarcado' : st}" data-hor="${a.id}">
     <div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div>
-    <div class="hor-p"><button class="lk" data-act="open" data-pid="${a.pid}">${esc(p?.name||'Paciente removido')}</button><small>${esc(a.tipo)} · ${dur} min${a.hist?.length ? ` · <span class="hor-hi">${esc(a.hist[0])}</span>` : ''}</small></div>
+    <div class="hor-p"><button class="lk" data-act="open" data-pid="${a.pid}">${esc(p?.name||'Paciente removido')}</button><small>${a.online ? `<span class="pill acc on-l">${ic('video')}Online</span> ` : ''}${esc(a.tipo)} · ${dur} min${a.hist?.length ? ` · <span class="hor-hi">${esc(a.hist[0])}</span>` : ''}</small></div>
     ${fora ? '<span class="pill">Desmarcado</span>' : `<div class="rx-seg st" role="group" aria-label="Situação">${SITUACOES_HORARIO.map(([k,n,i])=>`<button class="${k}${st===k?' on':''}" data-act="ag-st" data-id="${a.id}" data-s="${k}" aria-pressed="${st===k}" aria-label="${n}" data-tip="${n}">${ic(i)}</button>`).join('')}</div>`}
     <div class="hor-a">${fora ? `<button class="btn sm" data-act="ag-rem" data-id="${a.id}">${ic('agenda')}Reagendar</button>`
-      : `${a.date===TODAY && st!=='atendido' && st!=='faltou' && p ? `<button class="btn sm pri" data-act="novo-atendimento" data-pid="${a.pid}">${ic('play')}Atender</button>` : ''}${p && a.date>=TODAY && st!=='atendido' && st!=='faltou' ? btnWa('lembrete', a.pid, a.id, true) : ''}<button class="btn sm ghost" data-act="ag-rem" data-id="${a.id}" aria-label="Remarcar" data-tip="Remarcar">${ic('agenda')}</button><button class="btn sm ghost" data-act="ag-desm" data-id="${a.id}" aria-label="Desmarcar" data-tip="Desmarcar">${ic('x')}</button>`}</div></div>`;
+      : `${a.date===TODAY && st!=='atendido' && st!=='faltou' && p ? `<button class="btn sm pri" data-act="novo-atendimento" data-pid="${a.pid}">${ic('play')}Atender</button>` : ''}${a.online && p && a.date===TODAY && st!=='atendido' && st!=='faltou' ? `<button class="btn sm" data-act="video" data-id="${a.id}">${ic('video')}Vídeo</button>` : ''}${p && a.date>=TODAY && st!=='atendido' && st!=='faltou' ? (a.online ? btnWaOnline(a.id) : btnWa('lembrete', a.pid, a.id, true)) : ''}<button class="btn sm ghost" data-act="ag-rem" data-id="${a.id}" aria-label="Remarcar" data-tip="Remarcar">${ic('agenda')}</button><button class="btn sm ghost" data-act="ag-desm" data-id="${a.id}" aria-label="Desmarcar" data-tip="Desmarcar">${ic('x')}</button>`}</div></div>`;
 }
 
 // Lembretes de amanhã: um toque abre o WhatsApp com a mensagem pronta; fica anotado quando foi aberta.
@@ -35,7 +37,7 @@ function lembretes(){
   if (!L.length) return '';
   const falta = L.filter(a => !lembreteDe(patient(a.pid), a.id)).length;
   return `<div class="card" id="lembretes"><div class="card-h"><h2>Lembretes de amanhã<small>um toque abre o WhatsApp com a mensagem pronta</small></h2><span class="pill ${falta ? 'warn' : 'ok'}" id="lem-falta">${falta ? `${falta} a enviar` : 'todos enviados'}</span></div>
-    <div class="hor-l">${L.map(a => { const p = patient(a.pid), m = lembreteDe(p, a.id); return `<div class="hor lem" data-lem="${a.id}"><div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div><div class="hor-p"><b>${esc(p.name)}</b><small>${esc(a.tipo)}</small>${m ? `<small class="wa-ok">${ic('check')}mensagem aberta às ${horaLocal(m.em)}</small>` : ''}</div><div class="hor-a">${btnWa('lembrete', a.pid, a.id)}</div></div>`; }).join('')}</div></div>`;
+    <div class="hor-l">${L.map(a => { const p = patient(a.pid), m = lembreteDe(p, a.id); return `<div class="hor lem" data-lem="${a.id}"><div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div><div class="hor-p"><b>${esc(p.name)}</b><small>${esc(a.tipo)}</small>${m ? `<small class="wa-ok">${ic('check')}mensagem aberta às ${horaLocal(m.em)}</small>` : ''}</div><div class="hor-a">${a.online ? btnWaOnline(a.id, false) : btnWa('lembrete', a.pid, a.id)}</div></div>`; }).join('')}</div></div>`;
 }
 
 export function vAgenda(){
@@ -62,6 +64,7 @@ export function vAgenda(){
         <label class="rx-f full"><span class="lbl">Serviço</span><select id="na-tipo" data-agf="tipo">${[...SERVICOS, ...(SERVICOS.some(s=>s[0]===F.tipo)?[]:[servicoDe(F.tipo)])].map(([n,m])=>`<option value="${esc(n)}" ${n===F.tipo?'selected':''}>${esc(n)} · ${m} min</option>`).join('')}</select></label>
         <label class="rx-f"><span class="lbl">Dia</span><input id="na-d" type="date" data-agf="date" value="${F.date}" required></label>
         <label class="rx-f"><span class="lbl">Horário</span><input id="na-t" type="time" data-agf="time" value="${F.time}" required></label>
+        <label class="tg full ag-online"><input type="checkbox" id="na-online" data-agf="online" ${(F.online ?? R?.online) ? 'checked' : ''}><span class="sw"></span><span><b>${ic('video')}Consulta online (vídeo)</b><small>O paciente recebe o link pelo WhatsApp e entra pelo celular ou computador</small></span></label>
       </div>
       <p class="muted sm" style="margin:10px 0">${sv[1]} min · ${brl(sv[2])} (valor do serviço).${prox?` Próximo horário: ${fmt(prox.date)} às ${prox.time}.`:''}</p>
       <button class="btn pri">${ic('check')}${R?'Salvar novo horário':'Agendar'}</button></form>

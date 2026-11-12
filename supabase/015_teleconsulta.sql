@@ -16,8 +16,9 @@ create table if not exists public.teleconsultas (
   cancelada boolean not null default false,
   sala text,
   sala_url text,
+  sala_em timestamptz,   -- quando a sala foi aberta (conta no limite de consultas online do mês do pacote)
   criado_em timestamptz not null default now(),
-  criado_por uuid references auth.users(id) on delete set null,
+  criado_por uuid references auth.users(id) on delete set null,   -- quem marcou ou mudou o horário por último
   aceite_em timestamptz,
   aceite_ip text,
   aceite_agente text,
@@ -27,3 +28,4 @@ alter table public.teleconsultas enable row level security;
 drop policy if exists teleconsultas_ler on public.teleconsultas;
 create policy teleconsultas_ler on public.teleconsultas for select to authenticated using (public.e_membro(clinica_id));
 revoke insert, update, delete, truncate on public.teleconsultas from anon, authenticated;
+create index if not exists teleconsultas_mes on public.teleconsultas (clinica_id, sala_em);

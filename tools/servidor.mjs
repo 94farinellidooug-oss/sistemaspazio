@@ -11,7 +11,8 @@ const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 export function iniciar(porta = Number(process.env.PORT) || 5173) {
   const srv = createServer(async (req, res) => {
     const caminho = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^([/\\])+/, '');
-    const arq = join(RAIZ, caminho || 'index.html');
+    // Pasta com barra no fim (ex.: /consulta/) abre o index.html dela, como na Vercel.
+    const arq = join(RAIZ, !caminho ? 'index.html' : /[/\\]$/.test(caminho) ? caminho + 'index.html' : caminho);
     if (!arq.startsWith(RAIZ)) { res.writeHead(403).end(); return; }
     try { const dados = await readFile(arq); res.writeHead(200, { 'Content-Type': TIPOS[extname(arq)] || 'application/octet-stream' }).end(dados); }
     catch { res.writeHead(404).end('Não encontrado'); }

@@ -1459,3 +1459,21 @@ body.com-acesso{overflow:hidden}
 .pd-dicas-c[open] summary{margin-bottom:10px}
 @media (max-width:900px){ .pd-grupos,.pd-grupos2{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:520px){ .pd-resumo span{padding:2px 10px} .pd-barra{grid-template-columns:76px minmax(0,1fr) auto} .pd-barra b{min-width:0} }
+
+/* Consulta online (vídeo): marca na agenda e janela do vídeo por cima do sistema */
+.on-l{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;font-size:.72rem;vertical-align:1px}
+.on-l svg{width:12px;height:12px}
+.ag-online{grid-column:1/-1}
+.ag-online b{display:inline-flex;align-items:center;gap:6px}
+.ag-online b svg{width:16px;height:16px}
+.vjan{position:fixed;right:16px;bottom:16px;z-index:90;width:min(420px,calc(100vw - 32px));height:min(340px,60vh);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.28);overflow:hidden}
+.vjan.grande{width:min(960px,calc(100vw - 32px));height:min(680px,calc(100vh - 32px))}
+.vjan-h{display:flex;align-items:center;gap:4px;padding:6px 6px 6px 12px;border-bottom:1px solid var(--line)}
+.vjan-t{flex:1;min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden;white-space:nowrap}
+.vjan-t b{overflow:hidden;text-overflow:ellipsis}
+.vjan-t small{color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.vjan-t svg{width:16px;height:16px;flex:none;color:var(--brand)}
+.vjan-x{color:var(--crit)}
+.vjan iframe{flex:1;width:100%;border:0;background:#111}
+@media (max-width:640px){ .vjan,.vjan.grande{left:8px;right:8px;bottom:8px;width:auto;height:min(70vh,520px)} .vjan-t small{display:none} }
+@media print{ .vjan{display:none} }

@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "echo 'O site não precisa de dependências'",
-  "buildCommand": "npm run build && rm -rf site && mkdir site && cp -r css js proposta inicio site/ && cp dist/spazio.html site/ && cp inicio/robots.txt site/robots.txt && cp inicio/sitemap.xml site/sitemap.xml",
+  "buildCommand": "npm run build && rm -rf site && mkdir site && cp -r css js proposta inicio consulta site/ && cp dist/spazio.html site/ && cp inicio/robots.txt site/robots.txt && cp inicio/sitemap.xml site/sitemap.xml",
   "outputDirectory": "site",
   "redirects": [
     {
@@ -54,6 +54,15 @@
         {
           "key": "X-Robots-Tag",
           "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/consulta/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
         }
       ]
     }
