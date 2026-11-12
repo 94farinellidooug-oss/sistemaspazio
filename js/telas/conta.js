@@ -11,6 +11,7 @@ import { PERIODOS_PAG, PLANOS, RECURSOS, pacoteDoRecurso, planoDe, temRecurso, p
 import { LOGO, ic } from '../componentes/icones.js';
 import { permite } from '../dados/equipe.js';
 import { esc } from '../util.js';
+import { KEY_REVENDA, revendaGuardada } from '../dados/revenda.js';
 
 const KEY_CONVITE = 'musubi-convite', KEY_PLANO_SITE = 'musubi-plano-site', KEY_MODO = 'musubi-modo', KEY_CLINICA = 'musubi-clinica', KEY_CACHE_DE = 'musubi-v2-clinica';
 const UFS_BR = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
@@ -307,6 +308,9 @@ async function enviarAcesso(f){
       const doc = levar ? db : dadosNovaClinica();
       (doc.config ||= {}).clinica = { ...(doc.config.clinica || {}), nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf') };
       const id = await conta.nuvem.criarClinica({ nome:v('clinica').trim(), cidade:v('cidade').trim(), uf:v('uf'), nomePessoa:conta.nuvem.sessao().user.nome || '', plano:conta.plano }, doc);
+      // Veio pelo link de um revendedor: marca a clínica com ele (se o servidor ainda não tiver o 015, segue sem marcar).
+      const rev = revendaGuardada(lerC(KEY_REVENDA));
+      if (rev) { try { await conta.nuvem.marcarRevendedor(id, rev); localStorage.removeItem(KEY_REVENDA); } catch (e) {} }
       await abrirClinica({ id, nome:v('clinica').trim(), perfil:'adm' });
     }
     if (t === 'vencido') {
