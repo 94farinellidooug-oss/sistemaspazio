@@ -267,7 +267,7 @@ p{margin:0}
 .entrada{position:fixed;inset:0;z-index:200;display:grid;place-items:center;cursor:pointer;background:
   radial-gradient(520px 520px at 50% 46%,color-mix(in srgb,var(--ouro) 12%,transparent),transparent 70%),var(--fundo);
   transition:opacity .7s ease,transform .7s cubic-bezier(.6,0,.2,1)}
-.entrada.saindo{opacity:0;transform:scale(1.12)}
+.entrada.saindo{opacity:0;transform:scale(1.12);pointer-events:none}
 .sem-entrada .entrada{display:none}
 .com-entrada body{overflow:hidden}
 .entrada-saiu body{overflow:auto}

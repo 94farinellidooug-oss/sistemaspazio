@@ -27,11 +27,12 @@ const contexto = async opc => {
   return ctx;
 };
 const vigiar = p => { p.on('pageerror', e => erros.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !m.text().includes('Failed to load resource')) erros.push(m.text()); }); return p; };
-const abrir = async (opc, url = SITE) => { const p = vigiar(await (await contexto(opc)).newPage()); await p.goto(url); await p.waitForSelector('#mods .mod'); return p; };
+// A entrada (primeira visita da sessão) cobre a página por alguns segundos: espera ela sair, menos quando o teste é sobre ela.
+const abrir = async (opc, url = SITE, comEntrada = false) => { const p = vigiar(await (await contexto(opc)).newPage()); await p.goto(url); await p.waitForSelector('#mods .mod'); if (!comEntrada) await p.waitForSelector('#entrada', { state:'detached', timeout:6000 }); return p; };
 const logoVisivel = p => p.evaluate(() => [...document.querySelectorAll('.topo .logo')].filter(x => getComputedStyle(x).display !== 'none').map(x => x.getAttribute('src').split('/').pop()));
 const carregou = p => p.evaluate(() => [...document.querySelectorAll('img')].filter(i => getComputedStyle(i).display !== 'none').every(i => i.complete && i.naturalWidth > 0));
 
-let p = await abrir({ viewport:{ width:1366, height:900 }, colorScheme:'light' });
+let p = await abrir({ viewport:{ width:1366, height:900 }, colorScheme:'light' }, SITE, true);
 ok(!(await p.locator('.faixa').count()), 'sem a faixa de prévia');
 ok((await logoVisivel(p)).join() === 'MUSUBI_logo_colorido.svg', 'tema claro: logo colorido');
 ok(await carregou(p), 'logos e telas carregam');
