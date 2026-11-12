@@ -18,6 +18,7 @@ import { concluirHorario, conflito, desmarcar, marcarHorario, novoHorario, remar
 import { vAvaliacao } from './telas/avaliacao.js';
 import { atendimentoAberto, indicadosMarca, textoSalvo, vAtendimento } from './telas/atendimento.js';
 import { editarRegistro, TIPOS_MARCA, LADOS_MARCA, adicionarMarca, editarMarca, marcasDe, removerMarca, CATEGORIAS, PARES_VASOS, adicionarAchadoLivre, definirVaso, ehBasal, fotoVersao, registrarCorrecao, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirAchadoLivre, definirPulso, notaCategoria, removerAchadoLivre, descartarRascunho, finalizarAtendimento, iniciarAtendimento, rascunhoDe, registrarAlteracao } from './dados/atendimento.js';
+import { aplicarMascara, dataIso } from './componentes/mascaras.js';
 import { aoDigitarCep, cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
 import { soDigitosCep } from './dados/endereco.js';
 import { abrirVideo, ligarVideo, prepararWaOnline, sincronizarOnline } from './telas/video.js';
@@ -250,6 +251,7 @@ document.addEventListener('click',ev=>{
 });
 document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
 document.addEventListener('input',ev=>{
+  if(ev.target.dataset?.mask) aplicarMascara(ev.target);
   if(ev.target.dataset?.exc==='outro'&&ui.excluir){ ui.excluir.outro=ev.target.value; return; }
   if(ev.target.dataset?.cid==='q'){ procurarCid(ev.target.value); return; }
   const t=ev.target;
@@ -266,7 +268,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.q&&t.type==='range'){ document.getElementById(t.id+'-v').textContent=t.value; }
   else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
   else if(t.id==='np-cep'){ aoDigitarCep(t); }
-  else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
+  else if(t.id==='np-cpf'||t.id==='np-birth'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
   if(t.dataset.rxmot||t.dataset.atorient){ const x=atendimentoAberto(); if(!x) return;
     if(t.dataset.rxmot){ if(x.a.status==='rascunho'&&definirMotivo(x.a,t.dataset.rxmot,t.value)) mudou(`plano terapêutico: motivo de ${t.dataset.rxmot} não realizado`,false); }
@@ -461,15 +463,17 @@ document.addEventListener('submit',ev=>{
   if(f.id==='f-patient'){
     const cpf=document.getElementById('np-cpf');
     if(!cpfValido(cpf.value)){ cpf.setCustomValidity('CPF inválido: confira os 11 números.'); cpf.reportValidity(); return; }
+    const nasc=document.getElementById('np-birth'), birth=dataIso(nasc.value);
+    if(!birth||birth>TODAY){ nasc.setCustomValidity(birth?'A data de nascimento não pode ser no futuro.':'Data inválida: use dia/mês/ano, por exemplo 12/04/1988.'); nasc.reportValidity(); return; }
     const em=new Date().toISOString(), lgpd=document.getElementById('np-lgpd');
     const cadastro={cpf:cpf.value.trim()?cpfFormatado(cpf.value.trim()):'',email:v('np-email').trim(),endereco:v('np-end').trim(),numero:v('np-num').trim(),complemento:v('np-comp').trim(),bairro:v('np-bai').trim(),cep:soDigitosCep(v('np-cep')),uf:v('np-uf'),cidade:v('np-cid').trim(),hemisferio:v('np-hem'),contatoEmergencia:v('np-emerg').trim()};
     const alerts=Object.fromEntries(['gestante','anticoagulante','marcapasso'].map(k=>[k,document.getElementById('np-al-'+k).checked]));
     if(ui.editPid){ const p=patient(ui.editPid);
-      p.name=v('np-name').trim(); p.birth=v('np-birth'); p.phone=v('np-phone'); p.queixas.find(q=>q.id==='q1').descricao=v('np-q').trim();
+      p.name=v('np-name').trim(); p.birth=birth; p.phone=v('np-phone').trim(); p.queixas.find(q=>q.id==='q1').descricao=v('np-q').trim();
       Object.assign(p.alerts,alerts); p.cadastro={...p.cadastro,...cadastro,atualizadoEm:em};
       if(lgpd?.checked) p.consentimento=TODAY;
       save(); ui.pid=p.id; ui.editPid=null; ui.tab='resumo'; toast('Cadastro atualizado'); location.hash='prontuario'; return; }
-    const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),consentimento:TODAY,em}));
+    const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth,phone:v('np-phone').trim(),queixa:v('np-q'),consentimento:TODAY,em}));
     Object.assign(p.alerts,alerts); p.cadastro=cadastro;
     db.patients.push(p); const ni=ui.cadPrevio?.intId&&(db.interessados||[]).find(x=>x.id===ui.cadPrevio.intId); if(ni) virouPaciente(ni,p.id); ui.cadPrevio=null; save(); ui.pid=p.id; ui.tab='anamnese'; toast('Paciente cadastrado'); location.hash='prontuario';
   } else if(f.id==='f-edreg'){

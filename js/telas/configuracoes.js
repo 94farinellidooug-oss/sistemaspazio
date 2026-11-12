@@ -4,6 +4,7 @@
 // Serviços e horário salvam a cada mudança; dados da clínica e da conta, no botão Salvar.
 import { ic } from '../componentes/icones.js';
 import { db } from '../dados/repositorio.js';
+import { mascaraTel } from '../componentes/mascaras.js';
 import { DIAS_SEMANA, DURACOES, UFS, configDe, resumoHorario, salvarClinica, salvarHorario, salvarServicos } from '../dados/config.js';
 import { FALTA_ACEITE, TEXTO_ACEITE, avisoCobranca, assinarCartaoConta, cancelarCartaoConta, cartaoConta, clinicaNoServidor, contaAtual, pagamentosConta, pagarConta, situacaoConta, mudarEmailConta, sairDosOutrosConta, salvarNomeConta, trocarSenhaConta } from './conta.js';
 import { esc } from '../util.js';
@@ -32,7 +33,7 @@ function cfClinica(){
       <label class="field full"><span class="lbl">Nome da clínica</span><input name="nome" value="${esc(D.nome)}" required></label>
       <label class="field"><span class="lbl">Cidade</span><input name="cidade" value="${esc(D.cidade)}" required></label>
       <label class="field"><span class="lbl">Estado</span><select name="uf">${UFS.map(u => `<option ${u === D.uf ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
-      <label class="field"><span class="lbl">WhatsApp da clínica</span><input name="whats" type="tel" value="${esc(D.whats)}" placeholder="(54) 99999-0000"></label>
+      <label class="field"><span class="lbl">WhatsApp da clínica</span><input name="whats" type="tel" data-mask="tel" maxlength="15" value="${esc(D.whats?mascaraTel(D.whats):'')}" placeholder="(54) 99999-0000"></label>
     </div>
     <details class="cf-mais" ${D.end || D.doc ? 'open' : ''}><summary>Mais dados (opcional)</summary><div class="form">
       <label class="field full"><span class="lbl">Endereço</span><input name="end" value="${esc(D.end)}" placeholder="Rua, número, bairro"></label>

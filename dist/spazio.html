@@ -3573,7 +3573,7 @@ function htmlAcesso(){
           <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa com pacientes de exemplo (WhatsApp e CPF 0000…) para conhecer o sistema. Dá para excluir depois.</small></span></label></div>` : ''}
         ${escolherPlano('Escolha o pacote: 7 dias grátis com tudo o que ele tem')}`
     : t === 'vencido' ? `${escolherPlano('Pacote')}${escolherPeriodo()}${marcarAceite()}`
-    : t === 'contato' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
+    : t === 'contato' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" data-mask="tel" maxlength="15" placeholder="(54) 99999-0000"')}` : '';
   const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Pagar com Pix ou cartão', contato:'Enviar' }[t];
   const termos = t === 'criar' ? `<p class="muted sm">Ao criar a conta, você concorda com os <a class="lnk" href="inicio/termos.html" target="_blank" rel="noopener">Termos de uso</a> e a <a class="lnk" href="inicio/privacidade.html" target="_blank" rel="noopener">Política de privacidade</a>.</p>` : '';
   const rodape = termos + (t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p><p class="muted sm"><a class="lnk suave" href="inicio/index.html">Conhecer o MUSUBI</a></p>`
@@ -3990,7 +3990,7 @@ function vRelacionamento(){
       <div class="ctt-l">${I.map(i=>`<div class="ctt int ${i.sit}" data-int="${i.id}"><div class="grow"><b>${esc(i.nome)}</b><small>${i.tel?`<span class="tel">${esc(i.tel)}</span> · `:''}${esc(i.origem)} · ${fmt(i.em.slice(0,10))}</small></div>
         <div class="int-s" role="group" aria-label="Situação de ${esc(i.nome)}">${SITUACOES_INTERESSADO.map(([k,n])=>`<button class="chip ${i.sit===k?'on':''}" data-act="int-sit" data-id="${i.id}" data-s="${k}" aria-pressed="${i.sit===k}">${n}</button>`).join('')}</div></div>`).join('') || '<p class="muted sm">Nenhum interessado registrado.</p>'}</div>
       <form id="f-int" class="ag-f" style="margin-top:12px"><label class="rx-f full"><span class="lbl">Nome</span><input id="int-nome" data-int="nome" value="${esc(N.nome)}" required autocomplete="off"></label>
-        <label class="rx-f"><span class="lbl">Telefone</span><input id="int-tel" data-int="tel" value="${esc(N.tel)}" inputmode="tel" autocomplete="off"></label>
+        <label class="rx-f"><span class="lbl">Telefone</span><input id="int-tel" data-int="tel" data-mask="tel" maxlength="15" value="${esc(N.tel)}" inputmode="tel" autocomplete="off"></label>
         <label class="rx-f"><span class="lbl">Como chegou</span><select id="int-origem" data-int="origem">${ORIGENS.map(o=>`<option ${o===N.origem?'selected':''}>${o}</option>`).join('')}</select></label>
         <div class="full"><button class="btn sm pri">${ic('mais')}Incluir interessado</button></div></form></div>
       <div class="card"><h2>Como funciona</h2><p class="muted sm">A lista de retomar contato se monta sozinha pela agenda e pelos atendimentos. <b>Contato feito</b> registra o dia e quem falou. Em <b>Paciente</b>, o cadastro abre com o nome e o telefone do interessado. <b>WhatsApp</b> abre a mensagem pronta e já registra o contato feito.</p></div></div></div>`;
@@ -6044,6 +6044,71 @@ function vAtendimento(){
   <div class="at-f">${i?`<button class="btn" data-act="etapa" data-i="${i-1}">${ic('esq')}${ETAPAS[i-1][1]}</button>`:fin?'<span></span>':`<button class="btn ghost" data-act="at-descartar">${ic('x')}Descartar rascunho</button>`}
     ${i<7?`<button class="btn pri" data-act="etapa" data-i="${i+1}">${ETAPAS[i+1][1]}${ic('dir')}</button>`:fin?`<button class="btn pri" data-act="at-prontuario" data-pid="${p.id}">${ic('doc')}Voltar ao prontuário</button>`:`<button class="btn pri" data-act="at-finalizar">${ic('check')}Finalizar atendimento</button>`}</div>`;
 }
+// Uso: <input data-mask="cpf|tel|data">; um ouvinte de 'input' chama aplicarMascara(campo).
+// Sem dependências, para servir também à página de apresentação.
+
+const soNum = (v, max) => String(v ?? '').replace(/\D/g, '').slice(0, max);
+
+// 000.000.000-00, aos poucos.
+const mascaraCpf = v => {
+  const d = soNum(v, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+};
+
+// (00) 0000-0000 com 10 números e (00) 00000-0000 com 11, aos poucos.
+// Número com +55 na frente perde o código do país.
+const mascaraTel = v => {
+  let d = String(v ?? '').replace(/\D/g, '');
+  if (d.length > 11 && d.startsWith('55')) d = d.slice(2);
+  d = d.slice(0, 11);
+  if (!d) return '';
+  if (d.length <= 2) return `(${d}`;
+  const ddd = `(${d.slice(0, 2)}) `, r = d.slice(2);
+  if (r.length <= 4) return ddd + r;
+  const corte = r.length === 9 ? 5 : 4;
+  return `${ddd}${r.slice(0, corte)}-${r.slice(corte)}`;
+};
+
+// dd/mm/aaaa, aos poucos. Uma data no formato do banco (aaaa-mm-dd) é mostrada como dd/mm/aaaa.
+const mascaraData = v => {
+  const s = String(v ?? '').trim();
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  const d = soNum(s, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+};
+
+// 'dd/mm/aaaa' (ou já 'aaaa-mm-dd') → 'aaaa-mm-dd'; data impossível → ''.
+const dataIso = v => {
+  const s = String(v ?? '').trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/), a, me, di;
+  if (m) [, a, me, di] = m;
+  else { m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if (!m) return ''; [, di, me, a] = m; }
+  const d = new Date(Date.UTC(+a, +me - 1, +di));
+  if (+a < 1900 || d.getUTCFullYear() !== +a || d.getUTCMonth() !== +me - 1 || d.getUTCDate() !== +di) return '';
+  return `${a}-${me}-${di}`;
+};
+
+const MASCARAS = { cpf: mascaraCpf, tel: mascaraTel, data: mascaraData };
+
+// Formata o campo mantendo o cursor no mesmo número em que a pessoa estava.
+const aplicarMascara = el => {
+  const f = MASCARAS[el?.dataset?.mask]; if (!f) return;
+  const antes = el.value, pos = el.selectionStart ?? antes.length;
+  const numerosAntes = antes.slice(0, pos).replace(/\D/g, '').length;
+  const novo = f(antes);
+  if (novo === antes) return;
+  el.value = novo;
+  if (document.activeElement !== el) return;
+  let p = 0, n = 0;
+  while (p < novo.length && n < numerosAntes) { if (/\d/.test(novo[p])) n++; p++; }
+  try { el.setSelectionRange(p, p); } catch { /* tipo de campo sem seleção */ }
+};
 // Identificação e contato, local de atendimento (para o contexto sazonal), queixa principal,
 // alertas de segurança e consentimento LGPD. Os campos do protótipo mantêm os mesmos ids (np-*).
 
@@ -6069,8 +6134,8 @@ function vCadastro(){
   <form id="f-patient" class="cad">
     <div class="grid" style="align-content:start">
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('doc_id')}</span><div><h3>Identificação</h3><small class="muted">Dados pessoais e contato</small></div></div>
-        <div class="form">${campo('np-name','Nome completo *',pre?.name,'text','Ex.: Marina Costa','required autocomplete="off"','full')}${campo('np-birth','Data de nascimento *',p?.birth,'date','','required')}${campo('np-cpf','CPF',c.cpf,'text','000.000.000-00','inputmode="numeric"')}
-          ${campo('np-phone','Telefone (WhatsApp)',pre?.phone,'tel','(11) 90000-0000')}${campo('np-email','E-mail',c.email,'email','nome@email.com')}
+        <div class="form">${campo('np-name','Nome completo *',pre?.name,'text','Ex.: Marina Costa','required autocomplete="off"','full')}${campo('np-birth','Data de nascimento *',mascaraData(p?.birth),'text','dd/mm/aaaa','required data-mask="data" inputmode="numeric" maxlength="10" autocomplete="bday"')}${campo('np-cpf','CPF',c.cpf,'text','000.000.000-00','inputmode="numeric" data-mask="cpf" maxlength="14"')}
+          ${campo('np-phone','Telefone (WhatsApp)',pre?.phone?mascaraTel(pre.phone):'','tel','(54) 90000-0000','data-mask="tel" maxlength="15" autocomplete="tel"')}${campo('np-email','E-mail',c.email,'email','nome@email.com')}
           ${campo('np-emerg','Contato de emergência',c.contatoEmergencia,'text','Nome e telefone','','full')}</div></section>
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('local')}</span><div><h3>Endereço e local de atendimento</h3><small class="muted">A cidade e o hemisfério são usados no contexto sazonal, só como complemento</small></div></div>
         <div class="form">${campo('np-cep','CEP',cepFormatado(c.cep||''),'text','00000-000','inputmode="numeric" autocomplete="postal-code" maxlength="9" aria-describedby="np-cep-s"')}<div class="field cep-s"><span class="muted sm" id="np-cep-s" role="status">${c.cep?'':'Digite o CEP para preencher o endereço'}</span></div>
@@ -6238,7 +6303,7 @@ function cfClinica(){
       <label class="field full"><span class="lbl">Nome da clínica</span><input name="nome" value="${esc(D.nome)}" required></label>
       <label class="field"><span class="lbl">Cidade</span><input name="cidade" value="${esc(D.cidade)}" required></label>
       <label class="field"><span class="lbl">Estado</span><select name="uf">${UFS.map(u => `<option ${u === D.uf ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
-      <label class="field"><span class="lbl">WhatsApp da clínica</span><input name="whats" type="tel" value="${esc(D.whats)}" placeholder="(54) 99999-0000"></label>
+      <label class="field"><span class="lbl">WhatsApp da clínica</span><input name="whats" type="tel" data-mask="tel" maxlength="15" value="${esc(D.whats?mascaraTel(D.whats):'')}" placeholder="(54) 99999-0000"></label>
     </div>
     <details class="cf-mais" ${D.end || D.doc ? 'open' : ''}><summary>Mais dados (opcional)</summary><div class="form">
       <label class="field full"><span class="lbl">Endereço</span><input name="end" value="${esc(D.end)}" placeholder="Rua, número, bairro"></label>
@@ -7368,6 +7433,7 @@ document.addEventListener('click',ev=>{
 });
 document.addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ') && ev.target.matches('.node')){ ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }});
 document.addEventListener('input',ev=>{
+  if(ev.target.dataset?.mask) aplicarMascara(ev.target);
   if(ev.target.dataset?.exc==='outro'&&ui.excluir){ ui.excluir.outro=ev.target.value; return; }
   if(ev.target.dataset?.cid==='q'){ procurarCid(ev.target.value); return; }
   const t=ev.target;
@@ -7384,7 +7450,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.q&&t.type==='range'){ document.getElementById(t.id+'-v').textContent=t.value; }
   else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
   else if(t.id==='np-cep'){ aoDigitarCep(t); }
-  else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
+  else if(t.id==='np-cpf'||t.id==='np-birth'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
   if(t.dataset.rxmot||t.dataset.atorient){ const x=atendimentoAberto(); if(!x) return;
     if(t.dataset.rxmot){ if(x.a.status==='rascunho'&&definirMotivo(x.a,t.dataset.rxmot,t.value)) mudou(`plano terapêutico: motivo de ${t.dataset.rxmot} não realizado`,false); }
@@ -7579,15 +7645,17 @@ document.addEventListener('submit',ev=>{
   if(f.id==='f-patient'){
     const cpf=document.getElementById('np-cpf');
     if(!cpfValido(cpf.value)){ cpf.setCustomValidity('CPF inválido: confira os 11 números.'); cpf.reportValidity(); return; }
+    const nasc=document.getElementById('np-birth'), birth=dataIso(nasc.value);
+    if(!birth||birth>TODAY){ nasc.setCustomValidity(birth?'A data de nascimento não pode ser no futuro.':'Data inválida: use dia/mês/ano, por exemplo 12/04/1988.'); nasc.reportValidity(); return; }
     const em=new Date().toISOString(), lgpd=document.getElementById('np-lgpd');
     const cadastro={cpf:cpf.value.trim()?cpfFormatado(cpf.value.trim()):'',email:v('np-email').trim(),endereco:v('np-end').trim(),numero:v('np-num').trim(),complemento:v('np-comp').trim(),bairro:v('np-bai').trim(),cep:soDigitosCep(v('np-cep')),uf:v('np-uf'),cidade:v('np-cid').trim(),hemisferio:v('np-hem'),contatoEmergencia:v('np-emerg').trim()};
     const alerts=Object.fromEntries(['gestante','anticoagulante','marcapasso'].map(k=>[k,document.getElementById('np-al-'+k).checked]));
     if(ui.editPid){ const p=patient(ui.editPid);
-      p.name=v('np-name').trim(); p.birth=v('np-birth'); p.phone=v('np-phone'); p.queixas.find(q=>q.id==='q1').descricao=v('np-q').trim();
+      p.name=v('np-name').trim(); p.birth=birth; p.phone=v('np-phone').trim(); p.queixas.find(q=>q.id==='q1').descricao=v('np-q').trim();
       Object.assign(p.alerts,alerts); p.cadastro={...p.cadastro,...cadastro,atualizadoEm:em};
       if(lgpd?.checked) p.consentimento=TODAY;
       save(); ui.pid=p.id; ui.editPid=null; ui.tab='resumo'; toast('Cadastro atualizado'); location.hash='prontuario'; return; }
-    const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth:v('np-birth'),phone:v('np-phone'),queixa:v('np-q'),consentimento:TODAY,em}));
+    const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth,phone:v('np-phone').trim(),queixa:v('np-q'),consentimento:TODAY,em}));
     Object.assign(p.alerts,alerts); p.cadastro=cadastro;
     db.patients.push(p); const ni=ui.cadPrevio?.intId&&(db.interessados||[]).find(x=>x.id===ui.cadPrevio.intId); if(ni) virouPaciente(ni,p.id); ui.cadPrevio=null; save(); ui.pid=p.id; ui.tab='anamnese'; toast('Paciente cadastrado'); location.hash='prontuario';
   } else if(f.id==='f-edreg'){
