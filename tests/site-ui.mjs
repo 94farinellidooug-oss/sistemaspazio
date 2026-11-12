@@ -96,8 +96,9 @@ await p.context().close();
 // Pacote: começar 7 dias grátis
 p = await abrir({ viewport:{ width:1366, height:900 }, colorScheme:'light' });
 await Promise.all([p.waitForURL(/\/index\.html/), p.click('#planos-l [data-k="essencial"]')]);
-await p.waitForTimeout(400);
-ok(await p.locator('#acesso h1', { hasText:'Criar sua conta' }).isVisible() && !p.url().includes('#criar'), '"Começar 7 dias grátis" abre a criação de conta');
+// Espera a tela aparecer (o computador do GitHub às vezes demora mais que 400 ms para montar o sistema).
+const criarVisivel = await p.locator('#acesso h1', { hasText:'Criar sua conta' }).waitFor({ state:'visible', timeout:8000 }).then(() => true, () => false);
+ok(criarVisivel && !p.url().includes('#criar'), '"Começar 7 dias grátis" abre a criação de conta');
 await p.fill('#f-acesso [name=nome]', 'Ana Souza'); await p.fill('#f-acesso [name=email]', 'ana@x.com'); await p.fill('#f-acesso [name=senha]', 'senha12345');
 await p.click('#f-acesso [type=submit]'); await p.waitForTimeout(500);
 ok(await p.locator('#acesso input[name=plano][value=essencial]').isChecked(), 'o pacote escolhido na página já vem marcado');
