@@ -26,6 +26,14 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
     if (u.pathname === '/auth/v1/logout') { delete S.tokens[auth]; return resp(204); }
     if (u.pathname === '/auth/v1/user') { if (!eu) return resp(401, { code:'PGRST301' }); if (op.method === 'PUT') { const x = S.usuarios[eu.email]; if (corpo.password) x.senha = corpo.password; if (corpo.data?.nome) x.nome = eu.nome = corpo.data.nome; if (corpo.email) S.emailPedido = corpo.email; } return resp(200, { id:eu.id, email:eu.email, user_metadata:{ nome:eu.nome } }); }
     if (u.pathname === '/rest/v1/interessados' && op.method === 'POST') { if (op.headers.Prefer !== 'return=minimal') return resp(401, { code:'42501', message:'new row violates row-level security' }); S.interessados.push(corpo); return resp(201); }
+    // Revendedores (015_revendedores.sql). S.semRev = servidor sem o 015.
+    const R = S.revenda ||= { revendedores:[], visitas:[], clinicasRev:[], comissoes:[], regras:{ pct_mensal:20, meses_mensal:3, pct_anual:50, dias_liberar:7 } };
+    if (u.pathname === '/rest/v1/rpc/registrar_visita_revenda') {
+      if (S.semRev) return resp(404, { code:'PGRST202', message:'Could not find the function' });
+      const k = String(corpo.p_codigo || '').trim().toLowerCase(), dia = new Date().toISOString().slice(0, 10);
+      if (R.revendedores.some(r => r.codigo === k && r.ativo)) { const v = R.visitas.find(x => x.codigo === k && x.dia === dia); if (v) v.visitas++; else R.visitas.push({ codigo:k, dia, visitas:1 }); }
+      return resp(204);
+    }
     if (!eu) return resp(401, { code:'PGRST301', message:'JWT expired' });
     if (u.pathname === '/rest/v1/rpc/criar_clinica') { const id = 'c' + (++S.n); S.clinicas.push({ id, nome:corpo.p_nome, cidade:corpo.p_cidade, uf:corpo.p_uf, criado_por:eu.email, membros:[{ user:eu.id, perfil:'adm', ativo:true, email:eu.email, nome:eu.nome || '' }], assin:{ plano:corpo.p_plano || 'profissional', teste_ate:new Date(Date.now() + 7 * 864e5).toISOString(), gratis_ate:null, gratis_sempre:false, gratis_motivo:'', pago_ate:null } }); S.dados[id] = { doc:corpo.p_doc, versao:1 }; return resp(200, id); }
     const dono = () => (S.donos || []).includes(eu.id);
@@ -68,6 +76,19 @@ export function servidor({ confirmar = false, chave = 'pub' } = {}){
     if (u.pathname === '/rest/v1/interessados' && op.method === 'PATCH') { const id = u.searchParams.get('id').replace('eq.', ''); S.interessados.forEach((x, i) => { if ((x.id || 'i' + i) === id && dono()) x.situacao = corpo.situacao; }); return resp(204); }
     const eu_m = c => S.clinicas.find(x => x.id === c)?.membros.find(m => m.user === eu.id && m.ativo !== false);
     const membro = c => !!eu_m(c), adm = c => eu_m(c)?.perfil === 'adm';
+    const tabRev = { '/rest/v1/revendedores':'revendedores', '/rest/v1/revenda_visitas':'visitas', '/rest/v1/revenda_clinicas':'clinicasRev', '/rest/v1/revenda_comissoes':'comissoes', '/rest/v1/revenda_regras':'regras' }[u.pathname];
+    if (tabRev || u.pathname === '/rest/v1/rpc/marcar_revendedor') {
+      if (S.semRev) return resp(404, { code:tabRev ? 'PGRST205' : 'PGRST202', message:'Could not find' });
+      if (!tabRev) { const r = R.revendedores.find(x => x.codigo === corpo.p_codigo && x.ativo);
+        if (!adm(corpo.p_clinica) || !r || R.clinicasRev.some(x => x.clinica_id === corpo.p_clinica)) return resp(200, false);
+        R.clinicasRev.push({ clinica_id:corpo.p_clinica, revendedor_id:r.id, em:new Date().toISOString() }); return resp(200, true); }
+      if (op.method === 'GET') return resp(200, !dono() ? [] : tabRev === 'regras' ? [R.regras] : R[tabRev]);
+      if (!dono()) return resp(403, { code:'42501', message:'permission denied' });
+      if (tabRev === 'regras') { Object.assign(R.regras, corpo); return resp(204); }
+      if (tabRev === 'revendedores' && op.method === 'POST') { if (R.revendedores.some(x => x.codigo === corpo.codigo)) return resp(409, { code:'23505', message:'duplicate key' });
+        R.revendedores.push({ id:'rv' + (++S.n), ativo:true, criado_em:new Date().toISOString(), whats:'', pix:'', obs:'', ...corpo }); return resp(201); }
+      const x = R[tabRev].find(y => y.id === (u.searchParams.get('id') || '').replace('eq.', '')); if (x) Object.assign(x, corpo); return resp(204);
+    }
     // Equipe (004_equipe.sql)
     S.convites ||= [];
     if (u.pathname === '/rest/v1/membros' && u.searchParams.get('clinica_id')) { const c = S.clinicas.find(x => x.id === u.searchParams.get('clinica_id').replace('eq.', ''));

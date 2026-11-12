@@ -8,8 +8,9 @@ import { PLANOS, planoDe, precoTxt, rotuloSituacao, situacaoAssinatura } from '.
 import { conta, pagarConta, situacaoConta } from './conta.js';
 import { esc } from '../util.js';
 import { DICAS_VENDA, contatosVenda, linkWhats, mensagemVenda, numerosGestao, tarefasDoDia } from '../dados/vendas.js';
+import { DIAS_LINK, REGRAS_PADRAO, codigoDoNome, codigoValido, linkRevenda, mensagemRevendedor, metricasRevenda, normalizarCodigo, situacaoComissao } from '../dados/revenda.js';
 
-const pd = { aba:'hoje', rel:null, filtro:'todos', buscaR:'', anotar:null, salvando:false, lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'', excluir:null, excl:null, excluindo:false, forn:undefined };
+const pd = { aba:'hoje', rel:null, filtro:'todos', buscaR:'', anotar:null, salvando:false, lista:null, inter:null, pags:[], erro:'', carregando:false, gratis:null, busca:'', excluir:null, excl:null, excluindo:false, forn:undefined, rev:undefined, revForm:null, revAberto:null };
 const CARTAO_VIVO = ['ativa', 'pausada', 'pendente'];
 let pdApp = { render:() => {}, toast:() => {} };
 const SITU_INT = [['novo', 'Novo'], ['chamei', 'Já chamei'], ['cliente', 'Virou cliente'], ['nao', 'Não quis']];
@@ -21,8 +22,8 @@ export const ehDono = () => conta.modo === 'nuvem' && conta.dono;
 
 async function carregarPd(){
   if (pd.carregando) return; pd.carregando = true; pd.erro = ''; pdApp.render(true);
-  try { const [L, I, G, X, R, F] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => []), conta.nuvem.clinicasExcluidas().catch(() => null), conta.nuvem.relacionamento().catch(() => null), conta.nuvem.fornecedor().catch(() => null)]);
-    pd.lista = L; pd.inter = I; pd.pags = G; pd.excl = X; pd.rel = R ? Object.fromEntries(R.map(r => [r.ref, r])) : null; pd.forn = F; }
+  try { const [L, I, G, X, R, F, V] = await Promise.all([conta.nuvem.painelDono(), conta.nuvem.interessados(), conta.nuvem.pagamentos().catch(() => []), conta.nuvem.clinicasExcluidas().catch(() => null), conta.nuvem.relacionamento().catch(() => null), conta.nuvem.fornecedor().catch(() => null), conta.nuvem.revenda().catch(() => null)]);
+    pd.lista = L; pd.inter = I; pd.pags = G; pd.excl = X; pd.rel = R ? Object.fromEntries(R.map(r => [r.ref, r])) : null; pd.forn = F; pd.rev = V; }
   catch (e) { pd.erro = e.message; }
   pd.carregando = false; pdApp.render(true);
 }
@@ -38,8 +39,8 @@ export function vPainelDono(){
   if (!pd.lista) return cab + `<p class="muted">${ic('carregando')} Carregando…</p>`;
   const it = (v, l, cls = '') => `<span class="${cls}"><b>${v}</b> ${l}</span>`;
   return cab + `<div class="pd-resumo" aria-label="Resumo">${it(L.length, L.length === 1 ? 'clínica' : 'clínicas')}${it(n('teste'), 'em teste')}${it(n('gratis') + n('pago'), 'grátis ou pagas')}${it(n('vencido'), 'teste terminou', n('vencido') ? 'atencao' : '')}${it(novos, novos === 1 ? 'interessado novo' : 'interessados novos', novos ? 'atencao' : '')}</div>
-    <div class="tabs pd-tabs" role="tablist">${[['hoje', `Hoje${T.length ? ` (${T.length})` : ''}`, 'check'], ['gestao', 'Gestão', 'relatorios'], ['clinicas', 'Clínicas', 'admin'], ['relacionamento', `Relacionamento${novos ? ` (${novos})` : ''}`, 'mensagem'], ['pagamentos', 'Pagamentos', 'dinheiro']].map(([k, l, i]) => `<button role="tab" data-pd="aba" data-k="${k}" class="${pd.aba === k ? 'on' : ''}" aria-selected="${pd.aba === k}">${ic(i)}${l}</button>`).join('')}</div>
-    ${pd.aba === 'hoje' ? pdHoje(T) : pd.aba === 'gestao' ? pdGestao(L) : pd.aba === 'clinicas' ? pdClinicas(L) : pd.aba === 'relacionamento' ? pdRelacionamento(L, I) : pdPagamentos(L, pd.pags)}`;
+    <div class="tabs pd-tabs" role="tablist">${[['hoje', `Hoje${T.length ? ` (${T.length})` : ''}`, 'check'], ['gestao', 'Gestão', 'relatorios'], ['clinicas', 'Clínicas', 'admin'], ['relacionamento', `Relacionamento${novos ? ` (${novos})` : ''}`, 'mensagem'], ['revenda', 'Revendedores', 'pacientes'], ['pagamentos', 'Pagamentos', 'dinheiro']].map(([k, l, i]) => `<button role="tab" data-pd="aba" data-k="${k}" class="${pd.aba === k ? 'on' : ''}" aria-selected="${pd.aba === k}">${ic(i)}${l}</button>`).join('')}</div>
+    ${pd.aba === 'hoje' ? pdHoje(T) : pd.aba === 'gestao' ? pdGestao(L) : pd.aba === 'clinicas' ? pdClinicas(L) : pd.aba === 'relacionamento' ? pdRelacionamento(L, I) : pd.aba === 'revenda' ? pdRevenda(L) : pdPagamentos(L, pd.pags)}`;
 }
 
 function pdClinicas(L){
@@ -177,6 +178,71 @@ async function salvarAnotacao(f){
   pd.salvando = false; pdApp.render(true);
 }
 
+// Revendedores (015_revendedores.sql): link de cada um, números por link, comissões a pagar e regras.
+const FORMA_REV = { mensal:'mensalidade', anual12:'anual no cartão', anual:'anual à vista' };
+const SITU_COM = { liberada:['Pode pagar', 'warn'], aguardando:['Aguardando', ''], paga:['Paga', 'ok'], cancelada:['Cancelada', ''] };
+function pdRevenda(L){
+  if (pd.rev === null) return `<div class="card" id="pd-rev"><p class="notice sm">${ic('info')}<span>Para cadastrar revendedores e acompanhar os links, falta rodar o <b>015_revendedores.sql</b> no Supabase.</span></p></div>`;
+  const D = pd.rev || { revendedores:[], visitas:[], clinicasRev:[], comissoes:[], regras:null }, g = D.regras || REGRAS_PADRAO;
+  const M = metricasRevenda({ ...D, clinicas:L }), tot = k => M.reduce((t, r) => t + r[k], 0);
+  return `<div class="card" id="pd-rev"><div class="card-h"><h2>Revendedores<small>cada um com o seu link; a comissão é calculada quando o cliente paga</small></h2><button class="btn sm pri" data-pd="rev-novo">${ic('mais')}Novo revendedor</button></div>
+    <div class="pd-resumo"><span class="${tot('aPagar') ? 'atencao' : ''}"><b>${reaisPd(tot('aPagar'))}</b> para pagar</span><span><b>${reaisPd(tot('aguardando'))}</b> aguardando ${g.dias_liberar} dias</span><span><b>${reaisPd(tot('pago'))}</b> já pago</span><span><b>${tot('contas')}</b> contas pelos links</span><span><b>${tot('pagantes')}</b> pagantes</span></div>
+    ${pd.revForm === 'novo' ? pdRevForm() : ''}
+    <div class="list">${M.map(r => { const w = linkWhats(r.whats, mensagemRevendedor(r)), aberto = pd.revAberto === r.id;
+      return `<div class="row pd-rv" data-rv="${r.id}"><span class="avatar">${esc(String(r.nome).trim()[0] || '?').toUpperCase()}</span>
+        <div class="grow"><b>${esc(r.nome)}${r.ativo ? '' : ' <span class="pill">Parado</span>'}</b>
+          <small class="muted pd-link">${esc(r.link)}</small>
+          <small class="muted">${r.visitas} visita${r.visitas === 1 ? '' : 's'} (${r.visitas30} em 30 dias) · ${r.contas} conta${r.contas === 1 ? '' : 's'} criada${r.contas === 1 ? '' : 's'} · ${r.emTeste} em teste · ${r.pagantes} pagante${r.pagantes === 1 ? '' : 's'} · conversão ${r.conversao}%</small>
+          <small class="muted">${r.aPagar ? `<b>${reaisPd(r.aPagar)} para pagar</b> · ` : ''}${reaisPd(r.aguardando)} aguardando · ${reaisPd(r.pago)} pago${r.pix ? ` · Pix: ${esc(r.pix)}` : ''}</small></div>
+        <div class="pd-ctl"><button class="btn sm" data-pd="rev-copiar" data-rv="${r.id}">${ic('doc')}Copiar link</button>${w ? `<a class="btn sm wa" href="${w}" target="_blank" rel="noopener">${ic('mensagem')}Enviar link</a>` : ''}
+          <button class="btn sm ghost" data-pd="rev-ver" data-rv="${r.id}" aria-expanded="${aberto}">${ic('dinheiro')}Comissões (${r.comissoes.length})</button>
+          <button class="btn sm ghost" data-pd="rev-editar" data-rv="${r.id}">${ic('editar')}Editar</button></div>
+        ${pd.revForm === r.id ? pdRevForm(r) : ''}
+        ${aberto ? `<div class="pd-g pd-com"><div class="list">${r.comissoes.map(k => { const s = situacaoComissao(k), [rot, cls] = SITU_COM[s];
+          return `<div class="row"><div class="grow"><b>${esc(k.clinica_nome || 'Clínica')}</b><small class="muted">${esc(planoDe(k.plano).nome)} · ${FORMA_REV[k.forma]} de ${reaisPd(k.valor_base)} · cliente pagou em ${dataBR(k.pago_cliente_em)}${s === 'aguardando' ? ` · libera em ${dataBR(k.libera_em)}` : ''}${k.paga_em ? ` · paga em ${dataBR(k.paga_em)}` : ''}${k.cancelada_motivo ? ` · ${esc(k.cancelada_motivo)}` : ''}</small></div>
+            <b>${reaisPd(k.comissao)}</b><span class="pill ${cls}">${rot}</span>
+            ${s === 'liberada' ? `<button class="btn sm pri" data-pd="com-pagar" data-k="${k.id}">${ic('check')}Marcar como paga</button>` : ''}${s === 'paga' ? `<button class="btn sm ghost" data-pd="com-desfazer" data-k="${k.id}">Desfazer</button>` : ''}
+            ${s === 'liberada' || s === 'aguardando' ? `<button class="btn sm ghost" data-pd="com-cancelar" data-k="${k.id}">${ic('x')}Cancelar</button>` : ''}${s === 'cancelada' ? `<button class="btn sm ghost" data-pd="com-reativar" data-k="${k.id}">Reativar</button>` : ''}</div>`; }).join('') || '<p class="muted sm">Nenhuma comissão ainda. Ela aparece quando uma clínica que veio pelo link paga.</p>'}</div></div>` : ''}</div>`; }).join('') || '<p class="muted sm">Nenhum revendedor ainda. Cadastre o primeiro e mande o link para ele.</p>'}</div>
+    <details class="pd-forn" id="pd-regras"><summary><b>Regras da comissão</b> <small class="muted">${g.pct_mensal}% das ${g.meses_mensal} primeiras mensalidades · anual: ${g.pct_anual}% de uma mensalidade cheia · libera em ${g.dias_liberar} dias</small></summary>
+      <form class="pd-g" id="pd-regras-f" novalidate><div class="form">
+        <label class="field"><span class="lbl">Mensal: % de cada mensalidade</span><input name="pct_mensal" type="number" min="0" max="100" step="0.5" value="${g.pct_mensal}"></label>
+        <label class="field"><span class="lbl">Mensal: quantas mensalidades</span><input name="meses_mensal" type="number" min="1" max="24" value="${g.meses_mensal}"></label>
+        <label class="field"><span class="lbl">Anual: % de uma mensalidade cheia</span><input name="pct_anual" type="number" min="0" max="300" step="0.5" value="${g.pct_anual}"></label>
+        <label class="field"><span class="lbl">Dias até liberar</span><input name="dias_liberar" type="number" min="0" max="90" value="${g.dias_liberar}"></label></div>
+        <p class="muted sm cf-obs">Valem para os próximos pagamentos; comissões já calculadas não mudam. Só conta a clínica criada pelo link do revendedor (até ${DIAS_LINK} dias depois de abrir o link). O pagamento de teste de R$ 1,00 não conta.</p>
+        <div class="cf-acoes"><button class="btn pri" type="submit" ${pd.salvando ? 'disabled' : ''}>${ic('check')}Salvar regras</button></div></form></details></div>`;
+}
+function pdRevForm(r){
+  const usados = (pd.rev?.revendedores || []).filter(x => x.id !== r?.id).map(x => x.codigo);
+  return `<form class="pd-g" id="pd-rev-f" data-rv="${r?.id || ''}" novalidate><div class="form">
+      <label class="field"><span class="lbl">Nome</span><input name="nome" maxlength="120" value="${esc(r?.nome || '')}" autocomplete="off" required></label>
+      <label class="field"><span class="lbl">WhatsApp</span><input name="whats" maxlength="30" inputmode="tel" value="${esc(r?.whats || '')}" placeholder="(54) 99999-0000"></label>
+      <label class="field"><span class="lbl">Chave Pix (para pagar a comissão)</span><input name="pix" maxlength="140" value="${esc(r?.pix || '')}" autocomplete="off"></label>
+      <label class="field"><span class="lbl">Código do link${r ? ' (mudar quebra o link já enviado)' : ''}</span><input name="codigo" maxlength="30" value="${esc(r?.codigo || '')}" placeholder="${esc(codigoDoNome('', usados))}" data-usados="${esc(usados.join(','))}" autocomplete="off"></label>
+      <label class="field"><span class="lbl">Observação (só você vê)</span><input name="obs" maxlength="300" value="${esc(r?.obs || '')}" autocomplete="off"></label></div>
+    ${r ? `<label class="pd-chk"><input type="checkbox" name="ativo" ${r.ativo ? 'checked' : ''}> Ativo (desmarcado: o link para de contar visitas e indicações novas)</label>` : ''}
+    <div class="cf-acoes"><button class="btn pri" type="submit" ${pd.salvando ? 'disabled' : ''}>${ic('check')}${r ? 'Salvar' : 'Cadastrar e criar o link'}</button><button class="btn ghost" type="button" data-pd="rev-fechar">Cancelar</button></div></form>`;
+}
+async function salvarRevendedorPd(f){
+  const id = f.dataset.rv || null, nome = f.elements.nome.value.trim(), usados = (f.elements.codigo.dataset.usados || '').split(',').filter(Boolean);
+  const codigo = normalizarCodigo(f.elements.codigo.value) || codigoDoNome(nome, usados);
+  if (!nome) { pdApp.toast('Escreva o nome do revendedor.', 'info'); return; }
+  if (!codigoValido(codigo)) { pdApp.toast('O código precisa ter de 2 a 30 letras ou números, sem espaço.', 'info'); return; }
+  if (usados.includes(codigo)) { pdApp.toast(`O código "${codigo}" já é de outro revendedor.`, 'info'); return; }
+  const campos = { nome, codigo, whats:f.elements.whats.value.trim(), pix:f.elements.pix.value.trim(), obs:f.elements.obs.value.trim(), ...(f.elements.ativo ? { ativo:f.elements.ativo.checked } : {}) };
+  pd.salvando = true; pdApp.render(true);
+  try { await conta.nuvem.salvarRevendedor(id, campos); pd.revForm = null; pdApp.toast(id ? 'Revendedor salvo' : `Link criado: ${linkRevenda(codigo)}`); pd.salvando = false; await carregarPd(); return; }
+  catch (e) { pdApp.toast(e.codigo === '23505' ? `O código "${codigo}" já é de outro revendedor.` : e.message, 'info'); }
+  pd.salvando = false; pdApp.render(true);
+}
+async function salvarRegrasPd(f){
+  const n = k => Number(f.elements[k].value), g = { pct_mensal:n('pct_mensal'), meses_mensal:Math.round(n('meses_mensal')), pct_anual:n('pct_anual'), dias_liberar:Math.round(n('dias_liberar')) };
+  if (!(g.pct_mensal >= 0 && g.pct_mensal <= 100 && g.meses_mensal >= 1 && g.meses_mensal <= 24 && g.pct_anual >= 0 && g.pct_anual <= 300 && g.dias_liberar >= 0 && g.dias_liberar <= 90)) { pdApp.toast('Confira os números das regras.', 'info'); return; }
+  pd.salvando = true;
+  try { await conta.nuvem.salvarRegrasRevenda(g); pdApp.toast('Regras da comissão salvas'); pd.salvando = false; await carregarPd(); return; } catch (e) { pdApp.toast(e.message, 'info'); }
+  pd.salvando = false; pdApp.render(true);
+}
+
 const FORMA_PD = { pix:'Pix', credit_card:'Cartão' };
 const reaisPd = c => (c / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 function pdPagamentos(L, G){
@@ -211,6 +277,15 @@ export function ligarPainelDono(r, t){
     else if (a === 'anotar-fechar') { pd.anotar = null; pdApp.render(true); }
     else if (a === 'tirar') pdFaz(() => conta.nuvem.darGratis(c, null, '', true), `Acesso grátis de ${nome()} retirado`);
     else if (a === 'teste') { pd.testando = true; pdApp.render(true); pagarConta(situacaoConta()?.plano.k || 'profissional', 'mensal', true).then(e => { if (e) { pd.testando = false; pdApp.render(true); pdApp.toast(e, 'info'); } }); }
+    else if (a === 'rev-novo') { pd.revForm = 'novo'; pdApp.render(true); document.querySelector('#pd-rev-f [name=nome]')?.focus(); }
+    else if (a === 'rev-editar') { pd.revForm = b.dataset.rv; pdApp.render(true); document.querySelector('#pd-rev-f [name=nome]')?.focus(); }
+    else if (a === 'rev-fechar') { pd.revForm = null; pdApp.render(true); }
+    else if (a === 'rev-ver') { pd.revAberto = pd.revAberto === b.dataset.rv ? null : b.dataset.rv; pdApp.render(true); }
+    else if (a === 'rev-copiar') { const r = pd.rev?.revendedores.find(x => x.id === b.dataset.rv); if (r) navigator.clipboard?.writeText(linkRevenda(r.codigo)).then(() => pdApp.toast('Link copiado'), () => pdApp.toast(linkRevenda(r.codigo), 'info')); }
+    else if (a === 'com-pagar') pdFaz(() => conta.nuvem.mudarComissao(b.dataset.k, { paga_em:new Date().toISOString(), paga_obs:'Pix' }), 'Comissão marcada como paga');
+    else if (a === 'com-desfazer') pdFaz(() => conta.nuvem.mudarComissao(b.dataset.k, { paga_em:null, paga_obs:'' }), 'Pagamento da comissão desfeito');
+    else if (a === 'com-cancelar') pdFaz(() => conta.nuvem.mudarComissao(b.dataset.k, { cancelada_em:new Date().toISOString(), cancelada_motivo:'Cancelada pelo dono (cliente desistiu ou estornou)' }), 'Comissão cancelada');
+    else if (a === 'com-reativar') pdFaz(() => conta.nuvem.mudarComissao(b.dataset.k, { cancelada_em:null, cancelada_motivo:'' }), 'Comissão reativada');
     else if (a === 'mais7') pdFaz(() => conta.nuvem.estenderTeste(c, 7), `${nome()} ganhou mais 7 dias de teste`);
   });
   document.addEventListener('change', ev => {
@@ -224,6 +299,8 @@ export function ligarPainelDono(r, t){
   document.addEventListener('submit', ev => {
     if (ev.target.id === 'pd-x') { ev.preventDefault(); excluirPd(ev.target); return; }
     if (ev.target.id === 'pd-forn') { ev.preventDefault(); if (!pd.salvando) salvarFornecedorPd(ev.target); return; }
+    if (ev.target.id === 'pd-rev-f') { ev.preventDefault(); if (!pd.salvando) salvarRevendedorPd(ev.target); return; }
+    if (ev.target.id === 'pd-regras-f') { ev.preventDefault(); if (!pd.salvando) salvarRegrasPd(ev.target); return; }
     if (ev.target.id === 'pd-anot') { ev.preventDefault(); if (!pd.salvando) salvarAnotacao(ev.target); return; }
     if (ev.target.id !== 'pd-g') return; ev.preventDefault();
     const f = ev.target, prazo = f.elements.prazo.value, c = pd.gratis, nome = pd.lista?.find(x => x.id === c)?.nome || '';

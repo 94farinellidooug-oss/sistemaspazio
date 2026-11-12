@@ -1427,6 +1427,16 @@ body.com-acesso{overflow:hidden}
 .pd-notas{margin:4px 0 10px;padding-left:18px;font-size:.84rem;display:grid;gap:4px;overflow-wrap:anywhere}
 .pd-anot textarea{width:100%}
 .pd-forn{margin:14px 0;border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px}
+.pd-chk{display:flex;gap:8px;align-items:center;margin:8px 0 0;font-size:.9rem}
+.pd-link{word-break:break-all}
+.pd-rv{flex-wrap:wrap}
+.pd-rv .grow{flex-basis:calc(100% - 50px);min-width:0}
+.pd-rv .grow > small{display:block}
+.pd-com{margin-top:8px;min-width:0}
+.pd-com .row{flex-wrap:wrap}
+.pd-com .grow{flex-basis:100%;min-width:0}
+.pd-com .grow small{display:block}
+@media (max-width:700px){ .pd-com{margin-left:0;width:100%} }
 .pd-forn summary{cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pd-forn .pd-g{margin:10px 0 0;width:100%}
 /* Painel do MUSUBI compacto: resumo em uma linha, gestão em listas com barras */

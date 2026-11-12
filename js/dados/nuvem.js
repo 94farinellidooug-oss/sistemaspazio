@@ -159,6 +159,21 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     conferirPagamento:async ({ order_nsu, transaction_nsu, slug, receipt_url }) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'conferir', order_nsu, transaction_nsu, slug, receipt_url }, token:await token() }),
     // Pagamentos (supabase/003_pagamentos.sql): da clínica, ou todos para o dono. [] quando o servidor ainda não tem a tabela.
     pagamentos:async clinica => { try { return (await rest(`pagamentos?select=id,clinica_id,plano,periodo,valor,valor_pago,situacao,forma,recibo,link,criado_em,pago_em&order=criado_em.desc${clinica ? '&clinica_id=eq.' + clinica : ''}`)) || []; } catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return []; throw e; } },
+    // Revendedores (supabase/015_revendedores.sql). revenda(): tudo de uma vez para o Painel; null quando o servidor ainda não tem as tabelas.
+    revenda:async () => { try { const [revendedores, visitas, clinicasRev, comissoes, regras] = await Promise.all([
+        rest('revendedores?select=id,codigo,nome,whats,pix,obs,ativo,criado_em&order=criado_em.asc'), rest('revenda_visitas?select=codigo,dia,visitas'),
+        rest('revenda_clinicas?select=clinica_id,revendedor_id,em'), rest('revenda_comissoes?select=id,revendedor_id,clinica_id,clinica_nome,plano,forma,valor_base,comissao,pago_cliente_em,libera_em,paga_em,paga_obs,cancelada_em,cancelada_motivo&order=pago_cliente_em.desc'),
+        rest('revenda_regras?select=pct_mensal,meses_mensal,pct_anual,dias_liberar&id=eq.1')]);
+      return { revendedores:revendedores || [], visitas:visitas || [], clinicasRev:clinicasRev || [], comissoes:comissoes || [], regras:regras?.[0] || null }; }
+      catch (e) { if (e.status === 404 || e.codigo === '42P01' || e.codigo === 'PGRST205') return null; throw e; } },
+    salvarRevendedor:async (id, campos) => id ? rest(`revendedores?id=eq.${id}`, { metodo:'PATCH', corpo:campos, cab:{ Prefer:'return=minimal' } })
+      : rest('revendedores', { metodo:'POST', corpo:campos, cab:{ Prefer:'return=minimal' } }),
+    salvarRegrasRevenda:async regras => rest('revenda_regras?id=eq.1', { metodo:'PATCH', corpo:{ ...regras, atualizado_em:new Date().toISOString() }, cab:{ Prefer:'return=minimal' } }),
+    mudarComissao:async (id, campos) => rest(`revenda_comissoes?id=eq.${id}`, { metodo:'PATCH', corpo:campos, cab:{ Prefer:'return=minimal' } }),
+    // Logo depois de criar a clínica: marca o revendedor do link (o servidor só aceita do administrador, nos 3 primeiros dias).
+    marcarRevendedor:async (clinica, codigo) => rest('rpc/marcar_revendedor', { metodo:'POST', corpo:{ p_clinica:clinica, p_codigo:codigo } }),
+    // Página de apresentação: conta a visita pelo link do revendedor (sem login).
+    visitaRevenda:async codigo => { await chamar('/rest/v1/rpc/registrar_visita_revenda', { metodo:'POST', corpo:{ p_codigo:codigo } }); return true; },
     // Página de apresentação: pedido de contato sem login (a lista só o dono do MUSUBI lê).
     pedirContato:async (nome, whats) => { await chamar('/rest/v1/interessados', { metodo:'POST', corpo:{ nome:nome.trim(), whats:whats.trim() }, cab:{ Prefer:'return=minimal' } }); return true; }
   };

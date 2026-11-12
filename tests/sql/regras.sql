@@ -348,4 +348,79 @@ reset role;
 select pg_temp.como(null);
 do $$ begin perform set_config('request.headers', '', false); end $$;
 select pg_temp.checar((select count(*) from information_schema.columns where table_name = 'assinaturas' and column_name = 'cartao_renov_aviso_para') = 1, 'assinatura guarda o aviso de renovação do anual já mandado');
+-- Revendedores (015_revendedores.sql): link, visitas, marcação da clínica e comissão calculada sozinha
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+insert into revendedores (codigo, nome, whats, pix) values ('ana', 'Ana Souza', '54999990000', 'ana@pix') returning id as rv \gset
+insert into revendedores (codigo, nome, ativo) values ('parado', 'Parado', false);
+reset role;
+do $$ begin insert into revendedores (codigo, nome) values ('Com Espaço', 'X'); raise exception 'FALHA: aceitou código inválido';
+exception when check_violation then raise notice 'ok    código de revendedor inválido é recusado'; end $$;
+select pg_temp.como(null);
+set role anon;
+select public.registrar_visita_revenda('ana');
+select public.registrar_visita_revenda(' ANA ');
+select public.registrar_visita_revenda('parado');
+select public.registrar_visita_revenda('naoexiste');
+select pg_temp.checar((select count(*) from revendedores) = 0, 'quem não está logado não vê os revendedores');
+reset role;
+select pg_temp.checar((select sum(visitas) from revenda_visitas where codigo = 'ana') = 2 and (select count(*) from revenda_visitas) = 1, 'a página conta as visitas do link (só de revendedor ativo)');
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select public.criar_clinica('Clínica do Link', 'Porto Alegre', 'RS', 'Bia', '{"v":2,"patients":[]}'::jsonb, 'profissional') as cr \gset
+select pg_temp.checar(not public.marcar_revendedor(:'cr', 'parado'), 'revendedor parado não marca a clínica');
+select pg_temp.checar(public.marcar_revendedor(:'cr', 'ana'), 'quem criou a clínica pelo link marca o revendedor');
+select pg_temp.checar(not public.marcar_revendedor(:'cr', 'ana'), 'a marcação vale uma vez só');
+select pg_temp.checar((select count(*) from revenda_comissoes) = 0 and (select count(*) from revenda_clinicas) = 0, 'a clínica não vê revendedores nem comissões');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+set role authenticated;
+select pg_temp.checar(not public.marcar_revendedor(:'cr', 'ana'), 'quem não é administrador da clínica não marca');
+reset role;
+-- pagamentos da clínica: teste de R$ 1,00 não conta; 3 mensalidades contam (20%); a 4ª não
+insert into pagamentos (clinica_id, plano, periodo, valor, order_nsu) values (:'cr', 'profissional', 'mensal', 100, 'RV0');
+select public.registrar_pagamento('RV0', 'pix', 100, '', '') \g /dev/null
+select pg_temp.checar((select count(*) from revenda_comissoes) = 0, 'pagamento de teste de R$ 1,00 não gera comissão');
+insert into pagamentos (clinica_id, plano, periodo, valor, order_nsu) select :'cr', 'profissional', 'mensal', 14900, 'RV' || n from generate_series(1, 4) n;
+select pg_temp.checar((select count(*) from revenda_comissoes) = 0, 'pagamento aberto ainda não gera comissão');
+select public.registrar_pagamento('RV' || n, 'pix', 14900, '', '') from generate_series(1, 4) n \g /dev/null
+select public.registrar_pagamento('RV1', 'pix', 14900, '', '') \g /dev/null
+select pg_temp.checar((select count(*) from revenda_comissoes) = 3 and (select sum(comissao) from revenda_comissoes) = 3 * 2980, 'mensal: 20% das 3 primeiras mensalidades (R$ 29,80 cada no Profissional)');
+select pg_temp.checar((select bool_and(libera_em = pago_cliente_em + interval '7 days' and forma = 'mensal' and clinica_nome = 'Clínica do Link' and revendedor_id = :'rv') from revenda_comissoes), 'comissão liberada 7 dias depois do pagamento, com o nome da clínica');
+-- anual à vista em outra clínica: 50% de uma mensalidade cheia, uma vez
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select public.criar_clinica('Clínica Anual', 'Caxias do Sul', 'RS', 'Bia', '{"v":2,"patients":[]}'::jsonb, 'essencial') as ca \gset
+select public.marcar_revendedor(:'ca', 'ana') \g /dev/null
+reset role;
+insert into pagamentos (clinica_id, plano, periodo, valor, order_nsu) values (:'ca', 'essencial', 'anual', 79000, 'RVA1'), (:'ca', 'essencial', 'anual', 79000, 'RVA2');
+select public.registrar_pagamento('RVA1', 'pix', 79000, '', '') \g /dev/null
+select public.registrar_pagamento('RVA2', 'pix', 79000, '', '') \g /dev/null
+select pg_temp.checar((select count(*) = 1 and sum(comissao) = 3950 from revenda_comissoes where clinica_id = :'ca'), 'anual: 50% de uma mensalidade cheia, uma vez só (R$ 39,50 no Essencial)');
+-- anual com pagamento mensal no cartão (Mercado Pago): também 50% de uma mensalidade cheia, só na 1ª cobrança
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select public.criar_clinica('Clínica Cartão', 'Caxias do Sul', 'RS', 'Bia', '{"v":2,"patients":[]}'::jsonb, 'profissional') as cc \gset
+select public.marcar_revendedor(:'cc', 'ana') \g /dev/null
+reset role;
+update assinaturas set cartao_periodo = 'anual12' where clinica_id = :'cc';
+insert into pagamentos (clinica_id, plano, periodo, valor, order_nsu, meio) values (:'cc', 'profissional', 'mensal', 12700, 'RVC1', 'mercadopago'), (:'cc', 'profissional', 'mensal', 12700, 'RVC2', 'mercadopago');
+select public.registrar_pagamento('RVC1', 'credit_card', 12700, '', '') \g /dev/null
+select public.registrar_pagamento('RVC2', 'credit_card', 12700, '', '') \g /dev/null
+select pg_temp.checar((select count(*) = 1 and sum(comissao) = 7450 and min(forma) = 'anual12' from revenda_comissoes where clinica_id = :'cc'), 'anual no cartão: 50% de uma mensalidade cheia, uma vez (R$ 74,50 no Profissional)');
+-- regras editáveis pelo dono; a clínica não muda nada
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+update revenda_regras set pct_mensal = 25 where id = 1;
+update revenda_comissoes set paga_em = now(), paga_obs = 'Pix 10/12' where clinica_id = :'ca';
+select pg_temp.checar((select pct_mensal from revenda_regras) = 25 and (select paga_obs from revenda_comissoes where clinica_id = :'ca') = 'Pix 10/12', 'o dono muda as regras e marca a comissão como paga');
+do $$ begin update revenda_comissoes set comissao = 1; raise exception 'FALHA: mudou o valor da comissão';
+exception when insufficient_privilege then raise notice 'ok    o valor calculado da comissão não pode ser mudado à mão'; end $$;
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+update revenda_regras set pct_mensal = 99;
+update revenda_comissoes set paga_em = now();
+reset role;
+select pg_temp.checar((select pct_mensal from revenda_regras) = 25 and (select count(*) from revenda_comissoes where paga_em is not null) = 1, 'quem não é dono não muda regras nem comissões');
 \echo 'Todas as regras do banco passaram.'

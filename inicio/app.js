@@ -4,6 +4,7 @@
 import { ICONES } from '../js/componentes/icones.js';
 import { PLANOS, precoTxt, precoFidelidade, DIAS_TESTE } from '../js/dados/planos.js';
 import { criarNuvem, KEY_SESSAO } from '../js/dados/nuvem.js';
+import { KEY_REVENDA, codigoDaUrl } from '../js/dados/revenda.js';
 
 const ic = n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[n] || ''}</svg>`;
 const $ = s => document.querySelector(s);
@@ -56,9 +57,15 @@ const PERGUNTAS = [
 const SISTEMA = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname) ? '../index.html' : '../sistema';
 const urlSistema = () => new URL(SISTEMA, location.href).href;
 // Quem já entrou neste aparelho vai direto para o sistema (?ver mostra a página mesmo assim).
+// Link de revendedor (?r=codigo): guarda no aparelho para marcar a clínica que for criada (supabase/015_revendedores.sql).
+const codigoRev = codigoDaUrl(location.search);
+if (codigoRev) { try { localStorage.setItem(KEY_REVENDA, JSON.stringify({ c:codigoRev, em:new Date().toISOString() })); } catch (e) {} }
 const temSessao = () => { try { return !!JSON.parse(localStorage.getItem(KEY_SESSAO))?.access_token; } catch (e) { return false; } };
 if (temSessao() && !new URLSearchParams(location.search).has('ver')) location.replace(urlSistema());
 const nuvem = criarNuvem();
+// Conta a visita pelo link uma vez por sessão (recarregar a página não soma de novo).
+if (codigoRev) { let ja = false; try { ja = sessionStorage.getItem('musubi-revenda-visita') === codigoRev; sessionStorage.setItem('musubi-revenda-visita', codigoRev); } catch (e) {}
+  if (!ja) nuvem.visitaRevenda(codigoRev).catch(() => {}); }
 const escHtml = v => String(v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 
 const img = n => `telas/${n}.png`;
