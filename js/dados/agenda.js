@@ -4,6 +4,7 @@
 // "atendido". Os campos novos só aparecem quando usados:
 //   st: 'confirmado' | 'faltou' | 'desmarcado' (sem st e sem done = agendado)
 //   hist: ['remarcado de 05/11/2026 16:00', 'desmarcado em 05/11/2026', ...] (mais recente primeiro)
+//   online: true (consulta online por vídeo); video: código da consulta no servidor (vai no link do paciente)
 // Desmarcado não é apagado: some das contagens e da agenda do dia, e fica na lista de desmarcados.
 // Duração e valor de cada serviço são padrões da clínica (mudam em Configurações, etapa 10).
 import { addDays, fmt } from '../util.js';
@@ -70,3 +71,8 @@ export function concluirHorario(L, pid, d){
   if (a) marcarHorario(a, 'atendido');
   return a || null;
 }
+
+// Consulta online: link que o paciente recebe (página consulta/ do site, com o termo e a entrada no vídeo).
+export const linkConsulta = (id, base) => id ? `${String(base || '').replace(/\/$/, '')}/consulta/?c=${id}` : '';
+// Dados que o servidor guarda de um horário online (o início no fuso do aparelho, em ISO).
+export const dadosTeleconsulta = (a, primeiro, clinica) => ({ consulta:a.id, inicio:new Date(`${a.date}T${a.time}:00`).toISOString(), duracao:servicoDe(a.tipo)[1], primeiro, clinica_nome:clinica, cancelada:a.st === 'desmarcado' });

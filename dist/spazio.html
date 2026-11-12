@@ -1708,6 +1708,24 @@ body.com-acesso{overflow:hidden}
 .pd-dicas-c[open] summary{margin-bottom:10px}
 @media (max-width:900px){ .pd-grupos,.pd-grupos2{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:520px){ .pd-resumo span{padding:2px 10px} .pd-barra{grid-template-columns:76px minmax(0,1fr) auto} .pd-barra b{min-width:0} }
+
+/* Consulta online (vídeo): marca na agenda e janela do vídeo por cima do sistema */
+.on-l{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;font-size:.72rem;vertical-align:1px}
+.on-l svg{width:12px;height:12px}
+.ag-online{grid-column:1/-1}
+.ag-online b{display:inline-flex;align-items:center;gap:6px}
+.ag-online b svg{width:16px;height:16px}
+.vjan{position:fixed;right:16px;bottom:16px;z-index:90;width:min(420px,calc(100vw - 32px));height:min(340px,60vh);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.28);overflow:hidden}
+.vjan.grande{width:min(960px,calc(100vw - 32px));height:min(680px,calc(100vh - 32px))}
+.vjan-h{display:flex;align-items:center;gap:4px;padding:6px 6px 6px 12px;border-bottom:1px solid var(--line)}
+.vjan-t{flex:1;min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden;white-space:nowrap}
+.vjan-t b{overflow:hidden;text-overflow:ellipsis}
+.vjan-t small{color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.vjan-t svg{width:16px;height:16px;flex:none;color:var(--brand)}
+.vjan-x{color:var(--crit)}
+.vjan iframe{flex:1;width:100%;border:0;background:#111}
+@media (max-width:640px){ .vjan,.vjan.grande{left:8px;right:8px;bottom:8px;width:auto;height:min(70vh,520px)} .vjan-t small{display:none} }
+@media print{ .vjan{display:none} }
 .cep-s{display:flex;align-items:flex-end;padding-bottom:10px;min-width:0}
 </style>
 
@@ -1935,6 +1953,7 @@ function trocarNomeProfissional(db, de, para){
 // "atendido". Os campos novos só aparecem quando usados:
 //   st: 'confirmado' | 'faltou' | 'desmarcado' (sem st e sem done = agendado)
 //   hist: ['remarcado de 05/11/2026 16:00', 'desmarcado em 05/11/2026', ...] (mais recente primeiro)
+//   online: true (consulta online por vídeo); video: código da consulta no servidor (vai no link do paciente)
 // Desmarcado não é apagado: some das contagens e da agenda do dia, e fica na lista de desmarcados.
 // Duração e valor de cada serviço são padrões da clínica (mudam em Configurações, etapa 10).
 
@@ -2000,6 +2019,11 @@ function concluirHorario(L, pid, d){
   if (a) marcarHorario(a, 'atendido');
   return a || null;
 }
+
+// Consulta online: link que o paciente recebe (página consulta/ do site, com o termo e a entrada no vídeo).
+const linkConsulta = (id, base) => id ? `${String(base || '').replace(/\/$/, '')}/consulta/?c=${id}` : '';
+// Dados que o servidor guarda de um horário online (o início no fuso do aparelho, em ISO).
+const dadosTeleconsulta = (a, primeiro, clinica) => ({ consulta:a.id, inicio:new Date(`${a.date}T${a.time}:00`).toISOString(), duracao:servicoDe(a.tipo)[1], primeiro, clinica_nome:clinica, cancelada:a.st === 'desmarcado' });
 //
 // Um rascunho fica em p.atendimentos com status 'rascunho'. Ele não aparece nas sessões (p.sessions)
 // nem na exportação para o protótipo: só entra no prontuário quando é finalizado. Campos além do
@@ -2665,6 +2689,9 @@ function pointWarnings(codes, p, tec){
 // Ícones Lucide (lucide-static 0.469.0, licença ISC: https://lucide.dev/license).
 // Gerado a partir dos SVGs oficiais; só o conteúdo interno de cada ícone, traço 24px.
 const ICONES = {
+  "video":"<path d=\"m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5\" /><rect x=\"2\" y=\"6\" width=\"14\" height=\"12\" rx=\"2\" />", // video
+  "copiar":"<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />", // copy
+  "expandir":"<polyline points=\"15 3 21 3 21 9\" /><polyline points=\"9 21 3 21 3 15\" /><line x1=\"21\" x2=\"14\" y1=\"3\" y2=\"10\" /><line x1=\"3\" x2=\"10\" y1=\"21\" y2=\"14\" />", // maximize-2
   "cadeado":"<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /><path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", // lock
   "mensagem":"<path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\" />", // message-circle
   "painel":"<rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\" /><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\" /><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\" /><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\" />", // layout-dashboard
@@ -2755,11 +2782,12 @@ const vazio = (i, t, txt, acao='') => `<div class="empty"><span class="empty-i">
 const MENSAGENS_WA = [
   ['lembrete', 'Lembrete de horário', 'Olá, {primeiro}! Passando para lembrar do seu horário de {servico} {quando}, às {hora}, na {clinica}. Pode confirmar por aqui?'],
   ['retomar', 'Retomar contato', 'Olá, {primeiro}! Tudo bem? Faz um tempinho desde o seu último atendimento. Quer agendar um horário para continuarmos o tratamento?'],
+  ['teleconsulta', 'Consulta online', 'Olá, {primeiro}! Sua consulta online de {servico} é {quando}, às {hora}. No horário, entre por este link, pelo celular ou computador (não precisa instalar nada):\n\n{link}\n\nEscolha um lugar reservado e, se puder, use fones de ouvido.'],
   ['orientacoes', 'Orientações para casa', 'Olá, {primeiro}! Seguem as orientações do atendimento:\n\n{orientacoes}'],
   ['livre', 'Mensagem livre', 'Olá, {primeiro}! ']
 ];
 // Dados que o sistema preenche: [campo, rótulo do botão]
-const CAMPOS_WA = [['primeiro','Primeiro nome'], ['servico','Serviço'], ['quando','Dia'], ['hora','Hora'], ['clinica','Clínica'], ['profissional','Profissional'], ['orientacoes','Orientações']];
+const CAMPOS_WA = [['primeiro','Primeiro nome'], ['servico','Serviço'], ['quando','Dia'], ['hora','Hora'], ['clinica','Clínica'], ['profissional','Profissional'], ['orientacoes','Orientações'], ['link','Link da consulta online']];
 
 // [chave, nome, texto, 'original' | 'editada']
 const mensagensWa = (M = {}) => MENSAGENS_WA.map(([k, n, t]) => M[k] ? [k, n, M[k].texto, 'editada'] : [k, n, t, 'original']);
@@ -2782,10 +2810,10 @@ function numeroWa(tel){
 const linkWa = (tel, texto) => numeroWa(tel) ? `https://wa.me/${numeroWa(tel)}?text=${encodeURIComponent(texto)}` : '';
 
 // Valores para o paciente e, quando houver, o horário da agenda (a) e as orientações já escritas.
-function valoresWa(p, a, { hoje, amanha, clinica, prof, orientacoes = '' }){
+function valoresWa(p, a, { hoje, amanha, clinica, prof, orientacoes = '', link = '' }){
   const quando = !a ? '' : a.date === hoje ? 'hoje' : a.date === amanha ? 'amanhã' : `no dia ${fmt(a.date)}`;
   return { primeiro: (p.name || '').trim().split(/\s+/)[0] || '', servico: a ? String(a.tipo || '').toLowerCase() : '', quando, hora: a ? a.time : '',
-    clinica, profissional: prof, orientacoes };
+    clinica, profissional: prof, orientacoes, link };
 }
 const preencherWa = (t, v) => t.replace(/\{(\w+)\}/g, (m, k) => k in v ? v[k] : m);
 
@@ -2797,7 +2825,7 @@ function registrarMensagem(p, { tipo, em, por, ap }){
   return m;
 }
 // Último lembrete aberto para um horário da agenda.
-const lembreteDe = (p, apId) => p?.relacionamento?.mensagens?.find(m => m.tipo === 'lembrete' && m.ap === apId) || null;
+const lembreteDe = (p, apId) => p?.relacionamento?.mensagens?.find(m => (m.tipo === 'lembrete' || m.tipo === 'teleconsulta') && m.ap === apId) || null;
 // Não cria números: se um dado não existe, o indicador não aparece.
 
 const ALERTA_NOME = {gestante:'Gestante',anticoagulante:'Anticoagulante',marcapasso:'Marcapasso'};
@@ -2897,11 +2925,11 @@ const campoTxt = c => CAMPO_H[c] || String(c).replace(/^cadastro\./, '').replace
 // o dono do MUSUBI pode dar acesso grátis (com prazo ou sem prazo) pelo Painel do MUSUBI.
 const PLANOS = [
   { k:'essencial', nome:'Essencial', preco:79, resumo:'Para começar a organizar a clínica.',
-    itens:['Agenda', 'Pacientes e prontuário', 'Documentos editáveis', 'WhatsApp com mensagem pronta', 'Financeiro básico', 'Nota fiscal (até 30 por mês)'] },
+    itens:['Agenda', 'Pacientes e prontuário', 'Documentos editáveis', 'WhatsApp com mensagem pronta', 'Financeiro básico', 'Nota fiscal (até 30 por mês)', 'Consulta online (até 10 por mês)'] },
   { k:'profissional', nome:'Profissional', preco:149, resumo:'O MUSUBI completo para quem atende com MTC.', destaque:true,
-    itens:['Tudo do Essencial', 'Avaliação MTC e pentagrama', 'Mapa corporal e pontos indicados', 'Dicas de vasos e estações', 'Evolução comparada', 'Relatórios', 'Nota fiscal (até 100 por mês)'] },
+    itens:['Tudo do Essencial', 'Avaliação MTC e pentagrama', 'Mapa corporal e pontos indicados', 'Dicas de vasos e estações', 'Evolução comparada', 'Relatórios', 'Nota fiscal (até 100 por mês)', 'Consulta online (até 40 por mês)'] },
   { k:'clinica', nome:'Clínica', preco:299, aPartir:true, resumo:'Para equipes com mais de um profissional.',
-    itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até 300 por mês)'] }
+    itens:['Tudo do Profissional', 'Vários profissionais e permissões', 'Relatórios da clínica', 'Lembretes automáticos', 'Nota fiscal (até 300 por mês)', 'Consulta online (até 100 por mês)'] }
 ];
 // O que cada pacote libera (etapa 10). O Essencial fica sem a parte de MTC (avaliação energética, pentagrama,
 // síntese, mapa corporal, Biblioteca clínica e dicas de vasos e estações) e sem os relatórios. Nada é apagado:
@@ -2919,6 +2947,8 @@ const DIAS_TESTE = 7;
 // Notas fiscais por mês em produção (decisão do Maicon em 08/11/2026). As de homologação (teste) não contam.
 // A função nfse do servidor tem a mesma tabela e é ela que barra.
 const LIMITE_NOTAS = { essencial:30, profissional:100, clinica:300 };
+// Consultas online (vídeo) por mês, decisão do Maicon em 12/11/2026. A função teleconsulta tem a mesma tabela e é ela que barra.
+const LIMITE_ONLINE = { essencial:10, profissional:40, clinica:100 };
 // Pagamento pela InfinitePay (Pix ou cartão): mensal, ou anual com 2 meses grátis (paga 10 meses).
 // Três formas (decisão do Maicon em 11/11/2026): mensal sem fidelidade; anual com pagamento mensal (12 meses de
 // compromisso, 15% de desconto, só no cartão pelo Mercado Pago; quem cancela antes devolve o desconto recebido);
@@ -3103,6 +3133,9 @@ function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) => fetch(
     assinarCartao:async (clinica, plano, periodo, email) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'assinar', clinica, plano, periodo, email, aceite:CONTRATO_VERSAO }, token:await token() }),
     cartao:async clinica => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cartao', clinica }, token:await token() }),
     cancelarCartao:async (clinica, confirmarMulta = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cancelar_cartao', clinica, ...(confirmarMulta ? { confirmarMulta:true } : {}) }, token:await token() }),
+    // Consulta online por vídeo (função teleconsulta, supabase/016_teleconsulta.sql): salvar o horário online e entrar na sala.
+    salvarTeleconsulta:async (clinica, d) => chamar('/functions/v1/teleconsulta', { metodo:'POST', corpo:{ acao:'salvar', clinica, ...d }, token:await token() }),
+    entrarTeleconsulta:async (clinica, id) => chamar('/functions/v1/teleconsulta', { metodo:'POST', corpo:{ acao:'entrar', clinica, id }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
     // Nota fiscal (função nfse, supabase/functions/nfse): { acao, clinica, ... }.
     nfse:async corpo => chamar('/functions/v1/nfse', { metodo:'POST', corpo, token:await token() }),
@@ -3709,7 +3742,7 @@ function textoWa(tipo, pid, ap){
   const p = patient(pid), a = ap ? db.appts.find(x => x.id === ap) : null, m = mensagemWa(tipo, db.mensagensWa);
   if (!p || !m) return '';
   const orientacoes = tipo === 'orientacoes' ? valoresDoc(p, { appts:db.appts, hoje:TODAY, prof:PROF.nome }).orientacoes : '';
-  return preencherWa(m[2], valoresWa(p, a, { hoje:TODAY, amanha:addDays(1, TODAY), clinica:CLINICA, prof:PROF.nome, orientacoes }));
+  return preencherWa(m[2], valoresWa(p, a, { hoje:TODAY, amanha:addDays(1, TODAY), clinica:CLINICA, prof:PROF.nome, orientacoes, link:linkConsulta(a?.video, location.origin) }));
 }
 function abrirPainelWa(tipo, pid, ap){ ui.wa = { tipo, pid, ap: ap || '', texto: textoWa(tipo, pid, ap) }; ui.ov = 'wa'; }
 
@@ -3751,16 +3784,18 @@ function formAgenda(){
   F.pid ||= ui.bookPid || ui.pid; F.date ||= ui.agDia || TODAY;
   return F;
 }
+// WhatsApp de um horário online: a mensagem leva o link da consulta.
+const btnWaOnline = (ap, so = true) => `<button class="btn sm wa" data-act="wa-online" data-ap="${ap}"${so ? ' aria-label="WhatsApp com o link da consulta" data-tip="WhatsApp com o link da consulta"' : ''}>${ic('mensagem')}${so ? '' : 'WhatsApp'}</button>`;
 const proximoDe = pid => db.appts.filter(a=>a.pid===pid && a.date>=TODAY && !a.done && a.st!=='desmarcado' && a.st!=='faltou').sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
 
 function linhaHorario(a){
   const p = patient(a.pid), st = situacaoHorario(a), fora = a.st === 'desmarcado', [, dur] = servicoDe(a.tipo);
   return `<div class="hor ${fora ? 'desmarcado' : st}" data-hor="${a.id}">
     <div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div>
-    <div class="hor-p"><button class="lk" data-act="open" data-pid="${a.pid}">${esc(p?.name||'Paciente removido')}</button><small>${esc(a.tipo)} · ${dur} min${a.hist?.length ? ` · <span class="hor-hi">${esc(a.hist[0])}</span>` : ''}</small></div>
+    <div class="hor-p"><button class="lk" data-act="open" data-pid="${a.pid}">${esc(p?.name||'Paciente removido')}</button><small>${a.online ? `<span class="pill acc on-l">${ic('video')}Online</span> ` : ''}${esc(a.tipo)} · ${dur} min${a.hist?.length ? ` · <span class="hor-hi">${esc(a.hist[0])}</span>` : ''}</small></div>
     ${fora ? '<span class="pill">Desmarcado</span>' : `<div class="rx-seg st" role="group" aria-label="Situação">${SITUACOES_HORARIO.map(([k,n,i])=>`<button class="${k}${st===k?' on':''}" data-act="ag-st" data-id="${a.id}" data-s="${k}" aria-pressed="${st===k}" aria-label="${n}" data-tip="${n}">${ic(i)}</button>`).join('')}</div>`}
     <div class="hor-a">${fora ? `<button class="btn sm" data-act="ag-rem" data-id="${a.id}">${ic('agenda')}Reagendar</button>`
-      : `${a.date===TODAY && st!=='atendido' && st!=='faltou' && p ? `<button class="btn sm pri" data-act="novo-atendimento" data-pid="${a.pid}">${ic('play')}Atender</button>` : ''}${p && a.date>=TODAY && st!=='atendido' && st!=='faltou' ? btnWa('lembrete', a.pid, a.id, true) : ''}<button class="btn sm ghost" data-act="ag-rem" data-id="${a.id}" aria-label="Remarcar" data-tip="Remarcar">${ic('agenda')}</button><button class="btn sm ghost" data-act="ag-desm" data-id="${a.id}" aria-label="Desmarcar" data-tip="Desmarcar">${ic('x')}</button>`}</div></div>`;
+      : `${a.date===TODAY && st!=='atendido' && st!=='faltou' && p ? `<button class="btn sm pri" data-act="novo-atendimento" data-pid="${a.pid}">${ic('play')}Atender</button>` : ''}${a.online && p && a.date===TODAY && st!=='atendido' && st!=='faltou' ? `<button class="btn sm" data-act="video" data-id="${a.id}">${ic('video')}Vídeo</button>` : ''}${p && a.date>=TODAY && st!=='atendido' && st!=='faltou' ? (a.online ? btnWaOnline(a.id) : btnWa('lembrete', a.pid, a.id, true)) : ''}<button class="btn sm ghost" data-act="ag-rem" data-id="${a.id}" aria-label="Remarcar" data-tip="Remarcar">${ic('agenda')}</button><button class="btn sm ghost" data-act="ag-desm" data-id="${a.id}" aria-label="Desmarcar" data-tip="Desmarcar">${ic('x')}</button>`}</div></div>`;
 }
 
 // Lembretes de amanhã: um toque abre o WhatsApp com a mensagem pronta; fica anotado quando foi aberta.
@@ -3769,7 +3804,7 @@ function lembretes(){
   if (!L.length) return '';
   const falta = L.filter(a => !lembreteDe(patient(a.pid), a.id)).length;
   return `<div class="card" id="lembretes"><div class="card-h"><h2>Lembretes de amanhã<small>um toque abre o WhatsApp com a mensagem pronta</small></h2><span class="pill ${falta ? 'warn' : 'ok'}" id="lem-falta">${falta ? `${falta} a enviar` : 'todos enviados'}</span></div>
-    <div class="hor-l">${L.map(a => { const p = patient(a.pid), m = lembreteDe(p, a.id); return `<div class="hor lem" data-lem="${a.id}"><div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div><div class="hor-p"><b>${esc(p.name)}</b><small>${esc(a.tipo)}</small>${m ? `<small class="wa-ok">${ic('check')}mensagem aberta às ${horaLocal(m.em)}</small>` : ''}</div><div class="hor-a">${btnWa('lembrete', a.pid, a.id)}</div></div>`; }).join('')}</div></div>`;
+    <div class="hor-l">${L.map(a => { const p = patient(a.pid), m = lembreteDe(p, a.id); return `<div class="hor lem" data-lem="${a.id}"><div class="hor-h"><b class="mono">${a.time}</b><small>${fimHorario(a)}</small></div><div class="hor-p"><b>${esc(p.name)}</b><small>${esc(a.tipo)}</small>${m ? `<small class="wa-ok">${ic('check')}mensagem aberta às ${horaLocal(m.em)}</small>` : ''}</div><div class="hor-a">${a.online ? btnWaOnline(a.id, false) : btnWa('lembrete', a.pid, a.id)}</div></div>`; }).join('')}</div></div>`;
 }
 
 function vAgenda(){
@@ -3796,6 +3831,7 @@ function vAgenda(){
         <label class="rx-f full"><span class="lbl">Serviço</span><select id="na-tipo" data-agf="tipo">${[...SERVICOS, ...(SERVICOS.some(s=>s[0]===F.tipo)?[]:[servicoDe(F.tipo)])].map(([n,m])=>`<option value="${esc(n)}" ${n===F.tipo?'selected':''}>${esc(n)} · ${m} min</option>`).join('')}</select></label>
         <label class="rx-f"><span class="lbl">Dia</span><input id="na-d" type="date" data-agf="date" value="${F.date}" required></label>
         <label class="rx-f"><span class="lbl">Horário</span><input id="na-t" type="time" data-agf="time" value="${F.time}" required></label>
+        <label class="tg full ag-online"><input type="checkbox" id="na-online" data-agf="online" ${(F.online ?? R?.online) ? 'checked' : ''}><span class="sw"></span><span><b>${ic('video')}Consulta online (vídeo)</b><small>O paciente recebe o link pelo WhatsApp e entra pelo celular ou computador</small></span></label>
       </div>
       <p class="muted sm" style="margin:10px 0">${sv[1]} min · ${brl(sv[2])} (valor do serviço).${prox?` Próximo horário: ${fmt(prox.date)} às ${prox.time}.`:''}</p>
       <button class="btn pri">${ic('check')}${R?'Salvar novo horário':'Agendar'}</button></form>
@@ -6090,6 +6126,54 @@ function excluirHtml(p){
       ${E.motivo === 'Outro motivo' ? `<div class="field full"><label class="lbl" for="exc-o">Qual motivo? *</label><input id="exc-o" data-exc="outro" value="${esc(E.outro || '')}" autocomplete="off"></div>` : ''}</div>
     <div class="at-f"><button type="button" class="btn" data-act="pac-excluir-nao">Cancelar</button><button type="button" class="btn crit" data-act="pac-excluir-sim" data-pid="${p.id}">${ic('x')}${guarda ? 'Desativar cadastro' : 'Excluir de vez'}</button></div></section>`;
 }
+// vídeo (Daily) no servidor (função teleconsulta). O paciente recebe o link pelo WhatsApp e entra pela página
+// consulta/ do site, depois de aceitar o termo. O profissional abre o vídeo numa janela que fica por cima do
+// sistema enquanto ele usa o prontuário (dá para aumentar, diminuir e encerrar). A chamada não é gravada.
+
+let V = { salvar:() => {}, toast:() => {} };
+const ligarVideo = (o) => { V = { ...V, ...o }; };
+const naNuvem = () => conta.modo === 'nuvem' && conta.nuvem && conta.clinica?.id;
+const MSG_SEM_CONTA = 'A consulta online precisa da conta no servidor (entre na sua conta do MUSUBI).';
+
+// Cria ou atualiza no servidor a consulta online do horário (agendar, remarcar, desmarcar). Devolve o código ou ''.
+const sincronizarOnline = async (a, avisar = true) => {
+  if (!a?.online && !a?.video) return '';
+  if (!naNuvem()) { if (avisar) V.toast(MSG_SEM_CONTA, 'info'); return ''; }
+  const p = patient(a.pid), primeiro = (p?.name || '').trim().split(/\s+/)[0] || '';
+  try {
+    const r = await conta.nuvem.salvarTeleconsulta(conta.clinica.id, { ...dadosTeleconsulta(a, primeiro, CLINICA), cancelada:a.st === 'desmarcado' || !a.online });
+    if (r?.id && a.video !== r.id) { a.video = r.id; V.salvar(); }
+    return a.video || '';
+  } catch (e) { if (avisar) V.toast(`Não deu para preparar a consulta online: ${e.message}`, 'info'); return ''; }
+};
+
+// Janela do vídeo: fica no canto, por cima de qualquer tela, até encerrar.
+function fecharVideo(){ document.getElementById('video-jan')?.remove(); }
+const abrirVideo = async apId => {
+  const a = db.appts.find(x => x.id === apId); if (!a) return;
+  if (!naNuvem()) { V.toast(MSG_SEM_CONTA, 'info'); return; }
+  const id = a.video || await sincronizarOnline(a); if (!id) return;
+  let r;
+  try { r = await conta.nuvem.entrarTeleconsulta(conta.clinica.id, id); }
+  catch (e) { V.toast(e.message, 'info'); return; }
+  fecharVideo();
+  const p = patient(a.pid), j = document.createElement('section');
+  j.id = 'video-jan'; j.className = 'vjan'; j.setAttribute('role', 'dialog'); j.setAttribute('aria-label', 'Consulta online');
+  j.innerHTML = `<div class="vjan-h"><span class="vjan-t">${ic('video')}<b>${esc(p?.name || 'Consulta online')}</b><small>${esc(a.tipo)} · ${a.time}</small></span>
+    <button class="ib" data-v="copiar" aria-label="Copiar o link do paciente" data-tip="Copiar o link do paciente">${ic('copiar')}</button>
+    <button class="ib" data-v="tamanho" aria-label="Aumentar ou diminuir" data-tip="Aumentar ou diminuir">${ic('expandir')}</button>
+    <button class="ib vjan-x" data-v="sair" aria-label="Encerrar a chamada" data-tip="Encerrar a chamada">${ic('x')}</button></div>
+    <iframe title="Vídeo da consulta" src="${esc(r.url)}" allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"></iframe>`;
+  j.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-v]'); if (!b) return;
+    if (b.dataset.v === 'sair') { if (confirm('Encerrar a chamada de vídeo?')) fecharVideo(); }
+    else if (b.dataset.v === 'tamanho') j.classList.toggle('grande');
+    else if (b.dataset.v === 'copiar') { const l = linkConsulta(a.video, location.origin); navigator.clipboard?.writeText(l).then(() => V.toast('Link do paciente copiado'), () => V.toast(l, 'info')); }
+  });
+  document.body.appendChild(j);
+};
+// WhatsApp de um horário online: garante o código (para o link) antes de abrir a mensagem.
+const prepararWaOnline = async apId => { const a = db.appts.find(x => x.id === apId); if (a && !a.video) await sincronizarOnline(a); return a; };
 // que reúne os módulos administrativos.
 
 const MODULOS = {
@@ -7215,6 +7299,8 @@ document.addEventListener('click',ev=>{
   else if(a==='tema'){ const escuro=document.documentElement.dataset.theme!=='dark'; definirTema(escuro?'dark':'light'); render(true); toast(escuro?'Tema escuro':'Tema claro'); }
   else if(a==='fechar'){ ui.ov=null; render(true); }
   else if(a==='fechar-ir'){ ui.ov=null; ui.wa=null; }
+  else if(a==='video'){ abrirVideo(t.dataset.id); }
+  else if(a==='wa-online'){ prepararWaOnline(t.dataset.ap).then(x=>{ if(!x) return; abrirPainelWa('teleconsulta',x.pid,x.id); render(true); document.getElementById('wa-t')?.focus(); }); }
   else if(a==='wa'){ abrirPainelWa(t.dataset.t,t.dataset.pid,t.dataset.ap); render(true); document.getElementById('wa-t')?.focus(); }
   else if(a==='wa-tipo'){ abrirPainelWa(t.dataset.k,ui.wa.pid,ui.wa.ap); render(true); }
   else if(a==='wa-abrir'){ const W=ui.wa, p=patient(W?.pid), url=p&&linkWa(p.phone,document.getElementById('wa-t').value); if(!url) return;
@@ -7242,7 +7328,7 @@ document.addEventListener('click',ev=>{
     if(!ui.remarcar){ const F=formAgenda(); F.date=ui.agDia; F.time=''; } render(true); }
   else if(a==='ag-livre'){ formAgenda().time=t.dataset.h; render(true); document.getElementById('na-t')?.focus({preventScroll:true}); }
   else if(a==='ag-st'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(x && marcarHorario(x,t.dataset.s)){ save(); render(true); } }
-  else if(a==='ag-desm'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; desmarcar(x,TODAY); if(ui.remarcar===x.id){ ui.remarcar=null; ui.agForm=null; } save(); render(true); toast(`Horário de ${patient(x.pid)?.name.split(' ')[0]||''} desmarcado; ele fica na lista de desmarcados`,'info'); }
+  else if(a==='ag-desm'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; desmarcar(x,TODAY); if(x.video) sincronizarOnline(x,false); if(ui.remarcar===x.id){ ui.remarcar=null; ui.agForm=null; } save(); render(true); toast(`Horário de ${patient(x.pid)?.name.split(' ')[0]||''} desmarcado; ele fica na lista de desmarcados`,'info'); }
   else if(a==='ag-rem'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; ui.remarcar=x.id; ui.agForm={pid:x.pid,date:x.date,time:'',tipo:x.tipo}; ui.agDia=x.date; render(true); document.getElementById('f-appt')?.scrollIntoView({block:'nearest'}); }
   else if(a==='rel-agendar'){ ui.bookPid=t.dataset.pid; ui.agForm=null; ui.remarcar=null; ui.agDia=TODAY; irPara('agenda'); }
   else if(a==='rel-contato'){ registrarContato(patient(t.dataset.pid),new Date().toISOString(),PROF.nome); save(); render(true); toast('Contato registrado'); }
@@ -7454,7 +7540,7 @@ document.addEventListener('change',ev=>{
   if(t.dataset.vcmp){ ui[t.dataset.vcmp]=t.value; render(true); return; }
   if(t.dataset.int){ (ui.novoInt||={nome:'',tel:'',origem:'Instagram'})[t.dataset.int]=t.value; return; }
   if(t.dataset.docp){ ui.docPid=t.value; render(true); return; }
-  if(t.dataset.agf){ const F=formAgenda(); F[t.dataset.agf]=t.value; if(t.dataset.agf==='date'&&t.value) ui.agDia=t.value; if(t.dataset.agf!=='time') render(true); return; }
+  if(t.dataset.agf){ const F=formAgenda(); F[t.dataset.agf]=t.type==='checkbox'?t.checked:t.value; if(t.dataset.agf==='date'&&t.value) ui.agDia=t.value; if(t.dataset.agf!=='time') render(true); return; }
   if(t.hasAttribute('data-mvhist')){ ui.mapa.hist=t.value; render(true); return; }
   if(t.dataset.mk&&t.tagName==='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)){ if(t.dataset.mk==='tipo'&&t.value==='irradiacao'&&marcasDe(x.a).find(m=>m.id===ui.mapa.sel)?.x2==null) ui.mapa.rad=ui.mapa.sel; mudou(`mapa corporal: ${t.dataset.mk==='tipo'?'tipo':'lado'} da marcação`); } return; }
   if(t.dataset.atlsit||t.dataset.atlorig){ const x=atendimentoAberto(), av=x&&avaliacaoEditavel(x.p,x.a); if(av&&!travada(x.p,x.a,av)){ const [c,id]=(t.dataset.atlsit||t.dataset.atlorig).split('.'); definirAchadoLivre(av,c,id,t.dataset.atlsit?'sit':'orig',t.value); mudou(`avaliação energética: ${catNome(c)}: ${t.dataset.atlsit?'situação':'origem'} do achado`); } return; }
@@ -7530,9 +7616,12 @@ document.addEventListener('submit',ev=>{
     const date=v('na-d'), time=v('na-t'), tipo=v('na-tipo'), R=ui.remarcar&&db.appts.find(a=>a.id===ui.remarcar);
     if(!date||!time){ toast('Escolha o dia e o horário','info'); return; }
     const c=conflito(db.appts,date,time,tipo,R?.id), nome=pid=>patient(pid)?.name.split(' ')[0]||'';
-    if(R){ remarcar(R,date,time,tipo); toast(`${nome(R.pid)} remarcado para ${fmt(date)} às ${time}`); }
-    else { db.appts.push(novoHorario(uid(),v('na-p'),date,time,tipo)); toast(`Agendamento criado${c?`; atenção: encosta no horário de ${nome(c.pid)} às ${c.time}`:''}`, c?'info':'ok'); }
+    const online=!!document.getElementById('na-online')?.checked; let ap;
+    if(R){ remarcar(R,date,time,tipo); ap=R; toast(`${nome(R.pid)} remarcado para ${fmt(date)} às ${time}`); }
+    else { ap=novoHorario(uid(),v('na-p'),date,time,tipo); db.appts.push(ap); toast(`Agendamento criado${online?' (online)':''}${c?`; atenção: encosta no horário de ${nome(c.pid)} às ${c.time}`:''}`, c?'info':'ok'); }
+    const eraOnline=!!ap.online; if(online) ap.online=true; else delete ap.online;
     save(); ui.bookPid=null; ui.remarcar=null; ui.agForm=null; ui.agDia=date; render(true);
+    if(online||eraOnline) sincronizarOnline(ap).then(()=>render(true));
   }
 });
 // Tema claro (padrão) ou escuro, escolhido no menu do usuário e guardado neste aparelho.
@@ -7540,6 +7629,7 @@ function definirTema(t){ document.documentElement.dataset.theme=t; try{ localSto
 try{ if(localStorage.getItem('musubi-tema')==='dark') document.documentElement.dataset.theme='dark'; }catch(e){}
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
+ligarVideo({ salvar:save, toast });
 ligarNfse(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
 ligarEquipe(manter => { if(route()==='equipe') render(manter); }, toast);

@@ -153,6 +153,9 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     assinarCartao:async (clinica, plano, periodo, email) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'assinar', clinica, plano, periodo, email, aceite:CONTRATO_VERSAO }, token:await token() }),
     cartao:async clinica => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cartao', clinica }, token:await token() }),
     cancelarCartao:async (clinica, confirmarMulta = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cancelar_cartao', clinica, ...(confirmarMulta ? { confirmarMulta:true } : {}) }, token:await token() }),
+    // Consulta online por vídeo (função teleconsulta, supabase/016_teleconsulta.sql): salvar o horário online e entrar na sala.
+    salvarTeleconsulta:async (clinica, d) => chamar('/functions/v1/teleconsulta', { metodo:'POST', corpo:{ acao:'salvar', clinica, ...d }, token:await token() }),
+    entrarTeleconsulta:async (clinica, id) => chamar('/functions/v1/teleconsulta', { metodo:'POST', corpo:{ acao:'entrar', clinica, id }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
     // Nota fiscal (função nfse, supabase/functions/nfse): { acao, clinica, ... }.
     nfse:async corpo => chamar('/functions/v1/nfse', { metodo:'POST', corpo, token:await token() }),

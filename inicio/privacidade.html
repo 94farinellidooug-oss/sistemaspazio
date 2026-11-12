@@ -58,6 +58,7 @@
     <li><b>Pagamentos:</b> situação e valor das cobranças. Os dados do cartão e do Pix são informados diretamente aos serviços de pagamento (InfinitePay e Mercado Pago) e não passam pelo MUSUBI nem ficam guardados conosco.</li>
     <li><b>Nota fiscal:</b> quando a clínica emite NFS-e, guardamos o certificado digital cifrado e os dados das notas emitidas, enviados ao Sistema Nacional da NFS-e da Receita Federal.</li>
     <li><b>Dados dos pacientes:</b> cadastro, contato, agenda, prontuário, avaliações, documentos, diagnósticos e financeiro, registrados pela clínica. Muitos são dados de saúde, considerados sensíveis pela LGPD.</li>
+    <li><b>Consulta online:</b> dia e hora da consulta, primeiro nome do paciente e o aceite do termo de teleconsulta (data, hora, endereço de internet e navegador). O vídeo e o áudio não são gravados.</li>
     <li><b>Registros de acesso:</b> a cada entrada no sistema, o login, o endereço de internet (IP), o navegador, a data e a hora, como exige o Marco Civil da Internet (Lei 12.965/2014, art. 15). Ficam em sigilo e só são entregues por ordem judicial.</li>
     <li><b>Histórico de alterações:</b> quem criou, alterou ou apagou cada registro, com data e hora. O histórico guarda apenas o nome do campo alterado, nunca o seu conteúdo.</li>
   </ul>
@@ -79,9 +80,10 @@
     <li><b>InfinitePay e Mercado Pago:</b> processamento de pagamentos.</li>
     <li><b>Receita Federal e prefeituras:</b> emissão de NFS-e, quando a clínica usa esse recurso.</li>
     <li><b>Google Fonts:</b> fornece a fonte do site e recebe o endereço de internet do visitante ao carregá-la.</li>
-    <li><b>Serviço de e-mail (Resend):</b> envio de avisos de cobrança para o e-mail de quem assina, quando esse envio estiver ativo.</li>
+    <li><b>Serviço de e-mail (Resend):</b> envio de avisos de cobrança para o e-mail de quem assina.</li>
+    <li><b>Serviço de vídeo (Daily):</b> transmissão das consultas online. A chamada passa pelos servidores do Daily só enquanto acontece e não é gravada. O Daily recebe o primeiro nome do paciente, o nome de quem atende e os endereços de internet de quem participa.</li>
   </ul>
-  <p><b>Transferência internacional (art. 33 da LGPD):</b> Supabase, Vercel, Google e Resend são empresas sediadas nos Estados Unidos. Os dados dos pacientes e da clínica ficam no banco de dados em São Paulo. Dados de navegação e de conta podem passar por servidores desses fornecedores no exterior, sempre com contrato que exige confidencialidade e segurança compatíveis com a LGPD.</p>
+  <p><b>Transferência internacional (art. 33 da LGPD):</b> Supabase, Vercel, Google, Resend e Daily são empresas sediadas nos Estados Unidos. Os dados dos pacientes e da clínica ficam no banco de dados em São Paulo. Dados de navegação e de conta podem passar por servidores desses fornecedores no exterior, sempre com contrato que exige confidencialidade e segurança compatíveis com a LGPD.</p>
   <p>Também podemos fornecer dados quando houver ordem judicial ou obrigação legal. Não vendemos dados pessoais.</p>
 
   <h2>6. Onde os dados ficam e como os protegemos</h2>

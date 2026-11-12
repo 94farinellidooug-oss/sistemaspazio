@@ -12,11 +12,12 @@ import { fmt } from '../util.js';
 export const MENSAGENS_WA = [
   ['lembrete', 'Lembrete de horário', 'Olá, {primeiro}! Passando para lembrar do seu horário de {servico} {quando}, às {hora}, na {clinica}. Pode confirmar por aqui?'],
   ['retomar', 'Retomar contato', 'Olá, {primeiro}! Tudo bem? Faz um tempinho desde o seu último atendimento. Quer agendar um horário para continuarmos o tratamento?'],
+  ['teleconsulta', 'Consulta online', 'Olá, {primeiro}! Sua consulta online de {servico} é {quando}, às {hora}. No horário, entre por este link, pelo celular ou computador (não precisa instalar nada):\n\n{link}\n\nEscolha um lugar reservado e, se puder, use fones de ouvido.'],
   ['orientacoes', 'Orientações para casa', 'Olá, {primeiro}! Seguem as orientações do atendimento:\n\n{orientacoes}'],
   ['livre', 'Mensagem livre', 'Olá, {primeiro}! ']
 ];
 // Dados que o sistema preenche: [campo, rótulo do botão]
-export const CAMPOS_WA = [['primeiro','Primeiro nome'], ['servico','Serviço'], ['quando','Dia'], ['hora','Hora'], ['clinica','Clínica'], ['profissional','Profissional'], ['orientacoes','Orientações']];
+export const CAMPOS_WA = [['primeiro','Primeiro nome'], ['servico','Serviço'], ['quando','Dia'], ['hora','Hora'], ['clinica','Clínica'], ['profissional','Profissional'], ['orientacoes','Orientações'], ['link','Link da consulta online']];
 
 // [chave, nome, texto, 'original' | 'editada']
 export const mensagensWa = (M = {}) => MENSAGENS_WA.map(([k, n, t]) => M[k] ? [k, n, M[k].texto, 'editada'] : [k, n, t, 'original']);
@@ -39,10 +40,10 @@ export function numeroWa(tel){
 export const linkWa = (tel, texto) => numeroWa(tel) ? `https://wa.me/${numeroWa(tel)}?text=${encodeURIComponent(texto)}` : '';
 
 // Valores para o paciente e, quando houver, o horário da agenda (a) e as orientações já escritas.
-export function valoresWa(p, a, { hoje, amanha, clinica, prof, orientacoes = '' }){
+export function valoresWa(p, a, { hoje, amanha, clinica, prof, orientacoes = '', link = '' }){
   const quando = !a ? '' : a.date === hoje ? 'hoje' : a.date === amanha ? 'amanhã' : `no dia ${fmt(a.date)}`;
   return { primeiro: (p.name || '').trim().split(/\s+/)[0] || '', servico: a ? String(a.tipo || '').toLowerCase() : '', quando, hora: a ? a.time : '',
-    clinica, profissional: prof, orientacoes };
+    clinica, profissional: prof, orientacoes, link };
 }
 export const preencherWa = (t, v) => t.replace(/\{(\w+)\}/g, (m, k) => k in v ? v[k] : m);
 
@@ -54,4 +55,4 @@ export function registrarMensagem(p, { tipo, em, por, ap }){
   return m;
 }
 // Último lembrete aberto para um horário da agenda.
-export const lembreteDe = (p, apId) => p?.relacionamento?.mensagens?.find(m => m.tipo === 'lembrete' && m.ap === apId) || null;
+export const lembreteDe = (p, apId) => p?.relacionamento?.mensagens?.find(m => (m.tipo === 'lembrete' || m.tipo === 'teleconsulta') && m.ap === apId) || null;

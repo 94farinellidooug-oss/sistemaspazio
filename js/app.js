@@ -20,6 +20,7 @@ import { atendimentoAberto, indicadosMarca, textoSalvo, vAtendimento } from './t
 import { editarRegistro, TIPOS_MARCA, LADOS_MARCA, adicionarMarca, editarMarca, marcasDe, removerMarca, CATEGORIAS, PARES_VASOS, adicionarAchadoLivre, definirVaso, ehBasal, fotoVersao, registrarCorrecao, alternarAchado, alternarPulso, avaliacaoEditavel, definirAchado, definirAchadoLivre, definirPulso, notaCategoria, removerAchadoLivre, descartarRascunho, finalizarAtendimento, iniciarAtendimento, rascunhoDe, registrarAlteracao } from './dados/atendimento.js';
 import { aoDigitarCep, cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
 import { soDigitosCep } from './dados/endereco.js';
+import { abrirVideo, ligarVideo, prepararWaOnline, sincronizarOnline } from './telas/video.js';
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { LABEL, PROF, listaBusca, renderNav } from './telas/menu.js';
 import { RECURSO_ROTA } from './dados/planos.js';
@@ -180,6 +181,8 @@ document.addEventListener('click',ev=>{
   else if(a==='tema'){ const escuro=document.documentElement.dataset.theme!=='dark'; definirTema(escuro?'dark':'light'); render(true); toast(escuro?'Tema escuro':'Tema claro'); }
   else if(a==='fechar'){ ui.ov=null; render(true); }
   else if(a==='fechar-ir'){ ui.ov=null; ui.wa=null; }
+  else if(a==='video'){ abrirVideo(t.dataset.id); }
+  else if(a==='wa-online'){ prepararWaOnline(t.dataset.ap).then(x=>{ if(!x) return; abrirPainelWa('teleconsulta',x.pid,x.id); render(true); document.getElementById('wa-t')?.focus(); }); }
   else if(a==='wa'){ abrirPainelWa(t.dataset.t,t.dataset.pid,t.dataset.ap); render(true); document.getElementById('wa-t')?.focus(); }
   else if(a==='wa-tipo'){ abrirPainelWa(t.dataset.k,ui.wa.pid,ui.wa.ap); render(true); }
   else if(a==='wa-abrir'){ const W=ui.wa, p=patient(W?.pid), url=p&&linkWa(p.phone,document.getElementById('wa-t').value); if(!url) return;
@@ -207,7 +210,7 @@ document.addEventListener('click',ev=>{
     if(!ui.remarcar){ const F=formAgenda(); F.date=ui.agDia; F.time=''; } render(true); }
   else if(a==='ag-livre'){ formAgenda().time=t.dataset.h; render(true); document.getElementById('na-t')?.focus({preventScroll:true}); }
   else if(a==='ag-st'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(x && marcarHorario(x,t.dataset.s)){ save(); render(true); } }
-  else if(a==='ag-desm'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; desmarcar(x,TODAY); if(ui.remarcar===x.id){ ui.remarcar=null; ui.agForm=null; } save(); render(true); toast(`Horário de ${patient(x.pid)?.name.split(' ')[0]||''} desmarcado; ele fica na lista de desmarcados`,'info'); }
+  else if(a==='ag-desm'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; desmarcar(x,TODAY); if(x.video) sincronizarOnline(x,false); if(ui.remarcar===x.id){ ui.remarcar=null; ui.agForm=null; } save(); render(true); toast(`Horário de ${patient(x.pid)?.name.split(' ')[0]||''} desmarcado; ele fica na lista de desmarcados`,'info'); }
   else if(a==='ag-rem'){ const x=db.appts.find(z=>z.id===t.dataset.id); if(!x) return; ui.remarcar=x.id; ui.agForm={pid:x.pid,date:x.date,time:'',tipo:x.tipo}; ui.agDia=x.date; render(true); document.getElementById('f-appt')?.scrollIntoView({block:'nearest'}); }
   else if(a==='rel-agendar'){ ui.bookPid=t.dataset.pid; ui.agForm=null; ui.remarcar=null; ui.agDia=TODAY; irPara('agenda'); }
   else if(a==='rel-contato'){ registrarContato(patient(t.dataset.pid),new Date().toISOString(),PROF.nome); save(); render(true); toast('Contato registrado'); }
@@ -419,7 +422,7 @@ document.addEventListener('change',ev=>{
   if(t.dataset.vcmp){ ui[t.dataset.vcmp]=t.value; render(true); return; }
   if(t.dataset.int){ (ui.novoInt||={nome:'',tel:'',origem:'Instagram'})[t.dataset.int]=t.value; return; }
   if(t.dataset.docp){ ui.docPid=t.value; render(true); return; }
-  if(t.dataset.agf){ const F=formAgenda(); F[t.dataset.agf]=t.value; if(t.dataset.agf==='date'&&t.value) ui.agDia=t.value; if(t.dataset.agf!=='time') render(true); return; }
+  if(t.dataset.agf){ const F=formAgenda(); F[t.dataset.agf]=t.type==='checkbox'?t.checked:t.value; if(t.dataset.agf==='date'&&t.value) ui.agDia=t.value; if(t.dataset.agf!=='time') render(true); return; }
   if(t.hasAttribute('data-mvhist')){ ui.mapa.hist=t.value; render(true); return; }
   if(t.dataset.mk&&t.tagName==='SELECT'){ const x=atendimentoAberto(); if(x&&editarMarca(x.a,ui.mapa.sel,t.dataset.mk,t.value)){ if(t.dataset.mk==='tipo'&&t.value==='irradiacao'&&marcasDe(x.a).find(m=>m.id===ui.mapa.sel)?.x2==null) ui.mapa.rad=ui.mapa.sel; mudou(`mapa corporal: ${t.dataset.mk==='tipo'?'tipo':'lado'} da marcação`); } return; }
   if(t.dataset.atlsit||t.dataset.atlorig){ const x=atendimentoAberto(), av=x&&avaliacaoEditavel(x.p,x.a); if(av&&!travada(x.p,x.a,av)){ const [c,id]=(t.dataset.atlsit||t.dataset.atlorig).split('.'); definirAchadoLivre(av,c,id,t.dataset.atlsit?'sit':'orig',t.value); mudou(`avaliação energética: ${catNome(c)}: ${t.dataset.atlsit?'situação':'origem'} do achado`); } return; }
@@ -495,9 +498,12 @@ document.addEventListener('submit',ev=>{
     const date=v('na-d'), time=v('na-t'), tipo=v('na-tipo'), R=ui.remarcar&&db.appts.find(a=>a.id===ui.remarcar);
     if(!date||!time){ toast('Escolha o dia e o horário','info'); return; }
     const c=conflito(db.appts,date,time,tipo,R?.id), nome=pid=>patient(pid)?.name.split(' ')[0]||'';
-    if(R){ remarcar(R,date,time,tipo); toast(`${nome(R.pid)} remarcado para ${fmt(date)} às ${time}`); }
-    else { db.appts.push(novoHorario(uid(),v('na-p'),date,time,tipo)); toast(`Agendamento criado${c?`; atenção: encosta no horário de ${nome(c.pid)} às ${c.time}`:''}`, c?'info':'ok'); }
+    const online=!!document.getElementById('na-online')?.checked; let ap;
+    if(R){ remarcar(R,date,time,tipo); ap=R; toast(`${nome(R.pid)} remarcado para ${fmt(date)} às ${time}`); }
+    else { ap=novoHorario(uid(),v('na-p'),date,time,tipo); db.appts.push(ap); toast(`Agendamento criado${online?' (online)':''}${c?`; atenção: encosta no horário de ${nome(c.pid)} às ${c.time}`:''}`, c?'info':'ok'); }
+    const eraOnline=!!ap.online; if(online) ap.online=true; else delete ap.online;
     save(); ui.bookPid=null; ui.remarcar=null; ui.agForm=null; ui.agDia=date; render(true);
+    if(online||eraOnline) sincronizarOnline(ap).then(()=>render(true));
   }
 });
 // Tema claro (padrão) ou escuro, escolhido no menu do usuário e guardado neste aparelho.
@@ -505,6 +511,7 @@ function definirTema(t){ document.documentElement.dataset.theme=t; try{ localSto
 try{ if(localStorage.getItem('musubi-tema')==='dark') document.documentElement.dataset.theme='dark'; }catch(e){}
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
+ligarVideo({ salvar:save, toast });
 ligarNfse(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
 ligarEquipe(manter => { if(route()==='equipe') render(manter); }, toast);
