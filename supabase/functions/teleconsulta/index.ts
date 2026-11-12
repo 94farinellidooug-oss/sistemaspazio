@@ -3,7 +3,7 @@
 // Como publicar: no Supabase, Edge Functions > Deploy a new function > Via Editor, nome "teleconsulta", cole este
 // arquivo inteiro e clique em Deploy. Depois, em Details, desligue "Enforce JWT verification" (o paciente entra sem
 // login; a função confere o login sozinha onde precisa). Segredo (Edge Functions > Secrets): DAILY_CHAVE = API key do
-// Daily (dashboard.daily.co > Developers). Tabela: supabase/015_teleconsulta.sql.
+// Daily (dashboard.daily.co > Developers). Tabela: supabase/016_teleconsulta.sql.
 //
 // Pedidos (POST, JSON):
 //   { acao:'salvar', clinica, consulta, inicio, duracao, primeiro, clinica_nome, cancelada }  alguém da equipe: cria ou

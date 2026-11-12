@@ -3,7 +3,7 @@
 -- do paciente. A sala de vídeo (Daily) é criada pela função teleconsulta na primeira entrada e só abre perto
 -- do horário. O aceite do termo de teleconsulta pelo paciente fica registrado (quando, IP e navegador).
 -- A chamada não é gravada. Só a função (com a chave de serviço) grava; a equipe da clínica só lê.
--- Rode no SQL Editor do Supabase depois do 014_acessos.sql. Pode rodar de novo sem problema.
+-- Rode no SQL Editor do Supabase depois do 015_revendedores.sql. Pode rodar de novo sem problema.
 
 create table if not exists public.teleconsultas (
   id uuid primary key default gen_random_uuid(),
