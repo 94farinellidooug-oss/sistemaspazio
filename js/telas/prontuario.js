@@ -9,6 +9,7 @@
 // - Anamnese e alertas; Registro rápido de sessão (o atendimento completo fica em telas/atendimento.js).
 // Nenhum cálculo clínico é feito aqui: os estados vêm de raciocinio/avaliacao.js, como antes.
 import { elTag } from '../componentes/campos.js';
+import { enderecoCompleto } from '../dados/endereco.js';
 import { anel, barrasEl, delta, linhas } from '../componentes/graficos.js';
 import { ic, vazio } from '../componentes/icones.js';
 import { pentagram } from '../componentes/pentagrama.js';
@@ -115,7 +116,7 @@ function cardQueixas(p){
 
 function cardCadastro(p){
   const c=p.cadastro||{}, v=x=>x?esc(x):'<span class="muted">—</span>';
-  const L=[['Telefone',p.phone],['CPF',c.cpf],['E-mail',c.email],['Cidade',c.cidade?`${c.cidade} · hemisfério ${c.hemisferio||'Sul'}`:''],['Endereço',c.endereco],['Contato de emergência',c.contatoEmergencia],['Nascimento',p.birth?fmt(p.birth):''],['Consentimento LGPD',p.consentimento?`registrado em ${fmt(p.consentimento)}`:'']];
+  const L=[['Telefone',p.phone],['CPF',c.cpf],['E-mail',c.email],['Cidade',c.cidade?`${c.cidade}${c.uf?` - ${c.uf}`:''} · hemisfério ${c.hemisferio||'Sul'}`:''],['Endereço',enderecoCompleto(c)],['Contato de emergência',c.contatoEmergencia],['Nascimento',p.birth?fmt(p.birth):''],['Consentimento LGPD',p.consentimento?`registrado em ${fmt(p.consentimento)}`:'']];
   return `<div class="card"><div class="card-h"><h2>Dados cadastrais</h2><button class="btn ghost sm" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Editar</button></div>
     <div class="corr-g">${L.map(([l,x])=>`<div><small>${l}</small><b>${v(x)}</b></div>`).join('')}</div></div>`;
 }

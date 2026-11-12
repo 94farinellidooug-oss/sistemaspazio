@@ -66,6 +66,6 @@ export const TIPO_HIST = { paciente:'Cadastro', atendimento:'Atendimento', avali
   recebimento:'Recebimento', pacote:'Pacote', despesa:'Despesa', nota:'Nota fiscal', configuracao:'Configurações', modelo:'Modelo de documento', mensagens:'Mensagens', dados:'Dados' };
 export const ACAO_HIST = { criou:'criou', alterou:'alterou', apagou:'apagou', desativou:'desativou', reativou:'reativou' };
 const CAMPO_H = { name:'nome', birth:'nascimento', phone:'telefone', anam:'anamnese', alerts:'alertas', queixas:'queixas', relacionamento:'relacionamento', marcas:'marcações do mapa',
-  'cadastro.cpf':'CPF', 'cadastro.email':'e-mail', 'cadastro.endereco':'endereço', 'cadastro.cidade':'cidade', 'cadastro.hemisferio':'hemisfério', 'cadastro.contatoEmergencia':'contato de emergência',
+  'cadastro.cpf':'CPF', 'cadastro.email':'e-mail', 'cadastro.endereco':'endereço', 'cadastro.numero':'número do endereço', 'cadastro.complemento':'complemento', 'cadastro.bairro':'bairro', 'cadastro.cep':'CEP', 'cadastro.uf':'estado', 'cadastro.cidade':'cidade', 'cadastro.hemisferio':'hemisfério', 'cadastro.contatoEmergencia':'contato de emergência',
   data:'data', date:'data', time:'horário', status:'situação', done:'atendido', valor:'valor', forma:'forma de pagamento', texto:'texto', assinado:'assinatura', edicoes:'correções', ativo:'ativo' };
 export const campoTxt = c => CAMPO_H[c] || String(c).replace(/^cadastro\./, '').replace(/([A-Z])/g, ' $1').toLowerCase();

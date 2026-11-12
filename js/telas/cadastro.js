@@ -7,6 +7,8 @@ import { patient } from '../dados/repositorio.js';
 import { ALERTA_NOME } from '../dados/indicadores.js';
 import { ui } from '../estado.js';
 import { TODAY, esc, fmt, initials } from '../util.js';
+import { buscarCep, cepFormatado, soDigitosCep } from '../dados/endereco.js';
+import { UFS } from '../dados/config.js';
 
 const ALERTA_DICA = { gestante:'Pontos com cautela na gestação', anticoagulante:'Ventosa e sangria', marcapasso:'Eletroacupuntura' };
 
@@ -34,7 +36,10 @@ export function vCadastro(){
           ${campo('np-phone','Telefone (WhatsApp)',pre?.phone,'tel','(11) 90000-0000')}${campo('np-email','E-mail',c.email,'email','nome@email.com')}
           ${campo('np-emerg','Contato de emergência',c.contatoEmergencia,'text','Nome e telefone','','full')}</div></section>
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('local')}</span><div><h3>Endereço e local de atendimento</h3><small class="muted">A cidade e o hemisfério são usados no contexto sazonal, só como complemento</small></div></div>
-        <div class="form">${campo('np-end','Endereço',c.endereco,'text','Rua, número, bairro','','full')}${campo('np-cid','Cidade',c.cidade,'text','São Paulo')}
+        <div class="form">${campo('np-cep','CEP',cepFormatado(c.cep||''),'text','00000-000','inputmode="numeric" autocomplete="postal-code" maxlength="9" aria-describedby="np-cep-s"')}<div class="field cep-s"><span class="muted sm" id="np-cep-s" role="status">${c.cep?'':'Digite o CEP para preencher o endereço'}</span></div>
+          ${campo('np-end','Rua',c.endereco,'text','Rua, avenida…','autocomplete="address-line1"','full')}${campo('np-num','Número',c.numero,'text','123','autocomplete="off"')}${campo('np-comp','Complemento',c.complemento,'text','Apto, bloco, casa…')}
+          ${campo('np-bai','Bairro',c.bairro)}${campo('np-cid','Cidade',c.cidade,'text','São Paulo')}
+          <div class="field"><label class="lbl" for="np-uf">Estado</label><select id="np-uf"><option value=""></option>${UFS.map(u=>`<option ${u===c.uf?'selected':''}>${u}</option>`).join('')}</select></div>
           <div class="field"><label class="lbl" for="np-hem">Hemisfério</label><select id="np-hem">${['Sul','Norte'].map(h=>`<option ${h===hem?'selected':''}>${h}</option>`).join('')}</select></div></div></section>
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('pulso')}</span><div><h3>Queixa principal</h3><small class="muted">${p?'Outras queixas são adicionadas no perfil do paciente':'A intensidade é medida no primeiro atendimento, que gera a avaliação basal'}</small></div></div>
         <div class="form"><div class="field full"><label class="lbl" for="np-q">Queixa *</label><input id="np-q" required placeholder="Ex.: dor cervical e tensão nos ombros" value="${esc(p?.queixa)}"></div></div></section>
@@ -49,6 +54,23 @@ export function vCadastro(){
       ${p?excluirHtml(p):''}</div>
   </form>`;
 }
+// CEP: ao completar os 8 números, busca e preenche rua, bairro, cidade e estado; o foco vai para o número.
+let cepBuscado = '';
+export const aoDigitarCep = async el => {
+  const d = soDigitosCep(el.value), s = document.getElementById('np-cep-s');
+  el.value = cepFormatado(el.value);
+  if (d.length !== 8) { cepBuscado = ''; if (s) s.textContent = d ? 'O CEP tem 8 números' : 'Digite o CEP para preencher o endereço'; return; }
+  if (d === cepBuscado) return; cepBuscado = d;
+  if (s) s.textContent = 'Buscando o endereço…';
+  let r = null;
+  try { r = await buscarCep(d); } catch (e) { if (s) s.textContent = 'Sem conexão para buscar o CEP. Preencha o endereço à mão.'; return; }
+  if (soDigitosCep(el.value) !== d) return;
+  if (!r) { if (s) s.textContent = 'CEP não encontrado. Confira os números ou preencha à mão.'; return; }
+  const por = (id, v) => { const x = document.getElementById(id); if (x && v) x.value = v; };
+  por('np-end', r.rua); por('np-bai', r.bairro); por('np-cid', r.cidade); por('np-uf', r.uf);
+  if (s) s.textContent = r.rua ? 'Endereço preenchido. Falta o número e o complemento.' : 'CEP geral da cidade: preencha a rua e o bairro.';
+  document.getElementById(r.rua ? 'np-num' : 'np-end')?.focus();
+};
 // Atualiza a pré-visualização enquanto o formulário é preenchido.
 export function previaCadastro(){
   const n=document.getElementById('np-name')?.value.trim(), q=document.getElementById('np-q')?.value.trim();
