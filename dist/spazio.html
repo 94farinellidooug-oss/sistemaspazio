@@ -1708,6 +1708,7 @@ body.com-acesso{overflow:hidden}
 .pd-dicas-c[open] summary{margin-bottom:10px}
 @media (max-width:900px){ .pd-grupos,.pd-grupos2{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:520px){ .pd-resumo span{padding:2px 10px} .pd-barra{grid-template-columns:76px minmax(0,1fr) auto} .pd-barra b{min-width:0} }
+.cep-s{display:flex;align-items:flex-end;padding-bottom:10px;min-width:0}
 </style>
 
 
@@ -2889,7 +2890,7 @@ const TIPO_HIST = { paciente:'Cadastro', atendimento:'Atendimento', avaliacao:'A
   recebimento:'Recebimento', pacote:'Pacote', despesa:'Despesa', nota:'Nota fiscal', configuracao:'Configurações', modelo:'Modelo de documento', mensagens:'Mensagens', dados:'Dados' };
 const ACAO_HIST = { criou:'criou', alterou:'alterou', apagou:'apagou', desativou:'desativou', reativou:'reativou' };
 const CAMPO_H = { name:'nome', birth:'nascimento', phone:'telefone', anam:'anamnese', alerts:'alertas', queixas:'queixas', relacionamento:'relacionamento', marcas:'marcações do mapa',
-  'cadastro.cpf':'CPF', 'cadastro.email':'e-mail', 'cadastro.endereco':'endereço', 'cadastro.cidade':'cidade', 'cadastro.hemisferio':'hemisfério', 'cadastro.contatoEmergencia':'contato de emergência',
+  'cadastro.cpf':'CPF', 'cadastro.email':'e-mail', 'cadastro.endereco':'endereço', 'cadastro.numero':'número do endereço', 'cadastro.complemento':'complemento', 'cadastro.bairro':'bairro', 'cadastro.cep':'CEP', 'cadastro.uf':'estado', 'cadastro.cidade':'cidade', 'cadastro.hemisferio':'hemisfério', 'cadastro.contatoEmergencia':'contato de emergência',
   data:'data', date:'data', time:'horário', status:'situação', done:'atendido', valor:'valor', forma:'forma de pagamento', texto:'texto', assinado:'assinatura', edicoes:'correções', ativo:'ativo' };
 const campoTxt = c => CAMPO_H[c] || String(c).replace(/^cadastro\./, '').replace(/([A-Z])/g, ' $1').toLowerCase();
 // em 05/11, para ajustar depois). Toda clínica nova tem 7 dias grátis com as funções do pacote escolhido;
@@ -5171,6 +5172,28 @@ function revisarPosicao(d, c, ok, por, em){
   r.hist.unshift({ acao: ok ? 'Posição marcada como revisada' : 'Revisão retirada', por, em });
   return r;
 }
+// cidade e estado no ViaCEP (serviço público e gratuito, sem cadastro); falta só o número e o complemento.
+// No cadastro: endereco (rua), numero, complemento, bairro, cidade, uf e cep. Cadastros antigos têm o
+// endereço inteiro em endereco, e continuam aparecendo iguais.
+const soDigitosCep = v => String(v || '').replace(/\D/g, '').slice(0, 8);
+const cepFormatado = v => { const d = soDigitosCep(v); return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d; };
+
+// Busca o CEP: devolve { rua, bairro, cidade, uf } ou null (CEP inexistente). Erro de rede lança.
+const buscarCep = async (cep, f = (...a) => fetch(...a)) => {
+  const d = soDigitosCep(cep);
+  if (d.length !== 8) return null;
+  const r = await f(`https://viacep.com.br/ws/${d}/json/`);
+  if (!r.ok) { if (r.status === 400) return null; throw new Error('cep ' + r.status); }
+  const j = await r.json();
+  if (!j || j.erro) return null;
+  return { rua:j.logradouro || '', bairro:j.bairro || '', cidade:j.localidade || '', uf:j.uf || '' };
+};
+
+// Uma linha só, para o prontuário e os documentos: "Rua X, 123, apto 4 · Bairro · CEP 95000-000".
+function enderecoCompleto(c = {}){
+  const rua = [c.endereco, c.numero, c.complemento].map(x => String(x || '').trim()).filter(Boolean).join(', ');
+  return [rua, String(c.bairro || '').trim(), c.cep ? `CEP ${cepFormatado(c.cep)}` : ''].filter(Boolean).join(' · ');
+}
 // paciente: quem criou, alterou ou apagou o quê, com data e hora. Só o administrador da clínica vê. Os registros
 // vêm do servidor (supabase/006_historico.sql) e ninguém consegue alterá-los ou apagá-los pelo sistema.
 
@@ -5402,7 +5425,7 @@ function cardQueixas(p){
 
 function cardCadastro(p){
   const c=p.cadastro||{}, v=x=>x?esc(x):'<span class="muted">—</span>';
-  const L=[['Telefone',p.phone],['CPF',c.cpf],['E-mail',c.email],['Cidade',c.cidade?`${c.cidade} · hemisfério ${c.hemisferio||'Sul'}`:''],['Endereço',c.endereco],['Contato de emergência',c.contatoEmergencia],['Nascimento',p.birth?fmt(p.birth):''],['Consentimento LGPD',p.consentimento?`registrado em ${fmt(p.consentimento)}`:'']];
+  const L=[['Telefone',p.phone],['CPF',c.cpf],['E-mail',c.email],['Cidade',c.cidade?`${c.cidade}${c.uf?` - ${c.uf}`:''} · hemisfério ${c.hemisferio||'Sul'}`:''],['Endereço',enderecoCompleto(c)],['Contato de emergência',c.contatoEmergencia],['Nascimento',p.birth?fmt(p.birth):''],['Consentimento LGPD',p.consentimento?`registrado em ${fmt(p.consentimento)}`:'']];
   return `<div class="card"><div class="card-h"><h2>Dados cadastrais</h2><button class="btn ghost sm" data-act="editar-paciente" data-pid="${p.id}">${ic('editar')}Editar</button></div>
     <div class="corr-g">${L.map(([l,x])=>`<div><small>${l}</small><b>${v(x)}</b></div>`).join('')}</div></div>`;
 }
@@ -6014,7 +6037,10 @@ function vCadastro(){
           ${campo('np-phone','Telefone (WhatsApp)',pre?.phone,'tel','(11) 90000-0000')}${campo('np-email','E-mail',c.email,'email','nome@email.com')}
           ${campo('np-emerg','Contato de emergência',c.contatoEmergencia,'text','Nome e telefone','','full')}</div></section>
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('local')}</span><div><h3>Endereço e local de atendimento</h3><small class="muted">A cidade e o hemisfério são usados no contexto sazonal, só como complemento</small></div></div>
-        <div class="form">${campo('np-end','Endereço',c.endereco,'text','Rua, número, bairro','','full')}${campo('np-cid','Cidade',c.cidade,'text','São Paulo')}
+        <div class="form">${campo('np-cep','CEP',cepFormatado(c.cep||''),'text','00000-000','inputmode="numeric" autocomplete="postal-code" maxlength="9" aria-describedby="np-cep-s"')}<div class="field cep-s"><span class="muted sm" id="np-cep-s" role="status">${c.cep?'':'Digite o CEP para preencher o endereço'}</span></div>
+          ${campo('np-end','Rua',c.endereco,'text','Rua, avenida…','autocomplete="address-line1"','full')}${campo('np-num','Número',c.numero,'text','123','autocomplete="off"')}${campo('np-comp','Complemento',c.complemento,'text','Apto, bloco, casa…')}
+          ${campo('np-bai','Bairro',c.bairro)}${campo('np-cid','Cidade',c.cidade,'text','São Paulo')}
+          <div class="field"><label class="lbl" for="np-uf">Estado</label><select id="np-uf"><option value=""></option>${UFS.map(u=>`<option ${u===c.uf?'selected':''}>${u}</option>`).join('')}</select></div>
           <div class="field"><label class="lbl" for="np-hem">Hemisfério</label><select id="np-hem">${['Sul','Norte'].map(h=>`<option ${h===hem?'selected':''}>${h}</option>`).join('')}</select></div></div></section>
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('pulso')}</span><div><h3>Queixa principal</h3><small class="muted">${p?'Outras queixas são adicionadas no perfil do paciente':'A intensidade é medida no primeiro atendimento, que gera a avaliação basal'}</small></div></div>
         <div class="form"><div class="field full"><label class="lbl" for="np-q">Queixa *</label><input id="np-q" required placeholder="Ex.: dor cervical e tensão nos ombros" value="${esc(p?.queixa)}"></div></div></section>
@@ -6029,6 +6055,23 @@ function vCadastro(){
       ${p?excluirHtml(p):''}</div>
   </form>`;
 }
+// CEP: ao completar os 8 números, busca e preenche rua, bairro, cidade e estado; o foco vai para o número.
+let cepBuscado = '';
+const aoDigitarCep = async el => {
+  const d = soDigitosCep(el.value), s = document.getElementById('np-cep-s');
+  el.value = cepFormatado(el.value);
+  if (d.length !== 8) { cepBuscado = ''; if (s) s.textContent = d ? 'O CEP tem 8 números' : 'Digite o CEP para preencher o endereço'; return; }
+  if (d === cepBuscado) return; cepBuscado = d;
+  if (s) s.textContent = 'Buscando o endereço…';
+  let r = null;
+  try { r = await buscarCep(d); } catch (e) { if (s) s.textContent = 'Sem conexão para buscar o CEP. Preencha o endereço à mão.'; return; }
+  if (soDigitosCep(el.value) !== d) return;
+  if (!r) { if (s) s.textContent = 'CEP não encontrado. Confira os números ou preencha à mão.'; return; }
+  const por = (id, v) => { const x = document.getElementById(id); if (x && v) x.value = v; };
+  por('np-end', r.rua); por('np-bai', r.bairro); por('np-cid', r.cidade); por('np-uf', r.uf);
+  if (s) s.textContent = r.rua ? 'Endereço preenchido. Falta o número e o complemento.' : 'CEP geral da cidade: preencha a rua e o bairro.';
+  document.getElementById(r.rua ? 'np-num' : 'np-end')?.focus();
+};
 // Atualiza a pré-visualização enquanto o formulário é preenchido.
 function previaCadastro(){
   const n=document.getElementById('np-name')?.value.trim(), q=document.getElementById('np-q')?.value.trim();
@@ -7254,6 +7297,7 @@ document.addEventListener('input',ev=>{
   else if(t.id==='ns-eva'){ document.getElementById('ns-eva-v').textContent=t.value; }
   else if(t.dataset.q&&t.type==='range'){ document.getElementById(t.id+'-v').textContent=t.value; }
   else if(t.id==='np-name'||t.id==='np-q'){ previaCadastro(); }
+  else if(t.id==='np-cep'){ aoDigitarCep(t); }
   else if(t.id==='np-cpf'){ t.setCustomValidity(''); }
   if(t.id==='ns-pts'||t.name==='tec') sessionWarn();
   if(t.dataset.rxmot||t.dataset.atorient){ const x=atendimentoAberto(); if(!x) return;
@@ -7450,7 +7494,7 @@ document.addEventListener('submit',ev=>{
     const cpf=document.getElementById('np-cpf');
     if(!cpfValido(cpf.value)){ cpf.setCustomValidity('CPF inválido: confira os 11 números.'); cpf.reportValidity(); return; }
     const em=new Date().toISOString(), lgpd=document.getElementById('np-lgpd');
-    const cadastro={cpf:cpf.value.trim()?cpfFormatado(cpf.value.trim()):'',email:v('np-email').trim(),endereco:v('np-end').trim(),cidade:v('np-cid').trim(),hemisferio:v('np-hem'),contatoEmergencia:v('np-emerg').trim()};
+    const cadastro={cpf:cpf.value.trim()?cpfFormatado(cpf.value.trim()):'',email:v('np-email').trim(),endereco:v('np-end').trim(),numero:v('np-num').trim(),complemento:v('np-comp').trim(),bairro:v('np-bai').trim(),cep:soDigitosCep(v('np-cep')),uf:v('np-uf'),cidade:v('np-cid').trim(),hemisferio:v('np-hem'),contatoEmergencia:v('np-emerg').trim()};
     const alerts=Object.fromEntries(['gestante','anticoagulante','marcapasso'].map(k=>[k,document.getElementById('np-al-'+k).checked]));
     if(ui.editPid){ const p=patient(ui.editPid);
       p.name=v('np-name').trim(); p.birth=v('np-birth'); p.phone=v('np-phone'); p.queixas.find(q=>q.id==='q1').descricao=v('np-q').trim();
