@@ -20,14 +20,21 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="inicio.css">
 <script>try{const t=localStorage.getItem('musubi-tema');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
-<script>document.documentElement.classList.add('js');try{if(sessionStorage.getItem('musubi-entrada'))document.documentElement.classList.add('sem-entrada');sessionStorage.setItem('musubi-entrada','1');}catch(e){}</script>
+<script>document.documentElement.classList.add('js');try{if(sessionStorage.getItem('musubi-entrada'))document.documentElement.classList.add('sem-entrada');else document.documentElement.classList.add('com-entrada');sessionStorage.setItem('musubi-entrada','1');}catch(e){}</script>
 </head>
 <body>
 <div class="entrada" id="entrada" aria-hidden="true">
   <div class="entrada-c">
-    <img class="entrada-logo logo-claro" src="marca/MUSUBI_logo_colorido.svg" alt="" width="260" height="72">
-    <img class="entrada-logo logo-escuro" src="marca/MUSUBI_logo_branco.svg" alt="" width="260" height="72">
-    <span class="entrada-barra"><i></i></span>
+    <svg class="en-penta" viewBox="0 0 200 200" aria-hidden="true">
+      <circle class="en-ciclo" cx="100" cy="100" r="70" pathLength="1"/>
+      <path class="en-estrela" d="M100.0 30.0 L141.1 156.6 L33.4 78.4 L166.6 78.4 L58.9 156.6 L100.0 30.0" pathLength="1"/>
+      <g class="en-no" style="--i:0;--c:#c8553d"><circle cx="100.0" cy="30.0" r="11"/><text x="100.0" y="30.0" dy=".36em">火</text></g><g class="en-no" style="--i:1;--c:#CEA052"><circle cx="166.6" cy="78.4" r="11"/><text x="166.6" y="78.4" dy=".36em">土</text></g><g class="en-no" style="--i:2;--c:#8f969c"><circle cx="141.1" cy="156.6" r="11"/><text x="141.1" y="156.6" dy=".36em">金</text></g><g class="en-no" style="--i:3;--c:#2f5d7c"><circle cx="58.9" cy="156.6" r="11"/><text x="58.9" y="156.6" dy=".36em">水</text></g><g class="en-no" style="--i:4;--c:#6b8f3a"><circle cx="33.4" cy="78.4" r="11"/><text x="33.4" y="78.4" dy=".36em">木</text></g>
+    </svg>
+    <div class="en-logo">
+      <img class="logo-claro" src="marca/MUSUBI_logo_colorido.svg" alt="" width="380" height="105">
+      <img class="logo-escuro" src="marca/MUSUBI_logo_branco.svg" alt="" width="380" height="105">
+    </div>
+    <p class="en-txt"><span>Agenda</span><span>Prontuário</span><span>Medicina Tradicional Chinesa</span></p>
   </div>
 </div>
 

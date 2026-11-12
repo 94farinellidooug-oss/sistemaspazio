@@ -27,11 +27,12 @@ const contexto = async opc => {
   return ctx;
 };
 const vigiar = p => { p.on('pageerror', e => erros.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !m.text().includes('Failed to load resource')) erros.push(m.text()); }); return p; };
-const abrir = async (opc, url = SITE) => { const p = vigiar(await (await contexto(opc)).newPage()); await p.goto(url); await p.waitForSelector('#mods .mod'); return p; };
+// A entrada (primeira visita da sessão) cobre a página por alguns segundos: espera ela sair, menos quando o teste é sobre ela.
+const abrir = async (opc, url = SITE, comEntrada = false) => { const p = vigiar(await (await contexto(opc)).newPage()); await p.goto(url); await p.waitForSelector('#mods .mod'); if (!comEntrada) await p.waitForSelector('#entrada', { state:'detached', timeout:6000 }); return p; };
 const logoVisivel = p => p.evaluate(() => [...document.querySelectorAll('.topo .logo')].filter(x => getComputedStyle(x).display !== 'none').map(x => x.getAttribute('src').split('/').pop()));
 const carregou = p => p.evaluate(() => [...document.querySelectorAll('img')].filter(i => getComputedStyle(i).display !== 'none').every(i => i.complete && i.naturalWidth > 0));
 
-let p = await abrir({ viewport:{ width:1366, height:900 }, colorScheme:'light' });
+let p = await abrir({ viewport:{ width:1366, height:900 }, colorScheme:'light' }, SITE, true);
 ok(!(await p.locator('.faixa').count()), 'sem a faixa de prévia');
 ok((await logoVisivel(p)).join() === 'MUSUBI_logo_colorido.svg', 'tema claro: logo colorido');
 ok(await carregou(p), 'logos e telas carregam');
@@ -39,11 +40,14 @@ ok(await p.locator('#mods .mod').count() === 9 && await p.locator('#spots .spot'
 ok(await p.locator('#quem .sobre', { hasText:'Por trás do MUSUBI' }).count() === 1 && await p.locator('#quem', { hasText:'idealizado pelo Biomédico e Acupunturista Maicon Farinelli' }).count() === 1, 'seção Por trás do MUSUBI com o texto do Maicon');
 ok(await p.locator('#planos-l .plano').count() === 3 && await p.locator('#planos-l', { hasText:'R$ 79' }).count() && await p.locator('#planos-l', { hasText:'R$ 149' }).count() && await p.locator('#planos-l', { hasText:'a partir de R$ 299' }).count(), 'três pacotes com os valores');
 // Entrada: logo no centro por alguns segundos, só na primeira visita da sessão
-ok(await p.locator('#entrada .entrada-logo').count() === 2, 'a entrada mostra o logo no centro');
+ok(await p.locator('#entrada .en-no').count() === 5 && await p.locator('#entrada .en-logo img').count() === 2, 'a entrada mostra os cinco elementos e o logo');
 await p.waitForSelector('#entrada', { state:'detached', timeout:5000 });
 ok(true, 'depois de alguns segundos a entrada some e mostra a página');
 await p.reload(); await p.waitForSelector('#mods .mod');
 ok(!(await p.locator('#entrada').count()), 'na mesma sessão, a entrada não aparece de novo');
+{ const q = vigiar(await (await contexto({ viewport:{ width:390, height:800 } })).newPage()); await q.goto(SITE); await q.waitForSelector('#entrada');
+  await q.click('#entrada'); await q.waitForSelector('#entrada', { state:'detached', timeout:2000 });
+  ok(await q.evaluate(() => getComputedStyle(document.querySelector('.hero h1')).clipPath === 'none' || !document.documentElement.classList.contains('com-entrada')), 'tocar na entrada pula e a página aparece'); await q.context().close(); }
 // Planos: botão Mensal / Anual
 ok(await p.locator('#periodo-sel [data-k=mensal][aria-checked=true]').count() === 1 && await p.locator('#anual-vant').isHidden() && !(await p.locator('#planos-l', { hasText:'plano anual' }).count()), 'planos abrem no mensal, sem o anual embaixo');
 await p.click('#periodo-sel [data-k=anual]');
