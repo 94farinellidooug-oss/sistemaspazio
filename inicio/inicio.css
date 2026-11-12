@@ -294,7 +294,14 @@ p{margin:0}
 /* Com a entrada, o topo da página só se anima depois que ela abre */
 .com-entrada .hero-txt>*,.com-entrada .hero-vis{animation-play-state:paused}
 .entrada-saiu .hero-txt>*,.entrada-saiu .hero-vis{animation-play-state:running}
-@media (prefers-reduced-motion:reduce){ .entrada{transition-duration:.01s} .en-penta{display:none} .en-logo,.en-txt span{animation:none;opacity:1;transform:none} }
+/* Com animações do sistema desligadas: a mesma abertura, só com esmaecer (sem girar nem aproximar) */
+@media (prefers-reduced-motion:reduce){
+  .entrada.saindo{transform:none}
+  .en-no{animation-name:en-txt;animation-timing-function:ease}
+  .en-penta{animation-name:en-some-suave}
+  .en-logo{transform:none;animation-name:en-txt}
+}
+@keyframes en-some-suave{to{opacity:0}}
 
 /* Página inicial: blocos aparecem ao rolar e cartões com mais vida */
 .js .revela{opacity:0;transform:translateY(22px);transition:opacity .6s ease var(--atraso,0ms),transform .6s cubic-bezier(.2,.8,.2,1) var(--atraso,0ms)}
