@@ -49,6 +49,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   const cid = S.clinicas[0]?.id;
   ok(await A.locator('#acesso').isHidden() && S.dados[cid]?.doc.patients.length > 0, `${rot}: clínica criada levando os dados; sistema aberto`);
   ok(await tem(A, '.selo-nuvem', 'Salvo'), `${rot}: selo "Salvo" no topo`);
+  ok(S.acessos?.some(x => x.user === 'u1' && x.evento === 'entrou'), `${rot}: a entrada fica registrada no servidor (Marco Civil)`);
   // Uma mudança vai para o servidor
   const antes = S.dados[cid].versao;
   await A.evaluate(() => { location.hash = 'agenda'; }); await A.waitForTimeout(150);
@@ -60,6 +61,8 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   const nA = await A.evaluate(() => JSON.parse(localStorage.getItem('musubi-v2')).appts.filter(a => a.st === 'faltou').length);
   const nB = await B.evaluate(() => JSON.parse(localStorage.getItem('musubi-v2')).appts.filter(a => a.st === 'faltou').length);
   ok(await B.locator('#acesso').isHidden() && nA === nB && nB > 0, `${rot}: outro aparelho entra direto na clínica com os mesmos dados`);
+  const nAc = S.acessos.length; await B.reload(); await B.waitForTimeout(250);
+  ok(S.acessos.length === nAc + 1 && S.acessos.at(-1).evento === 'voltou', `${rot}: reabrir com o login guardado também registra o acesso`);
   // Sair
   await clicar(B, '[data-act=perfil]');
   ok(await tem(B, '.pf-conta', 'maicon@x.com') && await tem(B, '.pf-conta', 'Spazio Stabilità'), `${rot}: menu mostra a conta e a clínica`);

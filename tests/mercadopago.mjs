@@ -22,6 +22,8 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
       if (u.pathname === '/rest/v1/membros') return json(200, S.membros.filter(m => m.clinica_id === eq(u, 'clinica_id') && m.user_id === eq(u, 'user_id')));
       if (u.pathname === '/rest/v1/assinaturas' && op.method === 'PATCH') { Object.assign(S.assin, corpo); return json(204); }
       if (u.pathname === '/rest/v1/assinaturas') {
+        if (u.searchParams.get('cartao_periodo')) { const a = S.assin; if (S.semColunaRenov) return json(400, { message:'column cartao_renov_aviso_para does not exist' });
+          return json(200, a.cartao_periodo === eq(u, 'cartao_periodo') && a.cartao_situacao === eq(u, 'cartao_situacao') ? [a] : []); }
         if (u.searchParams.get('cartao_situacao')) { const P = u.searchParams.getAll('cartao_proxima'), de = P.find(x => x.startsWith('gte.')).slice(4), ate = P.find(x => x.startsWith('lte.')).slice(4), a = S.assin;
           return json(200, a.cartao_situacao === 'ativa' && a.cartao_proxima >= de && a.cartao_proxima <= ate ? [a] : []); }
         const c = eq(u, 'clinica_id'), id = eq(u, 'cartao_id');
@@ -188,6 +190,26 @@ function cenario({ token = 'APP_USR-x', segredo = '', resend = true, pagoAte = n
   Object.assign(S.assin, { cartao_situacao:'ativa', cartao_email:'a@b.com', cartao_proxima:new Date(Date.now() + 7 * DIA).toISOString() });
   const r = await pedir({}, null, '?avisos=1', { 'x-avisos':'agenda' });
   ok(r.status === 200 && (await r.json()).enviados === 0 && !S.emails.length, 'sem o Resend configurado: não quebra, só não manda e-mail');
+}
+
+// Anual com pagamento mensal: e-mail 30 dias antes de renovar
+{ const { S, pedir } = cenario();
+  const fim = new Date(Date.now() + 20 * DIA).toISOString();
+  Object.assign(S.assin, { cartao_id:'pre8', cartao_situacao:'ativa', cartao_plano:'profissional', cartao_periodo:'anual12', cartao_valor:12700, cartao_email:'maicon@mp.com', cartao_proxima:new Date(Date.now() + 15 * DIA).toISOString(), cartao_compromisso_ate:fim, cartao_renov_aviso_para:null });
+  let r = await pedir({}, null, '?avisos=1', { 'x-avisos':'agenda' });
+  let j = await r.json(), e = S.emails[0]?.corpo;
+  ok(j.renovacao === 1 && j.enviados === 0 && e?.to[0] === 'maicon@mp.com' && e.subject.includes('renova') && e.text.includes('127,00') && e.text.includes('não há multa') && e.text.includes('Configurações') && S.assin.cartao_renov_aviso_para === fim, 'anual: aviso de renovação por e-mail dentro dos 30 dias, com valor, data e como não renovar');
+  r = await pedir({}, null, '?avisos=1', { 'x-avisos':'agenda' });
+  ok((await r.json()).renovacao === 0 && S.emails.length === 1, 'o aviso de renovação vai uma vez só por ciclo');
+  S.assin.cartao_compromisso_ate = new Date(Date.now() + 60 * DIA).toISOString(); S.assin.cartao_renov_aviso_para = null;
+  r = await pedir({}, null, '?avisos=1', { 'x-avisos':'agenda' });
+  ok((await r.json()).renovacao === 0 && S.emails.length === 1, 'renovação daqui a 60 dias ainda não é avisada');
+  S.assin.cartao_compromisso_ate = new Date(Date.now() - 340 * DIA).toISOString();
+  r = await pedir({}, null, '?avisos=1', { 'x-avisos':'agenda' });
+  ok((await r.json()).renovacao === 1 && S.emails.length === 2, 'no segundo ciclo (já renovado uma vez) também avisa');
+  S.semColunaRenov = true; S.assin.cartao_renov_aviso_para = null; S.assin.cartao_proxima = new Date(Date.now() + 7 * DIA).toISOString();
+  r = await pedir({}, null, '?avisos=1', { 'x-avisos':'agenda' });
+  ok(r.status === 200 && (await r.json()).enviados === 1, 'sem a coluna nova no banco: o aviso de cobrança continua indo');
 }
 
 console.log(falhas ? `\n${falhas} verificações falharam.` : '\nA assinatura no cartão (Mercado Pago) passou.');

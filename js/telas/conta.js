@@ -47,16 +47,17 @@ export function iniciarConta(render, nuvem){
   if (lk) { history.replaceState(null, '', location.pathname); if (lk.tipo === 'recovery') { abrirAcesso('nova-senha'); return; } }
   const pe = lerC(KEY_PLANO_SITE); if (PLANOS.some(p => p.k === pe)) conta.plano = pe;
   if (!conta.nuvem.sessao()) { const criar = location.hash === '#criar' || !!lerC(KEY_CONVITE); if (criar) history.replaceState(null, '', location.pathname); abrirAcesso(criar ? 'criar' : 'entrar'); return; }
-  conectar(!!lk);
+  conectar(!!lk, 'voltou');
 }
 function abrirAcesso(tela, msg = ''){ conta.tela = tela; conta.msg = msg; conta.erro = ''; conta.ocupado = false; desenharAcesso(); }
 function fecharAcesso(){ conta.tela = null; desenharAcesso(); }
 
 // Depois de entrar: descobre as clínicas da pessoa e abre a última usada (ou o primeiro acesso).
-async function conectar(completar){
+async function conectar(completar, evento = 'entrou'){
   conta.ocupado = true; desenharAcesso();
   try {
     if (completar || !conta.nuvem.sessao().user.email) await conta.nuvem.completarUsuario();
+    conta.nuvem.registrarAcesso(evento); // Marco Civil, art. 15 (supabase/014_acessos.sql); não atrasa a entrada
     try { if (await conta.nuvem.aceitarConvites()) gravarC(KEY_CONVITE, null); } catch (e) {}
     conta.clinicas = await conta.nuvem.minhasClinicas();
     if (!conta.clinicas.length) { abrirAcesso('clinica'); return; }

@@ -23,7 +23,8 @@
 //     no anual12 antes dos 12 meses devolve antes { confirmar, multa } para o administrador confirmar
 //   aviso do Mercado Pago (webhook, ?mp=1): confere no Mercado Pago e registra
 //   avisos de 7 dias antes da cobrança (?avisos=1 com o cabeçalho x-avisos = AVISOS_SEGREDO, uma vez por dia): manda
-//     o e-mail pelo Resend (RESEND_CHAVE e AVISO_REMETENTE, ex.: "MUSUBI <avisos@seudominio.com.br>")
+//     o e-mail pelo Resend (RESEND_CHAVE e AVISO_REMETENTE, ex.: "MUSUBI <avisos@seudominio.com.br>"); no anual com
+//     pagamento mensal, também avisa 30 dias antes do fim do ciclo de 12 meses. Agendado por supabase/agendar/avisos.sql.
 // O pagamento só é marcado depois de a InfinitePay confirmar pelo payment_check (o aviso não tem assinatura).
 // Escrito em JavaScript simples (sem tipos) para rodar igual no Supabase e nos testes (node).
 
@@ -186,7 +187,23 @@ export function criarCobranca({ env, f = (...a) => fetch(...a), novoId = () => c
           }) });
           if (r.ok) { enviados++; await mudarAssinatura(A.clinica_id, { cartao_aviso_para:A.cartao_proxima }); }
         }
-        return resp(200, { enviados });
+        // Anual com pagamento mensal: aviso 30 dias antes do fim do ciclo de 12 meses (renova sozinho; cancelar antes não tem multa).
+        let renovacao = 0;
+        try {
+          const R = (await banco('assinaturas?select=clinica_id,cartao_email,cartao_plano,cartao_valor,cartao_compromisso_ate,cartao_renov_aviso_para&cartao_periodo=eq.anual12&cartao_situacao=eq.ativa')) || [];
+          for (const A of R) {
+            const fim = cicloFidelidade(A.cartao_compromisso_ate, agora)?.fim, falta = fim ? new Date(fim).getTime() - agora : 0;
+            if (!A.cartao_email || !fim || falta <= 0 || falta > 30 * DIA) continue;
+            if (A.cartao_renov_aviso_para && new Date(A.cartao_renov_aviso_para).getTime() === new Date(fim).getTime()) continue;
+            const dia = new Date(fim).toLocaleDateString('pt-BR', { timeZone:'America/Sao_Paulo' }), valor = ((A.cartao_valor || 0) / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+            const r = await f('https://api.resend.com/emails', { method:'POST', headers:{ Authorization:`Bearer ${CH}`, 'Content-Type':'application/json' }, body:JSON.stringify({
+              from:DE, to:[A.cartao_email], subject:`MUSUBI: seu plano anual renova em ${dia}`,
+              text:`Olá!\n\nO ciclo de 12 meses do seu plano anual do MUSUBI (pacote ${NOMES[A.cartao_plano] || ''}, pagamento mensal de ${valor} no cartão) termina em ${dia}.\n\nSe não fizer nada, ele renova sozinho por mais 12 meses, com o mesmo desconto. Se preferir não renovar, cancele até ${dia} em Configurações > Sua conta: ${SITE}/sistema (cancelando até essa data, não há multa).\n\nEquipe MUSUBI`
+            }) });
+            if (r.ok) { renovacao++; await mudarAssinatura(A.clinica_id, { cartao_renov_aviso_para:fim }); }
+          }
+        } catch (e) { console.error('aviso de renovação', e); }
+        return resp(200, { enviados, renovacao });
       }
       const u = await usuario(req);
       if (!u) return erro(401, 'sem_login', 'Entre de novo para continuar.');
