@@ -176,7 +176,7 @@
       </div>
       <form class="form" id="f-contato" novalidate>
         <label>Nome<input name="nome" autocomplete="name" required placeholder="Seu nome"></label>
-        <label>WhatsApp<input name="whats" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(54) 99999-9999"></label>
+        <label>WhatsApp<input name="whats" type="tel" inputmode="tel" data-mask="tel" maxlength="15" autocomplete="tel" required placeholder="(54) 99999-9999"></label>
         <p class="erro" id="f-erro" hidden></p>
         <button class="btn ouro grande" type="submit">Solicitar demonstração</button>
         <small class="muted">Seus dados serão utilizados apenas para contato sobre o MUSUBI, conforme a <a href="privacidade.html">Política de privacidade</a>.</small>

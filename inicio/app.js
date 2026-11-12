@@ -5,6 +5,9 @@ import { ICONES } from '../js/componentes/icones.js';
 import { PLANOS, precoTxt, precoFidelidade, DIAS_TESTE } from '../js/dados/planos.js';
 import { criarNuvem, KEY_SESSAO } from '../js/dados/nuvem.js';
 import { KEY_REVENDA, codigoDaUrl } from '../js/dados/revenda.js';
+import { aplicarMascara } from '../js/componentes/mascaras.js';
+
+document.addEventListener('input', ev => { if (ev.target.dataset?.mask) aplicarMascara(ev.target); });
 
 const ic = n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[n] || ''}</svg>`;
 const $ = s => document.querySelector(s);

@@ -254,7 +254,7 @@ function htmlAcesso(){
           <label class="${conta.levar ? '' : 'on'}"><input type="radio" name="levar" value="0" data-ac="levar" ${conta.levar ? '' : 'checked'}><span><b>Começar do zero</b><small>A clínica começa com pacientes de exemplo (WhatsApp e CPF 0000…) para conhecer o sistema. Dá para excluir depois.</small></span></label></div>` : ''}
         ${escolherPlano('Escolha o pacote: 7 dias grátis com tudo o que ele tem')}`
     : t === 'vencido' ? `${escolherPlano('Pacote')}${escolherPeriodo()}${marcarAceite()}`
-    : t === 'contato' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" placeholder="(54) 99999-0000"')}` : '';
+    : t === 'contato' ? `${escolherPlano('Pacote')}${campoA('whats', 'Seu WhatsApp', 'tel', 'autocomplete="tel" data-mask="tel" maxlength="15" placeholder="(54) 99999-0000"')}` : '';
   const botao = { entrar:'Entrar', criar:'Criar conta', esqueci:'Enviar link', 'nova-senha':'Salvar e entrar', clinica:'Começar os 7 dias grátis', vencido:'Pagar com Pix ou cartão', contato:'Enviar' }[t];
   const termos = t === 'criar' ? `<p class="muted sm">Ao criar a conta, você concorda com os <a class="lnk" href="inicio/termos.html" target="_blank" rel="noopener">Termos de uso</a> e a <a class="lnk" href="inicio/privacidade.html" target="_blank" rel="noopener">Política de privacidade</a>.</p>` : '';
   const rodape = termos + (t === 'entrar' ? `<p class="muted sm">Ainda não tem conta? <button type="button" class="lnk" data-ac="criar">Criar conta</button></p><p class="muted sm"><button type="button" class="lnk suave" data-ac="local">Usar só neste aparelho, sem conta</button></p><p class="muted sm"><a class="lnk suave" href="inicio/index.html">Conhecer o MUSUBI</a></p>`

@@ -9,6 +9,7 @@ import { ui } from '../estado.js';
 import { TODAY, esc, fmt, initials } from '../util.js';
 import { buscarCep, cepFormatado, soDigitosCep } from '../dados/endereco.js';
 import { UFS } from '../dados/config.js';
+import { mascaraData, mascaraTel } from '../componentes/mascaras.js';
 
 const ALERTA_DICA = { gestante:'Pontos com cautela na gestação', anticoagulante:'Ventosa e sangria', marcapasso:'Eletroacupuntura' };
 
@@ -32,8 +33,8 @@ export function vCadastro(){
   <form id="f-patient" class="cad">
     <div class="grid" style="align-content:start">
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('doc_id')}</span><div><h3>Identificação</h3><small class="muted">Dados pessoais e contato</small></div></div>
-        <div class="form">${campo('np-name','Nome completo *',pre?.name,'text','Ex.: Marina Costa','required autocomplete="off"','full')}${campo('np-birth','Data de nascimento *',p?.birth,'date','','required')}${campo('np-cpf','CPF',c.cpf,'text','000.000.000-00','inputmode="numeric"')}
-          ${campo('np-phone','Telefone (WhatsApp)',pre?.phone,'tel','(11) 90000-0000')}${campo('np-email','E-mail',c.email,'email','nome@email.com')}
+        <div class="form">${campo('np-name','Nome completo *',pre?.name,'text','Ex.: Marina Costa','required autocomplete="off"','full')}${campo('np-birth','Data de nascimento *',mascaraData(p?.birth),'text','dd/mm/aaaa','required data-mask="data" inputmode="numeric" maxlength="10" autocomplete="bday"')}${campo('np-cpf','CPF',c.cpf,'text','000.000.000-00','inputmode="numeric" data-mask="cpf" maxlength="14"')}
+          ${campo('np-phone','Telefone (WhatsApp)',pre?.phone?mascaraTel(pre.phone):'','tel','(54) 90000-0000','data-mask="tel" maxlength="15" autocomplete="tel"')}${campo('np-email','E-mail',c.email,'email','nome@email.com')}
           ${campo('np-emerg','Contato de emergência',c.contatoEmergencia,'text','Nome e telefone','','full')}</div></section>
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('local')}</span><div><h3>Endereço e local de atendimento</h3><small class="muted">A cidade e o hemisfério são usados no contexto sazonal, só como complemento</small></div></div>
         <div class="form">${campo('np-cep','CEP',cepFormatado(c.cep||''),'text','00000-000','inputmode="numeric" autocomplete="postal-code" maxlength="9" aria-describedby="np-cep-s"')}<div class="field cep-s"><span class="muted sm" id="np-cep-s" role="status">${c.cep?'':'Digite o CEP para preencher o endereço'}</span></div>
