@@ -91,11 +91,10 @@ function desenharPlanos(){
 function entrada(){
   const e = $('#entrada'), raiz = document.documentElement; if (!e) return;
   if (raiz.classList.contains('sem-entrada')) { e.remove(); return; }
-  const rapido = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let foi = false;
-  const subir = () => { if (foi) return; foi = true; e.classList.add('saindo'); raiz.classList.add('entrada-saiu'); setTimeout(() => { e.remove(); raiz.classList.remove('com-entrada'); }, rapido ? 50 : 750); };
+  const subir = () => { if (foi) return; foi = true; e.classList.add('saindo'); raiz.classList.add('entrada-saiu'); setTimeout(() => { e.remove(); raiz.classList.remove('com-entrada'); }, 750); };
   e.addEventListener('click', subir);
-  setTimeout(subir, rapido ? 500 : 2700);
+  setTimeout(subir, 2700);
 }
 const revelarPlanos = () => document.querySelectorAll('#planos-l .plano').forEach(el => el.classList.add('visto'));
 // Os blocos aparecem suavemente ao rolar a página.
