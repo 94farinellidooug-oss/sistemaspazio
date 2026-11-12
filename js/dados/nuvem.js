@@ -155,6 +155,9 @@ export function criarNuvem({ url = NUVEM.url, chave = NUVEM.chave, f = (...a) =>
     cancelarCartao:async (clinica, confirmarMulta = false) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'cancelar_cartao', clinica, ...(confirmarMulta ? { confirmarMulta:true } : {}) }, token:await token() }),
     // Consulta online por vídeo (função teleconsulta, supabase/016_teleconsulta.sql): salvar o horário online e entrar na sala.
     salvarTeleconsulta:async (clinica, d) => chamar('/functions/v1/teleconsulta', { metodo:'POST', corpo:{ acao:'salvar', clinica, ...d }, token:await token() }),
+    // Área do paciente (supabase/017_area_paciente.sql): publica o conteúdo (ou desliga) e devolve o código do link.
+    publicarArea:async (clinica, paciente, nascimento, conteudo, ativo = true) => rest('rpc/publicar_area_paciente', { metodo:'POST', corpo:{ p_clinica:clinica, p_paciente:String(paciente), p_nascimento:nascimento || null, p_conteudo:conteudo, p_ativo:ativo } }),
+    acessosArea:async id => (await rest(`areas_paciente_acessos?select=em&area_id=eq.${id}&order=em.desc&limit=5`)) || [],
     entrarTeleconsulta:async (clinica, id) => chamar('/functions/v1/teleconsulta', { metodo:'POST', corpo:{ acao:'entrar', clinica, id }, token:await token() }),
     cobrarLink:async (clinica, tag, valor, descricao) => chamar('/functions/v1/cobranca', { metodo:'POST', corpo:{ acao:'link', clinica, tag, valor, descricao }, token:await token() }),
     // Nota fiscal (função nfse, supabase/functions/nfse): { acao, clinica, ... }.

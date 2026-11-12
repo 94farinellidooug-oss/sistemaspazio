@@ -423,4 +423,48 @@ update revenda_regras set pct_mensal = 99;
 update revenda_comissoes set paga_em = now();
 reset role;
 select pg_temp.checar((select pct_mensal from revenda_regras) = 25 and (select count(*) from revenda_comissoes where paga_em is not null) = 1, 'quem não é dono não muda regras nem comissões');
+-- Área do paciente (017_area_paciente.sql): a clínica publica, o paciente lê com a data de nascimento
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select public.publicar_area_paciente(:'c1', 'p77', '1988-04-12', '{"paciente":"Joana","resumo":{"texto":"Melhora do sono"}}'::jsonb, true) as ap \gset
+select pg_temp.checar(public.publicar_area_paciente(:'c1', 'p77', '1988-04-12', '{"paciente":"Joana","resumo":{"texto":"Sono bom"}}'::jsonb, true) = :'ap'::uuid, 'publicar de novo atualiza o mesmo link');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select pg_temp.checar((select count(*) from areas_paciente) = 0, 'outra clínica não enxerga a área do paciente');
+select set_config('teste.c1', :'c1', false) \g /dev/null
+do $$ begin perform public.publicar_area_paciente(current_setting('teste.c1')::uuid, 'p77', '2000-01-01', '{}', true); raise exception 'FALHA: outra conta publicou';
+exception when raise_exception then if sqlerrm like 'FALHA%' then raise; end if; raise notice 'ok    outra conta não publica na área do paciente de outra clínica'; end $$;
+do $$ begin insert into areas_paciente (clinica_id, paciente_id) values (current_setting('teste.c1')::uuid, 'x'); raise exception 'FALHA: gravou direto';
+exception when insufficient_privilege then raise notice 'ok    ninguém grava a área do paciente direto na tabela'; end $$;
+reset role;
+select pg_temp.como(null);
+do $$ begin perform set_config('request.headers', '{"x-forwarded-for":"177.1.2.3, 10.0.0.1","user-agent":"Celular/1.0"}', false); end $$;
+set role anon;
+select pg_temp.checar(public.ver_area_paciente(:'ap') ->> 'pedir' = 'nascimento' and public.ver_area_paciente(:'ap') -> 'conteudo' is null, 'sem a data de nascimento o link não mostra nada');
+select pg_temp.checar(public.ver_area_paciente(gen_random_uuid(), '1988-04-12') ->> 'erro' = 'nao_encontrada', 'link inexistente não abre');
+select pg_temp.checar(public.ver_area_paciente(:'ap', '1988-04-13') ->> 'erro' = 'data' and (public.ver_area_paciente(:'ap', '1988-04-13') ->> 'restam')::int = 3, 'data errada não abre e diz quantas tentativas restam');
+select pg_temp.checar(public.ver_area_paciente(:'ap', '1988-04-12') #>> '{conteudo,resumo,texto}' = 'Sono bom', 'data certa abre o conteúdo publicado');
+select pg_temp.checar(public.ver_area_paciente(:'ap', '1988-04-12') ? 'conteudo', 'acertar zera as tentativas');
+select public.ver_area_paciente(:'ap', '1999-01-01') from generate_series(1, 5) \g /dev/null
+select pg_temp.checar(public.ver_area_paciente(:'ap', '1988-04-12') ->> 'erro' = 'bloqueado', '5 datas erradas seguidas bloqueiam, mesmo acertando depois');
+select pg_temp.checar((select count(*) from areas_paciente_acessos) = 0 and (select count(*) from areas_paciente) = 0, 'o paciente não lê a tabela nem os acessos de ninguém');
+reset role;
+select pg_temp.checar((select count(*) = 2 and min(ip) = '177.1.2.3' and min(agente) = 'Celular/1.0' from areas_paciente_acessos where area_id = :'ap'), 'cada abertura fica registrada com IP e navegador');
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select pg_temp.checar((select count(*) from areas_paciente_acessos) = 2, 'a clínica vê os acessos da área do paciente');
+select public.publicar_area_paciente(:'c1', 'p77', '1988-04-12', '{"paciente":"Joana"}'::jsonb, false) \g /dev/null
+reset role;
+select pg_temp.checar((select conteudo = '{}'::jsonb and not ativo and tentativas = 0 from areas_paciente where id = :'ap'), 'desligar apaga o conteúdo publicado');
+select pg_temp.como(null);
+set role anon;
+select pg_temp.checar(public.ver_area_paciente(:'ap', '1988-04-12') ->> 'erro' = 'nao_encontrada', 'link desligado não abre mais');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select public.publicar_area_paciente(:'c1', 'p77', '1988-04-12', '{"paciente":"Joana"}'::jsonb, true) as ap2 \gset
+reset role;
+select pg_temp.checar(:'ap2' <> :'ap' and (select count(*) from areas_paciente_acessos where area_id = :'ap2') = 2, 'ligar de novo gera um link novo; os acessos antigos continuam guardados');
+do $$ begin perform set_config('request.headers', '', false); end $$;
 \echo 'Todas as regras do banco passaram.'

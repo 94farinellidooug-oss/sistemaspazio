@@ -3,6 +3,7 @@
 import { CAMPOS_WA, mensagemWa, mensagensWa, numeroWa, preencherWa, valoresWa } from '../dados/whatsapp.js';
 import { CLINICA, valoresDoc } from '../dados/documentos.js';
 import { linkConsulta } from '../dados/agenda.js';
+import { linkArea } from '../dados/area-paciente.js';
 import { db, patient } from '../dados/repositorio.js';
 import { ui } from '../estado.js';
 import { ic } from '../componentes/icones.js';
@@ -17,7 +18,7 @@ export function textoWa(tipo, pid, ap){
   const p = patient(pid), a = ap ? db.appts.find(x => x.id === ap) : null, m = mensagemWa(tipo, db.mensagensWa);
   if (!p || !m) return '';
   const orientacoes = tipo === 'orientacoes' ? valoresDoc(p, { appts:db.appts, hoje:TODAY, prof:PROF.nome }).orientacoes : '';
-  return preencherWa(m[2], valoresWa(p, a, { hoje:TODAY, amanha:addDays(1, TODAY), clinica:CLINICA, prof:PROF.nome, orientacoes, link:linkConsulta(a?.video, location.origin) }));
+  return preencherWa(m[2], valoresWa(p, a, { hoje:TODAY, amanha:addDays(1, TODAY), clinica:CLINICA, prof:PROF.nome, orientacoes, link:tipo === 'area' ? linkArea(p.areaPaciente?.ativo && p.areaPaciente.id, location.origin) : linkConsulta(a?.video, location.origin) }));
 }
 export function abrirPainelWa(tipo, pid, ap){ ui.wa = { tipo, pid, ap: ap || '', texto: textoWa(tipo, pid, ap) }; ui.ov = 'wa'; }
 

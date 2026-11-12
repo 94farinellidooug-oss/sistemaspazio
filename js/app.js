@@ -21,6 +21,7 @@ import { editarRegistro, TIPOS_MARCA, LADOS_MARCA, adicionarMarca, editarMarca, 
 import { aplicarMascara, dataIso } from './componentes/mascaras.js';
 import { aoDigitarCep, cpfFormatado, cpfValido, previaCadastro, vCadastro } from './telas/cadastro.js';
 import { soDigitosCep } from './dados/endereco.js';
+import { copiarLinkArea, desligarArea, ligarArea, mostrarAcessosArea, salvarArea } from './telas/area-paciente.js';
 import { abrirVideo, ligarVideo, prepararWaOnline, sincronizarOnline } from './telas/video.js';
 import { EM_BREVE, vAdministracao, vEmBreve } from './telas/em-breve.js';
 import { LABEL, PROF, listaBusca, renderNav } from './telas/menu.js';
@@ -160,12 +161,16 @@ document.addEventListener('click',ev=>{
     if(typeof r==='string'){ toast(r,'info'); return; } ui.cid={}; save(); render(true); toast(`CID ${r.codigo} incluído no prontuário`); document.getElementById('cid-q')?.focus(); }
   else if(a==='cid-tirar'){ const d=retirarDiagnostico(patient(ui.pid),t.dataset.d,PROF.nome,new Date().toISOString()); if(d){ save(); render(true); toast(`CID ${d.codigo} retirado; fica na lista de retirados`,'info'); } }
   else if(a==='pr-editar'){ ui.edReg=t.dataset.id; render(true); setTimeout(()=>document.querySelector('#f-edreg input, #f-edreg textarea')?.focus(),0); }
+  else if(a==='area-abrir'){ ui.areaP=t.dataset.pid; render(true); mostrarAcessosArea(); setTimeout(()=>document.querySelector('#f-area input:not([readonly]), #ar-fundo .btn')?.focus(),0); }
+  else if(a==='area-x'){ if(t.id==='ar-fundo'&&ev.target!==t) return; ui.areaP=null; render(true); }
+  else if(a==='area-desligar'){ desligarArea(ui.areaP); }
+  else if(a==='area-copiar'){ copiarLinkArea(); }
   else if(a==='pr-editar-x'){ if(t.id==='ed-fundo'&&ev.target!==t) return; ui.edReg=null; render(true); }
   else if(a==='abrir-atendimento'){ ui.pid=t.dataset.pid; ui.atId=t.dataset.id; fotografarAvaliacao(); ui.etapa=0; ui.avAba=0; ui.el=null; ui.atCmp=false; limparMapa(); irPara('atendimento'); scrollTo(0,0); }
   else if(a==='etapa'){ ev.preventDefault(); irEtapa(Number(t.dataset.i)); }
   else if(a.startsWith('at-')){ acaoAtendimento(a,t); }
   else if(a==='novo-paciente'){ ui.editPid=null; ui.cadPrevio=null; irPara('cadastro'); }
-  else if(a==='editar-paciente'){ ui.editPid=t.dataset.pid; irPara('cadastro'); }
+  else if(a==='editar-paciente'){ ui.areaP=null; ui.editPid=t.dataset.pid; irPara('cadastro'); }
   else if(a==='pac-excluir'){ ui.excluir={pid:t.dataset.pid,motivo:'',outro:''}; render(true); document.getElementById('cad-exc')?.scrollIntoView({block:'center'}); }
   else if(a==='pac-excluir-nao'){ ui.excluir=null; render(true); }
   else if(a==='pac-excluir-sim'){ const E=ui.excluir; if(!E) return; const motivo=E.motivo==='Outro motivo'?E.outro.trim():E.motivo;
@@ -184,7 +189,7 @@ document.addEventListener('click',ev=>{
   else if(a==='fechar-ir'){ ui.ov=null; ui.wa=null; }
   else if(a==='video'){ abrirVideo(t.dataset.id); }
   else if(a==='wa-online'){ prepararWaOnline(t.dataset.ap).then(x=>{ if(!x) return; abrirPainelWa('teleconsulta',x.pid,x.id); render(true); document.getElementById('wa-t')?.focus(); }); }
-  else if(a==='wa'){ abrirPainelWa(t.dataset.t,t.dataset.pid,t.dataset.ap); render(true); document.getElementById('wa-t')?.focus(); }
+  else if(a==='wa'){ if(t.dataset.t==='area') ui.areaP=null; abrirPainelWa(t.dataset.t,t.dataset.pid,t.dataset.ap); render(true); document.getElementById('wa-t')?.focus(); }
   else if(a==='wa-tipo'){ abrirPainelWa(t.dataset.k,ui.wa.pid,ui.wa.ap); render(true); }
   else if(a==='wa-abrir'){ const W=ui.wa, p=patient(W?.pid), url=p&&linkWa(p.phone,document.getElementById('wa-t').value); if(!url) return;
     window.open(url,'_blank','noopener'); const em=new Date().toISOString(); registrarMensagem(p,{tipo:W.tipo,em,por:PROF.nome,ap:W.ap});
@@ -441,6 +446,7 @@ document.addEventListener('change',ev=>{
 });
 document.addEventListener('submit',ev=>{
   ev.preventDefault(); const f=ev.target, v=id=>document.getElementById(id).value;
+  if(f.id==='f-area'){ salvarArea(f); return; }
   if(f.id==='f-rx-corr'){ const x=atendimentoAberto(), C=ui.rxCorr; if(!x||!C) return; if(!C.motivo.trim()){ toast('Escreva o motivo da correção','info'); return; }
     const em=new Date().toISOString(), mud=corrigirPonto(x.a,C.c,C,C.motivo,PROF.nome,em); if(!mud){ toast('Nada mudou neste ponto','info'); return; }
     ui.rxCorr=null; mudou(`plano terapêutico: correção de ${C.c} (${mud.map(([k,a,b])=>`${k.toLowerCase()}: ${a} → ${b}`).join('; ')}). Motivo: ${C.motivo.trim()}`); toast('Correção registrada'); return; }
@@ -516,6 +522,7 @@ try{ if(localStorage.getItem('musubi-tema')==='dark') document.documentElement.d
 ligarAcesso();
 ligarConfig(save, manter => render(manter), toast);
 ligarVideo({ salvar:save, toast });
+ligarArea({ salvar:save, toast, render });
 ligarNfse(save, manter => render(manter), toast);
 ligarPainelDono(manter => { if(route()==='musubi') render(manter); }, toast);
 ligarEquipe(manter => { if(route()==='equipe') render(manter); }, toast);

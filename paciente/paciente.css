@@ -1,0 +1,54 @@
+:root{--fundo:#f7f5ef;--cartao:#fff;--tinta:#22261d;--suave:#5f6657;--linha:#e2ded2;--verde:#4f6b3a;--verde-c:#e9efe2;--verde-t:#fff;--ouro:#b98a2e;--erro:#a8402f}
+@media (prefers-color-scheme:dark){:root{--fundo:#121510;--cartao:#1b2018;--tinta:#eef0ea;--suave:#a9b1a0;--linha:#2f372a;--verde:#a6c48b;--verde-c:#243020;--verde-t:#121510;--ouro:#d8b06a;--erro:#ef8f7d}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--fundo);color:var(--tinta);font:16px/1.55 Inter,system-ui,sans-serif}
+.topo{display:flex;flex-direction:column;align-items:center;gap:14px;padding:28px 16px 4px}
+.logo{height:56px;width:auto}.logo-escuro{display:none}
+@media (prefers-color-scheme:dark){.logo-claro{display:none}.logo-escuro{display:block}}
+.faixa{display:block;width:72px;height:3px;border-radius:3px;background:var(--ouro)}
+main{padding:16px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.cartao{width:100%;max-width:680px;background:var(--cartao);border:1px solid var(--linha);border-radius:16px;padding:22px;box-shadow:0 8px 30px rgba(0,0,0,.05)}
+h1{font-size:1.4rem;line-height:1.3;margin:0 0 4px}
+h2{font-size:1.05rem;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+h2 i{width:8px;height:8px;border-radius:50%;background:var(--ouro);flex:none}
+.suave{color:var(--suave);margin:0}
+.prof{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.prof .av{width:52px;height:52px;border-radius:50%;background:var(--verde-c);color:var(--verde);display:grid;place-items:center;font-weight:700;font-size:1.1rem;flex:none}
+.prof .grow{flex:1;min-width:0}
+.prof b{display:block;font-size:1.05rem}
+.atual{font-size:.8rem;color:var(--suave);margin-top:10px}
+.lista{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.item{padding:12px 14px;border:1px solid var(--linha);border-radius:12px}
+.item .t{font-weight:600}
+.item .d{font-size:.85rem;color:var(--suave)}
+.item p{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.selo{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--verde-c);color:var(--verde);margin-left:6px;vertical-align:middle}
+.link-on{display:inline-flex;margin-top:8px;color:var(--verde);font-weight:600}
+.dor{display:grid;gap:12px}
+.dor .q{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
+.dor .n{font-weight:600}.dor .v{font-weight:700;color:var(--verde)}
+.dor svg{grid-column:1/-1;width:100%;height:56px}
+.dor .ok{color:var(--verde)}
+details.item summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:10px}
+details.item summary::-webkit-details-marker{display:none}
+details.item summary::after{content:'+';color:var(--suave);font-weight:400}
+details.item[open] summary::after{content:'–'}
+label.campo{display:grid;gap:6px;margin-top:16px;font-weight:600}
+input{font:inherit;padding:12px 14px;border:1px solid var(--linha);border-radius:12px;background:var(--cartao);color:var(--tinta);font-size:1.1rem;letter-spacing:.04em}
+input:focus{outline:2px solid var(--verde);outline-offset:1px}
+.btn{display:flex;width:100%;justify-content:center;align-items:center;gap:8px;margin-top:16px;padding:14px 18px;border:0;border-radius:12px;background:var(--verde);color:var(--verde-t);font:600 1rem Inter,sans-serif;cursor:pointer;text-decoration:none}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sec{background:transparent;color:var(--verde);border:1px solid var(--linha)}
+.acoes{width:100%;max-width:680px;display:flex;gap:10px}
+.acoes .btn{margin-top:0}
+.erro{color:var(--erro);margin:12px 0 0;font-weight:500}
+.dica{font-size:.85rem;color:var(--suave);margin-top:14px}
+.rodape{text-align:center;font-size:.78rem;color:var(--suave);padding:8px 16px 28px}
+@media print{
+  :root{--fundo:#fff;--cartao:#fff;--tinta:#111;--suave:#555;--linha:#ccc}
+  .logo-escuro{display:none!important}.logo-claro{display:block!important}
+  .acoes,.noprint{display:none!important}
+  .cartao{box-shadow:none;break-inside:avoid-page;border-color:#ccc}
+  main{gap:10px}
+  details.item summary::after{content:''}
+}
