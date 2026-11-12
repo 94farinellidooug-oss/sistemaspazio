@@ -39,7 +39,7 @@ ok(await p.locator('#mods .mod').count() === 9 && await p.locator('#spots .spot'
 ok(await p.locator('#quem .sobre', { hasText:'Por trás do MUSUBI' }).count() === 1 && await p.locator('#quem', { hasText:'idealizado pelo Biomédico e Acupunturista Maicon Farinelli' }).count() === 1, 'seção Por trás do MUSUBI com o texto do Maicon');
 ok(await p.locator('#planos-l .plano').count() === 3 && await p.locator('#planos-l', { hasText:'R$ 79' }).count() && await p.locator('#planos-l', { hasText:'R$ 149' }).count() && await p.locator('#planos-l', { hasText:'a partir de R$ 299' }).count(), 'três pacotes com os valores');
 // Entrada: logo no centro por alguns segundos, só na primeira visita da sessão
-ok(await p.locator('#entrada .entrada-logo').count() === 2, 'a entrada mostra o logo no centro');
+ok(await p.locator('#entrada .en-no').count() === 5 && await p.locator('#entrada .en-logo img').count() === 2, 'a entrada mostra os cinco elementos e o logo');
 await p.waitForSelector('#entrada', { state:'detached', timeout:5000 });
 ok(true, 'depois de alguns segundos a entrada some e mostra a página');
 await p.reload(); await p.waitForSelector('#mods .mod');

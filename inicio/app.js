@@ -87,15 +87,15 @@ function desenharPlanos(){
     <button class="btn ${p.destaque ? 'ouro' : 'linha'} largo" data-a="plano" data-k="${p.k}">Experimentar ${DIAS_TESTE} dias grátis</button></article>`).join('');
 }
 
-// Entrada: o logo aparece por alguns segundos na primeira visita da sessão e depois abre a página.
+// Entrada: os cinco elementos se ligam, viram o logo e a página abre (primeira visita da sessão; toque pula).
 function entrada(){
   const e = $('#entrada'), raiz = document.documentElement; if (!e) return;
   if (raiz.classList.contains('sem-entrada')) { e.remove(); return; }
   const rapido = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let foi = false;
-  const subir = () => { if (foi) return; foi = true; e.classList.add('saindo'); raiz.classList.add('entrada-saiu'); setTimeout(() => { e.remove(); raiz.classList.remove('com-entrada'); }, rapido ? 50 : 950); };
+  const subir = () => { if (foi) return; foi = true; e.classList.add('saindo'); raiz.classList.add('entrada-saiu'); setTimeout(() => { e.remove(); raiz.classList.remove('com-entrada'); }, rapido ? 50 : 750); };
   e.addEventListener('click', subir);
-  setTimeout(subir, rapido ? 500 : 1700);
+  setTimeout(subir, rapido ? 500 : 2700);
 }
 const revelarPlanos = () => document.querySelectorAll('#planos-l .plano').forEach(el => el.classList.add('visto'));
 // Os blocos aparecem suavemente ao rolar a página.
