@@ -33,7 +33,7 @@ import { ligarPainelDono, vPainelDono } from './telas/painel-dono.js';
 import { esquecerEquipe, ligarEquipe, vEquipe } from './telas/equipe.js';
 import { esquecerHistorico, ligarHistorico, vHistorico } from './telas/historico.js';
 import { PERM_ROTA } from './dados/equipe.js';
-import { notificacoes } from './dados/indicadores.js';
+import { ALERTA_NOME, montarAlertas, notificacoes } from './dados/indicadores.js';
 import { LOGO, ic } from './componentes/icones.js';
 import { FACES, MERIDIANOS, TAM, VASOS_ATLAS, ladoDe, regiaoDoToque } from './componentes/corpo.js';
 import { patientRows, vPacientes } from './telas/pacientes.js';
@@ -57,13 +57,31 @@ export function render(keepScroll){
   const r=route(), y=scrollY, v=document.getElementById('view');
   if(r==='equipe'&&ultimaRota!=='equipe') esquecerEquipe();
   if(r==='historico'&&ultimaRota!=='historico') esquecerHistorico();
+  // Quem está digitando não perde o cursor nem as seções abertas quando a tela é redesenhada.
+  const mesma=r===ultimaRota, foco=mesma?focoAtual(v):null, abertos=mesma?[...v.querySelectorAll('details')].map(d=>d.open):null;
   ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=!podeVer(PERM_ROTA[r])?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${semPermissao()}`:rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
   v.innerHTML=html;
   if(ui.ov==='ass'){ document.getElementById('camada').innerHTML=painelAss(); ligarPad(); }
   if(ui.ov==='wa'){ const c=document.getElementById('camada'); c.innerHTML=painelWa(); if(!c.innerHTML) ui.ov=null; }
   // Transição suave só quando a tela muda (não a cada clique dentro dela).
   if(r!==ultimaRota){ v.classList.remove('entra'); void v.offsetWidth; v.classList.add('entra'); ultimaRota=r; }
+  if(abertos){ const D=v.querySelectorAll('details'); if(D.length===abertos.length) D.forEach((d,i)=>{ if(abertos[i]) d.open=true; }); }
+  if(foco) devolverFoco(v,foco);
   if(keepScroll) scrollTo(0,y);
+}
+// Campo com foco: um seletor que o reencontra depois de redesenhar (id ou o primeiro data-*), mais o cursor.
+function focoAtual(v){
+  const e=document.activeElement; if(!e||!v.contains(e)||!/^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName)) return null;
+  const d=Object.entries(e.dataset)[0], sel=e.id?'#'+CSS.escape(e.id):d?`${e.tagName.toLowerCase()}[data-${d[0].replace(/[A-Z]/g,m=>'-'+m.toLowerCase())}="${CSS.escape(d[1])}"]`:e.name?`${e.tagName.toLowerCase()}[name="${CSS.escape(e.name)}"]`:null;
+  if(!sel) return null;
+  let a=null,b=null; try{ a=e.selectionStart; b=e.selectionEnd; }catch(x){}
+  return {sel,a,b,top:e.scrollTop};
+}
+function devolverFoco(v,f){
+  const e=v.querySelector(f.sel); if(!e) return;
+  const det=e.closest('details'); if(det) det.open=true;
+  e.focus({preventScroll:true}); e.scrollTop=f.top;
+  if(f.a!=null){ try{ e.setSelectionRange(f.a,f.b); }catch(x){} }
 }
 export function toast(m, tipo='ok'){ const t=document.getElementById('toast'); t.className='toast '+tipo; t.innerHTML=`${ic(tipo==='ok'?'okc':'info')}<span></span>`; t.lastChild.textContent=m; t.hidden=false; clearTimeout(toast.h); toast.h=setTimeout(()=>t.hidden=true,2600); }
 // Camadas sobre a tela: busca global, notificações, perfil e atalhos.
@@ -345,6 +363,8 @@ function acaoAtendimento(a,t){
   else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
   else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
   else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; ui.agForm=null; ui.remarcar=null; irPara('agenda'); } else if(t.dataset.d.startsWith('doc-')){ ui.docPid=p.id; ui.docMod=t.dataset.d.slice(4); ui.docEd=null; irPara('documentos'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
+  else if(a==='at-finalizar-ja'){ const falta=(t.dataset.falta||'').split('|').filter(Boolean);
+    if(!confirm(`Finalizar o atendimento agora?${falta.length?`\n\nSem preencher: ${falta.join(', ')}.`:''}\n\nO que ficou em branco não entra no registro, e dá para complementar depois.`)) return; acaoAtendimento('at-finalizar',t); }
   else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); concluirHorario(db.appts,p.id,A.data); const nv=p.avaliacoes.find(v=>v.id===A.avaliacaoId); if(nv) nv.prof=PROF.nome; save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
   else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
     descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
@@ -441,7 +461,11 @@ document.addEventListener('change',ev=>{
   else if(t.id==='cb-sheng'){ ui.sheng=t.checked; render(true); }
   else if(t.id==='cb-ke'){ ui.ke=t.checked; render(true); }
   else if(t.dataset.anam){ patient(ui.pid).anam[t.dataset.anam]=t.value; save(); toast('Anamnese salva'); }
-  else if(t.dataset.alert){ patient(ui.pid).alerts[t.dataset.alert]=t.checked; save(); render(true); }
+  else if(t.dataset.alert){ const p=patient(ui.pid), o=document.getElementById('al-outro');
+    p.alerts=montarAlertas(p.alerts,k=>document.getElementById('al-'+k)?.checked,o?.checked,document.getElementById('al-outro-t')?.value); save(); render(true);
+    if(t.dataset.alert==='outro'&&t.checked) document.getElementById('al-outro-t')?.focus(); }
+  else if(t.matches('[data-alerta-outro]')){ const p=patient(ui.pid); if(p.alerts.outro){ p.alerts.outro=t.value.trim().slice(0,120)||true; save(); render(true); } }
+  else if(t.id==='np-al-outro'){ const c=document.querySelector('.al-outro'); if(c){ c.hidden=!t.checked; if(t.checked) document.getElementById('np-al-outro-t').focus(); } }
   else if(t.name==='tec'){ t.closest('.chip').classList.toggle('on',t.checked); }
 });
 document.addEventListener('submit',ev=>{
@@ -473,10 +497,10 @@ document.addEventListener('submit',ev=>{
     if(!birth||birth>TODAY){ nasc.setCustomValidity(birth?'A data de nascimento não pode ser no futuro.':'Data inválida: use dia/mês/ano, por exemplo 12/04/1988.'); nasc.reportValidity(); return; }
     const em=new Date().toISOString(), lgpd=document.getElementById('np-lgpd');
     const cadastro={cpf:cpf.value.trim()?cpfFormatado(cpf.value.trim()):'',email:v('np-email').trim(),endereco:v('np-end').trim(),numero:v('np-num').trim(),complemento:v('np-comp').trim(),bairro:v('np-bai').trim(),cep:soDigitosCep(v('np-cep')),uf:v('np-uf'),cidade:v('np-cid').trim(),hemisferio:v('np-hem'),contatoEmergencia:v('np-emerg').trim()};
-    const alerts=Object.fromEntries(['gestante','anticoagulante','marcapasso'].map(k=>[k,document.getElementById('np-al-'+k).checked]));
+    const alerts=montarAlertas({},k=>document.getElementById('np-al-'+k)?.checked,document.getElementById('np-al-outro')?.checked,v('np-al-outro-t'));
     if(ui.editPid){ const p=patient(ui.editPid);
       p.name=v('np-name').trim(); p.birth=birth; p.phone=v('np-phone').trim(); p.queixas.find(q=>q.id==='q1').descricao=v('np-q').trim();
-      Object.assign(p.alerts,alerts); p.cadastro={...p.cadastro,...cadastro,atualizadoEm:em};
+      p.alerts={...Object.fromEntries(Object.entries(p.alerts||{}).filter(([k])=>!ALERTA_NOME[k]&&k!=='outro')),...alerts}; p.cadastro={...p.cadastro,...cadastro,atualizadoEm:em};
       if(lgpd?.checked) p.consentimento=TODAY;
       save(); ui.pid=p.id; ui.editPid=null; ui.tab='resumo'; toast('Cadastro atualizado'); location.hash='prontuario'; return; }
     const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth,phone:v('np-phone').trim(),queixa:v('np-q'),consentimento:TODAY,em}));

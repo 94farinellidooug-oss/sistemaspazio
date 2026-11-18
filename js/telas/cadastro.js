@@ -4,14 +4,13 @@
 import { ANOS_GUARDA, MOTIVOS_EXCLUSAO, guardarAte, temProntuario } from '../dados/excluir.js';
 import { ic } from '../componentes/icones.js';
 import { patient } from '../dados/repositorio.js';
-import { ALERTA_NOME } from '../dados/indicadores.js';
+import { ALERTA_DICA, ALERTA_NOME } from '../dados/indicadores.js';
 import { ui } from '../estado.js';
 import { TODAY, esc, fmt, initials } from '../util.js';
 import { buscarCep, cepFormatado, soDigitosCep } from '../dados/endereco.js';
 import { UFS } from '../dados/config.js';
 import { mascaraData, mascaraTel } from '../componentes/mascaras.js';
 
-const ALERTA_DICA = { gestante:'Pontos com cautela na gestação', anticoagulante:'Ventosa e sangria', marcapasso:'Eletroacupuntura' };
 
 // CPF: vazio é aceito (campo opcional); preenchido, precisa ter 11 dígitos e dígitos verificadores corretos.
 export function cpfValido(v){
@@ -45,7 +44,9 @@ export function vCadastro(){
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('pulso')}</span><div><h3>Queixa principal</h3><small class="muted">${p?'Outras queixas são adicionadas no perfil do paciente':'A intensidade é medida no primeiro atendimento, que gera a avaliação basal'}</small></div></div>
         <div class="form"><div class="field full"><label class="lbl" for="np-q">Queixa *</label><input id="np-q" required placeholder="Ex.: dor cervical e tensão nos ombros" value="${esc(p?.queixa)}"></div></div></section>
       <section class="card fs"><div class="fs-h"><span class="tico crit">${ic('escudo')}</span><div><h3>Alertas de segurança</h3><small class="muted">Avisam sobre pontos e técnicas contraindicados ao registrar o atendimento</small></div></div>
-        <div class="tgs">${Object.entries(ALERTA_NOME).map(([k,l])=>`<label class="tg"><input type="checkbox" id="np-al-${k}" ${p?.alerts[k]?'checked':''}><span class="sw"></span><span><b>${l}</b><small>${ALERTA_DICA[k]||''}</small></span></label>`).join('')}</div></section>
+        <div class="tgs tgs2">${Object.entries(ALERTA_NOME).map(([k,l])=>`<label class="tg"><input type="checkbox" id="np-al-${k}" ${p?.alerts[k]?'checked':''}><span class="sw"></span><span><b>${l}</b><small>${ALERTA_DICA[k]||''}</small></span></label>`).join('')}
+          <label class="tg"><input type="checkbox" id="np-al-outro" ${p?.alerts?.outro?'checked':''}><span class="sw"></span><span><b>Outro</b><small>Escreva qual é</small></span></label>
+          <div class="field al-outro"${p?.alerts?.outro?'':' hidden'}><label class="lbl" for="np-al-outro-t">Qual alerta?</label><input id="np-al-outro-t" maxlength="120" placeholder="Ex.: cirurgia recente no joelho" value="${esc(typeof p?.alerts?.outro==='string'?p.alerts.outro:'')}"></div></div></section>
       <section class="card fs">${p?.consentimento?`<p class="lgpd">${ic('check')}<span>Consentimento LGPD registrado em ${fmt(p.consentimento)}.</span></p>`
         :`<label class="lgpd"><input type="checkbox" id="np-lgpd" ${p?'':'required'}> <span>O paciente autorizou o tratamento dos dados de saúde para fins de atendimento (consentimento LGPD).${p?'':' *'}</span></label>`}</section>
       <div class="at-f" style="margin-top:0">${p?`<button type="button" class="btn" data-act="open" data-pid="${p.id}">Cancelar</button>`:'<a class="btn" href="#pacientes">Cancelar</a>'}<button class="btn pri">${ic('check')}${p?'Salvar alterações':'Cadastrar e abrir prontuário'}</button></div>

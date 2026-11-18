@@ -79,7 +79,10 @@ function ligarAtualizacao(){
 }
 function ligarSincronia(){
   conta.sinc = criarSincronia({ nuvem:conta.nuvem, clinica:conta.clinica.id, obter:() => db, aplicar:doc => { trocarDados(doc); },
-    aoMudar:(e, x) => { conta.estado = e; if (e === 'juntado') avisoConta('Outra pessoa salvou ao mesmo tempo. Juntamos as duas alterações.'); aoMudarConta(true); } });
+    aoMudar:(e, x) => { conta.estado = e; if (e === 'juntado') avisoConta('Outra pessoa salvou ao mesmo tempo. Juntamos as duas alterações.');
+      // Só o selo muda ao salvar: redesenhar a tela inteira tirava o cursor de quem está digitando (anamnese, pedido do Maicon 18/11).
+      if (['salvando', 'salvo', 'offline', 'erro'].includes(e) && atualizarSelo()) return;
+      aoMudarConta(true); } });
   ouvirSalvar(() => conta.sinc.marcar());
   ligarAtualizacao();
 }
@@ -119,6 +122,13 @@ export function seloConta(){
   const dica = conta.estado === 'offline' ? 'Sem conexão: o que você fizer fica neste aparelho e é enviado quando a internet voltar' : conta.estado === 'erro' ? 'O servidor não aceitou; toque para tentar de novo' : 'Tudo guardado no servidor';
   const T = conta.sit?.tipo === 'teste' ? `<a class="selo-teste" href="#configuracoes" data-cf="ir" data-k="conta" data-tip="Seu pacote: ${planoDe(conta.assin?.plano).nome}">${ic('relogio')}<span>${rotuloSituacao(conta.sit)}</span></a>` : '';
   return T + `<button class="selo-nuvem ${E[2]}" data-act="nuvem-tentar" data-tip="${dica}" aria-label="${E[1]}. ${dica}">${ic(E[0])}<span>${E[1]}</span></button>`;
+}
+// Troca só o selo no topo (sem redesenhar a tela). Devolve false se não achou onde trocar.
+export function atualizarSelo(){
+  if (typeof document === 'undefined') return false;
+  const r = document.querySelector('#topbar .tb-r'); if (!r) return false;
+  r.querySelectorAll('.selo-nuvem, .selo-teste').forEach(e => e.remove());
+  r.insertAdjacentHTML('afterbegin', seloConta()); return true;
 }
 // Parte da conta no menu do perfil.
 export function menuConta(){

@@ -17,7 +17,7 @@ import { PT } from '../conhecimento/pontos.js';
 import { SIGN } from '../conhecimento/sinais.js';
 import { ativo } from '../dados/agenda.js';
 import { db, patient } from '../dados/repositorio.js';
-import { alertasDe, melhoraPct } from '../dados/indicadores.js';
+import { ALERTAS, alertasDe, melhoraPct } from '../dados/indicadores.js';
 import { QUEIXA_PRINCIPAL, serieQueixa } from '../dados/migracao.js';
 import { bloqueio, pode } from './conta.js';
 import { botaoHistorico } from './historico.js';
@@ -184,7 +184,9 @@ function abaAnamnese(p){
   const F=[['historia','História da queixa'],['sono','Sono'],['alimentacao','Alimentação e sede'],['evacuacao','Evacuação e micção'],['emocoes','Emoções'],['medicamentos','Medicamentos em uso']];
   return `<div class="grid g-side"><div class="card"><h3>Anamnese integrativa</h3><div class="form">${F.map(([k,l])=>`<div class="field full"><label class="lbl" for="an-${k}">${l}</label><textarea id="an-${k}" data-anam="${k}">${esc(p.anam[k])}</textarea></div>`).join('')}</div><p class="muted" style="font-size:.8rem;margin-top:8px">Salvo automaticamente ao sair do campo.</p></div>
     <div class="card" style="align-self:start"><h3>Alertas de segurança</h3><p class="muted" style="margin-bottom:10px;font-size:.86rem">Usados para avisar sobre pontos e técnicas contraindicados ao registrar a sessão.</p>
-    ${[['gestante','Gestante'],['anticoagulante','Uso de anticoagulante'],['marcapasso','Portador de marcapasso']].map(([k,l])=>`<label style="display:flex;gap:8px;padding:6px 0"><input type="checkbox" id="al-${k}" data-alert="${k}" ${p.alerts[k]?'checked':''}> ${l}</label>`).join('')}</div></div>`;
+    ${ALERTAS.map(([k,l,d])=>`<label class="al-li"><input type="checkbox" id="al-${k}" data-alert="${k}" ${p.alerts[k]?'checked':''}><span>${l}<small class="muted">${d}</small></span></label>`).join('')}
+    <label class="al-li"><input type="checkbox" id="al-outro" data-alert="outro" ${p.alerts.outro?'checked':''}><span>Outro<small class="muted">Escreva qual é</small></span></label>
+    <input id="al-outro-t" data-alerta-outro maxlength="120" placeholder="Qual alerta? Ex.: cirurgia recente no joelho" aria-label="Qual é o outro alerta" value="${esc(typeof p.alerts.outro==='string'?p.alerts.outro:'')}"${p.alerts.outro?'':' hidden'}></div></div>`;
 }
 
 function abaNova(p){
