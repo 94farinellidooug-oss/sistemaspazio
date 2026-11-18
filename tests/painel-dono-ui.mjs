@@ -152,7 +152,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   await M.fill('#pd-forn [name=documento]', '111.222.333-44'); await clicar(M, '#pd-forn [type=submit]'); await M.waitForTimeout(200);
   ok(S.forn?.documento === '111.222.333-44' && await tem(M, '#pd-pag .pd-forn .pill', 'Preenchido'), `${rot}: dono salva nome, CPF e endereço do contrato`);
   if (url === 'index.html') {
-    await clicar(M, '#pd-pag .pd-forn summary');
+    if (!(await M.evaluate(() => document.querySelector('#pd-pag .pd-forn').open))) await clicar(M, '#pd-pag .pd-forn summary');   // a seção aberta continua aberta depois de salvar
     const [jan] = await Promise.all([M.waitForEvent('popup'), clicar(M, '#pd-forn [data-contrato]')]);
     await jan.waitForURL(/^blob:/); await jan.waitForLoadState();
     const txt = await jan.locator('main').innerText();

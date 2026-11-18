@@ -1491,7 +1491,7 @@ body.com-acesso{overflow:hidden}
 @media (max-width:560px){.modal-p{flex-wrap:wrap}.modal-p .grow{display:none}}
 
 /* Alertas de segurança (lista maior + Outro, 18/11) */
-@media (min-width:900px){.tgs2{grid-template-columns:1fr 1fr}.tgs2 .al-outro{grid-column:1/-1}}
+.tgs2{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}.tgs2 .al-outro{grid-column:1/-1}.tgs2 .tg{min-width:0}
 .al-li{display:flex;gap:8px;align-items:flex-start;padding:6px 0;cursor:pointer}
 .al-li input{margin-top:3px}
 .al-li small{display:block;font-size:.78rem}
