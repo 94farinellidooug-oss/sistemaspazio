@@ -180,8 +180,9 @@ export const CATEGORIAS = [['zangfu','Zang-Fu'],['qixue','Qi e Xue'],['jinye','J
 const catVazia = () => ({ nota: '', itens: [] });
 export const categoriaDe = (av, c) => av.categorias?.[c] || catVazia();
 const garantirCat = (av, c) => ((av.categorias ||= {})[c] ||= catVazia());
-export function adicionarAchadoLivre(av, c, { id, texto, orig, sit }, em){
-  const it = { id, texto, orig, sit, sintese: false, plano: false, em };
+// ref: item marcado nas listas clínicas ("zf:<síndrome>" ou "sub:<objetivo>"); já entra na Síntese e no Plano.
+export function adicionarAchadoLivre(av, c, { id, texto, orig, sit, ref }, em){
+  const it = { id, texto, orig, sit, sintese: !!ref, plano: !!ref, em, ...(ref ? { ref } : {}) };
   garantirCat(av, c).itens.push(it);
   return it;
 }
