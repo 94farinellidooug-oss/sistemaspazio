@@ -84,7 +84,7 @@ async function verificar(browser, url, nome) {
   // Avaliação com o raciocínio existente
   // Etapa 3A: 9 abas; o pulso é marcado por lado, os demais sinais pelo achado
   ok(JSON.stringify((await p.locator('.ab-bar .ab').allTextContents()).map(t => t.replace(/^\d+/, '').replace(/\d+$/, '').trim())) === JSON.stringify(['Língua e pulso','Ba Gang','Zang-Fu','Qi e Xue','Jin Ye','Jing e Shen','Fatores patogênicos']), `${nome}: avaliação em 7 abas (vasos e estação ficam no Plano)`);
-  ok(await p.locator('.pulso-l').count() === 2 && await p.locator('[data-act="at-pulso"][data-l="esq"]').count() === 7 && await p.locator('[data-act="at-pulso"][data-l="dir"]').count() === 7, `${nome}: pulso esquerdo e direito com as 7 classificações`);
+  ok(await p.locator('.pulso-l').count() === 2 && await p.locator('[data-act="at-pulso"][data-l="esq"]').count() === 9 && await p.locator('[data-act="at-pulso"][data-l="dir"]').count() === 9, `${nome}: pulso esquerdo e direito com as 9 classificações (7 do v1 + superficial e tenso)`);
   for (const s of SINAIS) await p.click(s.startsWith('pulso_') ? `[data-act="at-pulso"][data-l="esq"][data-k="${s}"]` : `[data-act="at-sinal"][data-s="${s}"]`);
   await espera();
   const H = evaluate(SINAIS);
