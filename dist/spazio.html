@@ -695,7 +695,8 @@ kbd{font:500 .7rem var(--f-mono);background:var(--surface);border:1px solid var(
 .steps a.on .sn{background:var(--accent);color:#fff;box-shadow:none}
 .steps a.on .sr-b{stroke:var(--accent-line)}
 .steps a.parcial .sn{color:var(--accent)}
-.et-h .btn{margin-left:auto}
+.et-h .btn{margin-left:auto}.et-h .btn+.btn{margin-left:0}
+@media (max-width:560px){.et-h{flex-wrap:wrap}.et-h .grow{flex-basis:calc(100% - 60px)}}
 .cmp3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px}
 .cmp3>div{border-radius:12px;background:var(--surface-2);padding:12px;text-align:center}
 .cmp3 b{display:block;font-size:1.5rem;font-weight:650}.cmp3 small{color:var(--muted)}
@@ -1737,6 +1738,14 @@ body.com-acesso{overflow:hidden}
 .ar-docs{display:flex;flex-wrap:wrap;gap:6px}
 .modal-p .grow{flex:1}
 @media (max-width:560px){.modal-p{flex-wrap:wrap}.modal-p .grow{display:none}}
+
+/* Alertas de segurança (lista maior + Outro, 18/11) */
+.tgs2{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}.tgs2 .al-outro{grid-column:1/-1}.tgs2 .tg{min-width:0}
+.al-li{display:flex;gap:8px;align-items:flex-start;padding:6px 0;cursor:pointer}
+.al-li input{margin-top:3px}
+.al-li small{display:block;font-size:.78rem}
+#al-outro-t{width:100%;margin-top:4px}
+.al-outro[hidden],#al-outro-t[hidden]{display:none}
 </style>
 
 
@@ -2885,8 +2894,36 @@ const marcaConteudo = (conteudo, nascimento) => {
 };
 // Não cria números: se um dado não existe, o indicador não aparece.
 
-const ALERTA_NOME = {gestante:'Gestante',anticoagulante:'Anticoagulante',marcapasso:'Marcapasso'};
-const alertasDe = p => Object.keys(ALERTA_NOME).filter(k=>p.alerts[k]).map(k=>ALERTA_NOME[k]);
+// Alertas de segurança: [chave, nome curto (selo), dica]. Os três primeiros geram avisos automáticos no plano
+// (raciocinio/seguranca.js); os outros (pedido do Maicon em 18/11/2026) só lembram o profissional, sem mudar regra clínica.
+// "Outro": p.alerts.outro guarda o texto escrito (ou true, se marcado sem texto).
+const ALERTAS = [
+  ['gestante','Gestante','Pontos com cautela na gestação'],
+  ['anticoagulante','Anticoagulante','Ventosa e sangria'],
+  ['marcapasso','Marcapasso','Eletroacupuntura'],
+  ['coagulacao','Distúrbio de coagulação','Hemofilia, plaquetas baixas: agulhamento, ventosa e sangria'],
+  ['diabetes','Diabetes','Cicatrização lenta e menos sensibilidade: moxa, calor e pés'],
+  ['epilepsia','Epilepsia','Convulsões: eletroacupuntura e estímulos fortes'],
+  ['pressao','Pressão alta ou baixa','Aferir antes; cuidado com estímulos fortes'],
+  ['imunidade','Imunidade baixa','Quimioterapia, transplante, corticoide: assepsia redobrada'],
+  ['cancer','Câncer em tratamento','Combinar com o médico; não agulhar sobre a região'],
+  ['implante','Implante metálico ou prótese','Eletroacupuntura e calor perto do local'],
+  ['alergia','Alergia a metal ou látex','Escolha da agulha, luvas e adesivos'],
+  ['desmaio','Medo de agulha ou desmaio','Atender deitado e observar depois da sessão'],
+  ['pele','Feridas, varizes ou lesões de pele','Não agulhar nem aplicar ventosa sobre a região'],
+  ['infecciosa','Doença infectocontagiosa','Biossegurança no manuseio e descarte']
+];
+const ALERTAS_FIXOS = ['gestante','anticoagulante','marcapasso'];   // sempre gravados (formato do protótipo v1)
+const ALERTA_NOME = Object.fromEntries(ALERTAS.map(([k,n])=>[k,n]));
+const ALERTA_DICA = Object.fromEntries(ALERTAS.map(([k,,d])=>[k,d]));
+const alertasDe = p => [...ALERTAS.filter(([k])=>p.alerts?.[k]).map(([,n])=>n), ...(p.alerts?.outro ? [p.alerts.outro===true?'Outro alerta':String(p.alerts.outro).trim()] : [])];
+// Junta o que foi marcado: os três fixos sempre (true/false); os outros só quando marcados; "outro" com o texto.
+function montarAlertas(antes, marcado, outro, outroTexto){
+  const A = Object.fromEntries(Object.entries(antes || {}).filter(([k])=>!ALERTA_NOME[k] && k!=='outro'));
+  ALERTAS.forEach(([k])=>{ const c=!!marcado(k); if(ALERTAS_FIXOS.includes(k)||c) A[k]=c; });
+  if(outro) A.outro = String(outroTexto||'').trim().slice(0,120) || true;
+  return A;
+}
 const diasDesde = d => Math.round((new Date(TODAY+'T12:00')-new Date(d+'T12:00'))/864e5);
 // Melhora da queixa principal em %, comparando a primeira e a última EVA registradas.
 const melhoraPct = s => s.length>1 && s[0] ? Math.round((s[0]-s.at(-1))/s[0]*100) : null;
@@ -3458,7 +3495,10 @@ function ligarAtualizacao(){
 }
 function ligarSincronia(){
   conta.sinc = criarSincronia({ nuvem:conta.nuvem, clinica:conta.clinica.id, obter:() => db, aplicar:doc => { trocarDados(doc); },
-    aoMudar:(e, x) => { conta.estado = e; if (e === 'juntado') avisoConta('Outra pessoa salvou ao mesmo tempo. Juntamos as duas alterações.'); aoMudarConta(true); } });
+    aoMudar:(e, x) => { conta.estado = e; if (e === 'juntado') avisoConta('Outra pessoa salvou ao mesmo tempo. Juntamos as duas alterações.');
+      // Só o selo muda ao salvar: redesenhar a tela inteira tirava o cursor de quem está digitando (anamnese, pedido do Maicon 18/11).
+      if (['salvando', 'salvo', 'offline', 'erro'].includes(e) && atualizarSelo()) return;
+      aoMudarConta(true); } });
   ouvirSalvar(() => conta.sinc.marcar());
   ligarAtualizacao();
 }
@@ -3498,6 +3538,13 @@ function seloConta(){
   const dica = conta.estado === 'offline' ? 'Sem conexão: o que você fizer fica neste aparelho e é enviado quando a internet voltar' : conta.estado === 'erro' ? 'O servidor não aceitou; toque para tentar de novo' : 'Tudo guardado no servidor';
   const T = conta.sit?.tipo === 'teste' ? `<a class="selo-teste" href="#configuracoes" data-cf="ir" data-k="conta" data-tip="Seu pacote: ${planoDe(conta.assin?.plano).nome}">${ic('relogio')}<span>${rotuloSituacao(conta.sit)}</span></a>` : '';
   return T + `<button class="selo-nuvem ${E[2]}" data-act="nuvem-tentar" data-tip="${dica}" aria-label="${E[1]}. ${dica}">${ic(E[0])}<span>${E[1]}</span></button>`;
+}
+// Troca só o selo no topo (sem redesenhar a tela). Devolve false se não achou onde trocar.
+function atualizarSelo(){
+  if (typeof document === 'undefined') return false;
+  const r = document.querySelector('#topbar .tb-r'); if (!r) return false;
+  r.querySelectorAll('.selo-nuvem, .selo-teste').forEach(e => e.remove());
+  r.insertAdjacentHTML('afterbegin', seloConta()); return true;
 }
 // Parte da conta no menu do perfil.
 function menuConta(){
@@ -5695,7 +5742,9 @@ function abaAnamnese(p){
   const F=[['historia','História da queixa'],['sono','Sono'],['alimentacao','Alimentação e sede'],['evacuacao','Evacuação e micção'],['emocoes','Emoções'],['medicamentos','Medicamentos em uso']];
   return `<div class="grid g-side"><div class="card"><h3>Anamnese integrativa</h3><div class="form">${F.map(([k,l])=>`<div class="field full"><label class="lbl" for="an-${k}">${l}</label><textarea id="an-${k}" data-anam="${k}">${esc(p.anam[k])}</textarea></div>`).join('')}</div><p class="muted" style="font-size:.8rem;margin-top:8px">Salvo automaticamente ao sair do campo.</p></div>
     <div class="card" style="align-self:start"><h3>Alertas de segurança</h3><p class="muted" style="margin-bottom:10px;font-size:.86rem">Usados para avisar sobre pontos e técnicas contraindicados ao registrar a sessão.</p>
-    ${[['gestante','Gestante'],['anticoagulante','Uso de anticoagulante'],['marcapasso','Portador de marcapasso']].map(([k,l])=>`<label style="display:flex;gap:8px;padding:6px 0"><input type="checkbox" id="al-${k}" data-alert="${k}" ${p.alerts[k]?'checked':''}> ${l}</label>`).join('')}</div></div>`;
+    ${ALERTAS.map(([k,l,d])=>`<label class="al-li"><input type="checkbox" id="al-${k}" data-alert="${k}" ${p.alerts[k]?'checked':''}><span>${l}<small class="muted">${d}</small></span></label>`).join('')}
+    <label class="al-li"><input type="checkbox" id="al-outro" data-alert="outro" ${p.alerts.outro?'checked':''}><span>Outro<small class="muted">Escreva qual é</small></span></label>
+    <input id="al-outro-t" data-alerta-outro maxlength="120" placeholder="Qual alerta? Ex.: cirurgia recente no joelho" aria-label="Qual é o outro alerta" value="${esc(typeof p.alerts.outro==='string'?p.alerts.outro:'')}"${p.alerts.outro?'':' hidden'}></div></div>`;
 }
 
 function abaNova(p){
@@ -6206,7 +6255,7 @@ function vAtendimento(){
     <nav class="steps" aria-label="Etapas do atendimento">${ETAPAS.map(([,nome],j)=>`<a href="#atendimento" data-act="etapa" data-i="${j}" class="${j===i?'on':''} ${etapaBloqueada(j)?'bloq':f[j]>=1?'ok':f[j]>0?'parcial':''}" ${j===i?'aria-current="step"':''} data-tip="${nome} · ${etapaBloqueada(j)?'não incluído no seu pacote':Math.round(f[j]*100)+'% preenchido'}">${etapaBloqueada(j)?`<span class="sn sb">${ic('cadeado')}</span>`:anelP(f[j],j,j===i)}<span class="sl">${nome}</span></a>`).join('')}</nav>
   </div>
   ${fin?`<div class="notice" style="margin-bottom:16px">${ic('info')}<div>Atendimento finalizado em ${fmt(a.finalizadoEm.slice(0,10))} às ${hhmm(a.finalizadoEm)}. Você pode complementar o registro; cada alteração fica no histórico.</div></div>`:''}
-  <div class="et-h"><span class="tico acc">${ic(ico)}</span><div class="grow"><h2>${l}</h2><small class="muted">Etapa ${i+1} de 8 · <kbd>Alt</kbd> <kbd>←</kbd> <kbd>→</kbd> para trocar de etapa</small></div><button class="btn sm" data-act="at-prontuario" data-pid="${p.id}">${ic('doc')}Prontuário</button></div>
+  <div class="et-h"><span class="tico acc">${ic(ico)}</span><div class="grow"><h2>${l}</h2><small class="muted">Etapa ${i+1} de 8 · <kbd>Alt</kbd> <kbd>←</kbd> <kbd>→</kbd> para trocar de etapa</small></div><button class="btn sm" data-act="at-prontuario" data-pid="${p.id}">${ic('doc')}Prontuário</button>${fin?'':`<button class="btn sm pri" data-act="at-finalizar-ja" data-falta="${esc(ETAPAS.slice(0,7).map(([,nm],j)=>[nm,j]).filter(([,j])=>!etapaBloqueada(j)&&f[j]<1).map(([nm])=>nm.toLowerCase()).join('|'))}" data-tip="Finalizar agora, mesmo sem todas as etapas (por exemplo, sem avaliação energética)">${ic('check')}Finalizar</button>`}</div>
   <div class="et-c">${etapaBloqueada(i)?bloqueio('mtc'):CORPO[i](p,a,H)}</div>
   <div class="at-f">${i?`<button class="btn" data-act="etapa" data-i="${i-1}">${ic('esq')}${ETAPAS[i-1][1]}</button>`:fin?'<span></span>':`<button class="btn ghost" data-act="at-descartar">${ic('x')}Descartar rascunho</button>`}
     ${i<7?`<button class="btn pri" data-act="etapa" data-i="${i+1}">${ETAPAS[i+1][1]}${ic('dir')}</button>`:fin?`<button class="btn pri" data-act="at-prontuario" data-pid="${p.id}">${ic('doc')}Voltar ao prontuário</button>`:`<button class="btn pri" data-act="at-finalizar">${ic('check')}Finalizar atendimento</button>`}</div>`;
@@ -6279,7 +6328,6 @@ const aplicarMascara = el => {
 // Identificação e contato, local de atendimento (para o contexto sazonal), queixa principal,
 // alertas de segurança e consentimento LGPD. Os campos do protótipo mantêm os mesmos ids (np-*).
 
-const ALERTA_DICA = { gestante:'Pontos com cautela na gestação', anticoagulante:'Ventosa e sangria', marcapasso:'Eletroacupuntura' };
 
 // CPF: vazio é aceito (campo opcional); preenchido, precisa ter 11 dígitos e dígitos verificadores corretos.
 function cpfValido(v){
@@ -6313,7 +6361,9 @@ function vCadastro(){
       <section class="card fs"><div class="fs-h"><span class="tico acc">${ic('pulso')}</span><div><h3>Queixa principal</h3><small class="muted">${p?'Outras queixas são adicionadas no perfil do paciente':'A intensidade é medida no primeiro atendimento, que gera a avaliação basal'}</small></div></div>
         <div class="form"><div class="field full"><label class="lbl" for="np-q">Queixa *</label><input id="np-q" required placeholder="Ex.: dor cervical e tensão nos ombros" value="${esc(p?.queixa)}"></div></div></section>
       <section class="card fs"><div class="fs-h"><span class="tico crit">${ic('escudo')}</span><div><h3>Alertas de segurança</h3><small class="muted">Avisam sobre pontos e técnicas contraindicados ao registrar o atendimento</small></div></div>
-        <div class="tgs">${Object.entries(ALERTA_NOME).map(([k,l])=>`<label class="tg"><input type="checkbox" id="np-al-${k}" ${p?.alerts[k]?'checked':''}><span class="sw"></span><span><b>${l}</b><small>${ALERTA_DICA[k]||''}</small></span></label>`).join('')}</div></section>
+        <div class="tgs tgs2">${Object.entries(ALERTA_NOME).map(([k,l])=>`<label class="tg"><input type="checkbox" id="np-al-${k}" ${p?.alerts[k]?'checked':''}><span class="sw"></span><span><b>${l}</b><small>${ALERTA_DICA[k]||''}</small></span></label>`).join('')}
+          <label class="tg"><input type="checkbox" id="np-al-outro" ${p?.alerts?.outro?'checked':''}><span class="sw"></span><span><b>Outro</b><small>Escreva qual é</small></span></label>
+          <div class="field al-outro"${p?.alerts?.outro?'':' hidden'}><label class="lbl" for="np-al-outro-t">Qual alerta?</label><input id="np-al-outro-t" maxlength="120" placeholder="Ex.: cirurgia recente no joelho" value="${esc(typeof p?.alerts?.outro==='string'?p.alerts.outro:'')}"></div></div></section>
       <section class="card fs">${p?.consentimento?`<p class="lgpd">${ic('check')}<span>Consentimento LGPD registrado em ${fmt(p.consentimento)}.</span></p>`
         :`<label class="lgpd"><input type="checkbox" id="np-lgpd" ${p?'':'required'}> <span>O paciente autorizou o tratamento dos dados de saúde para fins de atendimento (consentimento LGPD).${p?'':' *'}</span></label>`}</section>
       <div class="at-f" style="margin-top:0">${p?`<button type="button" class="btn" data-act="open" data-pid="${p.id}">Cancelar</button>`:'<a class="btn" href="#pacientes">Cancelar</a>'}<button class="btn pri">${ic('check')}${p?'Salvar alterações':'Cadastrar e abrir prontuário'}</button></div>
@@ -7405,13 +7455,31 @@ function render(keepScroll){
   const r=route(), y=scrollY, v=document.getElementById('view');
   if(r==='equipe'&&ultimaRota!=='equipe') esquecerEquipe();
   if(r==='historico'&&ultimaRota!=='historico') esquecerHistorico();
+  // Quem está digitando não perde o cursor nem as seções abertas quando a tela é redesenhada.
+  const mesma=r===ultimaRota, foco=mesma?focoAtual(v):null, abertos=mesma?[...v.querySelectorAll('details')].map(d=>d.open):null;
   ui.crumbs=[]; const rec=RECURSO_ROTA[r], html=!podeVer(PERM_ROTA[r])?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${semPermissao()}`:rec&&!pode(rec)?`<div class="head"><div><h1>${LABEL[r]||''}</h1></div></div>${bloqueio(rec)}`:VIEWS[r](); renderNav(r);
   v.innerHTML=html;
   if(ui.ov==='ass'){ document.getElementById('camada').innerHTML=painelAss(); ligarPad(); }
   if(ui.ov==='wa'){ const c=document.getElementById('camada'); c.innerHTML=painelWa(); if(!c.innerHTML) ui.ov=null; }
   // Transição suave só quando a tela muda (não a cada clique dentro dela).
   if(r!==ultimaRota){ v.classList.remove('entra'); void v.offsetWidth; v.classList.add('entra'); ultimaRota=r; }
+  if(abertos){ const D=v.querySelectorAll('details'); if(D.length===abertos.length) D.forEach((d,i)=>{ if(abertos[i]) d.open=true; }); }
+  if(foco) devolverFoco(v,foco);
   if(keepScroll) scrollTo(0,y);
+}
+// Campo com foco: um seletor que o reencontra depois de redesenhar (id ou o primeiro data-*), mais o cursor.
+function focoAtual(v){
+  const e=document.activeElement; if(!e||!v.contains(e)||!/^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName)) return null;
+  const d=Object.entries(e.dataset)[0], sel=e.id?'#'+CSS.escape(e.id):d?`${e.tagName.toLowerCase()}[data-${d[0].replace(/[A-Z]/g,m=>'-'+m.toLowerCase())}="${CSS.escape(d[1])}"]`:e.name?`${e.tagName.toLowerCase()}[name="${CSS.escape(e.name)}"]`:null;
+  if(!sel) return null;
+  let a=null,b=null; try{ a=e.selectionStart; b=e.selectionEnd; }catch(x){}
+  return {sel,a,b,top:e.scrollTop};
+}
+function devolverFoco(v,f){
+  const e=v.querySelector(f.sel); if(!e) return;
+  const det=e.closest('details'); if(det) det.open=true;
+  e.focus({preventScroll:true}); e.scrollTop=f.top;
+  if(f.a!=null){ try{ e.setSelectionRange(f.a,f.b); }catch(x){} }
 }
 function toast(m, tipo='ok'){ const t=document.getElementById('toast'); t.className='toast '+tipo; t.innerHTML=`${ic(tipo==='ok'?'okc':'info')}<span></span>`; t.lastChild.textContent=m; t.hidden=false; clearTimeout(toast.h); toast.h=setTimeout(()=>t.hidden=true,2600); }
 // Camadas sobre a tela: busca global, notificações, perfil e atalhos.
@@ -7693,6 +7761,8 @@ function acaoAtendimento(a,t){
   else if(a==='at-cmp'){ ui.atCmp=!ui.atCmp; render(true); }
   else if(a==='at-prontuario'){ ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); }
   else if(a==='at-doc'){ if(t.dataset.d==='retorno'){ ui.bookPid=p.id; ui.agForm=null; ui.remarcar=null; irPara('agenda'); } else if(t.dataset.d.startsWith('doc-')){ ui.docPid=p.id; ui.docMod=t.dataset.d.slice(4); ui.docEd=null; irPara('documentos'); } else { ui.pid=p.id; ui.tab='sessoes'; irPara('prontuario'); } }
+  else if(a==='at-finalizar-ja'){ const falta=(t.dataset.falta||'').split('|').filter(Boolean);
+    if(!confirm(`Finalizar o atendimento agora?${falta.length?`\n\nSem preencher: ${falta.join(', ')}.`:''}\n\nO que ficou em branco não entra no registro, e dá para complementar depois.`)) return; acaoAtendimento('at-finalizar',t); }
   else if(a==='at-finalizar'){ finalizarAtendimento(p,A,new Date().toISOString(),uid()); concluirHorario(db.appts,p.id,A.data); const nv=p.avaliacoes.find(v=>v.id===A.avaliacaoId); if(nv) nv.prof=PROF.nome; save(); ui.pid=p.id; ui.tab='sessoes'; toast('Atendimento finalizado e registrado no prontuário'); irPara('prontuario'); }
   else if(a==='at-descartar'){ if(!confirm('Descartar este rascunho? O que foi preenchido nele será apagado. A anamnese e as queixas do paciente continuam salvas.')) return;
     descartarRascunho(p,A); save(); ui.pid=p.id; ui.tab='resumo'; toast('Rascunho descartado','info'); irPara('prontuario'); }
@@ -7789,7 +7859,11 @@ document.addEventListener('change',ev=>{
   else if(t.id==='cb-sheng'){ ui.sheng=t.checked; render(true); }
   else if(t.id==='cb-ke'){ ui.ke=t.checked; render(true); }
   else if(t.dataset.anam){ patient(ui.pid).anam[t.dataset.anam]=t.value; save(); toast('Anamnese salva'); }
-  else if(t.dataset.alert){ patient(ui.pid).alerts[t.dataset.alert]=t.checked; save(); render(true); }
+  else if(t.dataset.alert){ const p=patient(ui.pid), o=document.getElementById('al-outro');
+    p.alerts=montarAlertas(p.alerts,k=>document.getElementById('al-'+k)?.checked,o?.checked,document.getElementById('al-outro-t')?.value); save(); render(true);
+    if(t.dataset.alert==='outro'&&t.checked) document.getElementById('al-outro-t')?.focus(); }
+  else if(t.matches('[data-alerta-outro]')){ const p=patient(ui.pid); if(p.alerts.outro){ p.alerts.outro=t.value.trim().slice(0,120)||true; save(); render(true); } }
+  else if(t.id==='np-al-outro'){ const c=document.querySelector('.al-outro'); if(c){ c.hidden=!t.checked; if(t.checked) document.getElementById('np-al-outro-t').focus(); } }
   else if(t.name==='tec'){ t.closest('.chip').classList.toggle('on',t.checked); }
 });
 document.addEventListener('submit',ev=>{
@@ -7821,10 +7895,10 @@ document.addEventListener('submit',ev=>{
     if(!birth||birth>TODAY){ nasc.setCustomValidity(birth?'A data de nascimento não pode ser no futuro.':'Data inválida: use dia/mês/ano, por exemplo 12/04/1988.'); nasc.reportValidity(); return; }
     const em=new Date().toISOString(), lgpd=document.getElementById('np-lgpd');
     const cadastro={cpf:cpf.value.trim()?cpfFormatado(cpf.value.trim()):'',email:v('np-email').trim(),endereco:v('np-end').trim(),numero:v('np-num').trim(),complemento:v('np-comp').trim(),bairro:v('np-bai').trim(),cep:soDigitosCep(v('np-cep')),uf:v('np-uf'),cidade:v('np-cid').trim(),hemisferio:v('np-hem'),contatoEmergencia:v('np-emerg').trim()};
-    const alerts=Object.fromEntries(['gestante','anticoagulante','marcapasso'].map(k=>[k,document.getElementById('np-al-'+k).checked]));
+    const alerts=montarAlertas({},k=>document.getElementById('np-al-'+k)?.checked,document.getElementById('np-al-outro')?.checked,v('np-al-outro-t'));
     if(ui.editPid){ const p=patient(ui.editPid);
       p.name=v('np-name').trim(); p.birth=birth; p.phone=v('np-phone').trim(); p.queixas.find(q=>q.id==='q1').descricao=v('np-q').trim();
-      Object.assign(p.alerts,alerts); p.cadastro={...p.cadastro,...cadastro,atualizadoEm:em};
+      p.alerts={...Object.fromEntries(Object.entries(p.alerts||{}).filter(([k])=>!ALERTA_NOME[k]&&k!=='outro')),...alerts}; p.cadastro={...p.cadastro,...cadastro,atualizadoEm:em};
       if(lgpd?.checked) p.consentimento=TODAY;
       save(); ui.pid=p.id; ui.editPid=null; ui.tab='resumo'; toast('Cadastro atualizado'); location.hash='prontuario'; return; }
     const p=hidratarPaciente(novoPaciente({id:uid(),name:v('np-name').trim(),birth,phone:v('np-phone').trim(),queixa:v('np-q'),consentimento:TODAY,em}));

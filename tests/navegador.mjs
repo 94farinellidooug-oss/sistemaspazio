@@ -45,7 +45,8 @@ const CONTEUDO = () => {
     agenda: q('.appt').map(e => e.dataset.id + (e.classList.contains('done') ? ':concluido' : '')),
     semana: q('.week .day h3').map(txt),
     anamnese: q('[data-anam]').map(e => e.dataset.anam + '=' + e.value),
-    alertas: q('[data-alert]').map(e => e.dataset.alert + '=' + e.checked),
+    // Só os três alertas que existiam no protótipo; os novos (18/11) e o Outro não têm equivalente no v1.
+    alertas: q('[data-alert]').filter(e => ['gestante', 'anticoagulante', 'marcapasso'].includes(e.dataset.alert)).map(e => e.dataset.alert + '=' + e.checked),
     sessoes: q('.sess').map(txt),
     selecionado: [sel('as-patient'), sel('pt-patient'), sel('na-p')],
     nota: sel('as-nota')

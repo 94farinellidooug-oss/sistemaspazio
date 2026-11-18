@@ -446,7 +446,8 @@ kbd{font:500 .7rem var(--f-mono);background:var(--surface);border:1px solid var(
 .steps a.on .sn{background:var(--accent);color:#fff;box-shadow:none}
 .steps a.on .sr-b{stroke:var(--accent-line)}
 .steps a.parcial .sn{color:var(--accent)}
-.et-h .btn{margin-left:auto}
+.et-h .btn{margin-left:auto}.et-h .btn+.btn{margin-left:0}
+@media (max-width:560px){.et-h{flex-wrap:wrap}.et-h .grow{flex-basis:calc(100% - 60px)}}
 .cmp3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px}
 .cmp3>div{border-radius:12px;background:var(--surface-2);padding:12px;text-align:center}
 .cmp3 b{display:block;font-size:1.5rem;font-weight:650}.cmp3 small{color:var(--muted)}
@@ -1488,3 +1489,11 @@ body.com-acesso{overflow:hidden}
 .ar-docs{display:flex;flex-wrap:wrap;gap:6px}
 .modal-p .grow{flex:1}
 @media (max-width:560px){.modal-p{flex-wrap:wrap}.modal-p .grow{display:none}}
+
+/* Alertas de segurança (lista maior + Outro, 18/11) */
+.tgs2{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}.tgs2 .al-outro{grid-column:1/-1}.tgs2 .tg{min-width:0}
+.al-li{display:flex;gap:8px;align-items:flex-start;padding:6px 0;cursor:pointer}
+.al-li input{margin-top:3px}
+.al-li small{display:block;font-size:.78rem}
+#al-outro-t{width:100%;margin-top:4px}
+.al-outro[hidden],#al-outro-t[hidden]{display:none}
