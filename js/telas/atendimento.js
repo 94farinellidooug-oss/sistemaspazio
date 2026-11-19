@@ -10,6 +10,8 @@ import { FONTE_INDICACOES, REGIOES_CORPO, indicadosDaRegiao, regioesDoPonto, reg
 import { CAUT, CODIGOS, MER, PT, meridianoDe } from '../conhecimento/pontos.js';
 import { FACES, LARGURA, TAM, pontosProximos, VISTAS, desenho, iconeMarca, marcaSvg, pontosSvg, temPosicao, vistaNome, vistasDoPonto } from '../componentes/corpo.js';
 import { SIGN, SIGNS } from '../conhecimento/sinais.js';
+import { PROTOCOLOS, SISTEMAS_ZF, SUBSTANCIAS, SIGNS_TELA, pontosDaRef, pontosPadrao } from '../conhecimento/protocolos.js';
+import { blocoProtocolo, cardDiferencial, chipsPontos, nomeSindrome, tecnicaProtocolo } from '../componentes/protocolo.js';
 import { LADOS_MARCA, TIPOS_MARCA, atendimentosAnteriores, marcaComIntensidade, marcasDe, CATEGORIAS, ELEMENTO_ESTACAO, ETAPAS, LADOS_PULSO, PARES_VASOS, categoriaDe, ehBasal, encaminhados, vasoDe, ORIGENS_ACHADO, POSICOES_PULSO, SITUACOES_ACHADO, VASOS, atendimentoDe, avaliacaoEditavel, estacao, finalizados, preenchimento, registroDe } from '../dados/atendimento.js';
 import { revisaoDe } from '../dados/biblioteca.js';
 import { LADOS_RX, SITUACOES_QUEIXA, STATUS_RX, contagemRx, linhaMedia, linhasRx, nomeRx } from '../dados/prescricao.js';
@@ -69,7 +71,7 @@ function listaAchadosAt(R,chaves){
     <select class="mini-sel" data-atorig="${k}" aria-label="Origem: ${esc(SIGN[k])}">${x.orig?'':'<option value="" selected>Origem não informada</option>'}${optsAt(ORIGENS_ACHADO,x.orig)}</select></div>`; }).join('')}</div>`:'';
 }
 function abaLinguaPulso(R){
-  const LG=SIGNS['Língua'], PU=SIGNS['Pulso'], ST=SIGNS['Sinais e sintomas'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
+  const LG=SIGNS_TELA['Língua'], PU=SIGNS_TELA['Pulso'], ST=SIGNS_TELA['Sinais e sintomas'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
   const uniao=PU.filter(([k])=>R.pulso.esq.cls.includes(k)||R.pulso.dir.cls.includes(k)||R.pulso.semLado.includes(k));
   return `<div class="card"><div class="card-h"><h3>Língua</h3><span class="muted sm">toque: positivo, negativo, não avaliado</span></div>
       <div class="chips">${LG.map(([k,l])=>chipAchadoAt(R,k,l,'exame')).join('')}</div>${listaAchadosAt(R,LG.map(x=>x[0]))}
@@ -111,9 +113,20 @@ function dicasTratamento(p,a){
 }
 const ORIG_NOME = Object.fromEntries(ORIGENS_ACHADO);
 const levarAt = (c,it) => `<div class="levar">${[['sintese','Síntese','camadas'],['plano','Plano','plano']].map(([d,l,i])=>`<button class="chip ${it[d]?'on':''}" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="${d}" aria-pressed="${!!it[d]}" data-tip="${it[d]?'Retirar da '+l:'Levar para '+(d==='plano'?'o ':'a ')+l}">${ic(i)}${l}</button>`).join('')}</div>`;
+// Listas clínicas do Maicon (18/11): síndromes Zang-Fu com o protocolo e objetivos das substâncias vitais.
+// Marcar cria um achado com ref, que já vai para a Síntese e o Plano (os pontos aparecem no Plano).
+const btnLista = (C,c,ref,nome) => C.itens.some(x=>x.ref===ref)?`<span class="pill ok">${ic('check')}marcado</span>`:`<button class="btn sm" data-act="at-lista" data-cat="${c}" data-ref="${ref}" data-nome="${esc(nome)}">${ic('mais')}Marcar</button>`;
+function listaClinica(C,c,nome){
+  if(c==='zangfu') return `<div class="card lista-cl"><div class="card-h"><h3>Síndromes Zang-Fu</h3><span class="muted sm">${Object.keys(PROTOCOLOS).length} síndromes</span></div>
+    ${SISTEMAS_ZF.map(sis=>`<div class="lc-g"><div class="lbl">${esc(sis)}</div>${Object.entries(PROTOCOLOS).filter(([,P])=>P.sistema===sis).map(([id])=>`<div class="lc-i"><div class="lc-h"><b class="grow">${esc(nomeSindrome(id))}</b>${btnLista(C,c,'zf:'+id,nomeSindrome(id))}</div>${blocoProtocolo(id)}</div>`).join('')}</div>`).join('')}</div>`;
+  const L=SUBSTANCIAS.filter(x=>x[4]===c); if(!L.length) return '';
+  return `<div class="card lista-cl"><div class="card-h"><h3>Objetivos de ${esc(nome)}</h3><span class="muted sm">pontos base e técnica</span></div>
+    ${L.map(([k,n,pts,tec])=>`<div class="lc-i"><div class="lc-h"><div class="grow"><b>${esc(n)}</b><small class="muted"><span class="mono">${pts.join(' · ')}</span> · ${esc(tec)}</small></div>${btnLista(C,c,'sub:'+k,n)}</div></div>`).join('')}</div>`;
+}
 function abaLivre(av,c,nome){
-  const C=categoriaDe(av,c);
-  return `<div class="notice">${ic('info')}<div><b>${nome}: registro livre do profissional.</b> A lista clínica desta categoria ainda será definida. Nada aqui é sugerido, calculado ou encaminhado sozinho.</div></div>
+  const C=categoriaDe(av,c), lista=listaClinica(C,c,nome);
+  return `<div class="notice">${ic('info')}<div>${lista?`<b>${nome}: lista clínica e registro livre.</b> Marque o que se aplica ou descreva outro achado abaixo. Marcar não é diagnóstico: o item vai para a Síntese e o Plano, e você decide os pontos.`:`<b>${nome}: registro livre do profissional.</b> Nada aqui é sugerido, calculado ou encaminhado sozinho.`}</div></div>
+    ${lista}
     <div class="card"><div class="card-h"><h3>Achados de ${nome}</h3><span class="pill acc">${C.itens.length}</span></div>
       ${C.itens.length?`<div class="livres">${C.itens.map(it=>`<div class="livre"><div class="livre-t"><b>${esc(it.texto)}</b><div class="livre-m">
           <select class="mini-sel" data-atlsit="${c}.${it.id}" aria-label="Situação: ${esc(it.texto)}">${optsAt(SITUACOES_ACHADO,it.sit)}</select>
@@ -148,7 +161,8 @@ function eAvaliacao(p,a){
     <div class="card"><div class="card-h"><h3>Hipóteses de padrão</h3><span class="muted sm">${av.signs.length} sinais · ${H.length} hipóteses</span></div>
       ${H.length?H.map(h=>{const s=av.status[h.p.id]||'';return `<div class="hp ${s}"><div class="hp-h">${anel(h.score,Math.round(h.score*100)+'%',EL[h.p.el].cor)}<div class="grow"><b>${h.p.nome}</b><div>${elTag(h.p.el)} <span class="muted sm">· ${h.m.length}/${h.p.sinais.length} sinais</span></div></div></div>
         <div class="hp-a"><button class="btn sm ${s==='aceito'?'pri':''}" data-act="at-hip" data-p="${h.p.id}" data-st="aceito">${ic('check')}${s==='aceito'?'Aceito':'Aceitar'}</button><button class="btn sm" data-act="at-hip" data-p="${h.p.id}" data-st="descartado">${s==='descartado'?'Descartado':'Descartar'}</button></div>
-        <details class="mais"><summary>Por que aparece ${ic('baixo')}</summary><p class="sm"><b>Presentes:</b> ${h.m.map(x=>SIGN[x]).join(', ')}</p>${h.falta.length?`<p class="sm muted"><b>Esperados, não observados:</b> ${h.falta.map(x=>SIGN[x]).join(', ')}</p>`:''}</details></div>`;}).join(''):vazio('yin','Sem hipóteses ainda','Marque ao menos dois sinais de língua, pulso ou sintomas.')}</div>
+        <details class="mais"><summary>Por que aparece ${ic('baixo')}</summary><p class="sm"><b>Presentes:</b> ${h.m.map(x=>SIGN[x]).join(', ')}</p>${h.falta.length?`<p class="sm muted"><b>Esperados, não observados:</b> ${h.falta.map(x=>SIGN[x]).join(', ')}</p>`:''}</details>${blocoProtocolo(h.p.id)}</div>`;}).join(''):vazio('yin','Sem hipóteses ainda','Marque ao menos dois sinais de língua, pulso ou sintomas.')}</div>
+    ${cardDiferencial(H.filter(h=>av.status[h.p.id]!=='descartado').map(h=>h.p.id))}
     ${cmpBasal(p,a,av)}
     <div class="card"><div class="field"><label class="lbl" for="at-avnota">Observações da avaliação</label><textarea id="at-avnota" data-atf="avnota">${esc(av.nota||'')}</textarea></div></div>
   </div></div></fieldset>`;
@@ -192,7 +206,7 @@ function ePentagrama(p,a){
       <div class="card"><div class="field"><label class="lbl" for="at-interp">Interpretação do profissional</label><textarea id="at-interp" data-atr="interp" ${trava?'disabled':''} placeholder="Sua leitura dos cinco elementos para este paciente">${esc(av.interp||'')}</textarea></div><p class="muted sm" style="margin-top:6px">Registro do profissional. Não altera o cálculo.</p></div></div></div>`;
 }
 function resumoPulso(R){
-  const PU=SIGNS['Pulso'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
+  const PU=SIGNS_TELA['Pulso'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
   const lado=(ld,t)=>{ const L=R.pulso[ld]; return `<div><small>${t}</small><div class="chips">${L.cls.map(k=>`<span class="pill">${nome(k)}</span>`).join('')||'<span class="muted sm">sem classificação</span>'}</div>
     ${L.deficiencia||L.orgao?`<p class="sm" style="margin-top:6px">${L.deficiencia?`Deficiência: ${esc(L.deficiencia)}`:''}${L.deficiencia&&L.orgao?' · ':''}${L.orgao?`Órgão/sistema: ${esc(L.orgao)}`:''}</p>`:''}${L.obs?`<p class="muted sm">${esc(L.obs)}</p>`:''}</div>`; };
   return `<div class="sx">${lado('esq','Pulso esquerdo')}${lado('dir','Pulso direito')}</div>${R.pulso.semLado.length?`<p class="muted sm" style="margin-top:8px">Sem lado: ${R.pulso.semLado.map(nome).join(', ')}</p>`:''}${R.linguaObs?`<p class="sm" style="margin-top:10px"><b>Língua:</b> ${esc(R.linguaObs)}</p>`:''}`;
@@ -381,10 +395,10 @@ function ePlano(p,a){
     <div class="card" id="orient-card"><div class="field"><label class="lbl" for="at-orient">Orientações para casa <span class="pill">opcional</span></label><textarea id="at-orient" data-atorient="1" placeholder="Ex.: compressa morna na nuca à noite">${esc(a.plano.orient||'')}</textarea></div>
       <button class="btn sm" data-act="at-imprimir" style="margin-top:10px">${ic('doc')}Imprimir para o paciente</button><small class="muted" style="display:block;margin-top:6px">Sai uma folha só com as orientações, o nome do paciente, a data e o seu nome.</small></div></div>
     <div class="grid" style="align-content:start">${(()=>{ const L=encaminhados(av,'plano'); return `<div class="card"><div class="card-h"><h3>Trazido pelo profissional</h3><span class="muted sm">só o que foi marcado como "Plano"</span></div>
-      ${L.length?L.map(([c,nome,I])=>I.map(it=>`<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${nome}</small></div><button class="btn sm ghost" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="plano">${ic('x')}Retirar</button></div>`).join('')).join(''):`<p class="muted sm">Nada encaminhado. Marque "Plano" num achado da avaliação para ele aparecer aqui.</p>`}</div>`; })()}
+      ${L.length?L.map(([c,nome,I])=>I.map(it=>{ const r=pontosDaRef(it.ref); return `<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${nome}${r?' · '+esc(r.tecnicaTxt||tecnicaProtocolo(r)):''}</small>${r?chipsPontos(r.pontos,P):''}</div><button class="btn sm ghost" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="plano">${ic('x')}Retirar</button></div>`; }).join('')).join(''):`<p class="muted sm">Nada encaminhado. Marque "Plano" num achado da avaliação para ele aparecer aqui.</p>`}</div>`; })()}
     ${pode('mtc')?dicasTratamento(p,a):''}
     <div class="card"><h3>Sugestões dos padrões validados</h3><p class="muted sm" style="margin-bottom:10px">Toque para incluir. A escolha é do profissional.</p>
-      ${ac.length?ac.map(h=>`<div class="sug"><div class="sug-h">${elTag(h.p.el)}<b>${h.p.nome}</b></div><div class="chips">${h.p.pontos.map(([c,j])=>`<button class="chip mono ${P.includes(c)?'on':''}" data-act="at-pt" data-c="${c}" title="${esc(j)}${PT[c]?.cautela?' · '+esc(CAUT[PT[c].cautela]):''}">${c}${PT[c]?.cautela?' ⚠':''}</button>`).join('')}</div></div>`).join(''):`<div class="vazio">${ic('info')}Aceite hipóteses na avaliação para ver sugestões.</div>`}</div></div></div>`;
+      ${ac.length?ac.map(h=>`<div class="sug"><div class="sug-h">${elTag(h.p.el)}<b>${h.p.nome}</b></div>${PROTOCOLOS[h.p.id]?`<small class="muted">${esc(PROTOCOLOS[h.p.id].principio)} · ${esc(tecnicaProtocolo(PROTOCOLOS[h.p.id]))}</small>`:''}${chipsPontos(pontosPadrao(h.p),P)}</div>`).join(''):`<div class="vazio">${ic('info')}Aceite hipóteses na avaliação para ver sugestões.</div>`}</div></div></div>`;
 }
 function eEvolucao(p,a){
   const fin=finalizados(p).filter(x=>x!==a), Q=p.queixas.filter(q=>a.evolucao.intensidades[q.id]!=null||serieQueixa(p,q.id).length);

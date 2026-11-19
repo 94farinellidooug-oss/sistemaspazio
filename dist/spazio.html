@@ -1746,6 +1746,21 @@ body.com-acesso{overflow:hidden}
 .al-li small{display:block;font-size:.78rem}
 #al-outro-t{width:100%;margin-top:4px}
 .al-outro[hidden],#al-outro-t[hidden]{display:none}
+/* Conhecimento clínico (18/11): protocolo, como diferenciar e listas clínicas da avaliação */
+.proto p{margin-top:6px}
+.proto-p{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.proto-p li{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;font-size:.86rem}
+.proto-p li .mono{color:var(--accent);font-weight:600}
+.proto-p li small{flex-basis:100%}
+.dif .dif-i+.dif-i{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.dif-c{margin-top:8px;padding-left:10px;border-left:3px solid var(--accent)}
+.lista-cl .lc-g+.lc-g{margin-top:14px}
+.lc-i{padding:10px 0;border-bottom:1px solid var(--line)}
+.lc-i:last-child{border-bottom:0}
+.lc-h{display:flex;align-items:center;gap:10px;min-width:0}
+.lc-h .grow{min-width:0}.lc-h small{display:block;margin-top:2px}
+.lc-h .btn,.lc-h .pill{flex-shrink:0}
+.sx-i .chips{margin-top:6px}
 </style>
 
 
@@ -2223,8 +2238,9 @@ const CATEGORIAS = [['zangfu','Zang-Fu'],['qixue','Qi e Xue'],['jinye','Jin Ye']
 const catVazia = () => ({ nota: '', itens: [] });
 const categoriaDe = (av, c) => av.categorias?.[c] || catVazia();
 const garantirCat = (av, c) => ((av.categorias ||= {})[c] ||= catVazia());
-function adicionarAchadoLivre(av, c, { id, texto, orig, sit }, em){
-  const it = { id, texto, orig, sit, sintese: false, plano: false, em };
+// ref: item marcado nas listas clínicas ("zf:<síndrome>" ou "sub:<objetivo>"); já entra na Síntese e no Plano.
+function adicionarAchadoLivre(av, c, { id, texto, orig, sit, ref }, em){
+  const it = { id, texto, orig, sit, sintese: !!ref, plano: !!ref, em, ...(ref ? { ref } : {}) };
   garantirCat(av, c).itens.push(it);
   return it;
 }
@@ -4884,6 +4900,99 @@ const SIGNS = {
 };
 const SIGN = {};
 Object.values(SIGNS).flat().forEach(([k,v])=>SIGN[k]=v);
+// diferencial na MTC"; cópia em /mnt/project-files/spazio/conhecimento/). Ele escolheu usar tudo ("Completo"):
+// - PROTOCOLOS: para cada síndrome, fisiopatologia, princípio, técnica e pontos com a ação de cada um. Vale para as
+//   hipóteses (sugestões no Plano) e para a lista clínica da aba Zang-Fu.
+// - PADROES_MAIS: três hipóteses novas. Só aparecem com um sinal próprio delas (chave), para não mudar as hipóteses
+//   do protótipo v1 (tests/comparar.mjs).
+// - DIFERENCIAIS: como diferenciar síndromes parecidas quando aparecem juntas.
+// - SUBSTANCIAS: objetivos com os pontos base, nas abas Qi e Xue, Jin Ye e Jing e Shen.
+// Tudo é apoio ao raciocínio clínico: o profissional aceita, descarta e escolhe os pontos.
+
+// Sinais novos, usados pelas hipóteses novas. Ficam fora de SIGNS (referência do v1) e entram nas listas da tela.
+const SINAIS_MAIS = [['aversao_frio','Aversão ao frio ou ao vento'],['espirros_coriza','Espirros e coriza clara'],['dor_nuca','Dor ou rigidez na nuca'],['sem_suor','Sem suor'],
+  ['sede_fria','Sede de água gelada'],['dor_epigastrica','Dor epigástrica ou azia'],['gengivas','Gengivas inflamadas ou mau hálito'],['frio_abdome','Frio no abdome, melhora com calor'],['urina_clara','Urina clara e abundante']];
+const PULSOS_MAIS = [['pulso_superficial','Superficial'],['pulso_tenso','Tenso']];
+[...SINAIS_MAIS, ...PULSOS_MAIS].forEach(([k, v]) => { SIGN[k] = v; });
+// Listas mostradas na tela: as do v1 mais as novas, no fim de cada grupo.
+const SIGNS_TELA = { ...SIGNS, 'Pulso':[...SIGNS['Pulso'], ...PULSOS_MAIS], 'Sinais e sintomas':[...SIGNS['Sinais e sintomas'], ...SINAIS_MAIS] };
+
+const PADROES_MAIS = [
+  {id:'bp_umid_frio',nome:'Umidade-Frio invadindo o Baço',el:'terra',tipo:'exc',chave:['frio_abdome'],
+   sinais:['frio_abdome','saburra_branca','lingua_inchada','pulso_escorregadio','pulso_lento','peso_corpo','fezes_amolecidas','distensao_pos']},
+  {id:'e_fogo',nome:'Fogo no Estômago',el:'terra',tipo:'exc',chave:['sede_fria','dor_epigastrica','gengivas'],
+   sinais:['sede_fria','dor_epigastrica','gengivas','saburra_amarela','lingua_vermelha','pulso_rapido','boca_seca']},
+  {id:'p_vento_frio',nome:'Invasão de Vento-Frio no Pulmão',el:'metal',tipo:'exc',chave:['aversao_frio','espirros_coriza','dor_nuca','sem_suor','pulso_superficial','pulso_tenso'],
+   sinais:['aversao_frio','espirros_coriza','dor_nuca','sem_suor','pulso_superficial','pulso_tenso','saburra_branca']}
+];
+
+const TECNICAS_PROTOCOLO = { ton:'Tonificação', disp:'Dispersão / sedação', harm:'Harmonização' };
+// [código, ação, técnica do ponto (opcional: quando difere da técnica geral)]
+const PROTOCOLOS = {
+  c_xue:{sistema:'Coração (Xin) e Mente (Shen)',fisio:'O Sangue insuficiente não nutre o Coração e não ancora o Shen durante a noite.',principio:'Nutrir o Xue, tonificar o Coração e acalmar o Shen.',tecnica:'ton',moxa:'',
+    pontos:[['C7','Ponto fonte; nutre o Sangue do Coração e acalma a mente'],['CS6','Abre o tórax, regula o ritmo cardíaco e tranquiliza o Shen'],['B15','Xinshu; tonifica o Coração'],['B17','Geshu, ponto de influência do Sangue; com B15 leva Xue ao Coração'],['BP6','Fortalece Baço e Estômago, fonte do Sangue'],['E36','Fortalece Baço e Estômago, fonte do Sangue']]},
+  c_fogo:{sistema:'Coração (Xin) e Mente (Shen)',nome:'Fogo do Coração em excesso',fisio:'Estagnação emocional prolongada gera Calor que sobe para a língua e perturba a mente.',principio:'Drenar o Fogo do Coração, limpar o Calor e acalmar o Shen.',tecnica:'disp',moxa:'',
+    pontos:[['C8','Ponto manancial (Fogo); drena o Fogo do meridiano do Coração'],['C7','Em sedação, acalma a agitação mental e a insônia severa'],['IG11','Drena o Calor sistêmico e limpa o Fogo'],['R6','Nutre o Yin do Rim para conter o Fogo do Coração (eixo Água-Fogo)','ton']]},
+  bp_qi:{sistema:'Baço (Pi) e Estômago (Wei)',fisio:'Falha no transporte e transformação (Yun Hua): falta de energia e retenção leve de líquidos.',principio:'Tonificar o Qi do Baço e fortalecer o Aquecedor Médio.',tecnica:'ton',moxa:'opcional',
+    pontos:[['BP3','Ponto fonte; tonifica o Baço'],['E36','Ponto Terra e Mar; tonifica o Qi pós-celestial e a digestão'],['VC12','Mo do Estômago e influência das vísceras Fu; harmoniza o centro'],['B20','Pishu, Shu dorsal do Baço'],['B21','Weishu, Shu dorsal do Estômago']]},
+  bp_umid_frio:{sistema:'Baço (Pi) e Estômago (Wei)',fisio:'A Umidade pesada e fria bloqueia o Yang do Baço e impede a ascensão do Qi puro.',principio:'Aquecer o centro, transformar a Umidade e fortalecer o Baço.',tecnica:'harm',moxa:'indicada',
+    pontos:[['BP9','Ponto Mar (Água); mestre para drenar Umidade'],['E40','Transforma a Umidade e a Fleuma'],['VC9','Shuifen; regula a passagem das águas'],['E25','Tianshu; com VC9 cessa diarreia e fezes soltas'],['VC12','Com moxa, aquece o frio interno'],['E36','Com moxa, reativa o Baço']]},
+  e_fogo:{sistema:'Baço (Pi) e Estômago (Wei)',fisio:'Alimentos quentes ou picantes, ou estagnação alimentar, geram Calor intenso no Estômago.',principio:'Limpar o Calor do Estômago e promover a descida do Qi.',tecnica:'disp',moxa:'',
+    pontos:[['E44','Ponto manancial (Água); drena Calor e Fogo do Estômago (gengivas e face)'],['E34','Ponto Xi; acalma dor epigástrica aguda e acidez'],['VC13','Shangwan; promove a descida do Qi rebelde'],['VC10','Xiawan; promove a descida do Qi rebelde'],['IG4','Limpa o Calor no trajeto Yang Ming (boca e estômago)']]},
+  p_qi:{sistema:'Pulmão (Fei)',fisio:'O Pulmão falha em governar o Qi e difundir o Wei Qi para a pele.',principio:'Tonificar o Qi do Pulmão e consolidar o exterior.',tecnica:'ton',moxa:'',
+    pontos:[['P9','Ponto fonte e de influência dos vasos; tonifica Qi e Yin do Pulmão'],['P7','Estimula a difusão e a descida do Pulmão'],['VC6','Qihai; tonifica o Qi original (ou VC17)'],['VC17','Danzhong, mar do Qi no tórax (ou VC6)'],['B13','Feishu; tonifica o Pulmão'],['E36','Nutre a mãe (Terra) para fortalecer o filho (Metal)']]},
+  p_vento_frio:{sistema:'Pulmão (Fei)',fisio:'Fator patogênico externo bloqueia os poros e impede a descida do Qi do Pulmão.',principio:'Liberar o exterior, dispersar o Vento-Frio e restaurar a descida do Pulmão.',tecnica:'disp',moxa:'suave',extra:'Ventosa ou moxa suave.',
+    pontos:[['P7','Com IG4 abre os poros, sudorese leve, expulsa o patógeno'],['IG4','Com P7, dupla clássica para liberar o exterior'],['VB20','Expulsa o Vento da região cervical'],['B12','Fengmen; expulsa o Vento da região dorsal alta'],['VG16','Fengfu; dispersa o Vento da cabeça e da nuca']]},
+  r_yin:{sistema:'Rim (Shen)',fisio:'Esgotamento dos fluidos profundos e do Jing gera Calor vazio.',principio:'Nutrir o Yin do Rim, preservar o Jing e limpar o Calor vazio.',tecnica:'ton',moxa:'evitar',
+    pontos:[['R3','Ponto fonte; nutre a raiz Yin e Yang do Rim'],['R6','Nutre o Yin do Rim, umedece a garganta e acalma o Calor vazio'],['BP6','Reunião dos três Yin do pé; nutre Yin e Xue'],['VC4','Nutre o Yin e ancora o Jing no Aquecedor Inferior']]},
+  r_yang:{sistema:'Rim (Shen)',fisio:'Declínio do Fogo do Ming Men: frio interno e falha na transformação das águas.',principio:'Tonificar e aquecer o Yang do Rim.',tecnica:'ton',moxa:'essencial',
+    pontos:[['R3','Ponto fonte do Rim'],['R7','Fuliu; tonifica o Yang do Rim e regula o metabolismo hídrico'],['VG4','Mingmen; com moxa aquece a raiz do Fogo'],['B23','Shenshu; com moxa aquece a região lombar'],['VC4','Com moxa restaura o Yuan Qi (ou VC6)'],['VC6','Com moxa aquece o Aquecedor Inferior (ou VC4)']]},
+  f_estag:{sistema:'Fígado (Gan)',fisio:'Tensão emocional bloqueia o livre fluxo (Shu Xie) do Fígado.',principio:'Circular o Qi do Fígado, liberar a estagnação e harmonizar as emoções.',tecnica:'harm',moxa:'',
+    pontos:[['F3','Com IG4 forma os Quatro Portões (Si Guan); move Qi e Xue'],['IG4','Com F3, Quatro Portões'],['VB34','Ponto Mar e influência dos tendões; relaxa a tensão'],['CS6','Libera a opressão torácica e o nó na garganta (Mei He Qi)'],['F14','Qimen, Mo do Fígado; alivia a distensão nos hipocôndrios']]},
+  f_yang:{sistema:'Fígado (Gan)',fisio:'Deficiência de Yin do Rim e do Fígado deixa o Yang do Fígado sem âncora; ele sobe para a cabeça.',principio:'Acalmar o Fígado, ancorar o Yang e nutrir o Yin.',tecnica:'disp',extra:'Dispersão no topo e tonificação na base.',moxa:'',
+    pontos:[['F3','Ancora e drena o excesso de Yang','disp'],['F2','Xingjian; drena o Calor que sobe pelo Fígado','disp'],['VB20','Alivia cefaleia latejante, tontura e pressão nos olhos','disp'],['Taiyang','Ponto extra; cefaleia e pressão nos olhos','disp'],['R3','Nutre a Água (Yin) para conter a Madeira','ton'],['BP6','Nutre o Yin','ton']]}
+};
+const MOXA_TXT = { opcional:'moxa opcional', indicada:'moxa fortemente indicada', essencial:'moxa essencial', evitar:'evitar moxa', suave:'ventosa ou moxa suave' };
+const SISTEMAS_ZF = ['Coração (Xin) e Mente (Shen)','Baço (Pi) e Estômago (Wei)','Pulmão (Fei)','Rim (Shen)','Fígado (Gan)'];
+
+const DIFERENCIAIS = [
+  {titulo:'Fadiga e cansaço',ids:['bp_qi','r_yang'],comum:'Cansaço físico, fezes amolecidas, falta de ânimo, língua pálida e pulso fraco.',
+   criterio:{bp_qi:'Foco digestivo e muscular: distensão abdominal após comer, falta de apetite, peso nos membros e marcas de dentes na língua, sem frio intenso.',
+     r_yang:'Foco térmico, lombar e urinário: frio intenso (mãos, pés e lombar gelados), dor surda em joelhos ou lombar, urina clara e abundante (acorda para urinar) e libido baixa.'}},
+  {titulo:'Insônia e agitação',ids:['c_xue','c_fogo','r_yin'],comum:'Sono perturbado, sonhos excessivos e palpitações.',
+   criterio:{c_xue:'Dificuldade para pegar no sono (início da noite), palpitações leves em repouso, memória fraca, tontura, rosto e língua pálidos.',
+     c_fogo:'Sono agitado com pesadelos, aftas, sede de água gelada, rosto vermelho, urina escura, língua muito vermelha com saburra amarela.',
+     r_yin:'Acorda várias vezes de madrugada, suor noturno, calor nas palmas e plantas, boca seca à noite, zumbido, língua vermelha sem saburra (desarmonia Coração-Rim).'}},
+  {titulo:'Dor de cabeça e irritabilidade',ids:['f_estag','f_yang'],comum:'Tensão emocional, irritabilidade e pulso em corda.',
+   criterio:{f_estag:'Dor errática, em peso ou distensão, ligada ao estresse, melhora com suspiros ou exercício; sem sinais de calor nem tontura intensa; língua de cor normal.',
+     f_yang:'Dor latejante e intensa (têmporas, atrás dos olhos ou topo), com tontura, zumbido, rosto vermelho e irritabilidade explosiva; bordas da língua vermelhas.'}},
+  {titulo:'Falta de ar e tosse',ids:['p_qi','p_vento_frio'],comum:'Sintomas respiratórios e alteração na voz.',
+   criterio:{p_qi:'Interior e deficiência: quadro crônico, falta de ar que piora ao falar ou caminhar, voz baixa, tosse sem força, suor espontâneo de dia, pulso vazio ou fraco.',
+     p_vento_frio:'Exterior e excesso: quadro agudo (começou hoje ou ontem), aversão ao frio ou vento, espirros, coriza clara, dor na nuca, sem suor, pulso superficial e tenso.'}}
+];
+// Diferenciais que valem para as hipóteses presentes (pelo menos duas do mesmo grupo).
+const diferenciaisDe = ids => { const s = new Set(ids); return DIFERENCIAIS.filter(d => d.ids.filter(i => s.has(i)).length >= 2); };
+
+// Objetivos das substâncias vitais: [chave, nome, pontos base, técnica, aba]
+const SUBSTANCIAS = [
+  ['ton_qi','Tonificar o Qi geral',['E36','VC6','P9'],'Tonificação + moxa suave','qixue'],
+  ['mov_qi','Mover o Qi estagnado',['F3','IG4','VC17'],'Harmonização / dispersão','qixue'],
+  ['nut_xue','Produzir e nutrir Xue',['B17','B20','BP6','E36'],'Tonificação','qixue'],
+  ['mov_xue','Mover Xue estagnado',['BP10','B17','F3'],'Dispersão','qixue'],
+  ['nut_jinye','Nutrir Jin Ye (líquidos)',['R6','BP6','VC4'],'Tonificação, sem moxa','jinye'],
+  ['dren_umid','Drenar Umidade / Fleuma',['BP9','E40','VC9'],'Dispersão + moxa se houver Frio','jinye'],
+  ['nut_jing','Preservar e nutrir Jing',['R3','VC4','B23','VB39'],'Tonificação profunda','jingshen'],
+  ['acalma_shen','Acalmar e ancorar Shen',['C7','CS6','Yintang','VG20'],'Harmonização suave','jingshen']
+];
+// Item marcado a partir das listas clínicas: ref "zf:<id da síndrome>" ou "sub:<chave do objetivo>".
+const pontosDaRef = ref => {
+  const [t, k] = String(ref || '').split(':');
+  if (t === 'zf' && PROTOCOLOS[k]) return { pontos:PROTOCOLOS[k].pontos, tecnica:PROTOCOLOS[k].tecnica, moxa:PROTOCOLOS[k].moxa };
+  const s = t === 'sub' && SUBSTANCIAS.find(x => x[0] === k);
+  return s ? { pontos:s[2].map(c => [c, '']), tecnicaTxt:s[3] } : null;
+};
+// Pontos sugeridos de uma hipótese: os do protocolo, quando há; senão os do v1.
+const pontosPadrao = p => PROTOCOLOS[p?.id]?.pontos || p?.pontos || [];
 const PATTERNS = [
   {id:'bp_qi',nome:'Deficiência de Qi do Baço',el:'terra',tipo:'def',sinais:['lingua_palida','marcas_dentes','pulso_fraco','cansaco','fezes_amolecidas','distensao_pos','preocupacao'],
    pontos:[['E36','Tonifica o Qi do Baço e do Estômago'],['BP3','Ponto fonte (Yuan) do Baço'],['VC12','Ponto Mu do Estômago, fortalece o Aquecedor Médio'],['BP6','Apoia a função de transformação']]},
@@ -4912,9 +5021,37 @@ const BAGANG = {
   def:['pulso_fraco','pulso_fino','cansaco','voz_fraca','falta_ar','memoria','sem_saburra','marcas_dentes','resfriados'],
   exc:['pulso_corda','pulso_escorregadio','saburra_amarela','dor_fixa','distensao_hipo','irritabilidade','cefaleia_temporal','peso_corpo']
 };
+// quadro "como diferenciar" e chips de pontos com a técnica.
+
+const nomeSindrome = id => [...PATTERNS, ...PADROES_MAIS].find(x => x.id === id)?.nome || PROTOCOLOS[id]?.nome || id;
+const tecTxt = k => TECNICAS_PROTOCOLO[k] || k || '';
+// Técnica geral do protocolo (com a moxa), em uma linha.
+const tecnicaProtocolo = P => [tecTxt(P.tecnica), P.moxa ? MOXA_TXT[P.moxa] : '', P.extra || ''].filter(Boolean).join(' · ');
+
+// Fisiopatologia, princípio, técnica e pontos (com a ação de cada um).
+function blocoProtocolo(id, { aberto = false } = {}){
+  const P = PROTOCOLOS[id]; if (!P) return '';
+  return `<details class="mais proto"${aberto ? ' open' : ''}><summary>${ic('plano')}Protocolo: princípio e pontos ${ic('baixo')}</summary>
+    <p class="sm"><b>Fisiopatologia:</b> ${esc(P.fisio)}</p><p class="sm"><b>Princípio:</b> ${esc(P.principio)}</p>
+    <p class="sm"><b>Técnica:</b> ${esc(tecnicaProtocolo(P))}</p>
+    <ul class="proto-p">${P.pontos.map(([c, a, t]) => `<li><span class="mono">${esc(c)}</span>${PT[c]?.pinyin ? ` <span class="muted">${esc(PT[c].pinyin)}</span>` : ''}${t ? ` <span class="pill">${esc(tecTxt(t))}</span>` : ''}${PT[c]?.cautela ? ` <span class="pill warn">${esc(CAUT[PT[c].cautela])}</span>` : ''}<small class="muted">${esc(a)}</small></li>`).join('')}</ul></details>`;
+}
+
+// "Como diferenciar": quando duas ou mais síndromes parecidas aparecem juntas (ids das hipóteses não descartadas).
+function cardDiferencial(ids){
+  const D = diferenciaisDe(ids); if (!D.length) return '';
+  const tem = new Set(ids);
+  return `<div class="card dif"><div class="card-h"><h3>${ic('info')} Como diferenciar</h3><span class="pill">diagnóstico diferencial</span></div>
+    ${D.map(d => `<div class="dif-i"><b>${esc(d.titulo)}</b><p class="muted sm">Em comum: ${esc(d.comum)}</p>
+      ${d.ids.filter(i => tem.has(i)).map(i => `<div class="dif-c"><span class="lbl">${esc(nomeSindrome(i))}</span><p class="sm">${esc(d.criterio[i])}</p></div>`).join('')}</div>`).join('')}</div>`;
+}
+
+// Chips de pontos para incluir no plano (toque inclui; o profissional decide).
+const chipsPontos = (L, P, act = 'at-pt') => `<div class="chips">${L.map(([c, j, t]) => `<button class="chip mono ${P.includes(c) ? 'on' : ''}" data-act="${act}" data-c="${esc(c)}" title="${esc(j || PT[c]?.funcao || '')}${t ? ' · ' + esc(tecTxt(t)) : ''}${PT[c]?.cautela ? ' · ' + esc(CAUT[PT[c].cautela]) : ''}">${esc(c)}${PT[c]?.cautela ? ' ⚠' : ''}</button>`).join('')}</div>`;
 function evaluate(signs){
   const s = new Set(signs);
-  return PATTERNS.map(p=>{
+  // Hipóteses novas (18/11) só entram com um sinal próprio delas: sem eles, o resultado é o mesmo do v1.
+  return [...PATTERNS, ...PADROES_MAIS.filter(p=>p.chave.some(x=>s.has(x)))].map(p=>{
     const m = p.sinais.filter(x=>s.has(x));
     return {p, m, falta:p.sinais.filter(x=>!s.has(x)), score:m.length/p.sinais.length};
   }).filter(h=>h.m.length>=2).sort((a,b)=>b.score-a.score);
@@ -4941,7 +5078,7 @@ function vAvaliacao(embutido=false){
   <div class="notice" style="margin-bottom:16px">${ic('info')}<div><b>Apoio ao raciocínio clínico.</b> As hipóteses abaixo são geradas a partir dos sinais marcados e não constituem diagnóstico. Cabe ao profissional aceitar, descartar e decidir a conduta.</div></div>
   <div class="grid g-side">
     <div class="grid" style="align-content:start">
-      <div class="card sigs">${Object.entries(SIGNS).map(([g,list])=>`<div><div class="lbl" style="margin-bottom:6px">${g}</div><div class="chips">${list.map(([k,l])=>`<button class="chip ${A.signs.includes(k)?'on':''}" data-act="sign" data-s="${k}" aria-pressed="${A.signs.includes(k)}">${l}</button>`).join('')}</div></div>`).join('')}</div>
+      <div class="card sigs">${Object.entries(SIGNS_TELA).map(([g,list])=>`<div><div class="lbl" style="margin-bottom:6px">${g}</div><div class="chips">${list.map(([k,l])=>`<button class="chip ${A.signs.includes(k)?'on':''}" data-act="sign" data-s="${k}" aria-pressed="${A.signs.includes(k)}">${l}</button>`).join('')}</div></div>`).join('')}</div>
       <div class="card"><div class="card-h"><h2>Hipóteses de padrão</h2><span class="muted">${hyps.length} encontradas</span></div>
         <div class="grid">${hyps.length?hyps.map(h=>{const s=A.status[h.p.id]||'';return `<div class="hyp ${s}">
           <div class="hyp-h"><div><b>${h.p.nome}</b> <span style="margin-left:6px">${elTag(h.p.el)}</span></div>
@@ -4949,9 +5086,10 @@ function vAvaliacao(embutido=false){
           <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div class="bar"><i style="width:${Math.round(h.score*100)}%"></i></div><span class="mono muted">${h.m.length}/${h.p.sinais.length} sinais</span></div>
           <div style="font-size:.86rem"><span class="lbl">Por que aparece</span><br>${h.m.map(x=>SIGN[x]).join(', ')}</div>
           ${h.falta.length?`<div style="font-size:.86rem" class="muted"><span class="lbl">Sinais esperados não observados</span><br>${h.falta.map(x=>SIGN[x]).join(', ')}</div>`:''}
-          <div class="pts"><span class="lbl">Pontos frequentemente considerados</span>${h.p.pontos.map(([c,j])=>`<div><span class="mono">${c}</span> ${esc(PT[c]?.pinyin||'')} · <span class="muted">${esc(j)}</span>${PT[c]?.cautela?` <span class="pill warn">${CAUT[PT[c].cautela]}</span>`:''}</div>`).join('')}</div>
+          <div class="pts"><span class="lbl">Pontos frequentemente considerados</span>${pontosPadrao(h.p).map(([c,j])=>`<div><span class="mono">${c}</span> ${esc(PT[c]?.pinyin||'')} · <span class="muted">${esc(j)}</span>${PT[c]?.cautela?` <span class="pill warn">${CAUT[PT[c].cautela]}</span>`:''}</div>`).join('')}</div>${blocoProtocolo(h.p.id)}
         </div>`}).join(''):'<p class="muted">Marque ao menos dois sinais para ver hipóteses.</p>'}</div>
       </div>
+      ${cardDiferencial(hyps.filter(h=>A.status[h.p.id]!=='descartado').map(h=>h.p.id))}
     </div>
     <div class="grid" style="align-content:start">
       <div class="card"><h3>Oito princípios (Ba Gang)</h3><div class="grid" style="gap:10px">${axis('Frio','Calor',bg.fc)}${axis('Deficiência','Excesso',bg.de)}</div>
@@ -5762,7 +5900,7 @@ function abaNova(p){
       <div class="full"><button class="btn pri">Salvar no prontuário</button></div>
     </form></div>
     <div class="card" style="align-self:start"><h3>Sugestões da última avaliação</h3><p class="muted" style="font-size:.82rem;margin-bottom:8px">Pontos ligados aos padrões validados. Clique para adicionar.</p>
-    ${a?aceitos(a).map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${h.p.pontos.map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
+    ${a?aceitos(a).map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${pontosPadrao(h.p).map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
 }
 
 // Versões da avaliação (etapa 3C): todas as avaliações registradas, da basal à mais recente.
@@ -5875,7 +6013,7 @@ function listaAchadosAt(R,chaves){
     <select class="mini-sel" data-atorig="${k}" aria-label="Origem: ${esc(SIGN[k])}">${x.orig?'':'<option value="" selected>Origem não informada</option>'}${optsAt(ORIGENS_ACHADO,x.orig)}</select></div>`; }).join('')}</div>`:'';
 }
 function abaLinguaPulso(R){
-  const LG=SIGNS['Língua'], PU=SIGNS['Pulso'], ST=SIGNS['Sinais e sintomas'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
+  const LG=SIGNS_TELA['Língua'], PU=SIGNS_TELA['Pulso'], ST=SIGNS_TELA['Sinais e sintomas'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
   const uniao=PU.filter(([k])=>R.pulso.esq.cls.includes(k)||R.pulso.dir.cls.includes(k)||R.pulso.semLado.includes(k));
   return `<div class="card"><div class="card-h"><h3>Língua</h3><span class="muted sm">toque: positivo, negativo, não avaliado</span></div>
       <div class="chips">${LG.map(([k,l])=>chipAchadoAt(R,k,l,'exame')).join('')}</div>${listaAchadosAt(R,LG.map(x=>x[0]))}
@@ -5917,9 +6055,20 @@ function dicasTratamento(p,a){
 }
 const ORIG_NOME = Object.fromEntries(ORIGENS_ACHADO);
 const levarAt = (c,it) => `<div class="levar">${[['sintese','Síntese','camadas'],['plano','Plano','plano']].map(([d,l,i])=>`<button class="chip ${it[d]?'on':''}" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="${d}" aria-pressed="${!!it[d]}" data-tip="${it[d]?'Retirar da '+l:'Levar para '+(d==='plano'?'o ':'a ')+l}">${ic(i)}${l}</button>`).join('')}</div>`;
+// Listas clínicas do Maicon (18/11): síndromes Zang-Fu com o protocolo e objetivos das substâncias vitais.
+// Marcar cria um achado com ref, que já vai para a Síntese e o Plano (os pontos aparecem no Plano).
+const btnLista = (C,c,ref,nome) => C.itens.some(x=>x.ref===ref)?`<span class="pill ok">${ic('check')}marcado</span>`:`<button class="btn sm" data-act="at-lista" data-cat="${c}" data-ref="${ref}" data-nome="${esc(nome)}">${ic('mais')}Marcar</button>`;
+function listaClinica(C,c,nome){
+  if(c==='zangfu') return `<div class="card lista-cl"><div class="card-h"><h3>Síndromes Zang-Fu</h3><span class="muted sm">${Object.keys(PROTOCOLOS).length} síndromes</span></div>
+    ${SISTEMAS_ZF.map(sis=>`<div class="lc-g"><div class="lbl">${esc(sis)}</div>${Object.entries(PROTOCOLOS).filter(([,P])=>P.sistema===sis).map(([id])=>`<div class="lc-i"><div class="lc-h"><b class="grow">${esc(nomeSindrome(id))}</b>${btnLista(C,c,'zf:'+id,nomeSindrome(id))}</div>${blocoProtocolo(id)}</div>`).join('')}</div>`).join('')}</div>`;
+  const L=SUBSTANCIAS.filter(x=>x[4]===c); if(!L.length) return '';
+  return `<div class="card lista-cl"><div class="card-h"><h3>Objetivos de ${esc(nome)}</h3><span class="muted sm">pontos base e técnica</span></div>
+    ${L.map(([k,n,pts,tec])=>`<div class="lc-i"><div class="lc-h"><div class="grow"><b>${esc(n)}</b><small class="muted"><span class="mono">${pts.join(' · ')}</span> · ${esc(tec)}</small></div>${btnLista(C,c,'sub:'+k,n)}</div></div>`).join('')}</div>`;
+}
 function abaLivre(av,c,nome){
-  const C=categoriaDe(av,c);
-  return `<div class="notice">${ic('info')}<div><b>${nome}: registro livre do profissional.</b> A lista clínica desta categoria ainda será definida. Nada aqui é sugerido, calculado ou encaminhado sozinho.</div></div>
+  const C=categoriaDe(av,c), lista=listaClinica(C,c,nome);
+  return `<div class="notice">${ic('info')}<div>${lista?`<b>${nome}: lista clínica e registro livre.</b> Marque o que se aplica ou descreva outro achado abaixo. Marcar não é diagnóstico: o item vai para a Síntese e o Plano, e você decide os pontos.`:`<b>${nome}: registro livre do profissional.</b> Nada aqui é sugerido, calculado ou encaminhado sozinho.`}</div></div>
+    ${lista}
     <div class="card"><div class="card-h"><h3>Achados de ${nome}</h3><span class="pill acc">${C.itens.length}</span></div>
       ${C.itens.length?`<div class="livres">${C.itens.map(it=>`<div class="livre"><div class="livre-t"><b>${esc(it.texto)}</b><div class="livre-m">
           <select class="mini-sel" data-atlsit="${c}.${it.id}" aria-label="Situação: ${esc(it.texto)}">${optsAt(SITUACOES_ACHADO,it.sit)}</select>
@@ -5954,7 +6103,8 @@ function eAvaliacao(p,a){
     <div class="card"><div class="card-h"><h3>Hipóteses de padrão</h3><span class="muted sm">${av.signs.length} sinais · ${H.length} hipóteses</span></div>
       ${H.length?H.map(h=>{const s=av.status[h.p.id]||'';return `<div class="hp ${s}"><div class="hp-h">${anel(h.score,Math.round(h.score*100)+'%',EL[h.p.el].cor)}<div class="grow"><b>${h.p.nome}</b><div>${elTag(h.p.el)} <span class="muted sm">· ${h.m.length}/${h.p.sinais.length} sinais</span></div></div></div>
         <div class="hp-a"><button class="btn sm ${s==='aceito'?'pri':''}" data-act="at-hip" data-p="${h.p.id}" data-st="aceito">${ic('check')}${s==='aceito'?'Aceito':'Aceitar'}</button><button class="btn sm" data-act="at-hip" data-p="${h.p.id}" data-st="descartado">${s==='descartado'?'Descartado':'Descartar'}</button></div>
-        <details class="mais"><summary>Por que aparece ${ic('baixo')}</summary><p class="sm"><b>Presentes:</b> ${h.m.map(x=>SIGN[x]).join(', ')}</p>${h.falta.length?`<p class="sm muted"><b>Esperados, não observados:</b> ${h.falta.map(x=>SIGN[x]).join(', ')}</p>`:''}</details></div>`;}).join(''):vazio('yin','Sem hipóteses ainda','Marque ao menos dois sinais de língua, pulso ou sintomas.')}</div>
+        <details class="mais"><summary>Por que aparece ${ic('baixo')}</summary><p class="sm"><b>Presentes:</b> ${h.m.map(x=>SIGN[x]).join(', ')}</p>${h.falta.length?`<p class="sm muted"><b>Esperados, não observados:</b> ${h.falta.map(x=>SIGN[x]).join(', ')}</p>`:''}</details>${blocoProtocolo(h.p.id)}</div>`;}).join(''):vazio('yin','Sem hipóteses ainda','Marque ao menos dois sinais de língua, pulso ou sintomas.')}</div>
+    ${cardDiferencial(H.filter(h=>av.status[h.p.id]!=='descartado').map(h=>h.p.id))}
     ${cmpBasal(p,a,av)}
     <div class="card"><div class="field"><label class="lbl" for="at-avnota">Observações da avaliação</label><textarea id="at-avnota" data-atf="avnota">${esc(av.nota||'')}</textarea></div></div>
   </div></div></fieldset>`;
@@ -5998,7 +6148,7 @@ function ePentagrama(p,a){
       <div class="card"><div class="field"><label class="lbl" for="at-interp">Interpretação do profissional</label><textarea id="at-interp" data-atr="interp" ${trava?'disabled':''} placeholder="Sua leitura dos cinco elementos para este paciente">${esc(av.interp||'')}</textarea></div><p class="muted sm" style="margin-top:6px">Registro do profissional. Não altera o cálculo.</p></div></div></div>`;
 }
 function resumoPulso(R){
-  const PU=SIGNS['Pulso'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
+  const PU=SIGNS_TELA['Pulso'], nome=k=>PU.find(x=>x[0]===k)?.[1]||k;
   const lado=(ld,t)=>{ const L=R.pulso[ld]; return `<div><small>${t}</small><div class="chips">${L.cls.map(k=>`<span class="pill">${nome(k)}</span>`).join('')||'<span class="muted sm">sem classificação</span>'}</div>
     ${L.deficiencia||L.orgao?`<p class="sm" style="margin-top:6px">${L.deficiencia?`Deficiência: ${esc(L.deficiencia)}`:''}${L.deficiencia&&L.orgao?' · ':''}${L.orgao?`Órgão/sistema: ${esc(L.orgao)}`:''}</p>`:''}${L.obs?`<p class="muted sm">${esc(L.obs)}</p>`:''}</div>`; };
   return `<div class="sx">${lado('esq','Pulso esquerdo')}${lado('dir','Pulso direito')}</div>${R.pulso.semLado.length?`<p class="muted sm" style="margin-top:8px">Sem lado: ${R.pulso.semLado.map(nome).join(', ')}</p>`:''}${R.linguaObs?`<p class="sm" style="margin-top:10px"><b>Língua:</b> ${esc(R.linguaObs)}</p>`:''}`;
@@ -6187,10 +6337,10 @@ function ePlano(p,a){
     <div class="card" id="orient-card"><div class="field"><label class="lbl" for="at-orient">Orientações para casa <span class="pill">opcional</span></label><textarea id="at-orient" data-atorient="1" placeholder="Ex.: compressa morna na nuca à noite">${esc(a.plano.orient||'')}</textarea></div>
       <button class="btn sm" data-act="at-imprimir" style="margin-top:10px">${ic('doc')}Imprimir para o paciente</button><small class="muted" style="display:block;margin-top:6px">Sai uma folha só com as orientações, o nome do paciente, a data e o seu nome.</small></div></div>
     <div class="grid" style="align-content:start">${(()=>{ const L=encaminhados(av,'plano'); return `<div class="card"><div class="card-h"><h3>Trazido pelo profissional</h3><span class="muted sm">só o que foi marcado como "Plano"</span></div>
-      ${L.length?L.map(([c,nome,I])=>I.map(it=>`<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${nome}</small></div><button class="btn sm ghost" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="plano">${ic('x')}Retirar</button></div>`).join('')).join(''):`<p class="muted sm">Nada encaminhado. Marque "Plano" num achado da avaliação para ele aparecer aqui.</p>`}</div>`; })()}
+      ${L.length?L.map(([c,nome,I])=>I.map(it=>{ const r=pontosDaRef(it.ref); return `<div class="sx-i"><div class="grow"><b>${esc(it.texto)}</b><small class="muted">${nome}${r?' · '+esc(r.tecnicaTxt||tecnicaProtocolo(r)):''}</small>${r?chipsPontos(r.pontos,P):''}</div><button class="btn sm ghost" data-act="at-levar" data-cat="${c}" data-id="${it.id}" data-dest="plano">${ic('x')}Retirar</button></div>`; }).join('')).join(''):`<p class="muted sm">Nada encaminhado. Marque "Plano" num achado da avaliação para ele aparecer aqui.</p>`}</div>`; })()}
     ${pode('mtc')?dicasTratamento(p,a):''}
     <div class="card"><h3>Sugestões dos padrões validados</h3><p class="muted sm" style="margin-bottom:10px">Toque para incluir. A escolha é do profissional.</p>
-      ${ac.length?ac.map(h=>`<div class="sug"><div class="sug-h">${elTag(h.p.el)}<b>${h.p.nome}</b></div><div class="chips">${h.p.pontos.map(([c,j])=>`<button class="chip mono ${P.includes(c)?'on':''}" data-act="at-pt" data-c="${c}" title="${esc(j)}${PT[c]?.cautela?' · '+esc(CAUT[PT[c].cautela]):''}">${c}${PT[c]?.cautela?' ⚠':''}</button>`).join('')}</div></div>`).join(''):`<div class="vazio">${ic('info')}Aceite hipóteses na avaliação para ver sugestões.</div>`}</div></div></div>`;
+      ${ac.length?ac.map(h=>`<div class="sug"><div class="sug-h">${elTag(h.p.el)}<b>${h.p.nome}</b></div>${PROTOCOLOS[h.p.id]?`<small class="muted">${esc(PROTOCOLOS[h.p.id].principio)} · ${esc(tecnicaProtocolo(PROTOCOLOS[h.p.id]))}</small>`:''}${chipsPontos(pontosPadrao(h.p),P)}</div>`).join(''):`<div class="vazio">${ic('info')}Aceite hipóteses na avaliação para ver sugestões.</div>`}</div></div></div>`;
 }
 function eEvolucao(p,a){
   const fin=finalizados(p).filter(x=>x!==a), Q=p.queixas.filter(q=>a.evolucao.intensidades[q.id]!=null||serieQueixa(p,q.id).length);
@@ -7741,6 +7891,8 @@ function acaoAtendimento(a,t){
   else if(a==='at-levar'&&av){ const c=t.dataset.cat, d=t.dataset.dest, it=av.categorias?.[c]?.itens.find(x=>x.id===t.dataset.id); if(!it) return;
     definirAchadoLivre(av,c,it.id,d,!it[d]); const l=d==='plano'?'Plano':'Síntese';
     mudou(`avaliação energética: ${catNome(c)}: "${it.texto}" ${it[d]?'levado para':'retirado'} ${it[d]?(d==='plano'?'o ':'a ')+l:'d'+(d==='plano'?'o ':'a ')+l}`); toast(it[d]?`Levado para ${d==='plano'?'o':'a'} ${l}`:`Retirado d${d==='plano'?'o':'a'} ${l}`,'info'); }
+  else if(a==='at-lista'&&av){ const c=t.dataset.cat, ref=t.dataset.ref, texto=t.dataset.nome; if(!c||!ref||!texto||av.categorias?.[c]?.itens.some(x=>x.ref===ref)) return;
+    adicionarAchadoLivre(av,c,{id:uid(),texto,orig:'exame',sit:'pos',ref},new Date().toISOString()); mudou(`avaliação energética: ${catNome(c)}: "${texto}" marcado`); toast('Marcado e levado para a Síntese e o Plano'); }
   else if(a==='at-livre-rm'&&av){ const c=t.dataset.cat, it=av.categorias?.[c]?.itens.find(x=>x.id===t.dataset.id); if(!it||!confirm(`Remover o achado "${it.texto}"? A remoção fica registrada no histórico do atendimento.`)) return;
     removerAchadoLivre(av,c,it.id); mudou(`avaliação energética: ${catNome(c)}: achado removido ("${it.texto}")`); }
   else if(a==='at-par'){ const par=PARES_VASOS.find(y=>y[0]===t.dataset.v); if(!par) return; par.slice(1).forEach(c=>{ if(!A.plano.pontos.includes(c)) A.plano.pontos.push(c); }); definirVaso(A,par[0],'considerar',true); mudou(`plano terapêutico: pontos (par de ${par[0]} incluído pelo profissional)`); toast(`${par[1]} e ${par[2]} incluídos`); }

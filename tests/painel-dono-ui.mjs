@@ -68,7 +68,7 @@ for (const [rot, url] of [['sistema', 'index.html'], ['arquivo único', 'dist/sp
   ok(!(await tem(A, '[href="#musubi"]')), `${rot}: quem não é dono não vê o Painel do MUSUBI`);
   // Teste terminado: pede para continuar, sem perder dados
   cA.assin.teste_ate = new Date(Date.now() - 864e5).toISOString();
-  await A.reload(); await A.waitForTimeout(300);
+  await A.reload(); await A.waitForSelector('#acesso h1:has-text("O teste grátis terminou")', { timeout:8000 }).catch(() => {});
   ok(await tem(A, '#acesso h1', 'O teste grátis terminou') && await A.isChecked('#acesso [name=plano][value=essencial]') && await A.isChecked('#acesso [name=periodo][value=mensal]') && await tem(A, '#acesso [name=periodo][value=anual] ~ span', 'R$ 790/ano'), `${rot}: teste terminado pede para pagar, com o pacote escolhido, mensal ou anual`);
   // Pagamento online ainda não ligado: cai no contato pelo WhatsApp
   await clicar(A, '#acesso [type=submit]'); await A.waitForTimeout(200);

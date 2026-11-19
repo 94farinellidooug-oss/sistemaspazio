@@ -14,6 +14,7 @@ import { anel, barrasEl, delta, linhas } from '../componentes/graficos.js';
 import { ic, vazio } from '../componentes/icones.js';
 import { pentagram } from '../componentes/pentagrama.js';
 import { PT } from '../conhecimento/pontos.js';
+import { pontosPadrao } from '../conhecimento/protocolos.js';
 import { SIGN } from '../conhecimento/sinais.js';
 import { ativo } from '../dados/agenda.js';
 import { db, patient } from '../dados/repositorio.js';
@@ -204,7 +205,7 @@ function abaNova(p){
       <div class="full"><button class="btn pri">Salvar no prontuário</button></div>
     </form></div>
     <div class="card" style="align-self:start"><h3>Sugestões da última avaliação</h3><p class="muted" style="font-size:.82rem;margin-bottom:8px">Pontos ligados aos padrões validados. Clique para adicionar.</p>
-    ${a?aceitos(a).map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${h.p.pontos.map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
+    ${a?aceitos(a).map(h=>`<div style="margin-bottom:10px"><b>${h.p.nome}</b><div class="chips" style="margin-top:6px">${pontosPadrao(h.p).map(([c,j])=>`<button type="button" class="chip mono" data-act="addpt" data-c="${c}" title="${esc(j)}">${c}</button>`).join('')}</div></div>`).join('')||'<p class="muted">Nenhum padrão validado.</p>':'<p class="muted">Sem avaliação.</p>'}</div></div>`;
 }
 
 // Versões da avaliação (etapa 3C): todas as avaliações registradas, da basal à mais recente.

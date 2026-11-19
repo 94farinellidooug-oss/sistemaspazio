@@ -343,6 +343,8 @@ function acaoAtendimento(a,t){
   else if(a==='at-levar'&&av){ const c=t.dataset.cat, d=t.dataset.dest, it=av.categorias?.[c]?.itens.find(x=>x.id===t.dataset.id); if(!it) return;
     definirAchadoLivre(av,c,it.id,d,!it[d]); const l=d==='plano'?'Plano':'Síntese';
     mudou(`avaliação energética: ${catNome(c)}: "${it.texto}" ${it[d]?'levado para':'retirado'} ${it[d]?(d==='plano'?'o ':'a ')+l:'d'+(d==='plano'?'o ':'a ')+l}`); toast(it[d]?`Levado para ${d==='plano'?'o':'a'} ${l}`:`Retirado d${d==='plano'?'o':'a'} ${l}`,'info'); }
+  else if(a==='at-lista'&&av){ const c=t.dataset.cat, ref=t.dataset.ref, texto=t.dataset.nome; if(!c||!ref||!texto||av.categorias?.[c]?.itens.some(x=>x.ref===ref)) return;
+    adicionarAchadoLivre(av,c,{id:uid(),texto,orig:'exame',sit:'pos',ref},new Date().toISOString()); mudou(`avaliação energética: ${catNome(c)}: "${texto}" marcado`); toast('Marcado e levado para a Síntese e o Plano'); }
   else if(a==='at-livre-rm'&&av){ const c=t.dataset.cat, it=av.categorias?.[c]?.itens.find(x=>x.id===t.dataset.id); if(!it||!confirm(`Remover o achado "${it.texto}"? A remoção fica registrada no histórico do atendimento.`)) return;
     removerAchadoLivre(av,c,it.id); mudou(`avaliação energética: ${catNome(c)}: achado removido ("${it.texto}")`); }
   else if(a==='at-par'){ const par=PARES_VASOS.find(y=>y[0]===t.dataset.v); if(!par) return; par.slice(1).forEach(c=>{ if(!A.plano.pontos.includes(c)) A.plano.pontos.push(c); }); definirVaso(A,par[0],'considerar',true); mudou(`plano terapêutico: pontos (par de ${par[0]} incluído pelo profissional)`); toast(`${par[1]} e ${par[2]} incluídos`); }

@@ -1,10 +1,12 @@
 // Raciocínio clínico de apoio: hipóteses de padrão, Ba Gang e estado dos elementos.
 import { ORDER } from '../conhecimento/elementos.js';
 import { BAGANG, PATTERNS } from '../conhecimento/padroes.js';
+import { PADROES_MAIS } from '../conhecimento/protocolos.js';
 
 export function evaluate(signs){
   const s = new Set(signs);
-  return PATTERNS.map(p=>{
+  // Hipóteses novas (18/11) só entram com um sinal próprio delas: sem eles, o resultado é o mesmo do v1.
+  return [...PATTERNS, ...PADROES_MAIS.filter(p=>p.chave.some(x=>s.has(x)))].map(p=>{
     const m = p.sinais.filter(x=>s.has(x));
     return {p, m, falta:p.sinais.filter(x=>!s.has(x)), score:m.length/p.sinais.length};
   }).filter(h=>h.m.length>=2).sort((a,b)=>b.score-a.score);
